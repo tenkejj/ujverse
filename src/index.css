@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-uj-blue:   #003399;
+  --color-uj-navy:   #002D62;
+  --color-uj-gold:   #C49A6C;
+  --color-uj-orange: #FF9900;
+  --color-dark-bg:   #000d21;
+  --color-dark-card: #000d21;
+
+  --radius-uj-xl:   1rem;
+  --radius-uj-full: 9999px;
+
+  --shadow-uj-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+
+  --animate-heart-pop:    heart-pop    0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-like-ripple:  like-ripple  0.55s ease-out forwards;
+  --animate-comment-in:   comment-in   0.18s ease-out both;
+  --animate-spin:         spin         1s linear infinite;
+  --animate-fade-in:      fade-in      0.15s ease-out both;
+  --animate-slide-up:     slide-up     0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+body {
+  @apply bg-slate-100 text-slate-900 dark:bg-dark-bg dark:text-blue-50 transition-colors duration-200;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes heart-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.55); }
+  65%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+@keyframes like-ripple {
+  0%   { transform: scale(0.4); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes comment-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}

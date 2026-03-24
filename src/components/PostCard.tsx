@@ -1,0 +1,221 @@
+import { useState } from 'react'
+import { Heart, MessageCircle, Share2, Trash2 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { toast } from 'react-hot-toast'
+import type { Comment, Post, Profile } from '../types'
+import { relativeTime } from '../lib/utils'
+import { getDeptAbbreviation } from '../lib/departments'
+import UserAvatar from './UserAvatar'
+import CommentThread from './CommentThread'
+import ConfirmModal from './ConfirmModal'
+
+type Props = {
+  post: Post
+  index: number
+  currentUserId: string
+  myProfile: Profile | null
+  displayName: string
+  likeCount: number
+  isLiked: boolean
+  isPop: boolean
+  commentCount: number
+  isCommentsOpen: boolean
+  comments: Comment[]
+  commentInputValue: string
+  isCommentSubmitting: boolean
+  onToggleLike: () => void
+  onToggleComments: () => void
+  onSubmitComment: () => void
+  onCommentInputChange: (value: string) => void
+  onDeletePost: () => void
+  onDeleteComment: (commentId: number) => void
+}
+
+export default function PostCard({
+  post,
+  index,
+  currentUserId,
+  myProfile,
+  displayName,
+  likeCount,
+  isLiked,
+  isPop,
+  commentCount,
+  isCommentsOpen,
+  comments,
+  commentInputValue,
+  isCommentSubmitting,
+  onToggleLike,
+  onToggleComments,
+  onSubmitComment,
+  onCommentInputChange,
+  onDeletePost,
+  onDeleteComment,
+}: Props) {
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+
+  const postId = String(post?.id ?? `fallback-${index}`)
+  const content = post?.content ?? ''
+  const imageUrl = post?.image_url ?? null
+  const createdAt = post?.created_at
+  const author = post?.profiles
+  const authorName = author?.full_name || 'Użytkownik'
+  const isOwn = post?.user_id === currentUserId
+
+  return (
+    <article
+      key={postId}
+      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200/60 dark:border-white/5 border-t-2 border-t-uj-blue/10 dark:border-t-uj-orange/20 shadow-uj-soft dark:shadow-none hover:border-slate-300/70 dark:hover:border-white/10 transition-colors overflow-hidden"
+    >
+      {/* Post body */}
+      <div className="px-4 pt-4 pb-1">
+        <div className="flex gap-3">
+
+          {/* Left column: avatar + optional thread line */}
+          <div className="flex flex-col items-center shrink-0">
+            <UserAvatar profile={author} name={authorName} className="h-10 w-10" textSize="text-sm" />
+            {isCommentsOpen && (
+              <div className="w-px flex-1 mt-1.5 bg-gradient-to-b from-uj-blue/30 via-uj-blue/10 to-transparent min-h-[24px]" />
+            )}
+          </div>
+
+          {/* Right column */}
+          <div className="flex-1 min-w-0 pb-3">
+
+            {/* Author row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-slate-900 dark:text-blue-50 text-[14px] leading-tight">{authorName}</span>
+              {author?.department && (
+                <span className="text-[9px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20 leading-none">
+                  {getDeptAbbreviation(author.department)}
+                </span>
+              )}
+              {isOwn && (
+                <span className="text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20">
+                  Ty
+                </span>
+              )}
+              {createdAt && (
+                <span className="text-xs text-slate-400 dark:text-gray-500 ml-auto">{relativeTime(createdAt)}</span>
+              )}
+              {isOwn && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                  className="p-1 rounded-full text-slate-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                  aria-label="Usuń post"
+                >
+                  <Trash2 size={13} strokeWidth={1.75} />
+                </button>
+              )}
+            </div>
+
+            {/* Content */}
+            <p className="mt-1.5 text-[15px] text-slate-800 dark:text-gray-200 leading-relaxed whitespace-pre-line">{content}</p>
+
+            {/* Image */}
+            {imageUrl && (
+              <img
+                src={imageUrl}
+                alt=""
+                className="mt-3 w-full max-h-80 object-cover rounded-xl border border-slate-100 dark:border-gray-700"
+                loading="lazy"
+              />
+            )}
+
+            {/* Action bar */}
+            <div className="flex items-center mt-3 -mx-1.5 gap-0.5">
+
+              {/* Comments button */}
+              <button
+                type="button"
+                onClick={onToggleComments}
+                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-all ${
+                  isCommentsOpen
+                    ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                    : 'text-slate-400 dark:text-gray-500 hover:text-blue-500 hover:bg-blue-50/80 dark:hover:bg-blue-900/20'
+                }`}
+                aria-label="Komentarze"
+              >
+                <MessageCircle
+                  size={15}
+                  strokeWidth={isCommentsOpen ? 2.5 : 1.75}
+                  className="transition-all"
+                />
+                {commentCount > 0 && <span className="tabular-nums leading-none">{commentCount}</span>}
+              </button>
+
+              {/* Like button */}
+              <motion.button
+                type="button"
+                onClick={onToggleLike}
+                disabled={!post?.id}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.88 }}
+                className={`relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-all disabled:opacity-50 ${
+                  isLiked
+                    ? 'text-uj-orange bg-uj-orange/10'
+                    : 'text-slate-400 dark:text-gray-500 hover:text-uj-orange hover:bg-uj-orange/10'
+                }`}
+                aria-label={isLiked ? 'Usuń polubienie' : 'Polub'}
+              >
+                {isPop && (
+                  <span className="absolute inset-0 rounded-full bg-rose-300/40 animate-like-ripple pointer-events-none" />
+                )}
+                <Heart
+                  size={15}
+                  strokeWidth={1.75}
+                  className={`transition-all ${isLiked ? 'fill-uj-orange stroke-uj-orange' : ''} ${isPop ? 'animate-heart-pop' : ''}`}
+                />
+                {likeCount > 0 && <span className="tabular-nums leading-none">{likeCount}</span>}
+              </motion.button>
+
+              {/* Share */}
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `${window.location.origin}?post=${postId}`
+                  navigator.clipboard.writeText(url).then(() => {
+                    toast.success('Link skopiowany!')
+                  }).catch(() => {
+                    toast.error('Nie udało się skopiować linku.')
+                  })
+                }}
+                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-slate-300 dark:text-gray-600 hover:text-slate-500 dark:hover:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-700 text-[13px] transition-all"
+                aria-label="Udostępnij"
+              >
+                <Share2 size={14} strokeWidth={1.75} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Comments thread */}
+      {isCommentsOpen && (
+        <CommentThread
+          postId={postId}
+          comments={comments}
+          currentUserId={currentUserId}
+          myProfile={myProfile}
+          displayName={displayName}
+          inputValue={commentInputValue}
+          isSubmitting={isCommentSubmitting}
+          onInputChange={onCommentInputChange}
+          onSubmit={onSubmitComment}
+          onDeleteComment={onDeleteComment}
+        />
+      )}
+
+      {confirmDeleteOpen && (
+        <ConfirmModal
+          title="Usuń wpis"
+          message="Tej operacji nie można cofnąć. Wpis zostanie trwale usunięty."
+          confirmLabel="Usuń wpis"
+          onConfirm={onDeletePost}
+          onClose={() => setConfirmDeleteOpen(false)}
+        />
+      )}
+    </article>
+  )
+}
