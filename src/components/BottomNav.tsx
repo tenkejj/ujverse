@@ -22,39 +22,41 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose }: 
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-dark-bg/90 backdrop-blur-md border-t border-gray-100 dark:border-gray-800"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex items-end justify-around h-16">
+      <div className="flex items-center justify-around h-16">
         {/* Home */}
-        <button
+        <motion.button
           type="button"
           onClick={() => setActiveView('feed')}
+          whileTap={{ scale: 0.9 }}
           className={iconBtn(activeView === 'feed')}
           aria-label="Strona główna"
         >
           <Home size={22} strokeWidth={activeView === 'feed' ? 2.5 : 1.8} />
-        </button>
+        </motion.button>
 
-        {/* Plus — center floating button */}
-        <div className="flex items-center justify-center -mt-5">
+        {/* Plus — center button */}
+        <div className="flex items-center justify-center">
           <motion.button
             type="button"
             onClick={onOpenCompose}
             whileTap={{ scale: 0.9 }}
-            className="w-14 h-14 rounded-full bg-uj-blue text-white flex items-center justify-center shadow-lg hover:bg-uj-navy transition-colors"
+            className="w-10 h-10 rounded-full bg-uj-blue text-white flex items-center justify-center shadow-md hover:bg-uj-navy transition-colors"
             aria-label="Napisz wpis"
           >
-            <Plus size={28} strokeWidth={2.2} />
+            <Plus size={22} strokeWidth={2.2} />
           </motion.button>
         </div>
 
         {/* Bell */}
-        <button
+        <motion.button
           type="button"
           onClick={() => setActiveView('notifications')}
+          whileTap={{ scale: 0.9 }}
           className={iconBtn(activeView === 'notifications')}
           aria-label="Powiadomienia"
         >
           <Bell size={22} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
-        </button>
+        </motion.button>
       </div>
     </nav>
   )

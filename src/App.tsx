@@ -397,7 +397,7 @@ function App() {
         {isMobileComposeOpen && (
           <motion.div
             key="mobile-compose-overlay"
-            className="fixed inset-0 z-50 md:hidden flex flex-col justify-end"
+            className="fixed inset-0 z-[60] md:hidden flex flex-col justify-end"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -408,13 +408,13 @@ function App() {
               onClick={resetCompose}
             />
             <motion.div
-              className="bg-white dark:bg-dark-card rounded-t-3xl px-4 pt-3 pb-8 shadow-2xl"
+              className="bg-slate-50 dark:bg-[#0a101e] rounded-t-3xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+90px)] shadow-2xl max-h-[90vh] overflow-y-auto"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             >
-              <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-gray-700 mx-auto mb-4" />
+              <div className="w-12 h-1.5 rounded-full bg-slate-300/50 dark:bg-white/10 mx-auto my-3" />
               <ComposeBox
                 myProfile={myProfile}
                 displayName={displayName}
@@ -435,7 +435,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen bg-slate-100 dark:bg-dark-bg transition-colors duration-200">
+      <div className="min-h-screen bg-slate-50 dark:bg-dark-bg transition-colors duration-200">
         <Header
           myProfile={myProfile}
           displayName={displayName}

@@ -42,7 +42,7 @@ export default function ComposeBox({
   const imageInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    if (isComposing) setTimeout(() => textareaRef.current?.focus(), 50)
+    if (isComposing) setTimeout(() => textareaRef.current?.focus(), 400)
   }, [isComposing])
 
   const bodyLen = body.length

@@ -65,7 +65,7 @@ export default function PostCard({
   return (
     <article
       key={postId}
-      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200/60 dark:border-white/5 border-t-2 border-t-uj-blue/10 dark:border-t-uj-orange/20 shadow-uj-soft dark:shadow-none hover:border-slate-300/70 dark:hover:border-white/10 transition-colors overflow-hidden"
+      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-white/10 transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
     >
       {/* Post body */}
       <div className="px-4 pt-4 pb-1">
@@ -73,7 +73,9 @@ export default function PostCard({
 
           {/* Left column: avatar + optional thread line */}
           <div className="flex flex-col items-center shrink-0">
-            <UserAvatar profile={author} name={authorName} className="h-10 w-10" textSize="text-sm" />
+            <div className="drop-shadow-sm">
+              <UserAvatar profile={author} name={authorName} className="h-10 w-10" textSize="text-sm" />
+            </div>
             {isCommentsOpen && (
               <div className="w-px flex-1 mt-1.5 bg-gradient-to-b from-uj-blue/30 via-uj-blue/10 to-transparent min-h-[24px]" />
             )}
@@ -111,7 +113,7 @@ export default function PostCard({
             </div>
 
             {/* Content */}
-            <p className="mt-1.5 text-[15px] text-slate-800 dark:text-gray-200 leading-relaxed whitespace-pre-line">{content}</p>
+            <p className="mt-1.5 text-[15px] text-slate-600 dark:text-gray-200 leading-relaxed whitespace-pre-line">{content}</p>
 
             {/* Image */}
             {imageUrl && (
@@ -162,11 +164,17 @@ export default function PostCard({
                 {isPop && (
                   <span className="absolute inset-0 rounded-full bg-rose-300/40 animate-like-ripple pointer-events-none" />
                 )}
-                <Heart
-                  size={15}
-                  strokeWidth={1.75}
-                  className={`transition-all ${isLiked ? 'fill-uj-orange stroke-uj-orange' : ''} ${isPop ? 'animate-heart-pop' : ''}`}
-                />
+                <motion.span
+                  animate={isPop ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                  className="flex"
+                >
+                  <Heart
+                    size={15}
+                    strokeWidth={1.75}
+                    className={`transition-colors ${isLiked ? 'fill-uj-orange stroke-uj-orange' : ''}`}
+                  />
+                </motion.span>
                 {likeCount > 0 && <span className="tabular-nums leading-none">{likeCount}</span>}
               </motion.button>
 

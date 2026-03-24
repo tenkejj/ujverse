@@ -52,8 +52,8 @@ export default function Header({
   }, [menuOpen, setMenuOpen])
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 dark:bg-dark-bg/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
-      <div className="mx-auto max-w-2xl px-4 relative flex items-center h-20">
+    <header className="sticky top-0 z-40 bg-white/70 dark:bg-[#050b18]/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/5">
+      <div className="mx-auto max-w-2xl px-4 relative flex items-center h-[76px]">
 
         {/* Wyszukiwarka — lewa strona */}
         <SearchBar />
@@ -68,7 +68,7 @@ export default function Header({
           <img
             src={logoSrc}
             alt="UJverse"
-              className="h-16 w-auto [filter:invert(1)_sepia(1)_saturate(10)_hue-rotate(192deg)_brightness(0.45)] dark:[filter:sepia(1)_saturate(6)_hue-rotate(355deg)_brightness(1.1)]"
+              className="h-[72px] w-auto [filter:invert(1)_sepia(1)_saturate(10)_hue-rotate(192deg)_brightness(0.45)] dark:[filter:sepia(1)_saturate(6)_hue-rotate(355deg)_brightness(1.1)]"
           />
         </button>
 
