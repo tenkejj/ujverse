@@ -17,6 +17,7 @@ import FeedView from './components/FeedView'
 import ProfileView from './components/ProfileView'
 import BottomNav from './components/BottomNav'
 import NotificationsView from './components/NotificationsView'
+import SinglePostView from './components/SinglePostView'
 import ComposeBox from './components/ComposeBox'
 
 function App() {
@@ -25,7 +26,8 @@ function App() {
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const [activeView, setActiveView] = useState<'feed' | 'profile' | 'notifications'>('feed')
+  const [activeView, setActiveView] = useState<'feed' | 'profile' | 'notifications' | 'post'>('feed')
+  const [activePostId, setActivePostId] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [isMobileComposeOpen, setIsMobileComposeOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -274,6 +276,11 @@ function App() {
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────
+
+  const navigateToPost = useCallback((postId: string) => {
+    setActivePostId(postId)
+    setActiveView('post')
+  }, [])
 
   const markNotificationRead = useCallback(async (id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
@@ -544,7 +551,7 @@ function App() {
           email={session.user.email}
           menuOpen={menuOpen}
           setMenuOpen={setMenuOpen}
-          activeView={activeView}
+          activeView={activeView === 'post' ? 'feed' : activeView}
           unreadCount={unreadCount}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
@@ -587,6 +594,7 @@ function App() {
                   onComposeOpen={() => { setCreateError(null); setIsComposing(true) }}
                   onComposeReset={resetCompose}
                   onCreatePost={handleCreatePost}
+                  onNavigateToPost={navigateToPost}
                 />
               )}
 
@@ -607,6 +615,15 @@ function App() {
                   loading={notificationsLoading}
                   onMarkRead={markNotificationRead}
                   onMarkAllRead={markAllRead}
+                  onNavigateToPost={navigateToPost}
+                />
+              )}
+
+              {activeView === 'post' && activePostId && (
+                <SinglePostView
+                  postId={activePostId}
+                  {...sharedPostProps}
+                  onBack={() => setActiveView('feed')}
                 />
               )}
             </motion.div>
@@ -614,8 +631,8 @@ function App() {
         </main>
 
         <BottomNav
-          activeView={activeView}
-          setActiveView={setActiveView}
+          activeView={activeView === 'post' ? 'feed' : activeView}
+          setActiveView={(v) => setActiveView(v)}
           unreadCount={unreadCount}
           onOpenCompose={() => {
             setCreateError(null)

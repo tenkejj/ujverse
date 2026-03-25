@@ -1,4 +1,4 @@
-import { Bell, Heart, MessageCircle } from 'lucide-react'
+import { Bell, ChevronRight, Heart, MessageCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { AppNotification } from '../types'
 import { relativeTime } from '../lib/utils'
@@ -10,6 +10,7 @@ type Props = {
   loading: boolean
   onMarkRead: (id: string) => void
   onMarkAllRead: () => void
+  onNavigateToPost: (postId: string) => void
 }
 
 function NotificationIcon({ type }: { type: 'like' | 'comment' }) {
@@ -42,7 +43,7 @@ function SkeletonRow() {
   )
 }
 
-export default function NotificationsView({ notifications, loading, onMarkRead, onMarkAllRead }: Props) {
+export default function NotificationsView({ notifications, loading, onMarkRead, onMarkAllRead, onNavigateToPost }: Props) {
   const hasUnread = notifications.some((n) => !n.read)
 
   if (loading) {
@@ -87,13 +88,17 @@ export default function NotificationsView({ notifications, loading, onMarkRead, 
         const actionText = notif.type === 'like' ? 'polubił(a) Twój wpis' : 'skomentował(a) Twój wpis'
 
         return (
-          <motion.div
+          <motion.button
             key={notif.id}
+            type="button"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.3) }}
-            onClick={() => { if (!notif.read) onMarkRead(notif.id) }}
-            className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${
+            onClick={() => {
+              if (!notif.read) onMarkRead(notif.id)
+              if (notif.post_id) onNavigateToPost(notif.post_id)
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors hover:bg-slate-50 dark:hover:bg-white/5 text-left ${
               notif.read
                 ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-white/5'
                 : 'bg-uj-blue/5 dark:bg-uj-orange/5 border-uj-blue/10 dark:border-uj-orange/10'
@@ -116,10 +121,15 @@ export default function NotificationsView({ notifications, loading, onMarkRead, 
               </p>
             </div>
 
-            {!notif.read && (
-              <div className="w-2.5 h-2.5 rounded-full bg-uj-blue dark:bg-uj-orange shrink-0" />
-            )}
-          </motion.div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {!notif.read && (
+                <div className="w-2.5 h-2.5 rounded-full bg-uj-blue dark:bg-uj-orange" />
+              )}
+              {notif.post_id && (
+                <ChevronRight size={14} className="text-slate-300 dark:text-gray-600" />
+              )}
+            </div>
+          </motion.button>
         )
       })}
     </div>

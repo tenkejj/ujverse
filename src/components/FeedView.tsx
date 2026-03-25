@@ -53,6 +53,7 @@ type Props = {
   onCommentInputChange: (postId: string, value: string) => void
   onDeletePost: (postId: string) => void
   onDeleteComment: (commentId: number, postId: string) => void
+  onNavigateToPost: (postId: string) => void
 }
 
 export default function FeedView({
@@ -90,6 +91,7 @@ export default function FeedView({
   selectedDepartment,
   onDepartmentChange,
   searchQuery,
+  onNavigateToPost,
 }: Props) {
   const visiblePosts = searchQuery.trim()
     ? posts.filter((p) =>
@@ -186,6 +188,7 @@ export default function FeedView({
                 onCommentInputChange={(v) => onCommentInputChange(postId, v)}
                 onDeletePost={() => onDeletePost(postId)}
                 onDeleteComment={(cId) => onDeleteComment(cId, postId)}
+                onNavigateToPost={() => onNavigateToPost(postId)}
               />
             </motion.div>
           )

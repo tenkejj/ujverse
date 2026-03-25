@@ -29,6 +29,7 @@ type Props = {
   onCommentInputChange: (value: string) => void
   onDeletePost: () => void
   onDeleteComment: (commentId: number) => void
+  onNavigateToPost?: () => void
 }
 
 export default function PostCard({
@@ -51,6 +52,7 @@ export default function PostCard({
   onCommentInputChange,
   onDeletePost,
   onDeleteComment,
+  onNavigateToPost,
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
@@ -72,7 +74,7 @@ export default function PostCard({
         <div className="flex gap-3">
 
           {/* Left column: avatar + optional thread line */}
-          <div className="flex flex-col items-center shrink-0">
+          <div className="flex flex-col items-center shrink-0" onClick={(e) => e.stopPropagation()}>
             <div className="drop-shadow-sm">
               <UserAvatar profile={author} name={authorName} className="h-10 w-10" textSize="text-sm" />
             </div>
@@ -84,46 +86,52 @@ export default function PostCard({
           {/* Right column */}
           <div className="flex-1 min-w-0 pb-3">
 
-            {/* Author row */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-slate-900 dark:text-blue-50 text-[14px] leading-tight">{authorName}</span>
-              {author?.department && (
-                <span className="text-[9px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20 leading-none">
-                  {getDeptAbbreviation(author.department)}
-                </span>
-              )}
-              {isOwn && (
-                <span className="text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20">
-                  Ty
-                </span>
-              )}
-              {createdAt && (
-                <span className="text-xs text-slate-400 dark:text-gray-500 ml-auto">{relativeTime(createdAt)}</span>
-              )}
-              {isOwn && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDeleteOpen(true)}
-                  className="p-1 rounded-full text-slate-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                  aria-label="Usuń post"
-                >
-                  <Trash2 size={13} strokeWidth={1.75} />
-                </button>
+            {/* Clickable content area — navigates to SinglePostView */}
+            <div
+              onClick={onNavigateToPost}
+              className={onNavigateToPost ? 'cursor-pointer' : undefined}
+            >
+              {/* Author row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-slate-900 dark:text-blue-50 text-[14px] leading-tight">{authorName}</span>
+                {author?.department && (
+                  <span className="text-[9px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20 leading-none">
+                    {getDeptAbbreviation(author.department)}
+                  </span>
+                )}
+                {isOwn && (
+                  <span className="text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20">
+                    Ty
+                  </span>
+                )}
+                {createdAt && (
+                  <span className="text-xs text-slate-400 dark:text-gray-500 ml-auto">{relativeTime(createdAt)}</span>
+                )}
+                {isOwn && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setConfirmDeleteOpen(true) }}
+                    className="p-1 rounded-full text-slate-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    aria-label="Usuń post"
+                  >
+                    <Trash2 size={13} strokeWidth={1.75} />
+                  </button>
+                )}
+              </div>
+
+              {/* Content */}
+              <p className="mt-1.5 text-[15px] text-slate-600 dark:text-gray-200 leading-relaxed whitespace-pre-line">{content}</p>
+
+              {/* Image */}
+              {imageUrl && (
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="mt-3 w-full max-h-80 object-cover rounded-xl border border-slate-100 dark:border-gray-700"
+                  loading="lazy"
+                />
               )}
             </div>
-
-            {/* Content */}
-            <p className="mt-1.5 text-[15px] text-slate-600 dark:text-gray-200 leading-relaxed whitespace-pre-line">{content}</p>
-
-            {/* Image */}
-            {imageUrl && (
-              <img
-                src={imageUrl}
-                alt=""
-                className="mt-3 w-full max-h-80 object-cover rounded-xl border border-slate-100 dark:border-gray-700"
-                loading="lazy"
-              />
-            )}
 
             {/* Action bar */}
             <div className="flex items-center mt-3 -mx-1.5 gap-0.5">
@@ -131,7 +139,7 @@ export default function PostCard({
               {/* Comments button */}
               <button
                 type="button"
-                onClick={onToggleComments}
+                onClick={(e) => { e.stopPropagation(); onToggleComments() }}
                 className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-all ${
                   isCommentsOpen
                     ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30'
@@ -150,7 +158,7 @@ export default function PostCard({
               {/* Like button */}
               <motion.button
                 type="button"
-                onClick={onToggleLike}
+                onClick={(e) => { e.stopPropagation(); onToggleLike() }}
                 disabled={!post?.id}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.88 }}
@@ -181,7 +189,8 @@ export default function PostCard({
               {/* Share */}
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation()
                   const url = `${window.location.origin}?post=${postId}`
                   navigator.clipboard.writeText(url).then(() => {
                     toast.success('Link skopiowany!')
