@@ -28,3 +28,14 @@ export type Comment = {
   created_at: string
   profiles?: Profile | null
 }
+
+export type AppNotification = {
+  id: string
+  user_id: string
+  actor_id: string
+  type: 'like' | 'comment'
+  post_id: string | null
+  read: boolean
+  created_at: string
+  actor?: Profile | null
+}

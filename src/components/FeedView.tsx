@@ -1,4 +1,4 @@
-import { MessageCircle, Filter } from 'lucide-react'
+import { MessageCircle, Filter, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
 import ComposeBox from './ComposeBox'
@@ -32,6 +32,7 @@ type Props = {
   // Filter
   selectedDepartment: string
   onDepartmentChange: (dept: string) => void
+  searchQuery: string
 
   // Likes
   likesCountByPost: Record<string, number>
@@ -88,7 +89,15 @@ export default function FeedView({
   onDeleteComment,
   selectedDepartment,
   onDepartmentChange,
+  searchQuery,
 }: Props) {
+  const visiblePosts = searchQuery.trim()
+    ? posts.filter((p) =>
+        p.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.profiles?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : posts
+
   return (
     <>
       <div className="hidden md:block">
@@ -123,8 +132,14 @@ export default function FeedView({
         </div>
       )}
 
-      {!postsLoading && !postsError && posts.length === 0 && (
-        selectedDepartment ? (
+      {!postsLoading && !postsError && visiblePosts.length === 0 && (
+        searchQuery.trim() ? (
+          <EmptyState
+            icon={Search}
+            title={`Brak wyników dla „${searchQuery}"`}
+            subtitle="Spróbuj innej frazy lub wyczyść pole wyszukiwania."
+          />
+        ) : selectedDepartment ? (
           <EmptyState
             icon={Filter}
             title="Brak wpisów z tego wydziału"
@@ -140,7 +155,7 @@ export default function FeedView({
       )}
 
       <AnimatePresence mode="popLayout">
-        {!postsLoading && !postsError && posts.map((post, idx) => {
+        {!postsLoading && !postsError && visiblePosts.map((post, idx) => {
           const postId = String(post?.id ?? `fallback-${idx}`)
           return (
             <motion.div

@@ -1,90 +1,67 @@
 import { Bell, Heart, MessageCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
+import type { AppNotification } from '../types'
+import { relativeTime } from '../lib/utils'
+import UserAvatar from './UserAvatar'
 import EmptyState from './EmptyState'
 
-type NotificationType = 'like' | 'comment'
-
-type Notification = {
-  id: number
-  type: NotificationType
-  authorName: string
-  authorInitials: string
-  text: string
-  time: string
-  read: boolean
+type Props = {
+  notifications: AppNotification[]
+  loading: boolean
+  onMarkRead: (id: string) => void
+  onMarkAllRead: () => void
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: 1,
-    type: 'like',
-    authorName: 'Jan Kowalski',
-    authorInitials: 'JK',
-    text: 'polubił twój wpis',
-    time: '2 min temu',
-    read: false,
-  },
-  {
-    id: 2,
-    type: 'comment',
-    authorName: 'Anna Nowak',
-    authorInitials: 'AN',
-    text: 'skomentowała twój wpis: "Świetna inicjatywa!"',
-    time: '15 min temu',
-    read: false,
-  },
-  {
-    id: 3,
-    type: 'like',
-    authorName: 'Piotr Wiśniewski',
-    authorInitials: 'PW',
-    text: 'polubił twój wpis',
-    time: '1 godz. temu',
-    read: true,
-  },
-  {
-    id: 4,
-    type: 'comment',
-    authorName: 'Marta Zielińska',
-    authorInitials: 'MZ',
-    text: 'skomentowała twój wpis: "Też tak myślę 😄"',
-    time: '3 godz. temu',
-    read: true,
-  },
-]
-
-const SHOW_EMPTY = false
-
-function NotificationIcon({ type }: { type: NotificationType }) {
+function NotificationIcon({ type }: { type: 'like' | 'comment' }) {
   if (type === 'like') {
     return (
-      <div className="w-7 h-7 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
-        <Heart size={14} className="text-red-500" fill="currentColor" />
+      <div className="w-6 h-6 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
+        <Heart size={12} className="text-red-500" fill="currentColor" />
       </div>
     )
   }
   return (
-    <div className="w-7 h-7 rounded-full bg-uj-blue/8 dark:bg-uj-blue/15 flex items-center justify-center shrink-0">
-      <MessageCircle size={14} className="text-uj-blue dark:text-blue-400" />
+    <div className="w-6 h-6 rounded-full bg-uj-blue/8 dark:bg-uj-blue/15 flex items-center justify-center shrink-0">
+      <MessageCircle size={12} className="text-uj-blue dark:text-blue-400" />
     </div>
   )
 }
 
-function AvatarPlaceholder({ initials }: { initials: string }) {
+function SkeletonRow() {
   return (
-    <div className="w-10 h-10 rounded-full bg-uj-blue/10 dark:bg-white/10 flex items-center justify-center shrink-0">
-      <span className="text-xs font-bold text-uj-blue dark:text-gray-300">{initials}</span>
+    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-dark-card">
+      <div className="relative shrink-0">
+        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 animate-pulse" />
+        <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-slate-100 dark:bg-white/5 animate-pulse" />
+      </div>
+      <div className="flex-1 space-y-2">
+        <div className="h-3 bg-slate-200 dark:bg-white/10 rounded-full animate-pulse w-3/4" />
+        <div className="h-2.5 bg-slate-100 dark:bg-white/5 rounded-full animate-pulse w-1/3" />
+      </div>
     </div>
   )
 }
 
-export default function NotificationsView() {
-  if (SHOW_EMPTY || MOCK_NOTIFICATIONS.length === 0) {
+export default function NotificationsView({ notifications, loading, onMarkRead, onMarkAllRead }: Props) {
+  const hasUnread = notifications.some((n) => !n.read)
+
+  if (loading) {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center justify-between px-1 pb-2">
+          <h2 className="text-[15px] font-bold text-slate-800 dark:text-blue-50">Powiadomienia</h2>
+        </div>
+        {[1, 2, 3, 4].map((i) => <SkeletonRow key={i} />)}
+      </div>
+    )
+  }
+
+  if (notifications.length === 0) {
     return (
       <EmptyState
         icon={Bell}
         title="Brak powiadomień"
-        subtitle="Gdy coś się wydarzy, zobaczysz to tutaj"
+        subtitle="Gdy ktoś polubi lub skomentuje Twój wpis, zobaczysz to tutaj"
       />
     )
   }
@@ -93,43 +70,58 @@ export default function NotificationsView() {
     <div className="space-y-1">
       <div className="flex items-center justify-between px-1 pb-2">
         <h2 className="text-[15px] font-bold text-slate-800 dark:text-blue-50">Powiadomienia</h2>
-        <span className="text-xs text-uj-blue dark:text-uj-orange font-medium cursor-pointer hover:underline">
-          Oznacz wszystkie jako przeczytane
-        </span>
+        {hasUnread && (
+          <button
+            type="button"
+            onClick={onMarkAllRead}
+            className="text-xs text-uj-blue dark:text-uj-orange font-medium hover:underline transition-colors"
+          >
+            Oznacz wszystkie jako przeczytane
+          </button>
+        )}
       </div>
 
-      {MOCK_NOTIFICATIONS.map((notif, idx) => (
-        <motion.div
-          key={notif.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, delay: idx * 0.05 }}
-          className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${
-            notif.read
-              ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-white/5'
-              : 'bg-uj-blue/5 dark:bg-uj-orange/5 border-uj-blue/10 dark:border-uj-orange/10'
-          }`}
-        >
-          <div className="relative">
-            <AvatarPlaceholder initials={notif.authorInitials} />
-            <div className="absolute -bottom-0.5 -right-0.5">
-              <NotificationIcon type={notif.type} />
+      {notifications.map((notif, idx) => {
+        const actorProfile = notif.actor ?? null
+        const actorName = actorProfile?.full_name ?? 'Ktoś'
+        const actionText = notif.type === 'like' ? 'polubił(a) Twój wpis' : 'skomentował(a) Twój wpis'
+
+        return (
+          <motion.div
+            key={notif.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.3) }}
+            onClick={() => { if (!notif.read) onMarkRead(notif.id) }}
+            className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${
+              notif.read
+                ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-white/5'
+                : 'bg-uj-blue/5 dark:bg-uj-orange/5 border-uj-blue/10 dark:border-uj-orange/10'
+            }`}
+          >
+            <div className="relative shrink-0">
+              <UserAvatar profile={actorProfile} name={actorName} className="h-10 w-10" textSize="text-sm" />
+              <div className="absolute -bottom-0.5 -right-0.5">
+                <NotificationIcon type={notif.type} />
+              </div>
             </div>
-          </div>
 
-          <div className="flex-1 min-w-0">
-            <p className="text-[13.5px] text-slate-700 dark:text-gray-200 leading-snug">
-              <span className="font-semibold">{notif.authorName}</span>{' '}
-              <span className="text-slate-500 dark:text-gray-400">{notif.text}</span>
-            </p>
-            <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">{notif.time}</p>
-          </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13.5px] text-slate-700 dark:text-gray-200 leading-snug">
+                <span className="font-semibold">{actorName}</span>{' '}
+                <span className="text-slate-500 dark:text-gray-400">{actionText}</span>
+              </p>
+              <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">
+                {relativeTime(notif.created_at)}
+              </p>
+            </div>
 
-          {!notif.read && (
-            <div className="w-2.5 h-2.5 rounded-full bg-uj-blue dark:bg-uj-orange shrink-0" />
-          )}
-        </motion.div>
-      ))}
+            {!notif.read && (
+              <div className="w-2.5 h-2.5 rounded-full bg-uj-blue dark:bg-uj-orange shrink-0" />
+            )}
+          </motion.div>
+        )
+      })}
     </div>
   )
 }

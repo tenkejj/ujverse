@@ -16,6 +16,9 @@ type Props = {
   menuOpen: boolean
   setMenuOpen: (v: boolean | ((prev: boolean) => boolean)) => void
   activeView: ActiveView
+  unreadCount: number
+  searchQuery: string
+  onSearchQueryChange: (q: string) => void
   onNavigateToFeed: () => void
   onNavigateToProfile: () => void
   onNavigateToNotifications: () => void
@@ -29,6 +32,9 @@ export default function Header({
   menuOpen,
   setMenuOpen,
   activeView,
+  unreadCount,
+  searchQuery,
+  onSearchQueryChange,
   onNavigateToFeed,
   onNavigateToProfile,
   onNavigateToNotifications,
@@ -56,7 +62,7 @@ export default function Header({
       <div className="mx-auto max-w-2xl px-4 relative flex items-center h-[76px]">
 
         {/* Wyszukiwarka — lewa strona */}
-        <SearchBar />
+        <SearchBar value={searchQuery} onChange={onSearchQueryChange} />
 
         {/* Logo — wyśrodkowane absolutnie */}
         <button
@@ -91,7 +97,7 @@ export default function Header({
             <button
               type="button"
               onClick={onNavigateToNotifications}
-              className={`w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
+              className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
                 activeView === 'notifications'
                   ? 'text-uj-orange'
                   : 'text-gray-500 dark:text-gray-400'
@@ -99,6 +105,11 @@ export default function Header({
               aria-label="Powiadomienia"
             >
               <Bell size={17} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
+              {unreadCount > 0 && (
+                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 rounded-full bg-uj-orange text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           </div>
 

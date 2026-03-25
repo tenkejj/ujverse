@@ -7,9 +7,10 @@ type Props = {
   activeView: ActiveView
   setActiveView: (view: ActiveView) => void
   onOpenCompose: () => void
+  unreadCount: number
 }
 
-export default function BottomNav({ activeView, setActiveView, onOpenCompose }: Props) {
+export default function BottomNav({ activeView, setActiveView, onOpenCompose, unreadCount }: Props) {
   const iconBtn = (isActive: boolean) =>
     `flex flex-col items-center justify-center gap-1 px-6 py-2 transition-colors ${
       isActive
@@ -55,7 +56,14 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose }: 
           className={iconBtn(activeView === 'notifications')}
           aria-label="Powiadomienia"
         >
-          <Bell size={22} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
+          <div className="relative">
+            <Bell size={22} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-uj-orange text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
         </motion.button>
       </div>
     </nav>

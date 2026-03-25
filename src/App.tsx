@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
-import type { Comment, Post, Profile } from './types'
+import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
@@ -28,6 +28,11 @@ function App() {
   const [activeView, setActiveView] = useState<'feed' | 'profile' | 'notifications'>('feed')
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [isMobileComposeOpen, setIsMobileComposeOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Notifications
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
 
   // Posts
   const [posts, setPosts] = useState<Post[]>([])
@@ -57,11 +62,21 @@ function App() {
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({})
 
   const expandedCommentsRef = useRef(expandedComments)
+  // Set of postIds where the current user just submitted a comment (1.5 s cooldown window)
+  const recentlySubmittedRef = useRef<Set<string>>(new Set())
+  // Mirror of commentsByPost state — lets realtime closures read current IDs without stale captures
+  const commentsByPostRef = useRef(commentsByPost)
   useEffect(() => { expandedCommentsRef.current = expandedComments }, [expandedComments])
+  useEffect(() => { commentsByPostRef.current = commentsByPost }, [commentsByPost])
 
   const postIds = useMemo(
     () => posts.map((p) => p?.id).filter((id): id is string => id !== undefined && id !== null),
     [posts],
+  )
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications],
   )
 
   // ── Image preview URL management ──────────────────────────────────────────
@@ -87,7 +102,7 @@ function App() {
   const fetchLikesForPosts = useCallback(
     async (ids: string[]) => {
       if (!session?.user?.id || ids.length === 0) { setLikesCountByPost({}); setLikedPostIds({}); return }
-      const { data } = await supabase.from('likes').select('post_id, user_id').in('post_id', ids)
+      const { data } = await supabase.from('likes').select('post_id, user_id').in('post_id', ids.map(Number))
       const counts: Record<string, number> = {}
       const liked: Record<string, boolean> = {}
       for (const like of data ?? []) {
@@ -103,7 +118,7 @@ function App() {
 
   const fetchCommentsCount = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return
-    const { data } = await supabase.from('comments').select('post_id').in('post_id', ids)
+    const { data } = await supabase.from('comments').select('post_id').in('post_id', ids.map(Number))
     const counts: Record<string, number> = {}
     for (const c of data ?? []) { const k = String(c.post_id); counts[k] = (counts[k] ?? 0) + 1 }
     setCommentsCountByPost(counts)
@@ -113,7 +128,7 @@ function App() {
     const { data, error } = await supabase
       .from('comments')
       .select('id, post_id, user_id, content, created_at, profiles(id, full_name, avatar_url)')
-      .eq('post_id', postId)
+      .eq('post_id', Number(postId))
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -121,7 +136,7 @@ function App() {
       const { data: plain, error: plainErr } = await supabase
         .from('comments')
         .select('id, post_id, user_id, content, created_at')
-        .eq('post_id', postId)
+        .eq('post_id', Number(postId))
         .order('created_at', { ascending: true })
       if (plainErr) {
         console.error('[fetchCommentsForPost] Fallback też się nie powiódł:', plainErr)
@@ -136,15 +151,30 @@ function App() {
       return
     }
 
-    const normalized: Comment[] = data.map((c) => ({
-      ...c,
-      profiles: Array.isArray(c.profiles)
-        ? (c.profiles[0] ?? null)
-        : (c.profiles ?? null),
-    })) as Comment[]
+    const normalized: Comment[] = data
+      .map((c) => ({
+        ...c,
+        profiles: Array.isArray(c.profiles)
+          ? (c.profiles[0] ?? null)
+          : (c.profiles ?? null),
+      }))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) as Comment[]
 
     setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
   }, [])
+
+  const fetchNotifications = useCallback(async () => {
+    if (!session?.user?.id) return
+    setNotificationsLoading(true)
+    const { data } = await supabase
+      .from('notifications')
+      .select('*, actor:profiles!notifications_actor_id_fkey(id, full_name, avatar_url)')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setNotifications((data ?? []) as AppNotification[])
+    setNotificationsLoading(false)
+  }, [session])
 
   const fetchPosts = useCallback(async () => {
     setPostsLoading(true)
@@ -174,6 +204,23 @@ function App() {
     void fetchPosts()
     void fetchMyProfile(session.user.id)
   }, [session, fetchPosts, fetchMyProfile])
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    void fetchNotifications()
+    const channel = supabase
+      .channel('user-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${session.user.id}`,
+      }, (payload) => {
+        setNotifications((prev) => [payload.new as AppNotification, ...prev])
+      })
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [session?.user?.id, fetchNotifications])
 
   // ── Create post ───────────────────────────────────────────────────────────
 
@@ -226,6 +273,21 @@ function App() {
     setIsMobileComposeOpen(false)
   }
 
+  // ── Notifications ─────────────────────────────────────────────────────────
+
+  const markNotificationRead = useCallback(async (id: string) => {
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
+    await supabase.from('notifications').update({ read: true }).eq('id', id)
+  }, [])
+
+  const markAllRead = useCallback(async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    if (session?.user?.id) {
+      await supabase.from('notifications').update({ read: true })
+        .eq('user_id', session.user.id).eq('read', false)
+    }
+  }, [session])
+
   // ── Likes ─────────────────────────────────────────────────────────────────
 
   const toggleLike = useCallback(
@@ -242,9 +304,9 @@ function App() {
 
       setLikeLoadingByPost((p) => ({ ...p, [postId]: true }))
       if (alreadyLiked) {
-        await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', session.user.id)
+        await supabase.from('likes').delete().eq('post_id', Number(postId)).eq('user_id', session.user.id)
       } else {
-        await supabase.from('likes').insert([{ post_id: postId, user_id: session.user.id }])
+        await supabase.from('likes').insert([{ post_id: Number(postId), user_id: session.user.id }])
       }
       setLikeLoadingByPost((p) => ({ ...p, [postId]: false }))
     },
@@ -280,20 +342,38 @@ function App() {
         created_at: new Date().toISOString(),
         profiles: myProfile,
       }
+      console.log('[submitComment] Local comment added', optimisticComment)
 
-      setCommentsByPost((p) => ({ ...p, [postId]: [...(p[postId] ?? []), optimisticComment] }))
+      // Mark this post as recently-submitted so the realtime handler won't overwrite us
+      recentlySubmittedRef.current.add(postId)
+      window.setTimeout(() => recentlySubmittedRef.current.delete(postId), 1500)
+
+      setCommentsByPost((p) => ({
+        ...p,
+        [postId]: [...(p[postId] ?? []), optimisticComment].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        ),
+      }))
       setCommentsCountByPost((p) => ({ ...p, [postId]: (p[postId] ?? 0) + 1 }))
       setExpandedComments((prev) => new Set([...prev, postId]))
       setCommentInput((p) => ({ ...p, [postId]: '' }))
 
       setCommentSubmitting((p) => ({ ...p, [postId]: true }))
-      const { error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from('comments')
-        .insert([{ post_id: postId, user_id: session.user.id, content }])
+        .insert([{ post_id: Number(postId), user_id: session.user.id, content }])
+        .select('id')
+        .single()
 
-      if (!insertError) {
-        await fetchCommentsForPost(postId)
-      } else {
+      if (!insertError && inserted) {
+        // Swap temp key → real DB id (keep everything else, avoid any re-fetch)
+        setCommentsByPost((p) => ({
+          ...p,
+          [postId]: (p[postId] ?? []).map((c) =>
+            c.id === optimisticComment.id ? { ...c, id: inserted.id as number } : c
+          ),
+        }))
+      } else if (insertError) {
         console.error('[submitComment] Błąd INSERT:', insertError)
         setCommentsByPost((p) => ({
           ...p,
@@ -303,13 +383,13 @@ function App() {
       }
       setCommentSubmitting((p) => ({ ...p, [postId]: false }))
     },
-    [commentInput, commentSubmitting, session, myProfile, fetchCommentsForPost],
+    [commentInput, commentSubmitting, session, myProfile],
   )
 
   // ── Delete ────────────────────────────────────────────────────────────────
 
   const handleDeletePost = useCallback(async (postId: string) => {
-    const { error } = await supabase.from('posts').delete().eq('id', postId)
+    const { error } = await supabase.from('posts').delete().eq('id', Number(postId))
     if (error) { console.error('[handleDeletePost] Błąd Supabase:', error); return }
     setPosts((prev) => prev.filter((p) => String(p.id) !== String(postId)))
     setLikesCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
@@ -343,8 +423,30 @@ function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
         const pid = String(payload.new?.post_id)
         const commentAuthorId = String(payload.new?.user_id)
+        const incomingId = payload.new?.id
+        console.log('[Realtime] comment INSERT received', { pid, commentAuthorId, currentUserId: session?.user?.id, incomingId })
+
         if (!postIds.includes(pid)) return
-        if (commentAuthorId === session?.user?.id) return
+
+        // Guard 1: skip own comment events (should already be covered, but be explicit)
+        if (commentAuthorId === session?.user?.id) {
+          console.log('[Realtime] skipping own comment event')
+          return
+        }
+
+        // Guard 2: cooldown — skip if we just submitted to this post (trigger latency buffer)
+        if (recentlySubmittedRef.current.has(pid)) {
+          console.log('[Realtime] cooldown active, skipping realtime fetch for', pid)
+          return
+        }
+
+        // Guard 3: de-duplication — skip if this comment ID already exists in local state
+        const existing = commentsByPostRef.current[pid] ?? []
+        if (incomingId !== undefined && existing.some((c) => String(c.id) === String(incomingId))) {
+          console.log('[Realtime] duplicate comment, skipping', incomingId)
+          return
+        }
+
         setCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
         if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid)
       })
@@ -443,6 +545,9 @@ function App() {
           menuOpen={menuOpen}
           setMenuOpen={setMenuOpen}
           activeView={activeView}
+          unreadCount={unreadCount}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
           onNavigateToFeed={() => setActiveView('feed')}
           onNavigateToProfile={() => setActiveView('profile')}
           onNavigateToNotifications={() => setActiveView('notifications')}
@@ -470,6 +575,7 @@ function App() {
                   postsError={postsError}
                   selectedDepartment={selectedDepartment}
                   onDepartmentChange={setSelectedDepartment}
+                  searchQuery={searchQuery}
                   isComposing={isComposing}
                   createBody={createBody}
                   createImageFile={createImageFile}
@@ -496,7 +602,12 @@ function App() {
               )}
 
               {activeView === 'notifications' && (
-                <NotificationsView />
+                <NotificationsView
+                  notifications={notifications}
+                  loading={notificationsLoading}
+                  onMarkRead={markNotificationRead}
+                  onMarkAllRead={markAllRead}
+                />
               )}
             </motion.div>
           </AnimatePresence>
@@ -505,6 +616,7 @@ function App() {
         <BottomNav
           activeView={activeView}
           setActiveView={setActiveView}
+          unreadCount={unreadCount}
           onOpenCompose={() => {
             setCreateError(null)
             setCreateBody('')
