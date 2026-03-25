@@ -35,7 +35,7 @@ export type AppNotification = {
   actor_id: string
   type: 'like' | 'comment'
   post_id: string | null
-  read: boolean
+  is_read: boolean
   created_at: string
   actor?: Profile | null
 }

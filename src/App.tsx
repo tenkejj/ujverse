@@ -77,7 +77,7 @@ function App() {
   )
 
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
+    () => notifications.filter((n) => !n.is_read).length,
     [notifications],
   )
 
@@ -283,15 +283,17 @@ function App() {
   }, [])
 
   const markNotificationRead = useCallback(async (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
-    await supabase.from('notifications').update({ read: true }).eq('id', id)
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', Number(id))
+    if (error) console.error('[markNotificationRead]', error.message)
   }, [])
 
   const markAllRead = useCallback(async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
     if (session?.user?.id) {
-      await supabase.from('notifications').update({ read: true })
-        .eq('user_id', session.user.id).eq('read', false)
+      const { error } = await supabase.from('notifications').update({ is_read: true })
+        .eq('user_id', session.user.id).eq('is_read', false)
+      if (error) console.error('[markAllRead]', error.message)
     }
   }, [session])
 

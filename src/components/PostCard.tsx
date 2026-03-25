@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Heart, MessageCircle, Share2, Trash2 } from 'lucide-react'
+import ReactDOM from 'react-dom'
+import { Heart, MessageCircle, Share2, Trash2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import type { Comment, Post, Profile } from '../types'
@@ -8,6 +9,33 @@ import { getDeptAbbreviation } from '../lib/departments'
 import UserAvatar from './UserAvatar'
 import CommentThread from './CommentThread'
 import ConfirmModal from './ConfirmModal'
+
+function LightboxPortal({ src, onClose }: { src: string; onClose: () => void }) {
+  const portal = document.getElementById('lightbox-portal')
+  if (!portal) return null
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/40 rounded-full p-2 transition-colors"
+        aria-label="Zamknij"
+      >
+        <X size={20} />
+      </button>
+      <img
+        src={src}
+        alt=""
+        className="max-w-[95vw] max-h-[95vh] object-contain rounded-xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>,
+    portal,
+  )
+}
 
 type Props = {
   post: Post
@@ -55,6 +83,7 @@ export default function PostCard({
   onNavigateToPost,
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [isImageOpen, setIsImageOpen] = useState(false)
 
   const postId = String(post?.id ?? `fallback-${index}`)
   const content = post?.content ?? ''
@@ -121,17 +150,18 @@ export default function PostCard({
 
               {/* Content */}
               <p className="mt-1.5 text-[15px] text-slate-600 dark:text-gray-200 leading-relaxed whitespace-pre-line">{content}</p>
-
-              {/* Image */}
-              {imageUrl && (
-                <img
-                  src={imageUrl}
-                  alt=""
-                  className="mt-3 w-full max-h-80 object-cover rounded-xl border border-slate-100 dark:border-gray-700"
-                  loading="lazy"
-                />
-              )}
             </div>
+
+            {/* Image — outside nav wrapper so click opens lightbox, not SinglePostView */}
+            {imageUrl && (
+              <img
+                src={imageUrl}
+                alt=""
+                className="mt-3 w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
+                loading="lazy"
+                onClick={(e) => { e.stopPropagation(); setIsImageOpen(true) }}
+              />
+            )}
 
             {/* Action bar */}
             <div className="flex items-center mt-3 -mx-1.5 gap-0.5">
@@ -232,6 +262,10 @@ export default function PostCard({
           onConfirm={onDeletePost}
           onClose={() => setConfirmDeleteOpen(false)}
         />
+      )}
+
+      {isImageOpen && imageUrl && (
+        <LightboxPortal src={imageUrl} onClose={() => setIsImageOpen(false)} />
       )}
     </article>
   )

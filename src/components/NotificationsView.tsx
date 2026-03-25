@@ -44,7 +44,7 @@ function SkeletonRow() {
 }
 
 export default function NotificationsView({ notifications, loading, onMarkRead, onMarkAllRead, onNavigateToPost }: Props) {
-  const hasUnread = notifications.some((n) => !n.read)
+  const hasUnread = notifications.some((n) => !n.is_read)
 
   if (loading) {
     return (
@@ -95,11 +95,11 @@ export default function NotificationsView({ notifications, loading, onMarkRead, 
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.3) }}
             onClick={() => {
-              if (!notif.read) onMarkRead(notif.id)
+              if (!notif.is_read) onMarkRead(notif.id)
               if (notif.post_id) onNavigateToPost(notif.post_id)
             }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors hover:bg-slate-50 dark:hover:bg-white/5 text-left ${
-              notif.read
+              notif.is_read
                 ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-white/5'
                 : 'bg-uj-blue/5 dark:bg-uj-orange/5 border-uj-blue/10 dark:border-uj-orange/10'
             }`}
@@ -122,7 +122,7 @@ export default function NotificationsView({ notifications, loading, onMarkRead, 
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
-              {!notif.read && (
+              {!notif.is_read && (
                 <div className="w-2.5 h-2.5 rounded-full bg-uj-blue dark:bg-uj-orange" />
               )}
               {notif.post_id && (
