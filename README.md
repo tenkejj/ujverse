@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# UJverse
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+UJverse is a modern, real-time social platform designed exclusively for the academic community. It provides students and academic staff with a dedicated space to share updates, exchange knowledge, and stay connected through a fluid, highly responsive user interface. 
 
-Currently, two official plugins are available:
+The application is built with a strong focus on performance, real-time data synchronization, and a premium user experience, bridging the gap between outdated university forums and noisy mainstream social media.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Project Vision & Motivation
 
-## React Compiler
+The primary goal of UJverse is to centralize academic discourse in a distraction-free environment. Traditional social networks are heavily algorithm-driven and saturated with unrelated content, making it difficult for students to find critical university updates, share notes, or discuss faculty-specific topics. 
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+UJverse solves this by offering a tailored, chronological ecosystem where the community identity is at the forefront. Every feature is designed to facilitate quick information retrieval and meaningful academic interaction.
 
-## Expanding the ESLint configuration
+## Core Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+* **Real-time Feed & Interactions:** Posts, comments, and likes are synchronized instantly across all connected clients using Supabase Realtime, creating a live community pulse.
+* **Optimistic UI:** Immediate visual feedback for user actions (like toggling a like or posting a comment) before the server confirms the transaction, ensuring a seamless and lag-free experience.
+* **Advanced Media Handling:** Secure image uploads via Supabase Storage, integrated with a custom-built, full-screen Lightbox utilizing React Portals to escape CSS stacking contexts and provide a native-like photo viewing experience.
+* **Comprehensive Notification System:** A real-time notification center tracking user interactions (likes, comments) with strict database-level persistent "read/unread" state management.
+* **Deep Linking & Routing:** Dedicated single-post views and individual user profiles (`/post/:id`, `/user/:id`) allowing for easy content sharing and focused discussions.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tech Stack & Architecture
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+**Frontend:**
+* React (with Hooks)
+* TypeScript for type safety and predictable data flow
+* Vite for rapid development and optimized builds
+* Tailwind CSS for scalable, utility-first styling
+* React Router DOM for client-side routing
+* Lucide React for consistent iconography
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+**Backend as a Service (BaaS):**
+* Supabase (PostgreSQL Database)
+* Supabase Auth for secure user authentication and session management
+* Supabase Storage for media hosting
+* Row Level Security (RLS) ensuring strict data access control at the database level
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Design Philosophy
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+The user interface of UJverse is built around the concept of reducing cognitive load. Key design principles include:
+* **Glassmorphism & Depth:** Strategic use of blurred backgrounds and translucent elements to create a clear visual hierarchy without heavy borders.
+* **Responsive Layouts:** Components like the `PostCard` dynamically hug their content, ensuring images of varying aspect ratios are displayed perfectly without awkward empty spaces.
+* **Minimalism:** Stripping away unnecessary text labels (e.g., icon-only navigation) and streamlining user profile creation to focus purely on identity and content.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Future Roadmap
+
+As the platform grows, the architecture is prepared to support several advanced features:
+* Implementation of cursor-based pagination (Infinite Scroll) for optimal rendering of large feeds.
+* Direct messaging (1-on-1 real-time chat) between community members.
+* Advanced content discovery via clickable hashtags and a dedicated search infrastructure.
+* Content bookmarking for saving important academic notes and schedules.
