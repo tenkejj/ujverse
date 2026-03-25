@@ -1,18 +1,15 @@
-import { Camera, Instagram, Linkedin, MessageCircle, Settings } from 'lucide-react'
-import { useRef, useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { MessageCircle, Settings } from 'lucide-react'
 import type { Comment, Post, Profile } from '../types'
+import { getDeptAbbreviation } from '../lib/departments'
 import UserAvatar from './UserAvatar'
 import PostCard from './PostCard'
-import ImageCropperModal from './ImageCropperModal'
 
 type Props = {
   myProfile: Profile | null
   displayName: string
-  email: string | undefined
   currentUserId: string
   onOpenProfileModal: () => void
-  onBannerUpdate?: (newUrl: string) => void
+  onNavigateToUser?: (userId: string) => void
 
   // Posts
   posts: Post[]
@@ -42,10 +39,9 @@ type Props = {
 export default function ProfileView({
   myProfile,
   displayName,
-  email,
   currentUserId,
   onOpenProfileModal,
-  onBannerUpdate,
+  onNavigateToUser,
   posts,
   postsLoading,
   likesCountByPost,
@@ -64,169 +60,44 @@ export default function ProfileView({
   onDeleteComment,
 }: Props) {
   const myPosts = posts.filter((p) => p.user_id === currentUserId)
-  const [bannerUrl, setBannerUrl] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [cropSrc, setCropSrc] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const displayBannerUrl = bannerUrl ?? myProfile?.banner_url ?? null
-
-  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const objectUrl = URL.createObjectURL(file)
-    setCropSrc(objectUrl)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  async function handleCropSave(croppedBlob: Blob) {
-    if (!myProfile?.id) return
-    setIsUploading(true)
-    setCropSrc(null)
-    try {
-      const path = `${myProfile.id}/banner-${Date.now()}.jpg`
-      const { error: uploadError } = await supabase.storage
-        .from('banners')
-        .upload(path, croppedBlob, { upsert: true, contentType: 'image/jpeg' })
-
-      if (uploadError) throw uploadError
-
-      const { data: urlData } = supabase.storage.from('banners').getPublicUrl(path)
-      const publicUrl = urlData.publicUrl
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ banner_url: publicUrl })
-        .eq('id', myProfile.id)
-
-      if (updateError) throw updateError
-
-      setBannerUrl(publicUrl)
-      onBannerUpdate?.(publicUrl)
-    } catch (err) {
-      console.error('Błąd wgrywania bannera:', err)
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  function handleCropCancel() {
-    if (cropSrc) URL.revokeObjectURL(cropSrc)
-    setCropSrc(null)
-  }
 
   return (
     <>
-      {cropSrc && (
-        <ImageCropperModal
-          imageSrc={cropSrc}
-          onCancel={handleCropCancel}
-          onSave={handleCropSave}
-        />
-      )}
-
       {/* Profile card */}
-      <div className="bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-white/5 border-t-2 border-t-uj-blue/10 dark:border-t-uj-orange/20 shadow-uj-soft dark:shadow-none">
-
-        {/* Banner */}
-        <div className="relative w-full h-32 bg-gradient-to-r from-blue-900 to-blue-800 overflow-hidden rounded-t-2xl">
-          {displayBannerUrl && (
-            <img
-              src={displayBannerUrl}
-              alt="Banner"
-              className="absolute inset-0 w-full h-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-            />
-          )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileSelected}
-          />
-
-          {myProfile?.id === currentUserId && (
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm text-white text-xs font-semibold hover:bg-black/65 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-md"
-            >
-              <Camera size={13} />
-              {isUploading ? 'Wgrywanie…' : 'Zmień tło'}
-            </button>
-          )}
-        </div>
-
-        <div className="px-5 pb-6 pt-12 relative">
-          {/* Avatar — wypchnięty ponad banner */}
+      <div className="bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-white/5 border-t-2 border-t-uj-blue/10 dark:border-t-uj-orange/20 shadow-uj-soft dark:shadow-none px-5 py-6">
+        <div className="flex items-start gap-4">
           <UserAvatar
             profile={myProfile}
             name={displayName}
-            className="absolute -top-10 left-5 h-20 w-20 border-4 border-white dark:border-dark-card shadow-lg"
-            textSize="text-2xl"
+            className="h-16 w-16 shrink-0 border-4 border-white dark:border-dark-card shadow-md"
+            textSize="text-xl"
           />
-
-          {/* Przycisk edycji po prawej */}
-          <div className="flex justify-end mb-3">
-            <button
-              type="button"
-              onClick={onOpenProfileModal}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-xs font-semibold text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 shadow-sm transition-all"
-            >
-              <Settings size={12} /> Edytuj profil
-            </button>
-          </div>
-
-          {/* Name */}
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-blue-50 leading-tight">{displayName}</h2>
-
-          {/* Major + year */}
-          {(myProfile?.major || myProfile?.year_of_study) && (
-            <p className="text-sm text-uj-blue font-medium mt-0.5">
-              {[myProfile.major, myProfile.year_of_study].filter(Boolean).join(' · ')}
-            </p>
-          )}
-
-          {/* Email */}
-          <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5 mb-3">{email}</p>
-
-          {/* Bio */}
-          {myProfile?.bio ? (
-            <p className="text-[14px] text-slate-700 dark:text-gray-300 leading-relaxed mb-3 whitespace-pre-line">{myProfile.bio}</p>
-          ) : (
-            <p className="text-[13px] text-slate-400 dark:text-gray-500 italic mb-3">
-              Brak opisu — kliknij „Edytuj profil", aby dodać bio.
-            </p>
-          )}
-
-          {/* Social links */}
-          {(myProfile?.instagram_url || myProfile?.linkedin_url) && (
-            <div className="flex items-center gap-3 mt-1">
-              {myProfile.instagram_url && (
-                <a
-                  href={myProfile.instagram_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold hover:opacity-90 transition-all shadow-sm"
-                >
-                  <Instagram size={12} /> Instagram
-                </a>
-              )}
-              {myProfile.linkedin_url && (
-                <a
-                  href={myProfile.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0A66C2] text-white text-xs font-semibold hover:opacity-90 transition-all shadow-sm"
-                >
-                  <Linkedin size={12} /> LinkedIn
-                </a>
-              )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-blue-50 leading-tight truncate">{displayName}</h2>
+              <button
+                type="button"
+                onClick={onOpenProfileModal}
+                className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-xs font-semibold text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 shadow-sm transition-all"
+              >
+                <Settings size={12} /> Edytuj profil
+              </button>
             </div>
-          )}
+
+            {myProfile?.department && (
+              <span className="inline-block mt-1 text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-2 py-0.5 rounded-full border border-uj-orange/20 leading-none">
+                {getDeptAbbreviation(myProfile.department)}
+              </span>
+            )}
+
+            {myProfile?.bio ? (
+              <p className="mt-2 text-[14px] text-slate-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">{myProfile.bio}</p>
+            ) : (
+              <p className="mt-2 text-[13px] text-slate-400 dark:text-gray-500 italic">
+                Brak opisu — kliknij „Edytuj profil", aby dodać bio.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -273,6 +144,7 @@ export default function ProfileView({
             onCommentInputChange={(v) => onCommentInputChange(postId, v)}
             onDeletePost={() => onDeletePost(postId)}
             onDeleteComment={(cId) => onDeleteComment(cId, postId)}
+            onNavigateToUser={onNavigateToUser}
           />
         )
       })}

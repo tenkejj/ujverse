@@ -58,6 +58,7 @@ type Props = {
   onDeletePost: () => void
   onDeleteComment: (commentId: number) => void
   onNavigateToPost?: () => void
+  onNavigateToUser?: (userId: string) => void
 }
 
 export default function PostCard({
@@ -81,6 +82,7 @@ export default function PostCard({
   onDeletePost,
   onDeleteComment,
   onNavigateToPost,
+  onNavigateToUser,
 }: Props) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [isImageOpen, setIsImageOpen] = useState(false)
@@ -91,6 +93,7 @@ export default function PostCard({
   const createdAt = post?.created_at
   const author = post?.profiles
   const authorName = author?.full_name || 'Użytkownik'
+  const authorId = post?.user_id || (post?.profiles as { id?: string } | null)?.id
   const isOwn = post?.user_id === currentUserId
 
   return (
@@ -103,8 +106,15 @@ export default function PostCard({
         <div className="flex gap-3">
 
           {/* Left column: avatar + optional thread line */}
-          <div className="flex flex-col items-center shrink-0" onClick={(e) => e.stopPropagation()}>
-            <div className="drop-shadow-sm">
+          <div className="flex flex-col items-center shrink-0">
+            <div
+              className="relative z-[9999] cursor-pointer drop-shadow-sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                const finalId = post?.user_id || (post?.profiles as { id?: string } | null)?.id
+                if (onNavigateToUser && finalId) onNavigateToUser(finalId)
+              }}
+            >
               <UserAvatar profile={author} name={authorName} className="h-10 w-10" textSize="text-sm" />
             </div>
             {isCommentsOpen && (
@@ -122,7 +132,13 @@ export default function PostCard({
             >
               {/* Author row */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-slate-900 dark:text-blue-50 text-[14px] leading-tight">{authorName}</span>
+                <span
+                  className={`font-bold text-slate-900 dark:text-blue-50 text-[14px] leading-tight ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (onNavigateToUser && authorId) onNavigateToUser(authorId)
+                  }}
+                >{authorName}</span>
                 {author?.department && (
                   <span className="text-[9px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20 leading-none">
                     {getDeptAbbreviation(author.department)}
@@ -251,6 +267,7 @@ export default function PostCard({
           onInputChange={onCommentInputChange}
           onSubmit={onSubmitComment}
           onDeleteComment={onDeleteComment}
+          onNavigateToUser={onNavigateToUser}
         />
       )}
 

@@ -3,11 +3,6 @@ export type Profile = {
   full_name: string | null
   avatar_url: string | null
   bio?: string | null
-  major?: string | null
-  year_of_study?: string | null
-  instagram_url?: string | null
-  linkedin_url?: string | null
-  banner_url?: string | null
   department?: string | null
 }
 

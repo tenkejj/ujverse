@@ -18,6 +18,7 @@ import ProfileView from './components/ProfileView'
 import BottomNav from './components/BottomNav'
 import NotificationsView from './components/NotificationsView'
 import SinglePostView from './components/SinglePostView'
+import UserProfileView from './components/UserProfileView'
 import ComposeBox from './components/ComposeBox'
 
 function App() {
@@ -26,8 +27,9 @@ function App() {
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const [activeView, setActiveView] = useState<'feed' | 'profile' | 'notifications' | 'post'>('feed')
+  const [activeView, setActiveView] = useState<'feed' | 'profile' | 'notifications' | 'post' | 'userProfile'>('feed')
   const [activePostId, setActivePostId] = useState<string | null>(null)
+  const [activeUserId, setActiveUserId] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [isMobileComposeOpen, setIsMobileComposeOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -183,7 +185,7 @@ function App() {
     setPostsError(null)
     const { data, error } = await supabase
       .from('posts')
-      .select('*, profiles(id, full_name, avatar_url, department)')
+      .select('*, user_id, profiles(id, full_name, avatar_url, department)')
       .order('created_at', { ascending: false })
     if (error) { setPostsError(error.message); setPosts([]); setPostsLoading(false); return }
     const next = (data ?? []) as Post[]
@@ -280,6 +282,11 @@ function App() {
   const navigateToPost = useCallback((postId: string) => {
     setActivePostId(postId)
     setActiveView('post')
+  }, [])
+
+  const navigateToUser = useCallback((userId: string) => {
+    setActiveUserId(userId)
+    setActiveView('userProfile')
   }, [])
 
   const markNotificationRead = useCallback(async (id: string) => {
@@ -553,7 +560,7 @@ function App() {
           email={session.user.email}
           menuOpen={menuOpen}
           setMenuOpen={setMenuOpen}
-          activeView={activeView === 'post' ? 'feed' : activeView}
+          activeView={activeView === 'post' || activeView === 'userProfile' ? 'feed' : activeView}
           unreadCount={unreadCount}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
@@ -597,6 +604,7 @@ function App() {
                   onComposeReset={resetCompose}
                   onCreatePost={handleCreatePost}
                   onNavigateToPost={navigateToPost}
+                  onNavigateToUser={navigateToUser}
                 />
               )}
 
@@ -605,9 +613,8 @@ function App() {
                   {...sharedPostProps}
                   posts={posts}
                   postsLoading={postsLoading}
-                  email={session.user.email}
                   onOpenProfileModal={() => setProfileModalOpen(true)}
-                  onBannerUpdate={(url) => setMyProfile((prev) => prev ? { ...prev, banner_url: url } : prev)}
+                  onNavigateToUser={navigateToUser}
                 />
               )}
 
@@ -618,6 +625,7 @@ function App() {
                   onMarkRead={markNotificationRead}
                   onMarkAllRead={markAllRead}
                   onNavigateToPost={navigateToPost}
+                  onNavigateToUser={navigateToUser}
                 />
               )}
 
@@ -626,6 +634,18 @@ function App() {
                   postId={activePostId}
                   {...sharedPostProps}
                   onBack={() => setActiveView('feed')}
+                  onNavigateToUser={navigateToUser}
+                />
+              )}
+
+              {activeView === 'userProfile' && activeUserId && (
+                <UserProfileView
+                  userId={activeUserId}
+                  {...sharedPostProps}
+                  onBack={() => setActiveView('feed')}
+                  onOpenProfileModal={() => setProfileModalOpen(true)}
+                  onNavigateToPost={navigateToPost}
+                  onNavigateToUser={navigateToUser}
                 />
               )}
             </motion.div>
@@ -633,7 +653,7 @@ function App() {
         </main>
 
         <BottomNav
-          activeView={activeView === 'post' ? 'feed' : activeView}
+          activeView={activeView === 'post' || activeView === 'userProfile' ? 'feed' : activeView}
           setActiveView={(v) => setActiveView(v)}
           unreadCount={unreadCount}
           onOpenCompose={() => {

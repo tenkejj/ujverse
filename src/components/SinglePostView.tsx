@@ -26,6 +26,7 @@ type Props = {
   onCommentInputChange: (postId: string, value: string) => void
   onDeletePost: (postId: string) => void
   onDeleteComment: (commentId: number, postId: string) => void
+  onNavigateToUser?: (userId: string) => void
 }
 
 export default function SinglePostView({
@@ -48,6 +49,7 @@ export default function SinglePostView({
   onCommentInputChange,
   onDeletePost,
   onDeleteComment,
+  onNavigateToUser,
 }: Props) {
   const [post, setPost] = useState<Post | null>(null)
   const [loading, setLoading] = useState(true)
@@ -141,6 +143,7 @@ export default function SinglePostView({
           onCommentInputChange={(v) => onCommentInputChange(postId, v)}
           onDeletePost={() => { onDeletePost(postId); onBack() }}
           onDeleteComment={(cId) => onDeleteComment(cId, postId)}
+          onNavigateToUser={onNavigateToUser}
         />
       )}
     </div>

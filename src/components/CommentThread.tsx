@@ -16,6 +16,7 @@ type Props = {
   onInputChange: (value: string) => void
   onSubmit: () => void
   onDeleteComment: (commentId: number) => void
+  onNavigateToUser?: (userId: string) => void
 }
 
 export default function CommentThread({
@@ -29,6 +30,7 @@ export default function CommentThread({
   onInputChange,
   onSubmit,
   onDeleteComment,
+  onNavigateToUser,
 }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
 
@@ -41,11 +43,19 @@ export default function CommentThread({
         const isOwnComment = c.user_id === currentUserId
         return (
           <div key={c.id} className="flex gap-2.5">
-            <UserAvatar profile={c.profiles} name={cName} className="h-7 w-7 shrink-0 mt-0.5" textSize="text-xs" />
+            <div
+              className={onNavigateToUser ? 'cursor-pointer shrink-0 mt-0.5' : 'shrink-0 mt-0.5'}
+              onClick={onNavigateToUser ? () => onNavigateToUser(c.user_id) : undefined}
+            >
+              <UserAvatar profile={c.profiles} name={cName} className="h-7 w-7" textSize="text-xs" />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-2xl rounded-tl-sm px-3 py-2">
                 <div className="flex items-baseline gap-2 mb-0.5">
-                  <span className="text-xs font-bold text-slate-800 dark:text-blue-50">{cName}</span>
+                  <span
+                    className={`text-xs font-bold text-slate-800 dark:text-blue-50 ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
+                    onClick={onNavigateToUser ? () => onNavigateToUser(c.user_id) : undefined}
+                  >{cName}</span>
                   <span className="text-[10px] text-slate-400 dark:text-gray-500">{relativeTime(c.created_at)}</span>
                   {isOwnComment && (
                     <button

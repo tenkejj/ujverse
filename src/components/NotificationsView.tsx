@@ -11,6 +11,7 @@ type Props = {
   onMarkRead: (id: string) => void
   onMarkAllRead: () => void
   onNavigateToPost: (postId: string) => void
+  onNavigateToUser?: (userId: string) => void
 }
 
 function NotificationIcon({ type }: { type: 'like' | 'comment' }) {
@@ -43,7 +44,7 @@ function SkeletonRow() {
   )
 }
 
-export default function NotificationsView({ notifications, loading, onMarkRead, onMarkAllRead, onNavigateToPost }: Props) {
+export default function NotificationsView({ notifications, loading, onMarkRead, onMarkAllRead, onNavigateToPost, onNavigateToUser }: Props) {
   const hasUnread = notifications.some((n) => !n.is_read)
 
   if (loading) {
@@ -104,7 +105,10 @@ export default function NotificationsView({ notifications, loading, onMarkRead, 
                 : 'bg-uj-blue/5 dark:bg-uj-orange/5 border-uj-blue/10 dark:border-uj-orange/10'
             }`}
           >
-            <div className="relative shrink-0">
+            <div
+              className="relative shrink-0"
+              onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+            >
               <UserAvatar profile={actorProfile} name={actorName} className="h-10 w-10" textSize="text-sm" />
               <div className="absolute -bottom-0.5 -right-0.5">
                 <NotificationIcon type={notif.type} />
@@ -113,7 +117,10 @@ export default function NotificationsView({ notifications, loading, onMarkRead, 
 
             <div className="flex-1 min-w-0">
               <p className="text-[13.5px] text-slate-700 dark:text-gray-200 leading-snug">
-                <span className="font-semibold">{actorName}</span>{' '}
+                <span
+                  className={`font-semibold ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
+                  onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+                >{actorName}</span>{' '}
                 <span className="text-slate-500 dark:text-gray-400">{actionText}</span>
               </p>
               <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">
