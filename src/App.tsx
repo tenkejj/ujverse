@@ -97,7 +97,7 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url, bio, major, year_of_study, instagram_url, linkedin_url, banner_url, department')
+      .select('id, full_name, avatar_url, bio, department')
       .eq('id', userId)
       .single()
     if (data) setMyProfile(data as Profile)

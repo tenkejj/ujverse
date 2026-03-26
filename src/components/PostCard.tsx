@@ -108,7 +108,7 @@ export default function PostCard({
           {/* Left column: avatar + optional thread line */}
           <div className="flex flex-col items-center shrink-0">
             <div
-              className="relative z-[9999] cursor-pointer drop-shadow-sm"
+              className="cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
                 const finalId = post?.user_id || (post?.profiles as { id?: string } | null)?.id
@@ -142,11 +142,6 @@ export default function PostCard({
                 {author?.department && (
                   <span className="text-[9px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20 leading-none">
                     {getDeptAbbreviation(author.department)}
-                  </span>
-                )}
-                {isOwn && (
-                  <span className="text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20">
-                    Ty
                   </span>
                 )}
                 {createdAt && (

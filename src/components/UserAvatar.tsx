@@ -18,11 +18,11 @@ export default function UserAvatar({
     <img
       src={profile.avatar_url}
       alt={name}
-      className={`rounded-full object-cover object-center border border-slate-200 shrink-0 ${className}`}
+      className={`rounded-full object-cover object-center shrink-0 ${className}`}
     />
   ) : (
     <div
-      className={`rounded-full bg-uj-blue/10 border border-slate-200 flex items-center justify-center shrink-0 ${className}`}
+      className={`rounded-full bg-uj-blue/10 flex items-center justify-center shrink-0 ${className}`}
     >
       <span className={`${textSize} font-bold text-uj-blue`}>{init}</span>
     </div>

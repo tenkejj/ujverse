@@ -1,4 +1,4 @@
-import { Bell, Home, Plus } from 'lucide-react'
+import { Bell, Home, Plus, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 type ActiveView = 'feed' | 'profile' | 'notifications'
@@ -64,6 +64,17 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
               </span>
             )}
           </div>
+        </motion.button>
+
+        {/* Profile */}
+        <motion.button
+          type="button"
+          onClick={() => setActiveView('profile')}
+          whileTap={{ scale: 0.9 }}
+          className={iconBtn(activeView === 'profile')}
+          aria-label="Profil"
+        >
+          <User size={22} strokeWidth={activeView === 'profile' ? 2.5 : 1.8} />
         </motion.button>
       </div>
     </nav>
