@@ -1,4 +1,12 @@
-import { MessageCircle, Filter, CalendarDays, Sparkles } from 'lucide-react'
+import {
+  MessageCircle,
+  Filter,
+  CalendarDays,
+  Link as LinkIcon,
+  GraduationCap,
+  BookOpen,
+  Mail,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
 import ComposeBox from './ComposeBox'
@@ -59,16 +67,16 @@ type Props = {
 }
 
 const UPCOMING_EVENTS = [
-  { date: '12 Maj', title: 'Juwenalia UJ 2025', tag: 'Wydarzenie' },
-  { date: '20 Maj', title: 'Dni Wydziału WPiA', tag: 'Wydział' },
-  { date: '3 Cze', title: 'Rekrutacja 2025 – info', tag: 'Ogłoszenie' },
+  { date: '14 Maj', title: 'Juwenalia UJ 2026', tag: 'Wydarzenie' },
+  { date: '22 Maj', title: 'Dni Wydziału WPiA 2026', tag: 'Wydział' },
+  { date: '5 Cze', title: 'Rekrutacja 2026 – info', tag: 'Ogłoszenie' },
 ]
 
-const SUGGESTED_DEPTS = [
-  'Wydział Matematyki i Informatyki',
-  'Wydział Prawa i Administracji',
-  'Wydział Zarządzania i Komunikacji Społecznej',
-]
+const UJ_ESSENTIAL_LINKS = [
+  { label: 'USOSweb', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap },
+  { label: 'Platforma PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen },
+  { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail },
+] as const
 
 const sideCardCls =
   'bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm dark:shadow-none p-4'
@@ -189,7 +197,7 @@ export default function FeedView({
     <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
 
       {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
-      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3">
+      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
 
         {/* Mini profile widget */}
         <div className={sideCardCls}>
@@ -278,31 +286,28 @@ export default function FeedView({
       </div>
 
       {/* ── RIGHT SIDEBAR (desktop only) ────────────────────────────── */}
-      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3">
+      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
 
-        {/* Polecane widget */}
-        <div className={sideCardCls}>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles size={13} className="text-uj-orange shrink-0" />
-            <span className={`${sectionLabelCls} mb-0`}>Polecane wydziały</span>
+        {/* Niezbędnik UJ — szybkie linki */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2 mb-2">
+            <LinkIcon size={14} className="text-slate-400 shrink-0" />
+            <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase">
+              Niezbędnik UJ
+            </h3>
           </div>
-          <div className="space-y-3">
-            {SUGGESTED_DEPTS.map((dept) => (
-              <button
-                key={dept}
-                type="button"
-                onClick={() => onDepartmentChange(dept)}
-                className="w-full flex items-center gap-3 group text-left"
+          <div className="flex flex-col gap-3">
+            {UJ_ESSENTIAL_LINKS.map(({ label, href, Icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
               >
-                <div className="h-8 w-8 rounded-full bg-uj-blue/10 dark:bg-uj-blue/20 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-bold text-uj-blue">
-                    {(DEPT_SHORT[dept] ?? dept).slice(0, 2)}
-                  </span>
-                </div>
-                <span className="text-[12px] text-slate-600 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors truncate leading-snug">
-                  {DEPT_SHORT[dept] ?? dept}
-                </span>
-              </button>
+                <Icon size={16} className="text-slate-500 shrink-0" />
+                {label}
+              </a>
             ))}
           </div>
         </div>

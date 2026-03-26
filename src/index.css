@@ -39,6 +39,27 @@ body {
   display: none;
 }
 
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+}
+.dark .custom-scrollbar {
+  scrollbar-color: rgb(100 116 139 / 0.45) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(148 163 184 / 0.45);
+  border-radius: 9999px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(100 116 139 / 0.5);
+}
+
 @keyframes heart-pop {
   0%   { transform: scale(1); }
   35%  { transform: scale(1.55); }

@@ -50,13 +50,13 @@ export default function CommentThread({
               <UserAvatar profile={c.profiles} name={cName} className="h-7 w-7" textSize="text-xs" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-2xl rounded-tl-sm px-3 py-2">
+              <div className="bg-white/70 dark:bg-white/5 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/50 rounded-2xl rounded-tl-sm px-3 py-2">
                 <div className="flex items-baseline gap-2 mb-0.5">
                   <span
-                    className={`text-xs font-bold text-slate-800 dark:text-blue-50 ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
+                    className={`text-xs font-bold text-slate-800 dark:text-slate-100 ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
                     onClick={onNavigateToUser ? () => onNavigateToUser(c.user_id) : undefined}
                   >{cName}</span>
-                  <span className="text-[10px] text-slate-400 dark:text-gray-500">{relativeTime(c.created_at)}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{relativeTime(c.created_at)}</span>
                   {isOwnComment && (
                     <button
                       type="button"
@@ -83,7 +83,7 @@ export default function CommentThread({
       {/* Comment input */}
       <div className="flex gap-2.5 items-center pt-1">
         <UserAvatar profile={myProfile} name={displayName} className="h-7 w-7 shrink-0" textSize="text-xs" />
-        <div className="flex-1 flex items-center gap-2 bg-slate-100 dark:bg-gray-800 rounded-full pl-4 pr-1.5 py-1.5 focus-within:bg-white dark:focus-within:bg-gray-700 focus-within:ring-2 focus-within:ring-uj-blue/20 transition-all">
+        <div className="flex-1 flex items-center gap-2 bg-white/70 dark:bg-white/5 backdrop-blur-sm border border-slate-200/80 dark:border-slate-700/50 rounded-full pl-4 pr-1.5 py-1.5 focus-within:bg-white/90 dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-uj-blue/20 dark:focus-within:ring-uj-orange/20 transition-all">
           <input
             type="text"
             value={inputValue}
@@ -93,7 +93,7 @@ export default function CommentThread({
             }}
             placeholder="Dodaj komentarz…"
             maxLength={500}
-            className="flex-1 bg-transparent text-[13px] text-slate-800 dark:text-blue-50 placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none"
+            className="flex-1 bg-transparent text-[13px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none"
             aria-label={`Komentarz do posta ${postId}`}
           />
           <button
