@@ -51,10 +51,10 @@ export default function ComposeBox({
 
   return (
     <div
-      className={`bg-slate-50 dark:bg-bg-card rounded-2xl border border-t-2 border-t-uj-blue/10 dark:border-t-uj-orange/20 transition-all duration-200 overflow-hidden ${
+      className={`bg-slate-50 dark:bg-bg-app rounded-2xl border border-border-app transition-colors duration-200 overflow-hidden shadow-none ${
         isComposing
-          ? 'border-uj-blue/30 dark:border-slate-800 dark:border-t-uj-orange/20 shadow-[0_0_0_3px_rgba(0,51,153,0.06),0_1px_8px_rgba(0,51,153,0.08)]'
-          : 'border-slate-200/60 dark:border-slate-800 shadow-uj-soft dark:shadow-lg dark:shadow-black/20'
+          ? 'border-uj-blue/35 dark:border-border-app dark:ring-1 dark:ring-accent-gold/25'
+          : 'border-slate-200/70 dark:border-border-app'
       }`}
     >
       <div className="p-4 flex gap-3 items-start">
@@ -168,7 +168,7 @@ export default function ComposeBox({
                     onClick={onSubmit}
                     disabled={isLoading || !body.trim()}
                     whileTap={{ scale: 0.94 }}
-                    className="px-5 py-1.5 rounded-full bg-uj-blue text-white text-sm font-bold hover:bg-uj-blue/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    className="px-5 py-1.5 rounded-full bg-uj-blue text-white text-sm font-bold hover:bg-uj-blue/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-none"
                   >
                     {isLoading ? 'Publikuję…' : 'Opublikuj'}
                   </motion.button>

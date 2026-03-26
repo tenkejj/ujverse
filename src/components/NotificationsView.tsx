@@ -17,8 +17,8 @@ type Props = {
 function NotificationIcon({ type }: { type: 'like' | 'comment' }) {
   if (type === 'like') {
     return (
-      <div className="w-6 h-6 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
-        <Heart size={12} className="text-red-500" fill="currentColor" />
+      <div className="w-6 h-6 rounded-full bg-accent-interactive/12 dark:bg-accent-interactive/15 flex items-center justify-center shrink-0">
+        <Heart size={12} className="text-accent-interactive" fill="currentColor" />
       </div>
     )
   }

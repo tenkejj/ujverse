@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import ReactDOM from 'react-dom'
 import { Heart, MessageCircle, Share2, Trash2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -29,7 +29,7 @@ function LightboxPortal({ src, onClose }: { src: string; onClose: () => void }) 
       <img
         src={src}
         alt=""
-        className="max-w-[95vw] max-h-[95vh] object-contain rounded-xl shadow-2xl"
+        className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-none"
         onClick={(e) => e.stopPropagation()}
       />
     </div>,
@@ -96,13 +96,24 @@ export default function PostCard({
   const authorId = post?.user_id || (post?.profiles as { id?: string } | null)?.id
   const isOwn = post?.user_id === currentUserId
 
+  const handleArticleClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (!onNavigateToPost) return
+    const t = e.target as HTMLElement
+    if (t.closest('button, a, textarea, input')) return
+    if (t.closest('img')) return
+    onNavigateToPost()
+  }
+
   return (
     <article
       key={postId}
-      className="bg-white dark:bg-bg-card/80 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-lg dark:shadow-black/25 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
+      className="border-b border-border-app bg-bg-app shadow-none transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
     >
       {/* Post body */}
-      <div className="px-4 pt-4 pb-1">
+      <div
+        className={`p-4 ${onNavigateToPost ? 'cursor-pointer' : ''}`}
+        onClick={handleArticleClick}
+      >
         <div className="flex gap-3">
 
           {/* Left column: avatar + optional thread line */}
@@ -118,34 +129,30 @@ export default function PostCard({
               <UserAvatar profile={author} name={authorName} className="h-10 w-10" textSize="text-sm" />
             </div>
             {isCommentsOpen && (
-              <div className="w-px flex-1 mt-1.5 bg-gradient-to-b from-uj-blue/30 via-uj-blue/10 to-transparent min-h-[24px]" />
+              <div className="w-px flex-1 mt-1.5 bg-gradient-to-b from-accent-interactive/30 via-slate-300/25 to-transparent dark:via-white/10 min-h-[24px]" />
             )}
           </div>
 
           {/* Right column */}
-          <div className="flex-1 min-w-0 pb-3">
+          <div className="flex-1 min-w-0">
 
-            {/* Clickable content area — navigates to SinglePostView */}
-            <div
-              onClick={onNavigateToPost}
-              className={onNavigateToPost ? 'cursor-pointer' : undefined}
-            >
+            <div>
               {/* Author row */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span
-                  className={`font-bold text-slate-900 dark:text-blue-50 text-[14px] leading-tight ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
+                  className={`font-bold text-fg-primary text-[14px] leading-tight ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation()
                     if (onNavigateToUser && authorId) onNavigateToUser(authorId)
                   }}
                 >{authorName}</span>
                 {author?.department && (
-                  <span className="text-[9px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20 leading-none">
+                  <span className="text-[9px] text-accent-interactive font-bold uppercase tracking-wider bg-accent-interactive/10 px-1.5 py-0.5 rounded-full border border-accent-interactive/25 leading-none">
                     {getDeptAbbreviation(author.department)}
                   </span>
                 )}
                 {createdAt && (
-                  <span className="text-xs text-slate-400 dark:text-gray-500 ml-auto">{relativeTime(createdAt)}</span>
+                  <span className="text-xs text-slate-500 ml-auto">{relativeTime(createdAt)}</span>
                 )}
                 {isOwn && (
                   <button
@@ -160,15 +167,15 @@ export default function PostCard({
               </div>
 
               {/* Content */}
-              <p className="mt-1.5 text-[15px] font-normal text-slate-600 dark:text-slate-200 leading-relaxed whitespace-pre-line">{content}</p>
+              <p className="mt-1.5 text-[15px] font-normal text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">{content}</p>
             </div>
 
-            {/* Image — outside nav wrapper so click opens lightbox, not SinglePostView */}
+            {/* Image — stopPropagation opens lightbox, not SinglePostView */}
             {imageUrl && (
               <img
                 src={imageUrl}
                 alt=""
-                className="mt-3 w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
+                className="mt-3 w-full h-auto max-h-[500px] object-contain cursor-pointer"
                 loading="lazy"
                 onClick={(e) => { e.stopPropagation(); setIsImageOpen(true) }}
               />
@@ -181,10 +188,10 @@ export default function PostCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onToggleComments() }}
-                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-all ${
+                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${
                   isCommentsOpen
-                    ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                    : 'text-slate-400 dark:text-gray-500 hover:text-blue-500 hover:bg-blue-50/80 dark:hover:bg-blue-900/20'
+                    ? 'text-accent-interactive bg-accent-interactive/10 dark:bg-accent-interactive/15'
+                    : 'text-slate-400 dark:text-slate-400 hover:text-accent-interactive hover:bg-accent-interactive/5 dark:hover:bg-accent-interactive/10 [&_svg]:group-hover:text-accent-interactive'
                 }`}
                 aria-label="Komentarze"
               >
@@ -201,17 +208,15 @@ export default function PostCard({
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onToggleLike() }}
                 disabled={!post?.id}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.88 }}
-                className={`relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-all disabled:opacity-50 ${
+                className={`group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors disabled:opacity-50 ${
                   isLiked
-                    ? 'text-uj-orange bg-uj-orange/10'
-                    : 'text-slate-400 dark:text-gray-500 hover:text-uj-orange hover:bg-uj-orange/10'
+                    ? 'text-accent-interactive bg-accent-interactive/15'
+                    : 'text-slate-400 dark:text-slate-400 hover:text-accent-interactive hover:bg-accent-interactive/10 [&_svg]:group-hover:text-accent-interactive'
                 }`}
                 aria-label={isLiked ? 'Usuń polubienie' : 'Polub'}
               >
                 {isPop && (
-                  <span className="absolute inset-0 rounded-full bg-rose-300/40 animate-like-ripple pointer-events-none" />
+                  <span className="absolute inset-0 rounded-full bg-accent-interactive/35 animate-like-ripple pointer-events-none" />
                 )}
                 <motion.span
                   animate={isPop ? { scale: [1, 1.4, 1] } : { scale: 1 }}
@@ -221,10 +226,12 @@ export default function PostCard({
                   <Heart
                     size={15}
                     strokeWidth={1.75}
-                    className={`transition-colors ${isLiked ? 'fill-uj-orange stroke-uj-orange' : ''}`}
+                    className={`transition-colors ${isLiked ? 'fill-accent-interactive stroke-accent-interactive' : ''}`}
                   />
                 </motion.span>
-                {likeCount > 0 && <span className="tabular-nums leading-none">{likeCount}</span>}
+                {likeCount > 0 && (
+                  <span className="tabular-nums leading-none text-accent-interactive">{likeCount}</span>
+                )}
               </motion.button>
 
               {/* Share */}
@@ -239,7 +246,7 @@ export default function PostCard({
                     toast.error('Nie udało się skopiować linku.')
                   })
                 }}
-                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-slate-300 dark:text-gray-600 hover:text-slate-500 dark:hover:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-700 text-[13px] transition-all"
+                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-slate-300 dark:text-slate-500 hover:text-accent-interactive dark:hover:text-accent-interactive hover:bg-slate-100 dark:hover:bg-white/5 text-[13px] transition-colors"
                 aria-label="Udostępnij"
               >
                 <Share2 size={14} strokeWidth={1.75} />
@@ -251,19 +258,21 @@ export default function PostCard({
 
       {/* Comments thread */}
       {isCommentsOpen && (
-        <CommentThread
-          postId={postId}
-          comments={comments}
-          currentUserId={currentUserId}
-          myProfile={myProfile}
-          displayName={displayName}
-          inputValue={commentInputValue}
-          isSubmitting={isCommentSubmitting}
-          onInputChange={onCommentInputChange}
-          onSubmit={onSubmitComment}
-          onDeleteComment={onDeleteComment}
-          onNavigateToUser={onNavigateToUser}
-        />
+        <div className="border-t border-border-app">
+          <CommentThread
+            postId={postId}
+            comments={comments}
+            currentUserId={currentUserId}
+            myProfile={myProfile}
+            displayName={displayName}
+            inputValue={commentInputValue}
+            isSubmitting={isCommentSubmitting}
+            onInputChange={onCommentInputChange}
+            onSubmit={onSubmitComment}
+            onDeleteComment={onDeleteComment}
+            onNavigateToUser={onNavigateToUser}
+          />
+        </div>
       )}
 
       {confirmDeleteOpen && (

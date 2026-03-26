@@ -2,6 +2,7 @@
 
 html {
   scroll-behavior: smooth;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -11,11 +12,18 @@ html {
   --color-uj-navy:   #002D62;
   --color-uj-gold:   #C49A6C;
   --color-uj-orange: #FF9900;
-  --color-dark-bg:   #000d21;
-  --color-dark-card: #000d21;
+  --color-dark-bg:   #020314;
+  --color-dark-card: #020314;
 
   --color-bg-app: var(--bg-app);
   --color-bg-card: var(--bg-card);
+  --color-border-app: var(--border-app);
+  --color-fg-primary: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-like: var(--accent-like);
+  --color-accent-interactive: var(--accent-interactive);
+  --color-accent-purple: var(--accent-purple);
 
   --radius-uj-xl:   1rem;
   --radius-uj-full: 9999px;
@@ -32,17 +40,31 @@ html {
 
 @layer base {
   :root {
-    --bg-app: #f8fafc;
+    --bg-app: #f7f9f9;
     --bg-card: #ffffff;
+    --border-app: #eff3f4;
+    --text-primary: #0f1419;
+    --text-secondary: #536471;
+    --accent-gold: #b59410;
+    --accent-like: #ffa000;
+    --accent-interactive: #ffa000;
+    --accent-purple: #1e2a4f;
   }
   .dark {
-    --bg-app: #1e293b;
-    --bg-card: #0f172a;
+    --bg-app: #020314;
+    --bg-card: #020314;
+    --border-app: #1c2b4e;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-gold: #b59410;
+    --accent-like: #ffa000;
+    --accent-interactive: #ffa000;
+    --accent-purple: #1e2a4f;
   }
 }
 
 body {
-  @apply bg-bg-app text-slate-900 dark:text-blue-50 transition-colors duration-200;
+  @apply min-h-screen bg-bg-app text-fg-primary transition-colors duration-200;
 }
 
 .scrollbar-hide {

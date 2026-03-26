@@ -8,13 +8,11 @@ type Props = {
 }
 
 const pillBase =
-  'shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all duration-150 focus:outline-none'
+  'shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-[13px] font-sans whitespace-nowrap transition-colors duration-150 focus:outline-none border border-border-app bg-bg-app'
 
-const pillActive =
-  'bg-uj-blue text-white shadow-uj-soft'
+const pillActive = `${pillBase} font-bold text-accent-interactive`
 
-const pillInactive =
-  'bg-white dark:bg-white/10 text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white border border-slate-200/60 dark:border-transparent'
+const pillInactive = `${pillBase} font-medium text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5`
 
 export default function DepartmentFilter({ selected, onChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -51,53 +49,48 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
 
   return (
     <div className="relative flex items-center w-full">
-      {/* Przycisk lewy */}
       {canScrollLeft && (
         <button
           type="button"
           onClick={scrollLeft}
           aria-label="Przewiń w lewo"
-          className="absolute left-0 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-dark-bg/80 backdrop-blur-sm text-gray-300 hover:text-white hover:bg-dark-bg transition-all duration-150 shadow-md"
+          className="absolute left-0 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-bg-app/95 backdrop-blur-sm text-slate-500 border border-border-app hover:text-fg-primary transition-colors duration-150"
         >
           <ChevronLeft size={18} />
         </button>
       )}
 
-      {/* Kontener pigułek */}
       <div
         ref={containerRef}
         className="flex overflow-x-auto scroll-smooth snap-x gap-2 px-8 [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: 'none' }}
       >
-        {/* Pigułka "Wszystkie" */}
         <button
           type="button"
           onClick={() => onChange('')}
-          className={`${pillBase} ${selected === '' ? pillActive : pillInactive}`}
+          className={selected === '' ? pillActive : pillInactive}
         >
           Wszystkie
         </button>
 
-        {/* Pigułki wydziałów */}
         {UJ_DEPARTMENTS.map((dept) => (
           <button
             key={dept}
             type="button"
             onClick={() => onChange(dept)}
-            className={`${pillBase} ${selected === dept ? pillActive : pillInactive}`}
+            className={selected === dept ? pillActive : pillInactive}
           >
             {DEPT_SHORT[dept] ?? dept}
           </button>
         ))}
       </div>
 
-      {/* Przycisk prawy */}
       {canScrollRight && (
         <button
           type="button"
           onClick={scrollRight}
           aria-label="Przewiń w prawo"
-          className="absolute right-0 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-dark-bg/80 backdrop-blur-sm text-gray-300 hover:text-white hover:bg-dark-bg transition-all duration-150 shadow-md"
+          className="absolute right-0 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-bg-app/95 backdrop-blur-sm text-slate-500 border border-border-app hover:text-fg-primary transition-colors duration-150"
         >
           <ChevronRight size={18} />
         </button>

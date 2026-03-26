@@ -85,7 +85,7 @@ export default function ProfileView({
             </div>
 
             {myProfile?.department && (
-              <span className="inline-block mt-1 text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-2 py-0.5 rounded-full border border-uj-orange/20 leading-none">
+              <span className="inline-block mt-1 text-[10px] text-accent-interactive font-bold uppercase tracking-wider bg-accent-interactive/10 px-2 py-0.5 rounded-full border border-accent-interactive/25 leading-none">
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}

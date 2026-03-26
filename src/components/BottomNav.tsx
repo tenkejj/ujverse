@@ -20,7 +20,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-dark-bg/90 backdrop-blur-md border-t border-gray-100 dark:border-gray-800"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-bg-app/90 backdrop-blur-md border-t border-gray-100 dark:border-border-app"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-center justify-around h-16">
@@ -59,7 +59,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           <div className="relative">
             <Bell size={22} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-uj-orange text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-accent-gold text-[#060e1f] text-[9px] font-bold flex items-center justify-center px-0.5">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}

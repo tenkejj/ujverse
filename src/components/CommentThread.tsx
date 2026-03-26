@@ -35,7 +35,7 @@ export default function CommentThread({
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
 
   return (
-    <div className="animate-comment-in border-t border-slate-100 dark:border-gray-700 px-4 pb-4 pt-3 space-y-3">
+    <div className="animate-comment-in px-4 pb-4 pt-3 space-y-3">
 
       {/* Comment list */}
       {comments.map((c) => {
