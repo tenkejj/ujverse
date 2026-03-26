@@ -552,7 +552,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen bg-slate-50 dark:bg-dark-bg transition-colors duration-200">
+      <div className="min-h-screen bg-bg-app transition-colors duration-200">
         <Header
           myProfile={myProfile}
           displayName={displayName}

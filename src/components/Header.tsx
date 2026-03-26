@@ -59,7 +59,7 @@ export default function Header({
   }, [menuOpen, setMenuOpen])
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-[#0a101e]/80 border-b border-slate-200 dark:border-slate-800">
+    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-bg-app/80 border-b border-slate-200 dark:border-slate-800">
       <div className="mx-auto max-w-7xl px-4 lg:px-6 relative flex items-center h-[76px]">
 
         {/* Wyszukiwarka — lewa strona */}

@@ -79,7 +79,7 @@ const UJ_ESSENTIAL_LINKS = [
 ] as const
 
 const sideCardCls =
-  'bg-white dark:bg-dark-card rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm dark:shadow-none p-4'
+  'bg-bg-card rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-lg dark:shadow-black/20 p-4'
 
 const sectionLabelCls =
   'text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-3 block'
@@ -122,7 +122,7 @@ export default function FeedView({
   onNavigateToUser,
 }: Props) {
   const feedContent = (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {postsLoading && (
         <div className="flex justify-center py-16">
           <div className="h-8 w-8 rounded-full border-[3px] border-uj-blue border-t-transparent animate-spin" />
@@ -289,10 +289,10 @@ export default function FeedView({
       <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
 
         {/* Niezbędnik UJ — szybkie linki */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="flex flex-col gap-3 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-bg-card shadow-sm dark:shadow-lg dark:shadow-black/20">
+          <div className="flex items-center gap-2">
             <LinkIcon size={14} className="text-slate-400 shrink-0" />
-            <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               Niezbędnik UJ
             </h3>
           </div>
@@ -303,9 +303,9 @@ export default function FeedView({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+                className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg p-2 -mx-2 transition-all cursor-pointer"
               >
-                <Icon size={16} className="text-slate-500 shrink-0" />
+                <Icon size={16} className="text-slate-500 dark:text-slate-400 shrink-0" />
                 {label}
               </a>
             ))}

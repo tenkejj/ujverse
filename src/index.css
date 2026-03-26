@@ -14,6 +14,9 @@ html {
   --color-dark-bg:   #000d21;
   --color-dark-card: #000d21;
 
+  --color-bg-app: var(--bg-app);
+  --color-bg-card: var(--bg-card);
+
   --radius-uj-xl:   1rem;
   --radius-uj-full: 9999px;
 
@@ -27,8 +30,19 @@ html {
   --animate-slide-up:     slide-up     0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@layer base {
+  :root {
+    --bg-app: #f8fafc;
+    --bg-card: #ffffff;
+  }
+  .dark {
+    --bg-app: #1e293b;
+    --bg-card: #0f172a;
+  }
+}
+
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-dark-bg dark:text-blue-50 transition-colors duration-200;
+  @apply bg-bg-app text-slate-900 dark:text-blue-50 transition-colors duration-200;
 }
 
 .scrollbar-hide {

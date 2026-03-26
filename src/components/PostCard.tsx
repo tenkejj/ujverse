@@ -99,7 +99,7 @@ export default function PostCard({
   return (
     <article
       key={postId}
-      className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none hover:border-slate-300 dark:hover:border-white/10 transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
+      className="bg-white dark:bg-bg-card/80 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-lg dark:shadow-black/25 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
     >
       {/* Post body */}
       <div className="px-4 pt-4 pb-1">
@@ -160,7 +160,7 @@ export default function PostCard({
               </div>
 
               {/* Content */}
-              <p className="mt-1.5 text-[15px] text-slate-600 dark:text-gray-200 leading-relaxed whitespace-pre-line">{content}</p>
+              <p className="mt-1.5 text-[15px] font-normal text-slate-600 dark:text-slate-200 leading-relaxed whitespace-pre-line">{content}</p>
             </div>
 
             {/* Image — outside nav wrapper so click opens lightbox, not SinglePostView */}
