@@ -32,7 +32,6 @@ function App() {
   const [activeUserId, setActiveUserId] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [isMobileComposeOpen, setIsMobileComposeOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
 
   // Notifications
   const [notifications, setNotifications] = useState<AppNotification[]>([])
@@ -562,15 +561,15 @@ function App() {
           setMenuOpen={setMenuOpen}
           activeView={activeView === 'post' || activeView === 'userProfile' ? 'feed' : activeView}
           unreadCount={unreadCount}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
+          onNavigateToUser={navigateToUser}
+          onNavigateToPost={navigateToPost}
           onNavigateToFeed={() => setActiveView('feed')}
           onNavigateToProfile={() => setActiveView('profile')}
           onNavigateToNotifications={() => setActiveView('notifications')}
           onOpenProfileModal={() => setProfileModalOpen(true)}
         />
 
-        <main className="mx-auto max-w-2xl px-4 py-4 pb-24 md:pb-4 space-y-3">
+        <main className={`mx-auto px-4 py-4 pb-24 md:pb-4 ${activeView === 'feed' ? 'max-w-7xl lg:px-6' : 'max-w-2xl space-y-3'}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeView}
@@ -591,7 +590,6 @@ function App() {
                   postsError={postsError}
                   selectedDepartment={selectedDepartment}
                   onDepartmentChange={setSelectedDepartment}
-                  searchQuery={searchQuery}
                   isComposing={isComposing}
                   createBody={createBody}
                   createImageFile={createImageFile}

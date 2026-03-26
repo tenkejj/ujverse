@@ -18,8 +18,8 @@ type Props = {
   setMenuOpen: (v: boolean | ((prev: boolean) => boolean)) => void
   activeView: ActiveView
   unreadCount: number
-  searchQuery: string
-  onSearchQueryChange: (q: string) => void
+  onNavigateToUser: (userId: string) => void
+  onNavigateToPost: (postId: string) => void
   onNavigateToFeed: () => void
   onNavigateToProfile: () => void
   onNavigateToNotifications: () => void
@@ -34,8 +34,8 @@ export default function Header({
   setMenuOpen,
   activeView,
   unreadCount,
-  searchQuery,
-  onSearchQueryChange,
+  onNavigateToUser,
+  onNavigateToPost,
   onNavigateToFeed,
   onNavigateToProfile,
   onNavigateToNotifications,
@@ -60,10 +60,10 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-[#0a101e]/80 border-b border-slate-200 dark:border-slate-800">
-      <div className="mx-auto max-w-2xl px-4 relative flex items-center h-[76px]">
+      <div className="mx-auto max-w-7xl px-4 lg:px-6 relative flex items-center h-[76px]">
 
         {/* Wyszukiwarka — lewa strona */}
-        <SearchBar value={searchQuery} onChange={onSearchQueryChange} />
+        <SearchBar onNavigateToUser={onNavigateToUser} onNavigateToPost={onNavigateToPost} />
 
         {/* Logo — wyśrodkowane absolutnie */}
         <button
