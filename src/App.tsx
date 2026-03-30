@@ -528,7 +528,7 @@ function App() {
               onClick={resetCompose}
             />
             <motion.div
-              className="bg-slate-50 dark:bg-[#0a101e] rounded-t-3xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+90px)] shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-slate-50 dark:bg-bg-app border-t border-border-app rounded-t-3xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+90px)] shadow-none max-h-[90vh] overflow-y-auto"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}

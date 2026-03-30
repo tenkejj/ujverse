@@ -166,7 +166,7 @@ export default function UserProfileView({
               <h2 className="text-xl font-extrabold text-slate-900 dark:text-blue-50 leading-tight mt-1">{profileName}</h2>
 
               {profile.department && (
-                <span className="text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-2 py-0.5 rounded-full border border-uj-orange/20 leading-none">
+                <span className="text-[10px] text-accent-interactive font-bold uppercase tracking-wider bg-accent-interactive/10 px-2 py-0.5 rounded-full border border-accent-interactive/25 leading-none">
                   {getDeptAbbreviation(profile.department)}
                 </span>
               )}

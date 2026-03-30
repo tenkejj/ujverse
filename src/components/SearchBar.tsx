@@ -229,7 +229,7 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
         <button
           type="button"
           onClick={() => setMobileModalOpen(true)}
-          className="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-uj-orange hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+          className="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-accent-gold hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Szukaj"
         >
           <Search size={17} />
@@ -289,7 +289,7 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
 
       {/* Mobile fullscreen search modal — Portal to document.body */}
       {mobileModalOpen && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col">
+        <div className="fixed left-0 right-0 bottom-0 top-[76px] z-[90] flex flex-col bg-bg-app md:hidden border-t border-border-app">
           {/* Top bar */}
           <div className="flex items-center gap-3 px-3 py-3 border-b border-border-app shrink-0">
             <button
@@ -301,7 +301,7 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
               <ArrowLeft size={20} />
             </button>
             <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-uj-orange pointer-events-none" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-accent-gold pointer-events-none" />
               <input
                 ref={mobileInputRef}
                 type="text"
@@ -309,7 +309,7 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Escape') closeMobileModal() }}
                 placeholder="Szukaj użytkowników, wpisów..."
-                className="w-full h-10 pl-8 pr-8 rounded-full bg-slate-800 border border-slate-700 text-[14px] text-white placeholder-slate-500 focus:outline-none focus:border-uj-orange/50 focus:ring-1 focus:ring-uj-orange/20 transition-all"
+                className="w-full h-10 pl-8 pr-8 rounded-full bg-slate-800/80 border border-border-app text-[14px] text-white placeholder-slate-500 focus:outline-none focus:border-accent-gold/50 focus:ring-1 focus:ring-accent-gold/20 transition-colors"
               />
               {query.length > 0 && (
                 <button

@@ -7,6 +7,7 @@ import UserAvatar from './UserAvatar'
 import SearchBar from './SearchBar'
 import logoSrc from '../assets/logo.png'
 import { useTheme } from '../ThemeContext'
+import { getDeptAbbreviation } from '../lib/departments'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -71,13 +72,13 @@ export default function Header({
         <button
           type="button"
           onClick={onNavigateToFeed}
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 shrink-0 focus:outline-none"
+          className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 shrink-0 focus:outline-none"
           aria-label="Strona główna"
         >
           <img
             src={logoSrc}
             alt="UJverse"
-            className="h-[72px] w-auto [filter:invert(1)_sepia(1)_saturate(10)_hue-rotate(192deg)_brightness(0.45)] dark:[filter:sepia(1)_saturate(6)_hue-rotate(355deg)_brightness(1.1)]"
+            className="h-[72px] w-auto relative z-20 object-contain [filter:invert(1)_sepia(1)_saturate(10)_hue-rotate(192deg)_brightness(0.45)] dark:[filter:brightness(0)_saturate(100%)_invert(62%)_sepia(85%)_saturate(1800%)_hue-rotate(12deg)_brightness(0.92)_contrast(0.95)]"
           />
         </button>
 
@@ -88,9 +89,9 @@ export default function Header({
             <button
               type="button"
               onClick={onNavigateToFeed}
-              className={`w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10 ${
                 activeView === 'feed'
-                  ? 'text-uj-orange'
+                  ? 'text-accent-interactive'
                   : 'text-gray-500 dark:text-gray-400'
               }`}
               aria-label="Strona główna"
@@ -112,16 +113,16 @@ export default function Header({
             <button
               type="button"
               onClick={onNavigateToNotifications}
-              className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
+              className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10 ${
                 activeView === 'notifications'
-                  ? 'text-uj-orange'
+                  ? 'text-accent-interactive'
                   : 'text-gray-500 dark:text-gray-400'
               }`}
               aria-label="Powiadomienia"
             >
               <Bell size={17} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
               {unreadCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 rounded-full bg-uj-orange text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 rounded-full bg-accent-interactive text-black text-[9px] font-bold flex items-center justify-center px-0.5">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -132,7 +133,7 @@ export default function Header({
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:text-uj-blue dark:hover:text-uj-orange hover:bg-slate-200 dark:hover:bg-slate-800 transition-all"
+            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:text-accent-interactive hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
           >
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
@@ -149,6 +150,11 @@ export default function Header({
               aria-label="Menu użytkownika"
             >
               <UserAvatar profile={myProfile} name={displayName} className="h-7 w-7" textSize="text-xs" />
+              {myProfile?.department && (
+                <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider text-accent-interactive border border-accent-interactive/25 rounded-full px-1.5 py-0.5 leading-none shrink-0">
+                  {getDeptAbbreviation(myProfile.department)}
+                </span>
+              )}
               <span className="hidden sm:inline text-gray-700 dark:text-gray-200 text-sm font-medium max-w-[100px] truncate">
                 {displayName}
               </span>
@@ -166,9 +172,9 @@ export default function Header({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -8 }}
                   transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-[#0f1a2e] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700/60 overflow-hidden origin-top-right"
+                  className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-bg-app rounded-xl shadow-2xl border border-slate-200 dark:border-border-app overflow-hidden origin-top-right"
                 >
-                  <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700/60 flex items-center gap-3">
+                  <div className="px-4 py-3 bg-slate-50 dark:bg-bg-app border-b border-slate-100 dark:border-border-app flex items-center gap-3">
                     <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9" textSize="text-sm" />
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 dark:text-blue-50 truncate">{displayName}</p>
@@ -195,7 +201,7 @@ export default function Header({
                     </button>
                   </div>
 
-                  <div className="border-t border-slate-100 dark:border-slate-700/60 py-1">
+                  <div className="border-t border-slate-100 dark:border-border-app py-1">
                     <button
                       role="menuitem"
                       onClick={() => void supabase.auth.signOut()}

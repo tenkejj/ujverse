@@ -1,11 +1,11 @@
 import {
-  MessageCircle,
-  Filter,
-  CalendarDays,
-  Link as LinkIcon,
-  GraduationCap,
   BookOpen,
+  CalendarDays,
+  Filter,
+  GraduationCap,
+  Link2 as LinkIcon,
   Mail,
+  MessageCircle,
 } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -83,8 +83,17 @@ const widgetSectionTitleCls =
 const sideCardCls =
   'bg-bg-card rounded-2xl border border-slate-100 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/20 p-4'
 
+const deptFilterBtnBase =
+  'w-full flex items-center text-left px-3 py-2 rounded-lg text-[13px] font-sans transition-colors'
+
+const deptFilterInactive =
+  `${deptFilterBtnBase} font-medium text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5`
+
+const deptFilterActive =
+  `${deptFilterBtnBase} font-bold text-accent-interactive`
+
 const sectionLabelCls =
-  'text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-3 block'
+  'text-[10px] font-sans font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400 mb-3 block'
 
 export default function FeedView({
   myProfile,
@@ -127,74 +136,76 @@ export default function FeedView({
   const [selectedEvent, setSelectedEvent] = useState<UJEvent | null>(null)
 
   const feedContent = (
-    <div className="space-y-6">
-      {postsLoading && (
-        <div className="flex justify-center py-16">
-          <div className="h-8 w-8 rounded-full border-[3px] border-uj-blue border-t-transparent animate-spin" />
-        </div>
-      )}
-
+    <div className="space-y-0">
       {!postsLoading && postsError && (
-        <div className="bg-red-50 text-red-600 text-sm rounded-2xl px-4 py-3 border border-red-100">
+        <div className="bg-red-50 text-red-600 text-sm rounded-2xl px-4 py-3 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/40 mb-3">
           Błąd: {postsError}
         </div>
       )}
 
-      {!postsLoading && !postsError && posts.length === 0 && (
-        selectedDepartment ? (
-          <EmptyState
-            icon={Filter}
-            title="Brak wpisów z tego wydziału"
-            subtitle="Wybierz inny wydział lub dodaj pierwszy wpis z tej społeczności."
-          />
-        ) : (
-          <EmptyState
-            icon={MessageCircle}
-            title="Brak wpisów"
-            subtitle="Bądź pierwszy! Podziel się czymś ze społecznością UJ."
-          />
-        )
-      )}
+      <div className="border border-border-app bg-bg-app shadow-none overflow-hidden">
+        {postsLoading && (
+          <div className="flex justify-center py-16">
+            <div className="h-8 w-8 rounded-full border-[3px] border-uj-blue border-t-transparent animate-spin" />
+          </div>
+        )}
 
-      <AnimatePresence mode="popLayout">
-        {!postsLoading && !postsError && posts.map((post, idx) => {
-          const postId = String(post?.id ?? `fallback-${idx}`)
-          return (
-            <motion.div
-              key={postId}
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10, scale: 0.98 }}
-              transition={{ duration: 0.3, delay: Math.min(idx * 0.04, 0.4) }}
-              layout
-            >
-              <PostCard
-                post={post}
-                index={idx}
-                currentUserId={currentUserId}
-                myProfile={myProfile}
-                displayName={displayName}
-                likeCount={likesCountByPost[postId] ?? 0}
-                isLiked={Boolean(likedPostIds[postId])}
-                isPop={heartPopPostId === postId}
-                commentCount={commentsCountByPost[postId] ?? 0}
-                isCommentsOpen={expandedComments.has(postId)}
-                comments={commentsByPost[postId] ?? []}
-                commentInputValue={commentInput[postId] ?? ''}
-                isCommentSubmitting={Boolean(commentSubmitting[postId])}
-                onToggleLike={() => onToggleLike(postId)}
-                onToggleComments={() => onToggleComments(postId)}
-                onSubmitComment={() => onSubmitComment(postId)}
-                onCommentInputChange={(v) => onCommentInputChange(postId, v)}
-                onDeletePost={() => onDeletePost(postId)}
-                onDeleteComment={(cId) => onDeleteComment(cId, postId)}
-                onNavigateToPost={() => onNavigateToPost(postId)}
-                onNavigateToUser={onNavigateToUser}
-              />
-            </motion.div>
+        {!postsLoading && !postsError && posts.length === 0 && (
+          selectedDepartment ? (
+            <EmptyState
+              icon={Filter}
+              title="Brak wpisów z tego wydziału"
+              subtitle="Wybierz inny wydział lub dodaj pierwszy wpis z tej społeczności."
+            />
+          ) : (
+            <EmptyState
+              icon={MessageCircle}
+              title="Brak wpisów"
+              subtitle="Bądź pierwszy! Podziel się czymś ze społecznością UJ."
+            />
           )
-        })}
-      </AnimatePresence>
+        )}
+
+        <AnimatePresence mode="sync">
+          {!postsLoading && !postsError && posts.map((post, idx) => {
+            const postId = String(post?.id ?? `fallback-${idx}`)
+            return (
+              <motion.div
+                key={postId}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
+                className="m-0 p-0 last:[&_article]:border-b-0"
+              >
+                <PostCard
+                  post={post}
+                  index={idx}
+                  currentUserId={currentUserId}
+                  myProfile={myProfile}
+                  displayName={displayName}
+                  likeCount={likesCountByPost[postId] ?? 0}
+                  isLiked={Boolean(likedPostIds[postId])}
+                  isPop={heartPopPostId === postId}
+                  commentCount={commentsCountByPost[postId] ?? 0}
+                  isCommentsOpen={expandedComments.has(postId)}
+                  comments={commentsByPost[postId] ?? []}
+                  commentInputValue={commentInput[postId] ?? ''}
+                  isCommentSubmitting={Boolean(commentSubmitting[postId])}
+                  onToggleLike={() => onToggleLike(postId)}
+                  onToggleComments={() => onToggleComments(postId)}
+                  onSubmitComment={() => onSubmitComment(postId)}
+                  onCommentInputChange={(v) => onCommentInputChange(postId, v)}
+                  onDeletePost={() => onDeletePost(postId)}
+                  onDeleteComment={(cId) => onDeleteComment(cId, postId)}
+                  onNavigateToPost={() => onNavigateToPost(postId)}
+                  onNavigateToUser={onNavigateToUser}
+                />
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
+      </div>
     </div>
   )
 
@@ -214,15 +225,15 @@ export default function FeedView({
               textSize="text-base"
             />
             <div className="min-w-0">
-              <p className="font-bold text-[14px] text-slate-900 dark:text-blue-50 truncate leading-snug">
+              <p className="font-bold text-[14px] text-fg-primary truncate leading-snug">
                 {displayName}
               </p>
               {myProfile?.department ? (
-                <span className="text-[10px] text-uj-orange font-bold uppercase tracking-wider bg-uj-orange/10 px-1.5 py-0.5 rounded-full border border-uj-orange/20 leading-none mt-0.5 inline-block">
+                <span className="text-[10px] text-accent-interactive font-bold uppercase tracking-wider bg-accent-interactive/10 px-1.5 py-0.5 rounded-full border border-accent-interactive/25 leading-none mt-0.5 inline-block">
                   {getDeptAbbreviation(myProfile.department)}
                 </span>
               ) : (
-                <p className="text-[12px] text-slate-400 dark:text-gray-500 mt-0.5">Ustaw wydział</p>
+                <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-0.5">Ustaw wydział</p>
               )}
             </div>
           </div>
@@ -235,11 +246,7 @@ export default function FeedView({
             <button
               type="button"
               onClick={() => onDepartmentChange('')}
-              className={`w-full text-left px-3 py-2 rounded-xl text-[13px] font-semibold transition-all ${
-                selectedDepartment === ''
-                  ? 'bg-uj-blue text-white'
-                  : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
-              }`}
+              className={selectedDepartment === '' ? deptFilterActive : deptFilterInactive}
             >
               Wszystkie
             </button>
@@ -248,11 +255,7 @@ export default function FeedView({
                 key={dept}
                 type="button"
                 onClick={() => onDepartmentChange(dept)}
-                className={`w-full text-left px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
-                  selectedDepartment === dept
-                    ? 'bg-uj-blue text-white font-semibold'
-                    : 'text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-white'
-                }`}
+                className={selectedDepartment === dept ? deptFilterActive : deptFilterInactive}
               >
                 {DEPT_SHORT[dept] ?? dept}
               </button>
@@ -262,9 +265,9 @@ export default function FeedView({
       </aside>
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
-      <div className="lg:col-span-6 space-y-3">
+      <div className="lg:col-span-6 flex flex-col gap-0">
         {/* ComposeBox — desktop only */}
-        <div className="hidden md:block">
+        <div className="hidden md:block mb-3">
           <ComposeBox
             myProfile={myProfile}
             displayName={displayName}
@@ -283,7 +286,7 @@ export default function FeedView({
         </div>
 
         {/* Horizontal dept filter — mobile only (desktop uses sidebar) */}
-        <div className="lg:hidden">
+        <div className="lg:hidden mb-3">
           <DepartmentFilter selected={selectedDepartment} onChange={onDepartmentChange} />
         </div>
 
