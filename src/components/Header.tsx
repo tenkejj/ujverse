@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Bell, ChevronDown, Home, LogOut, Moon, Settings, Sun, User } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, Home, LogOut, Moon, Settings, Sun, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -8,7 +8,7 @@ import SearchBar from './SearchBar'
 import logoSrc from '../assets/logo.png'
 import { useTheme } from '../ThemeContext'
 
-type ActiveView = 'feed' | 'profile' | 'notifications'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
 type Props = {
   myProfile: Profile | null
@@ -23,6 +23,7 @@ type Props = {
   onNavigateToFeed: () => void
   onNavigateToProfile: () => void
   onNavigateToNotifications: () => void
+  onNavigateToEvents: () => void
   onOpenProfileModal: () => void
 }
 
@@ -39,6 +40,7 @@ export default function Header({
   onNavigateToFeed,
   onNavigateToProfile,
   onNavigateToNotifications,
+  onNavigateToEvents,
   onOpenProfileModal,
 }: Props) {
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -59,7 +61,7 @@ export default function Header({
   }, [menuOpen, setMenuOpen])
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-bg-app/80 border-b border-slate-200 dark:border-slate-800">
+    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md dark:bg-bg-app/80 border-b border-slate-200 dark:border-border-app">
       <div className="mx-auto max-w-7xl px-4 lg:px-6 relative flex items-center h-[76px]">
 
         {/* Wyszukiwarka — lewa strona */}
@@ -94,6 +96,18 @@ export default function Header({
               aria-label="Strona główna"
             >
               <Home size={17} strokeWidth={activeView === 'feed' ? 2.5 : 1.8} />
+            </button>
+            <button
+              type="button"
+              onClick={onNavigateToEvents}
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
+                activeView === 'events'
+                  ? 'text-uj-orange'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+              aria-label="Wydarzenia"
+            >
+              <CalendarDays size={17} strokeWidth={activeView === 'events' ? 2.5 : 1.8} />
             </button>
             <button
               type="button"

@@ -16,6 +16,7 @@ html {
 
   --color-bg-app: var(--bg-app);
   --color-bg-card: var(--bg-card);
+  --color-border-app: var(--border-app);
 
   --radius-uj-xl:   1rem;
   --radius-uj-full: 9999px;
@@ -34,10 +35,13 @@ html {
   :root {
     --bg-app: #f8fafc;
     --bg-card: #ffffff;
+    --border-app: #e2e8f0;
   }
   .dark {
-    --bg-app: #1e293b;
-    --bg-card: #0f172a;
+    --bg-app: #01020a;
+    --bg-card: #01020a;
+    /* Ledwo widoczna granica na bardzo ciemnym tle */
+    --border-app: #151838;
   }
 }
 

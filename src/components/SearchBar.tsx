@@ -178,7 +178,7 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
 
       {/* Posts section */}
       {!isSearching && results.posts.length > 0 && (
-        <div className={`px-2 pb-2 ${results.users.length > 0 ? 'mt-1 border-t border-slate-800 pt-2' : 'pt-2'}`}>
+        <div className={`px-2 pb-2 ${results.users.length > 0 ? 'mt-1 border-t border-border-app pt-2' : 'pt-2'}`}>
           <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
             Wpisy
           </p>
@@ -291,7 +291,7 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
       {mobileModalOpen && createPortal(
         <div className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col">
           {/* Top bar */}
-          <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3 px-3 py-3 border-b border-border-app shrink-0">
             <button
               type="button"
               onClick={closeMobileModal}

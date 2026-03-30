@@ -1,7 +1,7 @@
-import { Bell, Home, Plus, User } from 'lucide-react'
+import { Bell, CalendarDays, Home, Plus, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-type ActiveView = 'feed' | 'profile' | 'notifications'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
 type Props = {
   activeView: ActiveView
@@ -12,7 +12,7 @@ type Props = {
 
 export default function BottomNav({ activeView, setActiveView, onOpenCompose, unreadCount }: Props) {
   const iconBtn = (isActive: boolean) =>
-    `flex flex-col items-center justify-center gap-1 px-6 py-2 transition-colors ${
+    `flex flex-1 flex-col items-center justify-center gap-0.5 min-w-0 py-2 transition-colors ${
       isActive
         ? 'text-uj-orange'
         : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
@@ -23,8 +23,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-dark-bg/90 backdrop-blur-md border-t border-gray-100 dark:border-gray-800"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex items-center justify-around h-16">
-        {/* Home */}
+      <div className="flex items-center justify-between h-16 px-1 max-w-lg mx-auto">
         <motion.button
           type="button"
           onClick={() => setActiveView('feed')}
@@ -32,11 +31,20 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           className={iconBtn(activeView === 'feed')}
           aria-label="Strona główna"
         >
-          <Home size={22} strokeWidth={activeView === 'feed' ? 2.5 : 1.8} />
+          <Home size={20} strokeWidth={activeView === 'feed' ? 2.5 : 1.8} />
         </motion.button>
 
-        {/* Plus — center button */}
-        <div className="flex items-center justify-center">
+        <motion.button
+          type="button"
+          onClick={() => setActiveView('events')}
+          whileTap={{ scale: 0.9 }}
+          className={iconBtn(activeView === 'events')}
+          aria-label="Wydarzenia"
+        >
+          <CalendarDays size={20} strokeWidth={activeView === 'events' ? 2.5 : 1.8} />
+        </motion.button>
+
+        <div className="flex items-center justify-center shrink-0 px-1">
           <motion.button
             type="button"
             onClick={onOpenCompose}
@@ -48,7 +56,6 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           </motion.button>
         </div>
 
-        {/* Bell */}
         <motion.button
           type="button"
           onClick={() => setActiveView('notifications')}
@@ -57,7 +64,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           aria-label="Powiadomienia"
         >
           <div className="relative">
-            <Bell size={22} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
+            <Bell size={20} strokeWidth={activeView === 'notifications' ? 2.5 : 1.8} />
             {unreadCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 rounded-full bg-uj-orange text-white text-[9px] font-bold flex items-center justify-center px-0.5">
                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -66,7 +73,6 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           </div>
         </motion.button>
 
-        {/* Profile */}
         <motion.button
           type="button"
           onClick={() => setActiveView('profile')}
@@ -74,7 +80,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           className={iconBtn(activeView === 'profile')}
           aria-label="Profil"
         >
-          <User size={22} strokeWidth={activeView === 'profile' ? 2.5 : 1.8} />
+          <User size={20} strokeWidth={activeView === 'profile' ? 2.5 : 1.8} />
         </motion.button>
       </div>
     </nav>

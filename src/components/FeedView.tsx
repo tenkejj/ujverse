@@ -7,9 +7,12 @@ import {
   BookOpen,
   Mail,
 } from 'lucide-react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
+import { mockEvents, formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import ComposeBox from './ComposeBox'
+import EventModal from './EventModal'
 import PostCard from './PostCard'
 import DepartmentFilter from './DepartmentFilter'
 import EmptyState from './EmptyState'
@@ -64,22 +67,21 @@ type Props = {
   onDeleteComment: (commentId: number, postId: string) => void
   onNavigateToPost: (postId: string) => void
   onNavigateToUser?: (userId: string) => void
+  onNavigateToEvents: () => void
 }
 
-const UPCOMING_EVENTS = [
-  { date: '14 Maj', title: 'Juwenalia UJ 2026', tag: 'Wydarzenie' },
-  { date: '22 Maj', title: 'Dni Wydziału WPiA 2026', tag: 'Wydział' },
-  { date: '5 Cze', title: 'Rekrutacja 2026 – info', tag: 'Ogłoszenie' },
-]
-
 const UJ_ESSENTIAL_LINKS = [
-  { label: 'USOSweb', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap },
-  { label: 'Platforma PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen },
-  { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail },
+  { label: 'USOSweb', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap, tag: 'Studia' },
+  { label: 'Platforma PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen, tag: 'E-learning' },
+  { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail, tag: 'Poczta' },
 ] as const
 
+const widgetGoldCls = 'text-[#ffa000]'
+const widgetSectionTitleCls =
+  'text-[10px] font-semibold uppercase tracking-widest text-[#ffa000]'
+
 const sideCardCls =
-  'bg-bg-card rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-lg dark:shadow-black/20 p-4'
+  'bg-bg-card rounded-2xl border border-slate-100 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/20 p-4'
 
 const sectionLabelCls =
   'text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-3 block'
@@ -120,7 +122,10 @@ export default function FeedView({
   onDepartmentChange,
   onNavigateToPost,
   onNavigateToUser,
+  onNavigateToEvents,
 }: Props) {
+  const [selectedEvent, setSelectedEvent] = useState<UJEvent | null>(null)
+
   const feedContent = (
     <div className="space-y-6">
       {postsLoading && (
@@ -288,25 +293,30 @@ export default function FeedView({
       {/* ── RIGHT SIDEBAR (desktop only) ────────────────────────────── */}
       <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
 
-        {/* Niezbędnik UJ — szybkie linki */}
-        <div className="flex flex-col gap-3 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-bg-card shadow-sm dark:shadow-lg dark:shadow-black/20">
-          <div className="flex items-center gap-2">
-            <LinkIcon size={14} className="text-slate-400 shrink-0" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Niezbędnik UJ
-            </h3>
+        {/* Niezbędnik UJ — szybkie linki (layout jak Wydarzenia UJ) */}
+        <div className={sideCardCls}>
+          <div className="flex items-center gap-2 mb-3">
+            <LinkIcon size={13} className={`${widgetGoldCls} shrink-0`} />
+            <span className={widgetSectionTitleCls}>Niezbędnik UJ</span>
           </div>
-          <div className="flex flex-col gap-3">
-            {UJ_ESSENTIAL_LINKS.map(({ label, href, Icon }) => (
+          <div className="space-y-3">
+            {UJ_ESSENTIAL_LINKS.map(({ label, href, Icon, tag }) => (
               <a
                 key={label}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg p-2 -mx-2 transition-all cursor-pointer"
+                className="flex items-start gap-3 rounded-xl border border-slate-100/80 dark:border-border-app/50 bg-bg-card p-3 transition-colors hover:border-slate-200 dark:hover:border-border-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/35"
               >
-                <Icon size={16} className="text-slate-500 dark:text-slate-400 shrink-0" />
-                {label}
+                <div className="shrink-0 flex items-center justify-center min-w-[36px] min-h-[36px]">
+                  <Icon size={18} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-slate-800 dark:text-[#e7e9ea] leading-snug truncate">
+                    {label}
+                  </p>
+                  <span className="text-[10px] text-slate-400 dark:text-gray-500">{tag}</span>
+                </div>
               </a>
             ))}
           </div>
@@ -314,29 +324,57 @@ export default function FeedView({
 
         {/* Upcoming events widget */}
         <div className={sideCardCls}>
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarDays size={13} className="text-uj-orange shrink-0" />
-            <span className={`${sectionLabelCls} mb-0`}>Wydarzenia UJ</span>
-          </div>
+          <button
+            type="button"
+            onClick={onNavigateToEvents}
+            className="group w-full flex items-center gap-2 mb-3 rounded-lg -mx-1 px-1 py-1 text-left transition-colors hover:bg-slate-100/80 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/40"
+            aria-label="Przejdź do wszystkich wydarzeń"
+          >
+            <CalendarDays
+              size={13}
+              className={`${widgetGoldCls} shrink-0 transition-colors group-hover:text-[#ffb84d]`}
+              strokeWidth={2}
+            />
+            <span
+              className={`${widgetSectionTitleCls} flex-1 min-w-0 underline-offset-2 group-hover:underline decoration-[#ffa000]/80`}
+            >
+              Wydarzenia UJ
+            </span>
+            <span className="text-[10px] font-medium text-slate-400 dark:text-gray-500 whitespace-nowrap shrink-0 transition-colors group-hover:text-[#ffa000]">
+              Zobacz wszystkie →
+            </span>
+          </button>
           <div className="space-y-3">
-            {UPCOMING_EVENTS.map((ev) => (
-              <div key={ev.title} className="flex items-start gap-3">
-                <div className="shrink-0 text-center min-w-[36px]">
-                  <span className="block text-[10px] font-bold text-uj-orange leading-none uppercase tracking-wide">
-                    {ev.date.split(' ')[1]}
-                  </span>
-                  <span className="block text-[15px] font-extrabold text-slate-800 dark:text-blue-50 leading-tight">
-                    {ev.date.split(' ')[0]}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-slate-700 dark:text-gray-200 leading-snug truncate">
-                    {ev.title}
-                  </p>
-                  <span className="text-[10px] text-slate-400 dark:text-gray-500">{ev.tag}</span>
-                </div>
-              </div>
-            ))}
+            {mockEvents.slice(0, 3).map((ev) => {
+              const { monthLabel, dayNum } = formatEventDateParts(ev.date)
+              return (
+                <button
+                  key={ev.id}
+                  type="button"
+                  onClick={() => setSelectedEvent(ev)}
+                  className="w-full text-left flex items-start gap-3 rounded-xl border border-slate-100/80 dark:border-border-app/50 bg-bg-card p-3 cursor-pointer hover:bg-white/5 transition-colors"
+                >
+                  <div className="shrink-0 text-center min-w-[36px]">
+                    <span
+                      className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide`}
+                    >
+                      {monthLabel}
+                    </span>
+                    <span className="block text-[15px] font-extrabold text-slate-800 dark:text-white leading-tight">
+                      {dayNum}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold text-slate-800 dark:text-[#e7e9ea] leading-snug truncate">
+                      {ev.title}
+                    </p>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">
+                      {ev.category}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -346,6 +384,10 @@ export default function FeedView({
         </p>
       </aside>
 
+      <EventModal
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
     </div>
   )
 }

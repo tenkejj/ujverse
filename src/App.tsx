@@ -14,6 +14,7 @@ import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
+import EventsView from './components/EventsView'
 import ProfileView from './components/ProfileView'
 import BottomNav from './components/BottomNav'
 import NotificationsView from './components/NotificationsView'
@@ -27,7 +28,9 @@ function App() {
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const [activeView, setActiveView] = useState<'feed' | 'profile' | 'notifications' | 'post' | 'userProfile'>('feed')
+  const [activeView, setActiveView] = useState<
+    'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile'
+  >('feed')
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [activeUserId, setActiveUserId] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState('')
@@ -566,10 +569,17 @@ function App() {
           onNavigateToFeed={() => setActiveView('feed')}
           onNavigateToProfile={() => setActiveView('profile')}
           onNavigateToNotifications={() => setActiveView('notifications')}
+          onNavigateToEvents={() => setActiveView('events')}
           onOpenProfileModal={() => setProfileModalOpen(true)}
         />
 
-        <main className={`mx-auto px-4 py-4 pb-24 md:pb-4 ${activeView === 'feed' ? 'max-w-7xl lg:px-6' : 'max-w-2xl space-y-3'}`}>
+        <main
+          className={`mx-auto px-4 py-4 pb-24 md:pb-4 ${
+            activeView === 'feed' || activeView === 'events'
+              ? 'max-w-7xl lg:px-6'
+              : 'max-w-2xl space-y-3'
+          }`}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={activeView}
@@ -603,8 +613,11 @@ function App() {
                   onCreatePost={handleCreatePost}
                   onNavigateToPost={navigateToPost}
                   onNavigateToUser={navigateToUser}
+                  onNavigateToEvents={() => setActiveView('events')}
                 />
               )}
+
+              {activeView === 'events' && <EventsView />}
 
               {activeView === 'profile' && (
                 <ProfileView

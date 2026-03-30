@@ -99,7 +99,7 @@ export default function PostCard({
   return (
     <article
       key={postId}
-      className="bg-white dark:bg-bg-card/80 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-lg dark:shadow-black/25 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
+      className="bg-white dark:bg-bg-card/80 rounded-2xl border border-slate-200 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/25 hover:border-slate-300 dark:hover:border-[#252a4a] transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
     >
       {/* Post body */}
       <div className="px-4 pt-4 pb-1">
