@@ -23,14 +23,17 @@ html {
   --color-uj-navy:   #002D62;
   --color-uj-gold:   #C49A6C;
   --color-uj-orange: #FF9900;
-  --color-dark-bg:   #020314;
-  --color-dark-card: #020314;
+  --color-app-bg:    #000000;
+  --color-card-bg:   #01020a;
+  --color-border-main: #1c2b4e;
+  --color-accent-gold: #ffa000;
 
   --color-bg-app: var(--bg-app);
   --color-bg-card: var(--bg-card);
   --color-border-app: var(--border-app);
   --color-fg-primary: var(--text-primary);
   --color-fg-secondary: var(--text-secondary);
+  --color-text-label: var(--text-label);
   --color-accent-gold: var(--accent-gold);
   --color-accent-like: var(--accent-like);
   --color-accent-interactive: var(--accent-interactive);
@@ -51,23 +54,37 @@ html {
 
 @layer base {
   :root {
-    --bg-app: #f7f9f9;
-    --bg-card: #ffffff;
-    --border-app: #e2e8f0;
+    --background: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --modal-bg: #ffffff;
+    --modal-border: #e2e8f0;
+    --primary: #ffa000;
+    --bg-app: var(--background);
+    --bg-card: var(--card);
+    --border-app: var(--border);
     --text-primary: #0f1419;
     --text-secondary: #536471;
+    --text-label: #334155;
     --accent-gold: #b59410;
     --accent-like: #ffa000;
     --accent-interactive: #ffa000;
     --accent-purple: #1e2a4f;
   }
   .dark {
-    --bg-app: #01020a;
+    --background: #000000;
+    --card: #01020a;
+    --border: #1c2b4e;
+    --modal-bg: #01020a;
+    --modal-border: #1c2b4e;
+    --border-main: #1c2b4e;
+    --primary: #ffa000;
+    --bg-app: #000000;
     --bg-card: #01020a;
-    /* Ledwo widoczna granica na bardzo ciemnym tle */
-    --border-app: #151838;
+    --border-app: var(--border);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
+    --text-label: #94a3b8;
     --accent-gold: #b59410;
     --accent-like: #ffa000;
     --accent-interactive: #ffa000;

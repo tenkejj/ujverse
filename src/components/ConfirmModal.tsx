@@ -39,7 +39,7 @@ export default function ConfirmModal({
 
   return createPortal(
     <motion.div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: isClosing ? 0 : 1 }}
       transition={{ duration: 0.18 }}
@@ -47,7 +47,7 @@ export default function ConfirmModal({
       onPointerDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
       <motion.div
-        className="w-full max-w-sm bg-white dark:bg-dark-card rounded-2xl shadow-uj-soft dark:shadow-none border border-slate-100 dark:border-gray-700 overflow-hidden"
+        className="w-full max-w-sm bg-card rounded-2xl shadow-uj-soft dark:shadow-none border border-slate-100 dark:border-border-app overflow-hidden"
         initial={{ opacity: 0, y: 12, scale: 0.97 }}
         animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 8 : 0, scale: isClosing ? 0.97 : 1 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}

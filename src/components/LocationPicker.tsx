@@ -118,7 +118,7 @@ export default function LocationPicker({ isOpen, onClose, onConfirm }: Props) {
   return createPortal(
     <motion.div
       role="presentation"
-      className="fixed inset-0 z-[10050] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+      className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/85 p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       onPointerDown={(ev) => {
@@ -129,7 +129,7 @@ export default function LocationPicker({ isOpen, onClose, onConfirm }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="location-picker-title"
-        className="w-full max-w-lg rounded-2xl border border-[#1c2b4e] bg-[#040521] p-5 shadow-none relative overflow-hidden"
+        className="w-full max-w-lg rounded-2xl border border-border-app bg-card p-5 shadow-none relative overflow-hidden"
         initial={{ opacity: 0, scale: 0.97, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         onClick={(e) => e.stopPropagation()}
@@ -143,14 +143,14 @@ export default function LocationPicker({ isOpen, onClose, onConfirm }: Props) {
           <X size={20} strokeWidth={2} />
         </button>
 
-        <h2 id="location-picker-title" className="text-lg font-bold text-white mb-1 pr-12">
+        <h2 id="location-picker-title" className="text-lg font-bold text-fg-primary mb-1 pr-12">
           Wybierz miejsce na mapie
         </h2>
-        <p className="text-xs text-slate-500 mb-3">
+        <p className="text-xs text-text-label mb-3">
           Kliknij mapę, by postawić pinezkę. Adres uzupełni się automatycznie (OpenStreetMap Nominatim).
         </p>
 
-        <div className="rounded-xl overflow-hidden border border-[#1c2b4e] bg-[#0a0f2a]">
+        <div className="rounded-xl overflow-hidden border border-border-app bg-slate-100 dark:bg-[#0a0f2a]">
           <MapContainer
             key={mapKey}
             center={DEFAULT_CENTER}
@@ -181,7 +181,7 @@ export default function LocationPicker({ isOpen, onClose, onConfirm }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white transition-colors font-medium"
+            className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-fg-primary transition-colors font-medium dark:text-slate-400 dark:hover:text-white"
           >
             Anuluj
           </button>

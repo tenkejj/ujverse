@@ -88,7 +88,7 @@ export default function ImageCropperModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[60] flex flex-col bg-black/90 backdrop-blur-sm"
+      className="fixed inset-0 z-[10250] flex flex-col bg-black/90"
       initial={{ opacity: 0 }}
       animate={{ opacity: isClosing ? 0 : 1 }}
       transition={{ duration: 0.2 }}

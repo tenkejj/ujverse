@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { toast } from 'react-hot-toast'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -20,8 +21,9 @@ import ProfileView from './components/ProfileView'
 import BottomNav from './components/BottomNav'
 import NotificationsView from './components/NotificationsView'
 import SinglePostView from './components/SinglePostView'
-import UserProfileView from './components/UserProfileView'
 import ComposeBox from './components/ComposeBox'
+import SettingsView from './components/SettingsView'
+import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -30,6 +32,9 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const [activeView, setActiveView] = useState<
+    'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile' | 'settings'
+  >('feed')
+  const settingsReturnView = useRef<
     'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile'
   >('feed')
   const [activePostId, setActivePostId] = useState<string | null>(null)
@@ -100,7 +105,7 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url, bio, department')
+      .select('id, full_name, avatar_url, banner_url, bio, department')
       .eq('id', userId)
       .single()
     if (data) setMyProfile(data as Profile)
@@ -292,6 +297,13 @@ function App() {
     setActiveView('userProfile')
   }, [])
 
+  const openSettings = useCallback(() => {
+    if (activeView !== 'settings') {
+      settingsReturnView.current = activeView
+    }
+    setActiveView('settings')
+  }, [activeView])
+
   const markNotificationRead = useCallback(async (id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
     const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', Number(id))
@@ -481,6 +493,13 @@ function App() {
 
   const displayName = myProfile?.full_name || session.user.email?.split('@')[0] || 'Użytkownik'
 
+  const navActiveView =
+    activeView === 'post' || activeView === 'userProfile'
+      ? 'feed'
+      : activeView === 'settings'
+        ? 'profile'
+        : activeView
+
   const sharedPostProps = {
     myProfile,
     displayName,
@@ -502,6 +521,105 @@ function App() {
     onDeleteComment: handleDeleteComment,
   }
 
+  const mainViewContent: ReactNode = (() => {
+    switch (activeView) {
+      case 'feed':
+        return (
+          <FeedView
+            {...sharedPostProps}
+            posts={
+              selectedDepartment
+                ? posts.filter((p) => p.profiles?.department === selectedDepartment)
+                : posts
+            }
+            postsLoading={postsLoading}
+            postsError={postsError}
+            selectedDepartment={selectedDepartment}
+            onDepartmentChange={setSelectedDepartment}
+            isComposing={isComposing}
+            createBody={createBody}
+            createImageFile={createImageFile}
+            createImagePreview={createImagePreview}
+            createLoading={createLoading}
+            createError={createError}
+            onBodyChange={setCreateBody}
+            onImageFileChange={setCreateImageFile}
+            onComposeOpen={() => { setCreateError(null); setIsComposing(true) }}
+            onComposeReset={resetCompose}
+            onCreatePost={handleCreatePost}
+            onNavigateToPost={navigateToPost}
+            onNavigateToUser={navigateToUser}
+            onNavigateToEvents={() => setActiveView('events')}
+          />
+        )
+      case 'events':
+        return <EventsView />
+      case 'profile':
+      case 'userProfile':
+        if (activeView === 'userProfile' && !activeUserId) {
+          return null
+        }
+        return (
+          <ProfileView
+            {...sharedPostProps}
+            posts={posts}
+            postsLoading={postsLoading}
+            viewedUserId={activeView === 'userProfile' ? activeUserId! : null}
+            onBack={activeView === 'userProfile' ? () => setActiveView('feed') : undefined}
+            onNavigateToPost={navigateToPost}
+            joinedAtLabel={
+              session.user.created_at
+                ? new Date(session.user.created_at).toLocaleDateString('pl-PL', {
+                    month: 'long',
+                    year: 'numeric',
+                  })
+                : null
+            }
+            onOpenProfileModal={() => setProfileModalOpen(true)}
+            onNavigateToUser={navigateToUser}
+            onAvatarUpdate={(url) =>
+              setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
+            }
+            onBannerUpdate={(url) =>
+              setMyProfile((prev) => (prev ? { ...prev, banner_url: url } : prev))
+            }
+          />
+        )
+      case 'notifications':
+        return (
+          <NotificationsView
+            notifications={notifications}
+            loading={notificationsLoading}
+            onMarkRead={markNotificationRead}
+            onMarkAllRead={markAllRead}
+            onNavigateToPost={navigateToPost}
+            onNavigateToUser={navigateToUser}
+          />
+        )
+      case 'post':
+        if (!activePostId) return null
+        return (
+          <SinglePostView
+            postId={activePostId}
+            {...sharedPostProps}
+            onBack={() => setActiveView('feed')}
+            onNavigateToUser={navigateToUser}
+          />
+        )
+      case 'settings':
+        return (
+          <ViewErrorBoundary onRecover={() => setActiveView('feed')}>
+            <SettingsView
+              email={session.user?.email ?? undefined}
+              onBack={() => setActiveView(settingsReturnView.current)}
+            />
+          </ViewErrorBoundary>
+        )
+      default:
+        return null
+    }
+  })()
+
   return (
     <EventsProvider>
     <>
@@ -511,7 +629,9 @@ function App() {
           profile={myProfile}
           onClose={() => setProfileModalOpen(false)}
           onSaved={(u) => { setMyProfile(u); void fetchPosts() }}
-          onAvatarUpdate={(url) => setMyProfile((prev) => prev ? { ...prev, avatar_url: url } : prev)}
+          onAvatarUpdate={(url) =>
+            setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
+          }
         />
       )}
 
@@ -564,7 +684,7 @@ function App() {
           email={session.user.email}
           menuOpen={menuOpen}
           setMenuOpen={setMenuOpen}
-          activeView={activeView === 'post' || activeView === 'userProfile' ? 'feed' : activeView}
+          activeView={navActiveView}
           unreadCount={unreadCount}
           onNavigateToUser={navigateToUser}
           onNavigateToPost={navigateToPost}
@@ -573,13 +693,16 @@ function App() {
           onNavigateToNotifications={() => setActiveView('notifications')}
           onNavigateToEvents={() => setActiveView('events')}
           onOpenProfileModal={() => setProfileModalOpen(true)}
+          onNavigateToSettings={openSettings}
         />
 
         <main
-          className={`mx-auto px-4 py-4 pb-24 md:pb-4 ${
+          className={`mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
             activeView === 'feed' || activeView === 'events'
-              ? 'max-w-7xl lg:px-6'
-              : 'max-w-2xl space-y-3'
+              ? 'max-w-7xl px-4 lg:px-6'
+              : activeView === 'profile' || activeView === 'userProfile' || activeView === 'settings'
+                ? 'max-w-2xl px-4 space-y-0'
+                : 'max-w-2xl space-y-3 px-4'
           }`}
         >
           <AnimatePresence mode="wait">
@@ -590,83 +713,13 @@ function App() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
             >
-              {activeView === 'feed' && (
-                <FeedView
-                  {...sharedPostProps}
-                  posts={
-                    selectedDepartment
-                      ? posts.filter((p) => p.profiles?.department === selectedDepartment)
-                      : posts
-                  }
-                  postsLoading={postsLoading}
-                  postsError={postsError}
-                  selectedDepartment={selectedDepartment}
-                  onDepartmentChange={setSelectedDepartment}
-                  isComposing={isComposing}
-                  createBody={createBody}
-                  createImageFile={createImageFile}
-                  createImagePreview={createImagePreview}
-                  createLoading={createLoading}
-                  createError={createError}
-                  onBodyChange={setCreateBody}
-                  onImageFileChange={setCreateImageFile}
-                  onComposeOpen={() => { setCreateError(null); setIsComposing(true) }}
-                  onComposeReset={resetCompose}
-                  onCreatePost={handleCreatePost}
-                  onNavigateToPost={navigateToPost}
-                  onNavigateToUser={navigateToUser}
-                  onNavigateToEvents={() => setActiveView('events')}
-                />
-              )}
-
-              {activeView === 'events' && <EventsView />}
-
-              {activeView === 'profile' && (
-                <ProfileView
-                  {...sharedPostProps}
-                  posts={posts}
-                  postsLoading={postsLoading}
-                  onOpenProfileModal={() => setProfileModalOpen(true)}
-                  onNavigateToUser={navigateToUser}
-                />
-              )}
-
-              {activeView === 'notifications' && (
-                <NotificationsView
-                  notifications={notifications}
-                  loading={notificationsLoading}
-                  onMarkRead={markNotificationRead}
-                  onMarkAllRead={markAllRead}
-                  onNavigateToPost={navigateToPost}
-                  onNavigateToUser={navigateToUser}
-                />
-              )}
-
-              {activeView === 'post' && activePostId && (
-                <SinglePostView
-                  postId={activePostId}
-                  {...sharedPostProps}
-                  onBack={() => setActiveView('feed')}
-                  onNavigateToUser={navigateToUser}
-                />
-              )}
-
-              {activeView === 'userProfile' && activeUserId && (
-                <UserProfileView
-                  userId={activeUserId}
-                  {...sharedPostProps}
-                  onBack={() => setActiveView('feed')}
-                  onOpenProfileModal={() => setProfileModalOpen(true)}
-                  onNavigateToPost={navigateToPost}
-                  onNavigateToUser={navigateToUser}
-                />
-              )}
+              {mainViewContent}
             </motion.div>
           </AnimatePresence>
         </main>
 
         <BottomNav
-          activeView={activeView === 'post' || activeView === 'userProfile' ? 'feed' : activeView}
+          activeView={navActiveView}
           setActiveView={(v) => setActiveView(v)}
           unreadCount={unreadCount}
           onOpenCompose={() => {

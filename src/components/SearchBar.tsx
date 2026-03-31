@@ -223,16 +223,16 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
 
   return (
     <>
-      <div ref={containerRef} className="relative flex items-center">
+      <div ref={containerRef} className="relative flex shrink-0 items-center">
 
         {/* Mobile: icon-only button */}
         <button
           type="button"
           onClick={() => setMobileModalOpen(true)}
-          className="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-accent-gold hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className="md:hidden min-w-[40px] min-h-[40px] w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-accent-gold hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Szukaj"
         >
-          <Search size={17} />
+          <Search size={24} strokeWidth={2} className="shrink-0" />
         </button>
 
         {/* Desktop: fixed-width input with dropdown */}
@@ -289,7 +289,7 @@ export default function SearchBar({ onNavigateToUser, onNavigateToPost }: Props)
 
       {/* Mobile fullscreen search modal — Portal to document.body */}
       {mobileModalOpen && createPortal(
-        <div className="fixed left-0 right-0 bottom-0 top-[76px] z-[90] flex flex-col bg-bg-app md:hidden border-t border-border-app">
+        <div className="fixed left-0 right-0 bottom-0 top-16 z-[90] flex flex-col bg-bg-app md:hidden border-t border-border-app">
           {/* Top bar */}
           <div className="flex items-center gap-3 px-3 py-3 border-b border-border-app shrink-0">
             <button

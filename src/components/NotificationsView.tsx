@@ -31,7 +31,7 @@ function NotificationIcon({ type }: { type: 'like' | 'comment' }) {
 
 function SkeletonRow() {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-dark-card">
+    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-100 dark:border-border-app bg-card">
       <div className="relative shrink-0">
         <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 animate-pulse" />
         <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-slate-100 dark:bg-white/5 animate-pulse" />
@@ -101,7 +101,7 @@ export default function NotificationsView({ notifications, loading, onMarkRead, 
             }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors hover:bg-slate-50 dark:hover:bg-white/5 text-left ${
               notif.is_read
-                ? 'bg-white dark:bg-dark-card border-slate-100 dark:border-white/5'
+                ? 'bg-card border-slate-100 dark:border-border-app'
                 : 'bg-uj-blue/5 dark:bg-uj-orange/5 border-uj-blue/10 dark:border-uj-orange/10'
             }`}
           >

@@ -59,7 +59,7 @@ export default function ImageCropper({ imageSrc, onClose, onCropped }: Props) {
   return createPortal(
     <motion.div
       role="presentation"
-      className="fixed inset-0 z-[10050] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+      className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/85 p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -71,7 +71,7 @@ export default function ImageCropper({ imageSrc, onClose, onCropped }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="image-cropper-title"
-        className="w-full max-w-2xl rounded-2xl border border-[#1c2b4e] bg-[#040521] p-5 shadow-none relative"
+        className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-[#1c2b4e] bg-white dark:bg-[#040521] p-5 shadow-none relative"
         initial={{ opacity: 0, scale: 0.97, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         onClick={(e) => e.stopPropagation()}
@@ -85,11 +85,11 @@ export default function ImageCropper({ imageSrc, onClose, onCropped }: Props) {
           <X size={20} strokeWidth={2} />
         </button>
 
-        <h2 id="image-cropper-title" className="text-lg font-bold text-white mb-3 pr-12">
+        <h2 id="image-cropper-title" className="text-lg font-bold text-slate-900 dark:text-white mb-3 pr-12">
           Przytnij plakat (16:9)
         </h2>
 
-        <div className="relative h-[min(50vh,320px)] w-full rounded-xl overflow-hidden bg-black/40 border border-[#1c2b4e]">
+        <div className="relative h-[min(50vh,320px)] w-full rounded-xl overflow-hidden border border-border-app bg-slate-100 dark:bg-black/40">
           <Cropper
             image={imageSrc}
             crop={crop}
@@ -104,7 +104,7 @@ export default function ImageCropper({ imageSrc, onClose, onCropped }: Props) {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="flex-1 min-w-[160px] flex items-center gap-3 text-sm text-slate-400">
+          <label className="flex-1 min-w-[160px] flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
             <span className="shrink-0">Powiększenie</span>
             <input
               type="range"
@@ -122,7 +122,7 @@ export default function ImageCropper({ imageSrc, onClose, onCropped }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white transition-colors font-medium"
+            className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-fg-primary transition-colors font-medium dark:text-slate-400 dark:hover:text-white"
           >
             Anuluj
           </button>

@@ -104,7 +104,7 @@ export default function SinglePostView({
       </button>
 
       {loading && (
-        <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-white/5 p-6 space-y-3 animate-pulse">
+        <div className="bg-card rounded-2xl border border-slate-200 dark:border-border-app p-6 space-y-3 animate-pulse">
           <div className="flex gap-3">
             <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-white/10 shrink-0" />
             <div className="flex-1 space-y-2 pt-1">

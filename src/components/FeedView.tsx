@@ -10,9 +10,10 @@ import {
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
-import { formatEventDateParts } from '../data/mockEvents'
+import { formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
 import ComposeBox from './ComposeBox'
+import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
 import PostCard from './PostCard'
 import DepartmentFilter from './DepartmentFilter'
@@ -134,8 +135,9 @@ export default function FeedView({
   onNavigateToUser,
   onNavigateToEvents,
 }: Props) {
-  const { events, toggleRsvp } = useEvents()
+  const { events, toggleRsvp, updateEvent } = useEvents()
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [editTarget, setEditTarget] = useState<UJEvent | null>(null)
 
   const selectedEvent = useMemo(
     () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
@@ -150,7 +152,7 @@ export default function FeedView({
         </div>
       )}
 
-      <div className="border border-border-app bg-bg-app shadow-none overflow-hidden">
+      <div className="overflow-hidden bg-transparent">
         {postsLoading && (
           <div className="flex justify-center py-16">
             <div className="h-8 w-8 rounded-full border-[3px] border-uj-blue border-t-transparent animate-spin" />
@@ -398,6 +400,18 @@ export default function FeedView({
         event={selectedEvent}
         onClose={() => setSelectedEventId(null)}
         onToggleRsvp={toggleRsvp}
+        onEditRequest={(e) => {
+          setEditTarget(e)
+          setSelectedEventId(null)
+        }}
+      />
+
+      <CreateEventModal
+        isOpen={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        onAdd={() => {}}
+        editEvent={editTarget}
+        onUpdate={updateEvent}
       />
     </div>
   )

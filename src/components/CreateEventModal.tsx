@@ -9,25 +9,39 @@ import {
 import { createPortal } from 'react-dom'
 import { Map, X } from 'lucide-react'
 import { motion } from 'framer-motion'
+import type { UJEvent } from '../data/mockEvents'
 import type { NewEventFormData } from '../hooks/useEvents'
 import ImageCropper from './ImageCropper'
 import LocationPicker from './LocationPicker'
+
+function toDateTimeLocalValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 type Props = {
   isOpen: boolean
   onClose: () => void
   onAdd: (data: NewEventFormData) => void
+  editEvent?: UJEvent | null
+  onUpdate?: (id: string, patch: Partial<UJEvent>) => void
 }
 
 const inputCls =
-  'bg-black/20 border border-[#1c2b4e] text-white rounded-lg p-3 w-full focus:border-[#ffa000] outline-none [color-scheme:dark]'
+  'w-full rounded-lg border border-slate-200 dark:border-[#1c2b4e] bg-slate-100 p-3 text-slate-900 placeholder:text-slate-500 focus:border-accent-interactive outline-none dark:bg-black/20 dark:text-white dark:placeholder:text-slate-500'
 
 const CATEGORIES = ['Wydarzenie', 'Wydział', 'Ogłoszenie'] as const
 
 const fileInputCls =
-  'block w-full cursor-pointer rounded-lg border border-[#1c2b4e] bg-black/20 px-3 py-2.5 text-sm text-slate-200 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[#1c2b4e] file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#2a3b66] focus:border-[#ffa000] focus:outline-none [color-scheme:dark]'
+  'block w-full cursor-pointer rounded-lg border border-slate-200 dark:border-[#1c2b4e] bg-slate-100 px-3 py-2.5 text-sm text-slate-900 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-300 focus:border-accent-interactive focus:outline-none dark:bg-black/20 dark:text-slate-200 dark:file:bg-[#1c2b4e] dark:file:text-white dark:hover:file:bg-slate-700'
 
-export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
+export default function CreateEventModal({
+  isOpen,
+  onClose,
+  onAdd,
+  editEvent = null,
+  onUpdate,
+}: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isClosing, setIsClosing] = useState(false)
   const [title, setTitle] = useState('')
@@ -39,6 +53,9 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
   const [locationPickerOpen, setLocationPickerOpen] = useState(false)
+  const [posterWasRemoved, setPosterWasRemoved] = useState(false)
+
+  const isEdit = Boolean(editEvent)
 
   const handleClose = useCallback(() => {
     setIsClosing(true)
@@ -50,18 +67,30 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
 
   useEffect(() => {
     if (!isOpen) return
-    setTitle('')
-    setDateTime('')
-    setCategory('Wydarzenie')
-    setLocation('')
-    setDescription('')
-    setMapUrl('')
-    setImagePreview(null)
+    setIsClosing(false)
     setImageToCrop(null)
     setLocationPickerOpen(false)
+    setPosterWasRemoved(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
-    setIsClosing(false)
-  }, [isOpen])
+
+    if (editEvent) {
+      setTitle(editEvent.title)
+      setDateTime(toDateTimeLocalValue(editEvent.date))
+      setCategory(editEvent.category)
+      setLocation(editEvent.location)
+      setDescription(editEvent.description)
+      setMapUrl(editEvent.mapUrl ?? '')
+      setImagePreview(editEvent.imageUrl ?? null)
+    } else {
+      setTitle('')
+      setDateTime('')
+      setCategory('Wydarzenie')
+      setLocation('')
+      setDescription('')
+      setMapUrl('')
+      setImagePreview(null)
+    }
+  }, [isOpen, editEvent?.id])
 
   useEffect(() => {
     if (!isOpen || imageToCrop || locationPickerOpen) return
@@ -77,6 +106,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
     if (!file) {
       return
     }
+    setPosterWasRemoved(false)
     const reader = new FileReader()
     reader.onloadend = () => {
       setImageToCrop(reader.result as string)
@@ -87,12 +117,37 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
   const clearPoster = () => {
     setImagePreview(null)
     setImageToCrop(null)
+    setPosterWasRemoved(true)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!title.trim() || !dateTime.trim() || !location.trim()) return
+
+    if (isEdit && editEvent && onUpdate) {
+      const nextDate = new Date(dateTime)
+      if (Number.isNaN(nextDate.getTime())) return
+
+      const patch: Partial<UJEvent> = {
+        title: title.trim(),
+        date: nextDate,
+        category,
+        location: location.trim(),
+        description: description.trim(),
+      }
+      const map = mapUrl.trim()
+      if (map) patch.mapUrl = map
+      else patch.mapUrl = undefined
+
+      if (imagePreview) patch.imageUrl = imagePreview
+      else if (posterWasRemoved) patch.imageUrl = undefined
+
+      onUpdate(editEvent.id, patch)
+      handleClose()
+      return
+    }
+
     const map = mapUrl.trim()
     onAdd({
       title: title.trim(),
@@ -119,6 +174,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
         onCropped={(base64) => {
           setImagePreview(base64)
           setImageToCrop(null)
+          setPosterWasRemoved(false)
         }}
       />
 
@@ -133,7 +189,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
 
       <motion.div
         role="presentation"
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: isClosing ? 0 : 1 }}
         transition={{ duration: 0.18 }}
@@ -146,7 +202,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="create-event-title"
-          className="w-full max-w-lg rounded-2xl border border-[#1c2b4e] bg-[#040521] p-6 relative overflow-hidden shadow-none [color-scheme:dark]"
+          className="w-full max-w-lg rounded-2xl border border-border-app bg-card p-6 relative overflow-hidden shadow-none"
           initial={{ opacity: 0, y: 12, scale: 0.97 }}
           animate={{
             opacity: isClosing ? 0 : 1,
@@ -159,19 +215,19 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
           <button
             type="button"
             onClick={handleClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:text-fg-primary transition-colors dark:text-slate-400 dark:hover:text-white"
             aria-label="Zamknij"
           >
             <X size={20} strokeWidth={2} />
           </button>
 
-          <h2 id="create-event-title" className="text-xl font-bold text-white mb-6 pr-10">
-            Nowe wydarzenie
+          <h2 id="create-event-title" className="text-xl font-bold text-slate-900 dark:text-white mb-6 pr-10">
+            {isEdit ? 'Edytuj wydarzenie' : 'Nowe wydarzenie'}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="ce-title" className="block text-xs font-semibold text-slate-400 mb-1.5">
+              <label htmlFor="ce-title" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Tytuł
               </label>
               <input
@@ -185,7 +241,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
             </div>
 
             <div>
-              <label htmlFor="ce-datetime" className="block text-xs font-semibold text-slate-400 mb-1.5">
+              <label htmlFor="ce-datetime" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Data i czas
               </label>
               <input
@@ -199,7 +255,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
             </div>
 
             <div>
-              <label htmlFor="ce-category" className="block text-xs font-semibold text-slate-400 mb-1.5">
+              <label htmlFor="ce-category" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Kategoria
               </label>
               <select
@@ -209,7 +265,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
                 className={inputCls}
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="bg-[#040521]">
+                  <option key={c} value={c} className="bg-white dark:bg-[#040521] text-slate-900 dark:text-white">
                     {c}
                   </option>
                 ))}
@@ -217,7 +273,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
             </div>
 
             <div>
-              <span className="block text-xs font-semibold text-slate-400 mb-1.5" id="ce-location-label">
+              <span className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5" id="ce-location-label">
                 Lokalizacja
               </span>
               <div className="flex flex-col sm:flex-row gap-2 sm:items-stretch">
@@ -242,7 +298,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
             </div>
 
             <div>
-              <label htmlFor="ce-poster" className="block text-xs font-semibold text-slate-400 mb-1.5">
+              <label htmlFor="ce-poster" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Plakat (opcjonalnie, JPEG / PNG / WebP)
               </label>
               <input
@@ -258,7 +314,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
                   <button
                     type="button"
                     onClick={clearPoster}
-                    className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white hover:bg-black/80 border border-[#1c2b4e] transition-colors"
+                    className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 border border-slate-200 dark:border-[#1c2b4e] transition-colors dark:bg-black/65"
                     aria-label="Usuń plakat"
                   >
                     <X size={16} strokeWidth={2} />
@@ -266,14 +322,14 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
                   <img
                     src={imagePreview}
                     alt=""
-                    className="h-24 w-full object-cover rounded-lg border border-[#1c2b4e]"
+                    className="h-24 w-full object-cover rounded-lg border border-slate-200 dark:border-[#1c2b4e]"
                   />
                 </div>
               ) : null}
             </div>
 
             <div>
-              <label htmlFor="ce-desc" className="block text-xs font-semibold text-slate-400 mb-1.5">
+              <label htmlFor="ce-desc" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Opis
               </label>
               <textarea
@@ -289,7 +345,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-3 rounded-xl text-slate-400 hover:text-slate-200 bg-transparent transition-colors font-medium"
+                className="px-4 py-3 rounded-xl text-slate-600 hover:text-fg-primary bg-transparent transition-colors font-medium dark:text-slate-400 dark:hover:text-slate-200"
               >
                 Anuluj
               </button>
@@ -297,7 +353,7 @@ export default function CreateEventModal({ isOpen, onClose, onAdd }: Props) {
                 type="submit"
                 className="flex-1 min-w-[160px] py-3 rounded-xl bg-[#ffa000] text-black font-bold hover:bg-[#e69000] transition-colors"
               >
-                Utwórz wydarzenie
+                {isEdit ? 'Zapisz zmiany' : 'Utwórz wydarzenie'}
               </button>
             </div>
           </form>

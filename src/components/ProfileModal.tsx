@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ImagePlus, X } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import { UJ_DEPARTMENTS } from '../lib/departments'
 import ImageCropperModal from './ImageCropperModal'
+
+const fieldInputCls =
+  'w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-none ring-0 outline-none transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-0 focus:shadow-none focus:border-[#ffa000] dark:border-[#1c2b4e] dark:bg-[#01020a] dark:text-white dark:placeholder:text-neutral-500'
+
 
 type Props = {
   session: Session
@@ -15,15 +18,13 @@ type Props = {
   onAvatarUpdate?: (url: string) => void
 }
 
-const inputCls =
-  'w-full rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 px-3 py-2.5 text-[14px] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-uj-blue/25 dark:focus:ring-uj-orange/25 transition-all'
-
 export default function ProfileModal({ session, profile, onClose, onSaved, onAvatarUpdate }: Props) {
   const [isClosing, setIsClosing] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [bio, setBio] = useState(profile?.bio ?? '')
   const [department, setDepartment] = useState(profile?.department ?? '')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
+  const [currentBannerUrl] = useState<string | null>(profile?.banner_url ?? null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -78,6 +79,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
         id: session.user.id,
         full_name: name.trim() || null,
         avatar_url: currentAvatarUrl,
+        banner_url: currentBannerUrl,
         bio: bio.trim() || null,
         department: department.trim() || null,
         updated_at: new Date().toISOString(),
@@ -91,8 +93,55 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
     handleClose()
   }
 
+  const panelBase: React.CSSProperties = {
+    boxShadow: 'none',
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '90%',
+    maxWidth: '500px',
+    height: 'auto',
+    maxHeight: '90vh',
+    zIndex: 9999,
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'auto',
+    padding: '1.5rem',
+    borderRadius: '1.5rem',
+    outline: 'none',
+  }
+
+  const backdropMerged: React.CSSProperties = {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9998,
+    opacity: isClosing ? 0 : 1,
+    pointerEvents: isClosing ? 'none' : 'auto',
+    transition: 'opacity 0.2s ease',
+  }
+
+  const panelMerged: React.CSSProperties = {
+    ...panelBase,
+    opacity: isClosing ? 0 : 1,
+    transform: isClosing ? 'translate(-50%, -48%) scale(0.98)' : 'translate(-50%, -50%)',
+    transition: 'opacity 0.2s ease, transform 0.2s ease',
+  }
+
   return (
     <>
+      <style>{`
+        .profile-modal-panel {
+          background-color: var(--modal-bg) !important;
+          border: 1px solid var(--modal-border) !important;
+          box-shadow: none !important;
+        }
+        .profile-modal-save {
+          background-color: #ffa000 !important;
+          color: #000000 !important;
+        }
+      `}</style>
       {cropSrc && (
         <ImageCropperModal
           imageSrc={cropSrc}
@@ -103,102 +152,147 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
           onSave={handleAvatarCropSave}
         />
       )}
-      <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isClosing ? 0 : 1 }}
-        transition={{ duration: 0.2 }}
-        onPointerDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
+
+      <div
+        role="presentation"
+        className="bg-black/90"
+        style={backdropMerged}
+        onPointerDown={(e) => {
+          if (e.target === e.currentTarget) handleClose()
+        }}
       >
-        <motion.div
-          className="w-full max-w-lg bg-white dark:bg-dark-card rounded-3xl shadow-2xl dark:shadow-none border border-gray-100 dark:border-white/5 border-t-4 border-t-uj-blue/20 dark:border-t-uj-orange/30 flex flex-col max-h-[90vh]"
-          initial={{ opacity: 0, y: 40, scale: 0.97 }}
-          animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0, scale: isClosing ? 0.97 : 1 }}
-          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-modal-title"
+          className="profile-modal-panel shadow-none ring-0 outline-none"
+          style={panelMerged}
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 shrink-0">
-            <h2 className="text-lg font-extrabold text-slate-900 dark:text-blue-50">Edytuj profil</h2>
-            <button type="button" onClick={handleClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors text-slate-500 dark:text-gray-400">
-              <X className="h-5 w-5" />
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 pb-4 dark:border-[#1c2b4e]">
+            <h2 id="profile-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">
+              Edytuj profil
+            </h2>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="rounded-full p-2 text-slate-600 shadow-none ring-0 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
+              aria-label="Zamknij"
+            >
+              <X className="h-5 w-5" strokeWidth={2} />
             </button>
           </div>
 
-          <div className="overflow-y-auto px-6 py-5 space-y-4">
-
-            {/* Avatar */}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-4">
             <div className="flex flex-col items-center gap-2 pb-2">
               <div className="relative">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Awatar" className="h-24 w-24 rounded-full object-cover border-4 border-uj-blue/20" />
+                  <img
+                    src={avatarPreview}
+                    alt="Awatar"
+                    className="h-24 w-24 rounded-full border-4 border-[#ffa000]/35 object-cover shadow-none"
+                  />
                 ) : (
-                  <div className="h-24 w-24 rounded-full bg-uj-blue/10 border-4 border-uj-blue/20 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-uj-blue">{(name || session.user.email || 'U').charAt(0).toUpperCase()}</span>
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-slate-200 bg-slate-100 shadow-none ring-0 dark:border-[#1c2b4e] dark:bg-[#01020a]">
+                    <span className="text-2xl font-bold text-[#ffa000]">
+                      {(name || session.user.email || 'U').charAt(0).toUpperCase()}
+                    </span>
                   </div>
                 )}
                 {isUploadingAvatar && (
-                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
-                    <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 shadow-none ring-0">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent shadow-none" />
                   </div>
                 )}
                 <button
                   type="button"
                   disabled={isUploadingAvatar}
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-uj-orange text-white shadow-md hover:scale-110 disabled:opacity-60 disabled:cursor-not-allowed transition-transform"
+                  className="absolute -bottom-1 -right-1 rounded-full bg-[#ffa000] p-1.5 text-black shadow-none ring-0 transition-transform hover:scale-110 hover:bg-[#ffb333] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <ImagePlus className="h-3.5 w-3.5" />
                 </button>
               </div>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-              <p className="text-xs text-slate-400 dark:text-gray-500">Kliknij ikonę, aby zmienić zdjęcie</p>
+              <p className="text-xs text-slate-500 dark:text-neutral-400">Kliknij ikonę, aby zmienić zdjęcie</p>
             </div>
 
-            {/* Imię */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Imię / Nazwa</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                placeholder="np. Jan Kowalski" maxLength={80} className={inputCls} />
+            <div>
+              <label htmlFor="profile-name" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
+                Imię / Nazwa
+              </label>
+              <input
+                id="profile-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="np. Jan Kowalski"
+                maxLength={80}
+                className={fieldInputCls}
+              />
             </div>
 
-            {/* Bio */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">O mnie</label>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)}
-                placeholder="Napisz coś o sobie…" rows={3} maxLength={300}
-                className={`${inputCls} resize-none`} />
-              <p className="text-[11px] text-slate-400 dark:text-gray-500 text-right">{bio.length}/300</p>
+            <div>
+              <label htmlFor="profile-bio" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
+                O mnie
+              </label>
+              <textarea
+                id="profile-bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Napisz coś o sobie…"
+                rows={3}
+                maxLength={300}
+                className={`${fieldInputCls} resize-none`}
+              />
+              <p className="mt-1 text-right text-[11px] text-slate-500 dark:text-neutral-500">{bio.length}/300</p>
             </div>
 
-            {/* Wydział */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Wydział</label>
+            <div>
+              <label htmlFor="profile-dept" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
+                Wydział
+              </label>
               <select
+                id="profile-dept"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className={`${inputCls} cursor-pointer`}
+                className={`${fieldInputCls} cursor-pointer`}
               >
                 <option value="">— Wybierz wydział —</option>
                 {UJ_DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>{dept}</option>
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </select>
             </div>
 
-            {error && <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2">{error}</div>}
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 shadow-none ring-0 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-300">
+                {error}
+              </div>
+            )}
           </div>
 
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-gray-700 flex justify-end gap-3 shrink-0">
-            <button type="button" onClick={handleClose}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors">
+          <div className="mt-4 flex shrink-0 justify-end gap-3 border-t border-slate-200 pt-4 shadow-none ring-0 dark:border-[#1c2b4e]">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 shadow-none ring-0 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+            >
               Anuluj
             </button>
-            <button type="button" onClick={handleSave} disabled={saving}
-              className="px-5 py-2 rounded-xl bg-uj-blue text-white text-sm font-extrabold hover:bg-uj-blue/90 transition-colors disabled:opacity-70">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="profile-modal-save rounded-xl px-6 py-2.5 text-sm font-bold text-black shadow-none ring-0 outline-none transition-opacity hover:opacity-90 disabled:opacity-70"
+            >
               {saving ? 'Zapisuję…' : 'Zapisz profil'}
             </button>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </>
   )
 }

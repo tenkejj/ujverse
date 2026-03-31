@@ -15,7 +15,7 @@ function LightboxPortal({ src, onClose }: { src: string; onClose: () => void }) 
   if (!portal) return null
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
       onClick={onClose}
     >
       <button
@@ -59,6 +59,8 @@ type Props = {
   onDeleteComment: (commentId: number) => void
   onNavigateToPost?: () => void
   onNavigateToUser?: (userId: string) => void
+  /** Płaski wpis (np. profil) — bez karty, zaokrągleń i cienia */
+  variant?: 'card' | 'flat'
 }
 
 export default function PostCard({
@@ -83,7 +85,9 @@ export default function PostCard({
   onDeleteComment,
   onNavigateToPost,
   onNavigateToUser,
+  variant = 'card',
 }: Props) {
+  const isFlat = variant === 'flat'
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [isImageOpen, setIsImageOpen] = useState(false)
 
@@ -107,7 +111,11 @@ export default function PostCard({
   return (
     <article
       key={postId}
-      className="bg-white dark:bg-bg-card/80 rounded-2xl border border-slate-200 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/25 hover:border-slate-300 dark:hover:border-[#252a4a] transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
+      className={
+        isFlat
+          ? 'bg-transparent rounded-none border-0 shadow-none overflow-visible transition-colors'
+          : 'bg-card rounded-2xl border border-slate-200 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/25 hover:border-slate-300 dark:hover:border-[#2a3a66] transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden'
+      }
     >
       {/* Post body */}
       <div
@@ -258,7 +266,7 @@ export default function PostCard({
 
       {/* Comments thread */}
       {isCommentsOpen && (
-        <div className="border-t border-border-app">
+        <div className={isFlat ? 'border-t border-white/10' : 'border-t border-border-app'}>
           <CommentThread
             postId={postId}
             comments={comments}

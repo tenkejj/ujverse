@@ -72,10 +72,15 @@ export type NewEventFormData = Omit<
 type EventsContextValue = {
   /** Wydarzenia od dzisiejszego dnia włącznie, posortowane rosnąco po dacie. */
   events: UJEvent[]
+  /** Najbliższe nadchodzące wydarzenie z plakatem (do sekcji Hero). */
+  featuredEvent: UJEvent | null
   /** Pełna lista (także przeszłe) — np. pod przyszły profil / administrację. */
   allEvents: UJEvent[]
   toggleRsvp: (eventId: string) => void
   addEvent: (data: NewEventFormData) => void
+  deleteEvent: (id: string) => void
+  /** Klucz z wartością `undefined` usuwa opcjonalne pole (np. imageUrl, mapUrl). */
+  updateEvent: (id: string, patch: Partial<UJEvent>) => void
 }
 
 const EventsContext = createContext<EventsContextValue | null>(null)
@@ -130,6 +135,31 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const deleteEvent = useCallback((id: string) => {
+    setEvents((prev) => prev.filter((ev) => ev.id !== id))
+  }, [])
+
+  const updateEvent = useCallback((id: string, patch: Partial<UJEvent>) => {
+    setEvents((prev) =>
+      prev
+        .map((ev) => {
+          if (ev.id !== id) return ev
+          const next: Record<string, unknown> = { ...ev }
+          for (const key of Object.keys(patch) as (keyof UJEvent)[]) {
+            if (key === 'id') continue
+            const v = patch[key]
+            if (v === undefined) {
+              delete next[key as string]
+            } else {
+              next[key as string] = v as unknown
+            }
+          }
+          return next as unknown as UJEvent
+        })
+        .sort((a, b) => a.date.getTime() - b.date.getTime()),
+    )
+  }, [])
+
   const activeEvents = useMemo(() => {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
@@ -138,11 +168,21 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => a.date.getTime() - b.date.getTime())
   }, [events])
 
+  const featuredEvent = useMemo(() => {
+    const withPoster = activeEvents.filter(
+      (ev) => typeof ev.imageUrl === 'string' && ev.imageUrl.length > 0,
+    )
+    return withPoster[0] ?? null
+  }, [activeEvents])
+
   const value: EventsContextValue = {
     events: activeEvents,
+    featuredEvent,
     allEvents: events,
     toggleRsvp,
     addEvent,
+    deleteEvent,
+    updateEvent,
   }
 
   return createElement(EventsContext.Provider, { value }, children)
