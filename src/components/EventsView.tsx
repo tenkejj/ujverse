@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
-import { mockEvents, formatEventDateParts, type UJEvent } from '../data/mockEvents'
+import { Plus } from 'lucide-react'
+import { formatEventDateParts, type UJEvent } from '../data/mockEvents'
+import { useEvents } from '../hooks/useEvents'
+import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
 
 type EventFilter = 'all' | 'Wydarzenie' | 'Wydział' | 'Ogłoszenie'
@@ -37,46 +40,73 @@ function EventCard({ event, onSelect }: { event: UJEvent; onSelect: (e: UJEvent)
 }
 
 export default function EventsView() {
+  const { events, toggleRsvp, addEvent } = useEvents()
   const [filter, setFilter] = useState<EventFilter>('all')
-  const [selectedEvent, setSelectedEvent] = useState<UJEvent | null>(null)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+
+  const selectedEvent = useMemo(
+    () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
+    [events, selectedEventId],
+  )
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return mockEvents
-    return mockEvents.filter((ev) => ev.category === filter)
-  }, [filter])
+    if (filter === 'all') return events
+    return events.filter((ev) => ev.category === filter)
+  }, [filter, events])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
 
       <div className="lg:col-span-6 space-y-4">
-        <div className="flex flex-wrap gap-2 border-b border-slate-200/10 dark:border-border-app pb-4">
-          {FILTERS.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFilter(key)}
-              className={`px-3 py-2 rounded-xl text-sm transition-colors ${
-                filter === key
-                  ? 'text-[#ffa000] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 font-medium'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/10 dark:border-border-app pb-4">
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`px-3 py-2 rounded-xl text-sm transition-colors ${
+                  filter === key
+                    ? 'text-[#ffa000] font-bold'
+                    : 'text-slate-400 hover:text-slate-200 font-medium'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="shrink-0 flex items-center gap-2 border border-[#ffa000] text-[#ffa000] hover:bg-[#ffa000]/10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+          >
+            <Plus size={18} strokeWidth={2} aria-hidden />
+            Dodaj wydarzenie
+          </button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((ev) => (
-            <EventCard key={ev.id} event={ev} onSelect={setSelectedEvent} />
+            <EventCard key={ev.id} event={ev} onSelect={(e) => setSelectedEventId(e.id)} />
           ))}
         </div>
       </div>
 
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
 
-      <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      <EventModal
+        event={selectedEvent}
+        onClose={() => setSelectedEventId(null)}
+        onToggleRsvp={toggleRsvp}
+      />
+
+      <CreateEventModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onAdd={addEvent}
+      />
     </div>
   )
 }

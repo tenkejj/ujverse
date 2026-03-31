@@ -7,10 +7,11 @@ import {
   Mail,
   MessageCircle,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
-import { mockEvents, formatEventDateParts, type UJEvent } from '../data/mockEvents'
+import { formatEventDateParts } from '../data/mockEvents'
+import { useEvents } from '../hooks/useEvents'
 import ComposeBox from './ComposeBox'
 import EventModal from './EventModal'
 import PostCard from './PostCard'
@@ -133,7 +134,13 @@ export default function FeedView({
   onNavigateToUser,
   onNavigateToEvents,
 }: Props) {
-  const [selectedEvent, setSelectedEvent] = useState<UJEvent | null>(null)
+  const { events, toggleRsvp } = useEvents()
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+
+  const selectedEvent = useMemo(
+    () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
+    [events, selectedEventId],
+  )
 
   const feedContent = (
     <div className="space-y-0">
@@ -348,13 +355,13 @@ export default function FeedView({
             </span>
           </button>
           <div className="space-y-3">
-            {mockEvents.slice(0, 3).map((ev) => {
+            {events.slice(0, 3).map((ev) => {
               const { monthLabel, dayNum } = formatEventDateParts(ev.date)
               return (
                 <button
                   key={ev.id}
                   type="button"
-                  onClick={() => setSelectedEvent(ev)}
+                  onClick={() => setSelectedEventId(ev.id)}
                   className="w-full text-left flex items-start gap-3 rounded-xl border border-slate-100/80 dark:border-border-app/50 bg-bg-card p-3 cursor-pointer hover:bg-white/5 transition-colors"
                 >
                   <div className="shrink-0 text-center min-w-[36px]">
@@ -389,7 +396,8 @@ export default function FeedView({
 
       <EventModal
         event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
+        onClose={() => setSelectedEventId(null)}
+        onToggleRsvp={toggleRsvp}
       />
     </div>
   )

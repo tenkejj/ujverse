@@ -15,6 +15,7 @@ import Header from './components/Header'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
 import EventsView from './components/EventsView'
+import { EventsProvider } from './hooks/useEvents'
 import ProfileView from './components/ProfileView'
 import BottomNav from './components/BottomNav'
 import NotificationsView from './components/NotificationsView'
@@ -502,6 +503,7 @@ function App() {
   }
 
   return (
+    <EventsProvider>
     <>
       {profileModalOpen && (
         <ProfileModal
@@ -676,6 +678,7 @@ function App() {
         />
       </div>
     </>
+    </EventsProvider>
   )
 }
 

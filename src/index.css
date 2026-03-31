@@ -1,4 +1,15 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Mroczny wygląd kafelków Leaflet */
+.leaflet-tile-container {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.leaflet-container .gold-pin-icon {
+  background: transparent !important;
+  border: none !important;
+}
 
 html {
   scroll-behavior: smooth;

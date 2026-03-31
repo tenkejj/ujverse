@@ -7,7 +7,16 @@ export interface UJEvent {
   description: string
   attendees: number
   isAttending?: boolean
+  /** URL obrazka lub data URL (Base64) plakatu. */
+  imageUrl?: string
+  /** Link do mapy (np. Google Maps). */
+  mapUrl?: string
+  /** Miniatury awatarów uczestników. */
+  attendeeAvatars?: string[]
 }
+
+const AVA = (seed: string) =>
+  `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -66,6 +75,11 @@ export const mockEvents: UJEvent[] = [
     description:
       'Coroczny festiwal studencki z koncertami na Błoniach, integracją wydziałów i atrakcjami dla całej społeczności akademickiej. Śledź oficjalny harmonogram — występy, strefy chill i wspólne świętowanie końca roku akademickiego.',
     attendees: 124,
+    imageUrl:
+      'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
+    mapUrl:
+      'https://www.google.com/maps/search/?api=1&query=Collegium+Novum+UJ+Kraków',
+    attendeeAvatars: [AVA('juw-a'), AVA('juw-b'), AVA('juw-c')],
   },
   {
     id: 'dnia-wppia-2026',
@@ -76,6 +90,11 @@ export const mockEvents: UJEvent[] = [
     description:
       'Spotkania z praktykami, warsztaty aplikacyjne, prezentacja kół naukowych i debaty o karierze po WPiA. Dla studentów I i II stopnia — możliwość rozmów z absolwentami i pracodawcami z sektora prawniczego.',
     attendees: 58,
+    imageUrl:
+      'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+    mapUrl:
+      'https://www.google.com/maps/search/?api=1&query=Krupnicza+33+Kraków+WPiA+UJ',
+    attendeeAvatars: [AVA('wppia-1'), AVA('wppia-2'), AVA('wppia-3')],
   },
   {
     id: 'rekrutacja-2026',
@@ -86,6 +105,9 @@ export const mockEvents: UJEvent[] = [
     description:
       'Zbiór informacji o terminach, dokumentach i ścieżkach rekrutacji na studia I i II stopnia. Prezentacja kierunków, zasady punktacji i najczęstsze pytania kandydatów — także sesja Q&A na żywo.',
     attendees: 203,
+    mapUrl:
+      'https://www.google.com/maps/search/?api=1&query=Reymonta+4+Kraków+Uniwersytet+Jagielloński',
+    attendeeAvatars: [AVA('rek-x'), AVA('rek-y'), AVA('rek-z')],
   },
   {
     id: 'noc-nauki-2026',
@@ -96,5 +118,8 @@ export const mockEvents: UJEvent[] = [
     description:
       'Otwarte laboratoria, pokazy doświadczeń i krótkie wykłady popularnonaukowe dla mieszkańców Krakowa i studentów. Wstęp bezpłatny po rejestracji na wybrane bloki tematyczne.',
     attendees: 412,
+    mapUrl:
+      'https://www.google.com/maps/search/?api=1&query=Kampus+600-lecia+UJ+Kraków',
+    attendeeAvatars: [AVA('nn-1'), AVA('nn-2'), AVA('nn-3')],
   },
 ]
