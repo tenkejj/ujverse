@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   BookOpen,
   CalendarDays,
   Filter,
@@ -359,12 +360,17 @@ export default function FeedView({
           <div className="space-y-3">
             {events.slice(0, 3).map((ev) => {
               const { monthLabel, dayNum } = formatEventDateParts(ev.date)
+              const official = Boolean(ev.is_official)
               return (
                 <button
                   key={ev.id}
                   type="button"
                   onClick={() => setSelectedEventId(ev.id)}
-                  className="w-full text-left flex items-start gap-3 rounded-xl border border-slate-100/80 dark:border-border-app/50 bg-bg-card p-3 cursor-pointer hover:bg-white/5 transition-colors"
+                  className={`w-full text-left flex items-start gap-3 rounded-xl p-3 cursor-pointer transition-colors ${
+                    official
+                      ? 'border border-amber-200/90 bg-gradient-to-br from-amber-50/90 to-white shadow-[0_0_22px_-10px_rgba(245,158,11,0.5)] ring-1 ring-amber-300/30 hover:ring-amber-400/40 dark:border-[#ffa000]/35 dark:from-[#ffa000]/[0.09] dark:to-transparent dark:shadow-[0_0_28px_-12px_rgba(255,160,0,0.35)] dark:ring-[#ffa000]/20 dark:hover:bg-white/[0.04]'
+                      : 'border border-slate-100/80 dark:border-border-app/50 bg-bg-card hover:bg-white/5'
+                  }`}
                 >
                   <div className="shrink-0 text-center min-w-[36px]">
                     <span
@@ -376,10 +382,20 @@ export default function FeedView({
                       {dayNum}
                     </span>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-slate-800 dark:text-[#e7e9ea] leading-snug truncate">
-                      {ev.title}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <p className="text-[12px] font-semibold text-slate-800 dark:text-[#e7e9ea] leading-snug truncate min-w-0">
+                        {ev.title}
+                      </p>
+                      {official ? (
+                        <BadgeCheck
+                          size={14}
+                          className={`${widgetGoldCls} shrink-0 mt-0.5`}
+                          strokeWidth={2.5}
+                          aria-label="Oficjalne UJ"
+                        />
+                      ) : null}
+                    </div>
                     <span className="text-[10px] text-slate-400 dark:text-gray-500">
                       {ev.category}
                     </span>

@@ -9,6 +9,10 @@ import {
   type ReactNode,
 } from 'react'
 import { mockEvents, type UJEvent } from '../data/mockEvents'
+import {
+  hydrateOfficialEventsFromStorage,
+  syncExternalEvents as runOfficialIngest,
+} from '../services/EventIngestor'
 
 const STORAGE_KEY = 'ujverse_events'
 
@@ -44,10 +48,20 @@ function reviveEvent(raw: unknown): UJEvent | null {
   if (typeof o.imageUrl === 'string' && o.imageUrl.length > 0) out.imageUrl = o.imageUrl
   if (typeof o.mapUrl === 'string' && o.mapUrl.length > 0) out.mapUrl = o.mapUrl
   if (attendeeAvatars) out.attendeeAvatars = attendeeAvatars
+  if (typeof o.external_id === 'string' && o.external_id.length > 0) out.external_id = o.external_id
+  if (typeof o.source_name === 'string' && o.source_name.length > 0) out.source_name = o.source_name
+  if (typeof o.is_official === 'boolean') out.is_official = o.is_official
+  if (typeof o.event_url === 'string' && o.event_url.length > 0) out.event_url = o.event_url
+  const fac = o.faculty
+  if (fac === 'WZiKS' || fac === 'Uniwersytet Jagielloński') {
+    out.faculty = fac
+  }
+  if (typeof o.ingest_from_fallback === 'boolean') out.ingest_from_fallback = o.ingest_from_fallback
   return out
 }
 
-function loadFromStorage(): UJEvent[] {
+/** Tylko wydarzenia użytkownika (bez zsynchronizowanych oficjalnych — te są z EventIngestor). */
+function loadUserEventsFromStorage(): UJEvent[] {
   if (typeof window === 'undefined') return mockEvents
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -55,7 +69,8 @@ function loadFromStorage(): UJEvent[] {
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return mockEvents
     const revived = parsed.map(reviveEvent).filter((e): e is UJEvent => e !== null)
-    return revived.length > 0 ? revived : mockEvents
+    const userOnly = revived.filter((e) => !e.is_official)
+    return userOnly.length > 0 ? userOnly : mockEvents
   } catch {
     return mockEvents
   }
@@ -76,21 +91,58 @@ type EventsContextValue = {
   featuredEvent: UJEvent | null
   /** Pełna lista (także przeszłe) — np. pod przyszły profil / administrację. */
   allEvents: UJEvent[]
+  /** True dopóki pierwszy fetch zewnętrznych wydarzeń trwa (opcjonalnie pod UI). */
+  externalEventsLoading: boolean
   toggleRsvp: (eventId: string) => void
   addEvent: (data: NewEventFormData) => void
   deleteEvent: (id: string) => void
   /** Klucz z wartością `undefined` usuwa opcjonalne pole (np. imageUrl, mapUrl). */
   updateEvent: (id: string, patch: Partial<UJEvent>) => void
+  /** Odświeżenie oficjalnych wydarzeń (ingest + cache 15 min). */
+  syncOfficialEvents: (force?: boolean) => Promise<void>
+  /** Ostatnia synchronizacja użyła twardo zakodowanych danych (offline / awaria sieci). */
+  ingestFromStaticFallback: boolean
 }
 
 const EventsContext = createContext<EventsContextValue | null>(null)
 
+function mergeInitialEvents(): UJEvent[] {
+  const users = loadUserEventsFromStorage()
+  const official = hydrateOfficialEventsFromStorage()
+  return [...users, ...official].sort((a, b) => a.date.getTime() - b.date.getTime())
+}
+
 export function EventsProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<UJEvent[]>(loadFromStorage)
+  const [events, setEvents] = useState<UJEvent[]>(mergeInitialEvents)
+  const [externalEventsLoading, setExternalEventsLoading] = useState(false)
+  const [ingestFromStaticFallback, setIngestFromStaticFallback] = useState(() =>
+    mergeInitialEvents().some((e) => e.ingest_from_fallback),
+  )
+
+  const syncOfficialEvents = useCallback(async (force?: boolean) => {
+    setExternalEventsLoading(true)
+    try {
+      const { events: official, fromStaticFallback } = await runOfficialIngest(Boolean(force))
+      setIngestFromStaticFallback(fromStaticFallback)
+      setEvents((prev) => {
+        const userOnly = prev.filter((e) => !e.is_official)
+        return [...userOnly, ...official].sort((a, b) => a.date.getTime() - b.date.getTime())
+      })
+    } catch (e) {
+      console.error('[Ingestor] Błąd w useEvents — stan oficjalnych bez zmian', e)
+    } finally {
+      setExternalEventsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void syncOfficialEvents()
+  }, [syncOfficialEvents])
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(events))
+      const userOnly = events.filter((e) => !e.is_official)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userOnly))
     } catch {
       // quota / private mode — ignore
     }
@@ -123,6 +175,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       description: data.description.trim(),
       attendees: 0,
       isAttending: false,
+      is_official: false,
       attendeeAvatars: [],
     }
     const img = data.imageUrl?.trim()
@@ -136,7 +189,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const deleteEvent = useCallback((id: string) => {
-    setEvents((prev) => prev.filter((ev) => ev.id !== id))
+    setEvents((prev) => {
+      if (prev.some((ev) => ev.id === id && ev.is_official)) return prev
+      return prev.filter((ev) => ev.id !== id)
+    })
   }, [])
 
   const updateEvent = useCallback((id: string, patch: Partial<UJEvent>) => {
@@ -144,6 +200,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       prev
         .map((ev) => {
           if (ev.id !== id) return ev
+          if (ev.is_official) return ev
           const next: Record<string, unknown> = { ...ev }
           for (const key of Object.keys(patch) as (keyof UJEvent)[]) {
             if (key === 'id') continue
@@ -179,10 +236,13 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     events: activeEvents,
     featuredEvent,
     allEvents: events,
+    externalEventsLoading,
     toggleRsvp,
     addEvent,
     deleteEvent,
     updateEvent,
+    syncOfficialEvents,
+    ingestFromStaticFallback,
   }
 
   return createElement(EventsContext.Provider, { value }, children)

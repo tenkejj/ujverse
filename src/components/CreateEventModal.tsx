@@ -28,12 +28,12 @@ type Props = {
 }
 
 const inputCls =
-  'w-full rounded-lg border border-slate-200 dark:border-[#1c2b4e] bg-slate-100 p-3 text-slate-900 placeholder:text-slate-500 focus:border-accent-interactive outline-none dark:bg-black/20 dark:text-white dark:placeholder:text-slate-500'
+  'w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 p-3 text-slate-900 placeholder:text-slate-500 focus:border-accent-interactive outline-none dark:text-white dark:placeholder:text-slate-500'
 
 const CATEGORIES = ['Wydarzenie', 'Wydział', 'Ogłoszenie'] as const
 
 const fileInputCls =
-  'block w-full cursor-pointer rounded-lg border border-slate-200 dark:border-[#1c2b4e] bg-slate-100 px-3 py-2.5 text-sm text-slate-900 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-300 focus:border-accent-interactive focus:outline-none dark:bg-black/20 dark:text-slate-200 dark:file:bg-[#1c2b4e] dark:file:text-white dark:hover:file:bg-slate-700'
+  'block w-full cursor-pointer rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-300 focus:border-accent-interactive focus:outline-none dark:bg-slate-800/50 dark:text-slate-200 dark:file:bg-slate-700 dark:file:text-white dark:hover:file:bg-slate-600'
 
 export default function CreateEventModal({
   isOpen,
@@ -189,29 +189,29 @@ export default function CreateEventModal({
 
       <motion.div
         role="presentation"
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
+        aria-hidden
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: isClosing ? 0 : 1 }}
         transition={{ duration: 0.18 }}
-        onClick={(ev) => ev.stopPropagation()}
         onPointerDown={(ev) => {
           if (ev.target === ev.currentTarget) handleClose()
         }}
+      />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-event-title"
+        className="fixed left-1/2 top-1/2 z-[110] w-[95%] max-w-lg max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-none dark:border-slate-700 dark:bg-slate-900"
+        initial={{ opacity: 0, y: 12, scale: 0.97 }}
+        animate={{
+          opacity: isClosing ? 0 : 1,
+          y: isClosing ? 8 : 0,
+          scale: isClosing ? 0.97 : 1,
+        }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        onClick={(ev) => ev.stopPropagation()}
       >
-        <motion.div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-event-title"
-          className="w-full max-w-lg rounded-2xl border border-border-app bg-card p-6 relative overflow-hidden shadow-none"
-          initial={{ opacity: 0, y: 12, scale: 0.97 }}
-          animate={{
-            opacity: isClosing ? 0 : 1,
-            y: isClosing ? 8 : 0,
-            scale: isClosing ? 0.97 : 1,
-          }}
-          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          onClick={(ev) => ev.stopPropagation()}
-        >
           <button
             type="button"
             onClick={handleClose}
@@ -265,7 +265,7 @@ export default function CreateEventModal({
                 className={inputCls}
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="bg-white dark:bg-[#040521] text-slate-900 dark:text-white">
+                  <option key={c} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                     {c}
                   </option>
                 ))}
@@ -357,7 +357,6 @@ export default function CreateEventModal({
               </button>
             </div>
           </form>
-        </motion.div>
       </motion.div>
     </>,
     document.body,

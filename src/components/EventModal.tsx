@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  BadgeCheck,
   X,
   Calendar,
   CalendarPlus,
+  ExternalLink,
   MapPin,
   Pencil,
   Share2,
@@ -41,11 +43,13 @@ function ModalToolbar({
   onDeleteClick,
   onClose,
   showEdit,
+  showDelete,
 }: {
   onEdit?: () => void
   onDeleteClick: () => void
   onClose: () => void
   showEdit: boolean
+  showDelete: boolean
 }) {
   return (
     <div className="absolute top-4 right-4 z-20 flex items-center gap-1">
@@ -59,14 +63,16 @@ function ModalToolbar({
           <Pencil size={18} strokeWidth={2} />
         </button>
       ) : null}
-      <button
-        type="button"
-        onClick={onDeleteClick}
-        className="z-10 rounded-full bg-black/50 p-2 text-red-500 transition-colors hover:bg-black/65 hover:text-red-400"
-        aria-label="Usuń wydarzenie"
-      >
-        <Trash2 size={18} strokeWidth={2} />
-      </button>
+      {showDelete ? (
+        <button
+          type="button"
+          onClick={onDeleteClick}
+          className="z-10 rounded-full bg-black/50 p-2 text-red-500 transition-colors hover:bg-black/65 hover:text-red-400"
+          aria-label="Usuń wydarzenie"
+        >
+          <Trash2 size={18} strokeWidth={2} />
+        </button>
+      ) : null}
       <button type="button" onClick={onClose} className={actionBtnCls} aria-label="Zamknij">
         <X size={20} strokeWidth={2} />
       </button>
@@ -98,6 +104,8 @@ function EventModalContent({
   const attendeeCount = event.attendees
   const avatars = (event.attendeeAvatars ?? []).slice(0, AVATAR_CAP)
   const hasBanner = Boolean(event.imageUrl)
+  const official = Boolean(event.is_official)
+  const canManage = Boolean(onEditRequest) && !official
 
   const handleEdit = () => {
     onEditRequest?.(event)
@@ -108,7 +116,8 @@ function EventModalContent({
     <>
       {!hasBanner && (
         <ModalToolbar
-          showEdit={Boolean(onEditRequest)}
+          showEdit={canManage}
+          showDelete={canManage}
           onEdit={onEditRequest ? handleEdit : undefined}
           onDeleteClick={onDeleteClick}
           onClose={handleClose}
@@ -116,9 +125,17 @@ function EventModalContent({
       )}
 
       {hasBanner ? null : (
-        <h2 id="event-modal-title" className="text-xl font-bold text-slate-900 dark:text-white mb-2 pr-40">
-          {event.title}
-        </h2>
+        <div className="mb-2 pr-36 space-y-2">
+          {official ? (
+            <span className="inline-flex w-fit items-center gap-1 rounded-full border border-[#ffa000]/45 bg-[#ffa000]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-uj-navy dark:text-[#ffa000]">
+              <BadgeCheck size={12} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
+              Oficjalne UJ
+            </span>
+          ) : null}
+          <h2 id="event-modal-title" className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
+            {event.title}
+          </h2>
+        </div>
       )}
 
       <div className="mb-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
@@ -143,9 +160,21 @@ function EventModalContent({
         </div>
       </div>
 
-      <p className="mb-6 leading-relaxed text-slate-700 dark:text-slate-300">{event.description}</p>
+      <p className="mb-4 leading-relaxed text-slate-700 dark:text-slate-300">{event.description}</p>
 
-      <div className="flex flex-col gap-3">
+      {event.event_url ? (
+        <a
+          href={event.event_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold text-[#ffa000] transition-colors hover:text-[#ffb84d]"
+        >
+          <ExternalLink size={16} className="shrink-0" strokeWidth={2} aria-hidden />
+          Strona wydarzenia u źródła
+        </a>
+      ) : null}
+
+      <div className="mt-6 flex flex-col gap-3">
         <div className="flex items-center gap-3 flex-wrap">
           <button
             type="button"
@@ -220,11 +249,18 @@ function EventModalContent({
           <img src={event.imageUrl} alt="" className="w-full h-48 object-cover" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent dark:from-[#040521] dark:via-[#040521]/50" />
           <ModalToolbar
-            showEdit={Boolean(onEditRequest)}
+            showEdit={canManage}
+            showDelete={canManage}
             onEdit={onEditRequest ? handleEdit : undefined}
             onDeleteClick={onDeleteClick}
             onClose={handleClose}
           />
+          {official ? (
+            <span className="absolute top-16 left-4 z-[6] inline-flex items-center gap-1 rounded-full border border-[#ffa000]/50 bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+              <BadgeCheck size={12} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
+              Oficjalne UJ
+            </span>
+          ) : null}
           <h2
             id="event-modal-title"
             className="absolute bottom-0 left-0 right-0 z-[5] px-4 pb-3 pr-40 text-xl font-bold text-white drop-shadow-md"
@@ -272,6 +308,7 @@ export default function EventModal({ event, onClose, onToggleRsvp, onEditRequest
 
   const handleDeleteClick = () => {
     if (!event) return
+    if (event.is_official) return
     if (!window.confirm('Czy na pewno chcesz usunąć to wydarzenie?')) return
     deleteEvent(event.id)
     handleClose()

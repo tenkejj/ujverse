@@ -1,15 +1,17 @@
-import { useMemo, useState } from 'react'
-import { Plus, Search, User, Users } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { BadgeCheck, Plus, Search, User, Users } from 'lucide-react'
 import { formatEventDateLong, formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
 import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
+import WziksOfficialHub from './WziksOfficialHub'
 
-type EventFilter = 'all' | 'mine' | 'Wydarzenie' | 'Wydział' | 'Ogłoszenie'
+type EventFilter = 'all' | 'mine' | 'Wydarzenie' | 'Wydział' | 'Ogłoszenie' | 'Oficjalne'
 
 const FILTERS: { key: EventFilter; label: string }[] = [
   { key: 'all', label: 'Wszystkie' },
   { key: 'mine', label: 'Moje' },
+  { key: 'Oficjalne', label: 'Oficjalne' },
   { key: 'Wydarzenie', label: 'Wydarzenie' },
   { key: 'Wydział', label: 'Wydział' },
   { key: 'Ogłoszenie', label: 'Ogłoszenie' },
@@ -17,11 +19,16 @@ const FILTERS: { key: EventFilter; label: string }[] = [
 
 function EventCard({ event, onSelect }: { event: UJEvent; onSelect: (e: UJEvent) => void }) {
   const { monthLabel, dayNum } = formatEventDateParts(event.date)
+  const official = Boolean(event.is_official)
   return (
     <button
       type="button"
       onClick={() => onSelect(event)}
-      className="w-full text-left bg-card border border-border-app rounded-2xl p-4 cursor-pointer hover:bg-slate-50 transition-colors dark:hover:bg-white/5"
+      className={`w-full text-left rounded-2xl p-4 cursor-pointer transition-colors ${
+        official
+          ? 'bg-gradient-to-br from-amber-50/95 via-white to-slate-50/80 border border-amber-200/70 shadow-[0_0_28px_-12px_rgba(245,158,11,0.55)] ring-1 ring-amber-300/35 hover:from-amber-50 hover:ring-amber-400/45 dark:from-[#ffa000]/[0.08] dark:via-transparent dark:to-transparent dark:border-[#ffa000]/35 dark:shadow-[0_0_36px_-14px_rgba(255,160,0,0.4)] dark:ring-[#ffa000]/25 dark:hover:bg-white/[0.04]'
+          : 'bg-card border border-border-app hover:bg-slate-50 dark:hover:bg-white/5'
+      }`}
     >
       <div className="flex items-start gap-3">
         <div className="shrink-0 text-center min-w-[40px]">
@@ -31,7 +38,18 @@ function EventCard({ event, onSelect }: { event: UJEvent; onSelect: (e: UJEvent)
           <span className="block text-lg font-extrabold text-fg-primary leading-tight">{dayNum}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-fg-primary leading-snug">{event.title}</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold text-fg-primary leading-snug min-w-0">{event.title}</p>
+            {official ? (
+              <span
+                className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-[#ffa000]/40 bg-[#ffa000]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-uj-navy dark:text-[#ffa000]"
+                title={event.source_name ? `Źródło: ${event.source_name}` : undefined}
+              >
+                <BadgeCheck size={11} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
+                Oficjalne UJ
+              </span>
+            ) : null}
+          </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{event.location}</p>
           <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
             <Users size={16} strokeWidth={2} className="shrink-0 text-[#ffa000]" aria-hidden />
@@ -44,7 +62,16 @@ function EventCard({ event, onSelect }: { event: UJEvent; onSelect: (e: UJEvent)
 }
 
 export default function EventsView() {
-  const { events, featuredEvent, toggleRsvp, addEvent, updateEvent } = useEvents()
+  const {
+    events,
+    allEvents,
+    featuredEvent,
+    toggleRsvp,
+    addEvent,
+    updateEvent,
+    syncOfficialEvents,
+    ingestFromStaticFallback,
+  } = useEvents()
   const [filter, setFilter] = useState<EventFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
@@ -75,6 +102,10 @@ export default function EventsView() {
     return filtered.filter((ev) => ev.id !== featuredEvent.id)
   }, [filtered, featuredEvent])
 
+  useEffect(() => {
+    void syncOfficialEvents()
+  }, [syncOfficialEvents])
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
@@ -96,9 +127,17 @@ export default function EventsView() {
               className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent dark:from-[#01020A] dark:via-[#040521]/80"
               aria-hidden
             />
-            <span className="absolute top-4 left-4 z-10 rounded-lg bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-[#ffa000] backdrop-blur-sm border border-[#ffa000]/30">
-              🔥 WYRÓŻNIONE
-            </span>
+            <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2">
+              <span className="rounded-lg bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-[#ffa000] backdrop-blur-sm border border-[#ffa000]/30">
+                🔥 WYRÓŻNIONE
+              </span>
+              {featuredEvent.is_official ? (
+                <span className="inline-flex items-center gap-0.5 rounded-lg border border-[#ffa000]/50 bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                  <BadgeCheck size={12} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
+                  Oficjalne UJ
+                </span>
+              ) : null}
+            </div>
             <div className="relative z-[1] flex h-full min-h-[16rem] lg:min-h-[20rem] flex-col justify-end p-6 lg:p-8">
               <h2 className="text-2xl lg:text-3xl font-extrabold text-white leading-tight drop-shadow-md">
                 {featuredEvent.title}
@@ -113,6 +152,19 @@ export default function EventsView() {
             </div>
           </button>
         ) : null}
+
+        {ingestFromStaticFallback ? (
+          <p
+            className="text-xs text-amber-900 dark:text-amber-100/90 bg-amber-50 dark:bg-amber-950/50 border border-amber-300/70 dark:border-amber-700/50 rounded-xl px-3 py-2.5 mb-2"
+            role="status"
+          >
+            <span className="font-semibold">Dane archiwalne (offline).</span>{' '}
+            Nie udało się pobrać aktualności z UJ — pokazujemy zestaw zastępczy. Szczegóły w konsoli (
+            <code className="text-[10px] opacity-90">[Ingestor]</code>).
+          </p>
+        ) : null}
+
+        <WziksOfficialHub events={allEvents} showOfflineHint={ingestFromStaticFallback} />
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-app pb-4">
           <div className="flex flex-wrap gap-2">

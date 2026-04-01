@@ -22,6 +22,9 @@ type Props = {
   onBack: () => void
 }
 
+const settingsActionBtnClass =
+  'shrink-0 rounded-full border border-slate-200/90 bg-white px-4 py-1 text-sm font-medium text-amber-600 transition-all hover:bg-slate-50 dark:border-amber-500/40 dark:bg-slate-950 dark:text-amber-400 dark:hover:border-amber-400/55 dark:hover:bg-slate-900'
+
 function SettingsToggle({
   enabled,
   onChange,
@@ -38,8 +41,10 @@ function SettingsToggle({
       role="switch"
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/50 ${
-        enabled ? 'bg-[#ffa000]' : 'bg-slate-300 dark:bg-slate-600'
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/50 ${
+        enabled
+          ? 'bg-[#ffa000] shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+          : 'bg-slate-300 shadow-none dark:bg-slate-600'
       }`}
     >
       <span
@@ -61,14 +66,14 @@ function SectionCard({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-[#1c2b4e] bg-white shadow-sm dark:bg-[#01020a] dark:shadow-none">
-      <div className="flex items-center gap-2 border-b border-[#1c2b4e] px-4 py-3">
-        <Icon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
-        <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900 dark:text-white">
+    <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm last:mb-0 dark:bg-slate-900/50">
+      <div className="mb-3 flex items-center gap-2">
+        <Icon className="h-5 w-5 shrink-0 text-amber-500" aria-hidden />
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-900 opacity-70 dark:text-white">
           {title}
         </h2>
       </div>
-      <div className="divide-y divide-[#1c2b4e]/60">{children}</div>
+      <div className="divide-y divide-slate-200/70 dark:divide-slate-700/50">{children}</div>
     </section>
   )
 }
@@ -82,7 +87,7 @@ function Row({
 }) {
   return (
     <div
-      className={`flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-white/5 ${className}`}
+      className={`flex items-center justify-between gap-3 py-3.5 transition-colors first:pt-0 last:pb-0 hover:bg-slate-50/80 dark:hover:bg-white/[0.04] ${className}`}
     >
       {children}
     </div>
@@ -133,7 +138,7 @@ export default function SettingsView({ email, onBack }: Props) {
         </h1>
       </div>
 
-      <div className="space-y-4 pb-8">
+      <div className="pb-8">
         <SectionCard title="Konto" icon={UserCircleIcon}>
           <Row>
             <div className="min-w-0 flex-1">
@@ -148,7 +153,7 @@ export default function SettingsView({ email, onBack }: Props) {
             <button
               type="button"
               onClick={() => toast('Zmiana adresu e-mail będzie dostępna wkrótce.')}
-              className="shrink-0 rounded-xl border border-[#1c2b4e] bg-transparent px-3 py-2 text-xs font-bold text-[#ffa000] transition-colors hover:bg-white/5"
+              className={settingsActionBtnClass}
             >
               Zmień
             </button>
@@ -162,7 +167,7 @@ export default function SettingsView({ email, onBack }: Props) {
               <button
                 type="button"
                 onClick={() => setShowPasswordForm((v) => !v)}
-                className="shrink-0 rounded-xl border border-[#1c2b4e] px-3 py-2 text-xs font-bold text-[#ffa000] transition-colors hover:bg-white/5"
+                className={settingsActionBtnClass}
               >
                 {showPasswordForm ? 'Ukryj' : 'Otwórz formularz'}
               </button>
@@ -170,7 +175,7 @@ export default function SettingsView({ email, onBack }: Props) {
             {showPasswordForm && (
               <form
                 onSubmit={handlePasswordSubmit}
-                className="space-y-3 border-t border-[#1c2b4e]/60 px-4 py-4 hover:bg-white/5"
+                className="space-y-3 border-t border-slate-200/70 py-4 dark:border-slate-700/50"
               >
                 <label className="block">
                   <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -284,7 +289,7 @@ export default function SettingsView({ email, onBack }: Props) {
           <button
             type="button"
             onClick={() => toast('Regulamin — treść wkrótce.')}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/5"
+            className="flex w-full items-center justify-between gap-3 py-3.5 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.04]"
           >
             <span className="flex items-center gap-3 text-sm font-medium text-slate-900 dark:text-white">
               <DocumentTextIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
@@ -295,7 +300,7 @@ export default function SettingsView({ email, onBack }: Props) {
           <button
             type="button"
             onClick={() => toast('Polityka prywatności — treść wkrótce.')}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-white/5"
+            className="flex w-full items-center justify-between gap-3 py-3.5 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.04]"
           >
             <span className="flex items-center gap-3 text-sm font-medium text-slate-900 dark:text-white">
               <ShieldCheckIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />

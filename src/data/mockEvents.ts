@@ -7,6 +7,18 @@ export interface UJEvent {
   description: string
   attendees: number
   isAttending?: boolean
+  /** Unikalny identyfikator rekordu w zewnętrznym kalendarzu (np. UJ Calendar). */
+  external_id?: string
+  /** Etykieta źródła synchronizacji (np. „WPiA UJ”, „Kalendarz UJ”). */
+  source_name?: string
+  /** Wydarzenie promowane przez uczelnię / oficjalny kanał. */
+  is_official?: boolean
+  /** Link do strony źródłowej wydarzenia. */
+  event_url?: string
+  /** Wydział / poziom organizacyjny (np. ingest z WZiKS vs strona główna UJ). */
+  faculty?: 'WZiKS' | 'Uniwersytet Jagielloński'
+  /** Wpis z lokalnego zestawu awaryjnego (brak sieci / błąd proxy). */
+  ingest_from_fallback?: boolean
   /** URL obrazka lub data URL (Base64) plakatu. */
   imageUrl?: string
   /** Link do mapy (np. Google Maps). */

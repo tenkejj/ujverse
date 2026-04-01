@@ -65,7 +65,11 @@ export default function Header({
   return (
     <header className="h-16 w-full flex items-center gap-2 px-4 bg-white dark:bg-[#000000] border-b border-slate-200 dark:border-[#1c2b4e] sticky top-0 z-50 overflow-visible">
       <div className="w-24 flex-shrink-0 flex items-center justify-start relative z-10">
-        <SearchBar onNavigateToUser={onNavigateToUser} onNavigateToPost={onNavigateToPost} />
+        <SearchBar
+          onNavigateToUser={onNavigateToUser}
+          onNavigateToPost={onNavigateToPost}
+          onNavigateToEvents={onNavigateToEvents}
+        />
       </div>
 
       <div className="flex-1 flex justify-center items-center overflow-visible">
@@ -185,9 +189,9 @@ export default function Header({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -8 }}
                 transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-bg-app rounded-xl shadow-2xl border border-slate-200 dark:border-border-app overflow-hidden origin-top-right"
+                className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200/20 bg-white/80 shadow-2xl backdrop-blur-lg origin-top-right dark:border-slate-700/30 dark:bg-slate-900/80"
               >
-                <div className="px-4 py-3 bg-slate-50 dark:bg-bg-app border-b border-slate-100 dark:border-border-app flex items-center gap-3">
+                <div className="flex items-center gap-3 border-b border-slate-200/20 bg-white/50 px-4 py-3 dark:border-slate-700/30 dark:bg-slate-900/40">
                   <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9" textSize="text-sm" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 dark:text-blue-50 truncate">{displayName}</p>
@@ -195,38 +199,38 @@ export default function Header({
                   </div>
                 </div>
 
-                <div className="py-1">
+                <div className="px-1 py-1">
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToProfile() }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-white/90 dark:text-gray-300 dark:hover:bg-white/10"
                   >
-                    <User size={15} className="text-slate-400 dark:text-gray-500 shrink-0" />
+                    <User size={15} className="shrink-0 text-slate-400 dark:text-gray-500" />
                     Mój profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onOpenProfileModal() }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-white/90 dark:text-gray-300 dark:hover:bg-white/10"
                   >
-                    <Pencil size={15} className="text-slate-400 dark:text-gray-500 shrink-0" />
+                    <Pencil size={15} className="shrink-0 text-slate-400 dark:text-gray-500" />
                     Edytuj profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToSettings() }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-white/90 dark:text-gray-300 dark:hover:bg-white/10"
                   >
-                    <Settings size={15} className="text-slate-400 dark:text-gray-500 shrink-0" />
+                    <Settings size={15} className="shrink-0 text-slate-400 dark:text-gray-500" />
                     Ustawienia
                   </button>
                 </div>
 
-                <div className="border-t border-slate-100 dark:border-border-app py-1">
+                <div className="border-t border-slate-200/20 px-1 py-1 dark:border-slate-700/30">
                   <button
                     role="menuitem"
                     onClick={() => void supabase.auth.signOut()}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-500 transition-colors hover:bg-red-50/90 dark:text-red-400 dark:hover:bg-red-900/25"
                   >
                     <LogOut size={15} className="shrink-0" />
                     Wyloguj się
