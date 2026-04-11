@@ -22,7 +22,7 @@ const GOLD_ICON = L.divIcon({
   className: 'gold-pin-icon',
   html: `<div aria-hidden="true" style="width:32px;height:32px;display:flex;align-items:flex-start;justify-content:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))">
     <svg width="28" height="36" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#ffa000" stroke="#040521" stroke-width="1.25" d="M12 2C7.5 2 4 5.4 4 9.7c0 5.2 4.2 9.5 8 14.3 3.8-4.8 8-9.1 8-14.3C20 5.4 16.5 2 12 2z"/>
+      <path fill="#c9a227" stroke="#040521" stroke-width="1.25" d="M12 2C7.5 2 4 5.4 4 9.7c0 5.2 4.2 9.5 8 14.3 3.8-4.8 8-9.1 8-14.3C20 5.4 16.5 2 12 2z"/>
       <circle cx="12" cy="9.5" r="3.2" fill="#040521"/>
     </svg>
   </div>`,
@@ -189,7 +189,7 @@ export default function LocationPicker({ isOpen, onClose, onConfirm }: Props) {
             type="button"
             disabled={!marker}
             onClick={handleConfirm}
-            className="px-5 py-2.5 rounded-xl bg-[#ffa000] text-black font-bold hover:bg-[#e69000] disabled:opacity-45 disabled:pointer-events-none transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-brand-gold text-black font-bold hover:bg-brand-gold/85 disabled:opacity-45 disabled:pointer-events-none transition-colors"
           >
             Zatwierdź lokalizację
           </button>

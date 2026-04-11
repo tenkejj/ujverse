@@ -12,10 +12,12 @@ export default {
         'uj-navy':   '#002D62',
         'uj-gold':   '#C49A6C',
         'uj-orange': '#FF9900',
+        'brand-gold': '#c9a227',
+        'brand-gold-bright': '#e8c84a',
         'app-bg':    '#000000',
         'card-bg':   '#01020a',
         'border-main': '#1c2b4e',
-        'accent-gold': '#ffa000',
+        'accent-gold': '#c9a227',
       },
       borderRadius: {
         'uj-xl':   '1rem',

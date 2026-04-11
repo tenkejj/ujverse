@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { BadgeCheck, Plus, Search, User, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Archive, Plus, Radio, Search, Shield, User, Users } from 'lucide-react'
 import { formatEventDateLong, formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
 import CreateEventModal from './CreateEventModal'
@@ -17,42 +17,65 @@ const FILTERS: { key: EventFilter; label: string }[] = [
   { key: 'Ogłoszenie', label: 'Ogłoszenie' },
 ]
 
+function facultyTag(event: UJEvent): string | null {
+  if (!event.is_official) return null
+  if (event.faculty === 'WZiKS') return 'WZiKS'
+  if (event.source_name && event.source_name.length < 28) return event.source_name
+  return 'UJ'
+}
+
 function EventCard({ event, onSelect }: { event: UJEvent; onSelect: (e: UJEvent) => void }) {
   const { monthLabel, dayNum } = formatEventDateParts(event.date)
   const official = Boolean(event.is_official)
+  const tag = facultyTag(event)
   return (
     <button
       type="button"
       onClick={() => onSelect(event)}
-      className={`w-full text-left rounded-2xl p-4 cursor-pointer transition-colors ${
+      className={`w-full text-left rounded-2xl p-4 cursor-pointer transition-colors relative ${
         official
-          ? 'bg-gradient-to-br from-amber-50/95 via-white to-slate-50/80 border border-amber-200/70 shadow-[0_0_28px_-12px_rgba(245,158,11,0.55)] ring-1 ring-amber-300/35 hover:from-amber-50 hover:ring-amber-400/45 dark:from-[#ffa000]/[0.08] dark:via-transparent dark:to-transparent dark:border-[#ffa000]/35 dark:shadow-[0_0_36px_-14px_rgba(255,160,0,0.4)] dark:ring-[#ffa000]/25 dark:hover:bg-white/[0.04]'
+          ? 'official-card-premium bg-gradient-to-br from-[#fdf8ed] via-brand-gold/8 to-slate-50/85 border border-brand-gold/45 shadow-[0_0_28px_-12px_rgba(201,162,39,0.4)] ring-1 ring-brand-gold/25 hover:ring-brand-gold/40 dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent dark:border-brand-gold/35 dark:shadow-[0_0_36px_-14px_rgba(201,162,39,0.25)] dark:ring-brand-gold/20 dark:hover:bg-white/[0.03]'
           : 'bg-card border border-border-app hover:bg-slate-50 dark:hover:bg-white/5'
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="relative z-[2] flex items-start gap-3">
         <div className="shrink-0 text-center min-w-[40px]">
-          <span className="block text-[10px] font-bold text-[#ffa000] leading-none uppercase tracking-wide">
+          <span
+            className={`block text-[10px] font-bold leading-none uppercase tracking-wide ${
+              official ? 'text-brand-gold dark:text-brand-gold-bright' : 'text-accent-interactive'
+            }`}
+          >
             {monthLabel}
           </span>
           <span className="block text-lg font-extrabold text-fg-primary leading-tight">{dayNum}</span>
         </div>
         <div className="min-w-0 flex-1">
+          {official && tag ? (
+            <span className="inline-flex mb-1 rounded-full border border-[#c9a227]/40 bg-[#c9a227]/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-uj-navy dark:text-[#e8c84a]">
+              {tag}
+            </span>
+          ) : null}
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-fg-primary leading-snug min-w-0">{event.title}</p>
+            <p
+              className={`text-sm leading-snug min-w-0 ${
+                official ? 'font-extrabold text-fg-primary' : 'font-semibold text-fg-primary'
+              }`}
+            >
+              {event.title}
+            </p>
             {official ? (
               <span
-                className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-[#ffa000]/40 bg-[#ffa000]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-uj-navy dark:text-[#ffa000]"
+                className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-[#c9a227]/45 bg-black/[0.04] dark:bg-black/30 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-uj-navy dark:text-[#f0d060]"
                 title={event.source_name ? `Źródło: ${event.source_name}` : undefined}
               >
-                <BadgeCheck size={11} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
-                Oficjalne UJ
+                <Shield size={11} className="text-[#b8922a] dark:text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
+                OFICJALNE UJ
               </span>
             ) : null}
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{event.location}</p>
           <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-            <Users size={16} strokeWidth={2} className="shrink-0 text-[#ffa000]" aria-hidden />
+            <Users size={16} strokeWidth={2} className="shrink-0 text-accent-interactive" aria-hidden />
             <span>{event.attendees} uczestników</span>
           </p>
         </div>
@@ -69,7 +92,6 @@ export default function EventsView() {
     toggleRsvp,
     addEvent,
     updateEvent,
-    syncOfficialEvents,
     ingestFromStaticFallback,
   } = useEvents()
   const [filter, setFilter] = useState<EventFilter>('all')
@@ -102,10 +124,6 @@ export default function EventsView() {
     return filtered.filter((ev) => ev.id !== featuredEvent.id)
   }, [filtered, featuredEvent])
 
-  useEffect(() => {
-    void syncOfficialEvents()
-  }, [syncOfficialEvents])
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
@@ -115,7 +133,7 @@ export default function EventsView() {
           <button
             type="button"
             onClick={() => setSelectedEventId(featuredEvent.id)}
-            className="group relative w-full h-64 lg:h-80 rounded-3xl overflow-hidden mb-8 border border-border-app text-left shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/50"
+            className="group relative w-full h-64 lg:h-80 rounded-3xl overflow-hidden mb-8 border border-border-app text-left shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
           >
             <img
               src={featuredEvent.imageUrl}
@@ -128,13 +146,13 @@ export default function EventsView() {
               aria-hidden
             />
             <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-[#ffa000] backdrop-blur-sm border border-[#ffa000]/30">
+              <span className="rounded-lg bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-brand-gold-bright backdrop-blur-sm border border-brand-gold/40">
                 🔥 WYRÓŻNIONE
               </span>
               {featuredEvent.is_official ? (
-                <span className="inline-flex items-center gap-0.5 rounded-lg border border-[#ffa000]/50 bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
-                  <BadgeCheck size={12} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
-                  Oficjalne UJ
+                <span className="inline-flex items-center gap-0.5 rounded-lg border border-[#c9a227]/55 bg-black/60 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#f5e6a8] backdrop-blur-sm">
+                  <Shield size={12} className="text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
+                  OFICJALNE UJ
                 </span>
               ) : null}
             </div>
@@ -146,7 +164,7 @@ export default function EventsView() {
                 {formatEventDateLong(featuredEvent.date)}
               </p>
               <p className="mt-1 text-sm text-slate-400 line-clamp-2">{featuredEvent.location}</p>
-              <span className="mt-5 inline-flex w-fit items-center rounded-xl bg-[#ffa000] px-5 py-2.5 text-sm font-bold text-black transition-colors group-hover:bg-[#e69000]">
+              <span className="mt-5 inline-flex w-fit items-center rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-bold text-black transition-colors group-hover:bg-brand-gold/85">
                 Sprawdź szczegóły
               </span>
             </div>
@@ -155,12 +173,12 @@ export default function EventsView() {
 
         {ingestFromStaticFallback ? (
           <p
-            className="text-xs text-amber-900 dark:text-amber-100/90 bg-amber-50 dark:bg-amber-950/50 border border-amber-300/70 dark:border-amber-700/50 rounded-xl px-3 py-2.5 mb-2"
+            className="text-xs text-brand-gold dark:text-brand-gold-bright/95 bg-brand-gold/10 dark:bg-brand-gold/15 border border-brand-gold/35 dark:border-brand-gold/30 rounded-xl px-3 py-2.5 mb-2"
             role="status"
           >
-            <span className="font-semibold">Dane archiwalne (offline).</span>{' '}
-            Nie udało się pobrać aktualności z UJ — pokazujemy zestaw zastępczy. Szczegóły w konsoli (
-            <code className="text-[10px] opacity-90">[Ingestor]</code>).
+            <span className="font-semibold">Dane archiwalne (polecane).</span>{' '}
+            Nie udało się pobrać świeżych aktualności z serwisów UJ — wyświetlamy sprawdzony zestaw wydarzeń i linki do
+            oficjalnych stron uczelni.
           </p>
         ) : null}
 
@@ -175,7 +193,7 @@ export default function EventsView() {
                 onClick={() => setFilter(key)}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm transition-colors ${
                   filter === key
-                    ? 'text-[#ffa000] font-bold'
+                    ? 'text-accent-interactive font-bold'
                     : 'text-slate-600 hover:text-fg-primary font-medium dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
@@ -187,6 +205,27 @@ export default function EventsView() {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border-app bg-slate-100/90 dark:bg-black/25 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+              role="status"
+              aria-label={ingestFromStaticFallback ? 'Źródło: archiwum i polecane' : 'Źródło: dane na żywo z UJ'}
+            >
+              {ingestFromStaticFallback ? (
+                <>
+                  <Archive size={12} className="text-brand-gold dark:text-brand-gold-bright shrink-0" aria-hidden />
+                  Archiwum
+                </>
+              ) : (
+                <>
+                  <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  </span>
+                  <Radio size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden />
+                  Live
+                </>
+              )}
+            </span>
             <div className="relative flex-1 min-w-[160px] max-w-xs sm:max-w-[220px]">
               <Search
                 size={16}
@@ -209,7 +248,7 @@ export default function EventsView() {
                 setEditTarget(null)
                 setIsCreateOpen(true)
               }}
-              className="shrink-0 flex items-center gap-2 border border-[#ffa000] text-[#ffa000] hover:bg-[#ffa000]/10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+              className="shrink-0 flex items-center gap-2 border border-brand-gold text-accent-interactive hover:bg-brand-gold/10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
             >
               <Plus size={18} strokeWidth={2} aria-hidden />
               Dodaj wydarzenie

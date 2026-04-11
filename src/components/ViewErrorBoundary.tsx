@@ -28,7 +28,7 @@ export class ViewErrorBoundary extends Component<Props, State> {
           </p>
           <button
             type="button"
-            className="mt-4 rounded-xl bg-[#ffa000] px-4 py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
+            className="mt-4 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
             onClick={() => {
               this.setState({ error: null })
               this.props.onRecover()

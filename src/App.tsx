@@ -45,6 +45,8 @@ function App() {
   // Notifications
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false)
+  const [bellRingTick, setBellRingTick] = useState(0)
 
   // Posts
   const [posts, setPosts] = useState<Post[]>([])
@@ -175,9 +177,10 @@ function App() {
     setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
   }, [])
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (opts?: { silent?: boolean }) => {
     if (!session?.user?.id) return
-    setNotificationsLoading(true)
+    const silent = opts?.silent ?? false
+    if (!silent) setNotificationsLoading(true)
     const { data } = await supabase
       .from('notifications')
       .select('*, actor:profiles!notifications_actor_id_fkey(id, full_name, avatar_url)')
@@ -185,7 +188,7 @@ function App() {
       .order('created_at', { ascending: false })
       .limit(50)
     setNotifications((data ?? []) as AppNotification[])
-    setNotificationsLoading(false)
+    if (!silent) setNotificationsLoading(false)
   }, [session])
 
   const fetchPosts = useCallback(async () => {
@@ -227,8 +230,9 @@ function App() {
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${session.user.id}`,
-      }, (payload) => {
-        setNotifications((prev) => [payload.new as AppNotification, ...prev])
+      }, () => {
+        setBellRingTick((t) => t + 1)
+        void fetchNotifications({ silent: true })
       })
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
@@ -318,6 +322,44 @@ function App() {
       if (error) console.error('[markAllRead]', error.message)
     }
   }, [session])
+
+  const clearAllNotifications = useCallback(async () => {
+    if (!session?.user?.id) return
+    setNotifications([])
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', session.user.id)
+    if (error) {
+      console.error('[clearAllNotifications]', error.message)
+      toast.error('Nie udało się wyczyścić powiadomień.')
+      void fetchNotifications()
+    }
+  }, [session?.user?.id, fetchNotifications])
+
+  const toggleNotificationsPanel = useCallback(() => {
+    setNotificationsPanelOpen((prev) => {
+      const next = !prev
+      if (next) void fetchNotifications()
+      return next
+    })
+  }, [fetchNotifications])
+
+  const closeNotificationsPanel = useCallback(() => {
+    setNotificationsPanelOpen(false)
+  }, [])
+
+  const navigateToPostFromNotificationsPanel = useCallback((postId: string) => {
+    setNotificationsPanelOpen(false)
+    setActivePostId(postId)
+    setActiveView('post')
+  }, [])
+
+  const navigateToUserFromNotificationsPanel = useCallback((userId: string) => {
+    setNotificationsPanelOpen(false)
+    setActiveUserId(userId)
+    setActiveView('userProfile')
+  }, [])
 
   // ── Likes ─────────────────────────────────────────────────────────────────
 
@@ -686,11 +728,21 @@ function App() {
           setMenuOpen={setMenuOpen}
           activeView={navActiveView}
           unreadCount={unreadCount}
+          bellRingTick={bellRingTick}
+          notificationsPanelOpen={notificationsPanelOpen}
+          onToggleNotificationsPanel={toggleNotificationsPanel}
+          onCloseNotificationsPanel={closeNotificationsPanel}
+          notifications={notifications}
+          notificationsLoading={notificationsLoading}
+          onMarkNotificationRead={markNotificationRead}
+          onMarkAllNotificationsRead={markAllRead}
+          onClearAllNotifications={clearAllNotifications}
+          onNavigateToPostFromNotificationsPanel={navigateToPostFromNotificationsPanel}
+          onNavigateToUserFromNotificationsPanel={navigateToUserFromNotificationsPanel}
           onNavigateToUser={navigateToUser}
           onNavigateToPost={navigateToPost}
           onNavigateToFeed={() => setActiveView('feed')}
           onNavigateToProfile={() => setActiveView('profile')}
-          onNavigateToNotifications={() => setActiveView('notifications')}
           onNavigateToEvents={() => setActiveView('events')}
           onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}

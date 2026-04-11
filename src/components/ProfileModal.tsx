@@ -7,7 +7,7 @@ import { UJ_DEPARTMENTS } from '../lib/departments'
 import ImageCropperModal from './ImageCropperModal'
 
 const fieldInputCls =
-  'w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-none ring-0 outline-none transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-0 focus:shadow-none focus:border-[#ffa000] dark:border-[#1c2b4e] dark:bg-[#01020a] dark:text-white dark:placeholder:text-neutral-500'
+  'w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-none ring-0 outline-none transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-0 focus:shadow-none focus:border-brand-gold dark:border-[#1c2b4e] dark:bg-[#01020a] dark:text-white dark:placeholder:text-neutral-500'
 
 
 type Props = {
@@ -138,7 +138,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
           box-shadow: none !important;
         }
         .profile-modal-save {
-          background-color: #ffa000 !important;
+          background-color: var(--brand-gold) !important;
           color: #000000 !important;
         }
       `}</style>
@@ -190,11 +190,11 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                   <img
                     src={avatarPreview}
                     alt="Awatar"
-                    className="h-24 w-24 rounded-full border-4 border-[#ffa000]/35 object-cover shadow-none"
+                    className="h-24 w-24 rounded-full border-4 border-brand-gold/35 object-cover shadow-none"
                   />
                 ) : (
                   <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-slate-200 bg-slate-100 shadow-none ring-0 dark:border-[#1c2b4e] dark:bg-[#01020a]">
-                    <span className="text-2xl font-bold text-[#ffa000]">
+                    <span className="text-2xl font-bold text-accent-interactive">
                       {(name || session.user.email || 'U').charAt(0).toUpperCase()}
                     </span>
                   </div>
@@ -208,7 +208,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                   type="button"
                   disabled={isUploadingAvatar}
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 rounded-full bg-[#ffa000] p-1.5 text-black shadow-none ring-0 transition-transform hover:scale-110 hover:bg-[#ffb333] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="absolute -bottom-1 -right-1 rounded-full bg-brand-gold p-1.5 text-black shadow-none ring-0 transition-transform hover:scale-110 hover:bg-brand-gold/85 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <ImagePlus className="h-3.5 w-3.5" />
                 </button>

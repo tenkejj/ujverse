@@ -113,7 +113,7 @@ export default function ImageCropper({ imageSrc, onClose, onCropped }: Props) {
               step={0.01}
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
-              className="flex-1 accent-[#ffa000] h-2"
+              className="flex-1 accent-brand-gold h-2"
             />
           </label>
         </div>
@@ -130,7 +130,7 @@ export default function ImageCropper({ imageSrc, onClose, onCropped }: Props) {
             type="button"
             disabled={busy || !croppedAreaPixels}
             onClick={() => void handleConfirm()}
-            className="px-5 py-2.5 rounded-xl bg-[#ffa000] text-black font-bold hover:bg-[#e69000] disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-brand-gold text-black font-bold hover:bg-brand-gold/85 disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
             {busy ? 'Przetwarzanie…' : 'Zatwierdź kadr'}
           </button>

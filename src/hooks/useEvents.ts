@@ -16,6 +16,14 @@ import {
 
 const STORAGE_KEY = 'ujverse_events'
 
+/** Oficjalne na górze, potem rosnąco po dacie. */
+export function compareOfficialThenDate(a: UJEvent, b: UJEvent): number {
+  const oa = a.is_official ? 0 : 1
+  const ob = b.is_official ? 0 : 1
+  if (oa !== ob) return oa - ob
+  return a.date.getTime() - b.date.getTime()
+}
+
 function reviveEvent(raw: unknown): UJEvent | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Record<string, unknown>
@@ -109,7 +117,7 @@ const EventsContext = createContext<EventsContextValue | null>(null)
 function mergeInitialEvents(): UJEvent[] {
   const users = loadUserEventsFromStorage()
   const official = hydrateOfficialEventsFromStorage()
-  return [...users, ...official].sort((a, b) => a.date.getTime() - b.date.getTime())
+  return [...users, ...official].sort(compareOfficialThenDate)
 }
 
 export function EventsProvider({ children }: { children: ReactNode }) {
@@ -126,10 +134,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       setIngestFromStaticFallback(fromStaticFallback)
       setEvents((prev) => {
         const userOnly = prev.filter((e) => !e.is_official)
-        return [...userOnly, ...official].sort((a, b) => a.date.getTime() - b.date.getTime())
+        return [...userOnly, ...official].sort(compareOfficialThenDate)
       })
-    } catch (e) {
-      console.error('[Ingestor] Błąd w useEvents — stan oficjalnych bez zmian', e)
+    } catch {
+      /* ingest już zdegradował po cichu; stan bez zmian */
     } finally {
       setExternalEventsLoading(false)
     }
@@ -183,9 +191,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     const map = data.mapUrl?.trim()
     if (map) newEvent.mapUrl = map
 
-    setEvents((prev) =>
-      [...prev, newEvent].sort((a, b) => a.date.getTime() - b.date.getTime()),
-    )
+    setEvents((prev) => [...prev, newEvent].sort(compareOfficialThenDate))
   }, [])
 
   const deleteEvent = useCallback((id: string) => {
@@ -213,16 +219,14 @@ export function EventsProvider({ children }: { children: ReactNode }) {
           }
           return next as unknown as UJEvent
         })
-        .sort((a, b) => a.date.getTime() - b.date.getTime()),
+        .sort(compareOfficialThenDate),
     )
   }, [])
 
   const activeEvents = useMemo(() => {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
-    return events
-      .filter((ev) => ev.date.getTime() >= now.getTime())
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
+    return events.filter((ev) => ev.date.getTime() >= now.getTime()).sort(compareOfficialThenDate)
   }, [events])
 
   const featuredEvent = useMemo(() => {

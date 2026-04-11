@@ -87,6 +87,18 @@ export default defineConfig({
           })
         },
       },
+      '/api/ingest-uj-wiadomosci': {
+        target: 'https://www.uj.edu.pl',
+        changeOrigin: true,
+        rewrite: () => '/wiadomosci',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('User-Agent', CHROME_LIKE_UA)
+            proxyReq.setHeader('Accept-Language', 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7')
+            proxyReq.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+          })
+        },
+      },
       '/api/ingest-uj-cal': {
         target: 'https://www.uj.edu.pl',
         changeOrigin: true,

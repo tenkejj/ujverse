@@ -53,7 +53,7 @@ export default function ComposeBox({
     <div
       className={`bg-slate-50 dark:bg-bg-app rounded-2xl border border-border-app transition-colors duration-200 overflow-hidden shadow-none ${
         isComposing
-          ? 'border-uj-blue/30 dark:border-border-app dark:border-t-uj-orange/20 shadow-[0_0_0_3px_rgba(0,51,153,0.06),0_1px_8px_rgba(0,51,153,0.08)]'
+          ? 'border-uj-blue/30 dark:border-border-app dark:border-t-brand-gold/25 shadow-[0_0_0_3px_rgba(0,51,153,0.06),0_1px_8px_rgba(0,51,153,0.08)]'
           : 'border-slate-200/60 dark:border-border-app shadow-uj-soft dark:shadow-lg dark:shadow-black/20'
       }`}
     >

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  BadgeCheck,
+  Shield,
   X,
   Calendar,
   CalendarPlus,
@@ -127,9 +127,9 @@ function EventModalContent({
       {hasBanner ? null : (
         <div className="mb-2 pr-36 space-y-2">
           {official ? (
-            <span className="inline-flex w-fit items-center gap-1 rounded-full border border-[#ffa000]/45 bg-[#ffa000]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-uj-navy dark:text-[#ffa000]">
-              <BadgeCheck size={12} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
-              Oficjalne UJ
+            <span className="inline-flex w-fit items-center gap-1 rounded-full border border-[#c9a227]/45 bg-[#c9a227]/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-uj-navy dark:text-[#e8c84a]">
+              <Shield size={12} className="text-[#b8922a] dark:text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
+              OFICJALNE UJ
             </span>
           ) : null}
           <h2 id="event-modal-title" className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
@@ -140,11 +140,11 @@ function EventModalContent({
 
       <div className="mb-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
         <div className="flex items-start gap-2">
-          <Calendar size={16} className="mt-0.5 shrink-0 text-[#ffa000]" aria-hidden />
+          <Calendar size={16} className="mt-0.5 shrink-0 text-accent-interactive" aria-hidden />
           <span>{dateLine}</span>
         </div>
         <div className="flex items-start gap-2">
-          <MapPin size={16} className="mt-0.5 shrink-0 text-[#ffa000]" aria-hidden />
+          <MapPin size={16} className="mt-0.5 shrink-0 text-accent-interactive" aria-hidden />
           {event.mapUrl ? (
             <a
               href={event.mapUrl}
@@ -167,7 +167,7 @@ function EventModalContent({
           href={event.event_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold text-[#ffa000] transition-colors hover:text-[#ffb84d]"
+          className="mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold text-accent-interactive transition-colors hover:text-brand-gold-bright"
         >
           <ExternalLink size={16} className="shrink-0" strokeWidth={2} aria-hidden />
           Strona wydarzenia u źródła
@@ -181,8 +181,8 @@ function EventModalContent({
             onClick={() => onToggleRsvp(event.id)}
             className={`min-w-[120px] flex-1 rounded-xl py-3 font-bold transition-colors ${
               isAttending
-                ? 'border border-[#ffa000] bg-transparent text-[#ffa000] hover:bg-[#ffa000]/10'
-                : 'bg-[#ffa000] text-black hover:bg-[#ffb333]'
+                ? 'border border-brand-gold bg-transparent text-accent-interactive hover:bg-brand-gold/10'
+                : 'bg-brand-gold text-black hover:bg-brand-gold/85'
             }`}
           >
             {isAttending ? '✓ Bierzesz udział' : 'Wezmę udział'}
@@ -197,7 +197,7 @@ function EventModalContent({
             Udostępnij
           </button>
           <div className="flex min-w-[180px] flex-1 flex-wrap items-center justify-end gap-3">
-            <Users size={16} className="shrink-0 text-[#ffa000]" aria-hidden />
+            <Users size={16} className="shrink-0 text-accent-interactive" aria-hidden />
             {avatars.length > 0 && (
               <div className="-space-x-2 flex shrink-0">
                 {avatars.map((url, i) => (
@@ -222,7 +222,7 @@ function EventModalContent({
           rel="noopener noreferrer"
           className="inline-flex w-fit items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
         >
-          <CalendarPlus size={16} className="shrink-0 text-[#ffa000]" aria-hidden />
+          <CalendarPlus size={16} className="shrink-0 text-accent-interactive" aria-hidden />
           Dodaj do kalendarza
         </a>
       </div>
@@ -256,9 +256,9 @@ function EventModalContent({
             onClose={handleClose}
           />
           {official ? (
-            <span className="absolute top-16 left-4 z-[6] inline-flex items-center gap-1 rounded-full border border-[#ffa000]/50 bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
-              <BadgeCheck size={12} className="text-[#ffa000]" strokeWidth={2.5} aria-hidden />
-              Oficjalne UJ
+            <span className="absolute top-16 left-4 z-[6] inline-flex items-center gap-1 rounded-full border border-[#c9a227]/55 bg-black/60 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#f5e6a8] backdrop-blur-sm">
+              <Shield size={12} className="text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
+              OFICJALNE UJ
             </span>
           ) : null}
           <h2

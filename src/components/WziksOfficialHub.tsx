@@ -1,64 +1,85 @@
 import { useMemo } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { Archive, ExternalLink, Radio, Shield } from 'lucide-react'
 import { formatEventDateParts, type UJEvent } from '../data/mockEvents'
 
 type Props = {
   events: UJEvent[]
-  /** Krótki dopisek przy danych z fallbacku ingestora. */
+  /** True gdy feed działa na statycznym fallbacku (brak świeżych danych z sieci). */
   showOfflineHint?: boolean
 }
 
+function facultyChipLabel(ev: UJEvent): string {
+  if (ev.faculty === 'WZiKS') return 'WZiKS'
+  if (ev.source_name && ev.source_name !== 'Uniwersytet Jagielloński') return ev.source_name
+  return 'UJ'
+}
+
 /**
- * Karuzela pozioma — oficjalne wpisy zsynchronizowane z WZiKS UJ.
+ * Karuzela pozioma — oficjalne wpisy z hubu wiadomości UJ, WZiKS i kalendarza.
  */
 export default function WziksOfficialHub({ events, showOfflineHint }: Props) {
-  const wziks = useMemo(() => {
+  const official = useMemo(() => {
     return [...events]
-      .filter((e) => e.is_official && e.faculty === 'WZiKS')
+      .filter((e) => e.is_official)
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, 16)
   }, [events])
 
-  if (wziks.length === 0) return null
+  if (official.length === 0) return null
 
   return (
-    <section className="mb-8" aria-labelledby="wziks-official-hub-title">
-      <div className="flex items-end justify-between gap-3 mb-3 px-0.5">
-        <h2
-          id="wziks-official-hub-title"
-          className="text-sm font-bold uppercase tracking-[0.14em] text-uj-navy dark:text-slate-300"
+    <section className="mb-8" aria-labelledby="official-uj-hub-title">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-3 px-0.5">
+        <div className="min-w-0">
+          <h2
+            id="official-uj-hub-title"
+            className="text-sm font-extrabold uppercase tracking-[0.14em] text-uj-navy dark:text-slate-200"
+          >
+            Oficjalne UJ
+          </h2>
+        </div>
+        <span
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold shrink-0 text-slate-600 dark:text-slate-400"
+          role="status"
         >
-          Oficjalne z WZiKS
-        </h2>
-        <span className="text-[11px] text-slate-500 dark:text-slate-500 shrink-0 text-right">
           {showOfflineHint ? (
-            <span className="text-amber-700 dark:text-amber-400 font-medium">Wersja archiwalna</span>
+            <>
+              <Archive size={13} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.5} aria-hidden />
+              <span className="text-brand-gold dark:text-brand-gold-bright/90">Archiwum / Polecane</span>
+            </>
           ) : (
-            'Aktualności wydziału'
+            <>
+              <span className="relative flex h-2 w-2" aria-hidden>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              <Radio size={13} className="text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} aria-hidden />
+              <span className="text-emerald-800 dark:text-emerald-300">Live</span>
+            </>
           )}
         </span>
       </div>
       <div
-        className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory [-webkit-overflow-scrolling:touch]"
+        className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory [-webkit-overflow-scrolling:touch] custom-scrollbar"
         style={{ scrollbarGutter: 'stable' }}
       >
-        {wziks.map((ev) => (
-          <WziksCard key={ev.id} event={ev} />
+        {official.map((ev) => (
+          <OfficialUjCard key={ev.id} event={ev} />
         ))}
       </div>
     </section>
   )
 }
 
-function WziksCard({ event }: { event: UJEvent }) {
+function OfficialUjCard({ event }: { event: UJEvent }) {
   const { monthLabel, dayNum } = formatEventDateParts(event.date)
-  const href = event.event_url || 'https://wziks.uj.edu.pl/wiadomosci/aktualnosci'
+  const href = event.event_url || 'https://www.uj.edu.pl/wiadomosci'
 
   return (
     <article
-      className="snap-start shrink-0 w-[min(280px,78vw)] rounded-2xl border-2 border-[#ffa000]/55 bg-gradient-to-br from-amber-50/95 to-white shadow-[0_0_26px_-10px_rgba(255,160,0,0.55)] ring-1 ring-amber-400/25 dark:from-[#ffa000]/[0.09] dark:to-transparent dark:border-[#ffa000]/45 dark:ring-[#ffa000]/20 dark:shadow-[0_0_32px_-12px_rgba(255,160,0,0.4)] overflow-hidden flex flex-col"
+      className="official-card-premium snap-start shrink-0 w-[min(280px,78vw)] rounded-2xl border-2 border-brand-gold/60 bg-gradient-to-br from-[#fdf8ed] via-brand-gold/12 to-white shadow-[0_0_28px_-10px_rgba(201,162,39,0.45)] ring-1 ring-brand-gold/25 dark:from-[#1a1508]/95 dark:via-brand-gold/[0.07] dark:to-transparent dark:border-brand-gold/45 dark:ring-brand-gold/15 dark:shadow-[0_0_36px_-12px_rgba(201,162,39,0.28)] overflow-hidden flex flex-col"
     >
-      <div className="relative h-28 bg-slate-200/80 dark:bg-slate-800/80 shrink-0">
+      <div className="relative z-[2] h-28 bg-slate-200/80 dark:bg-slate-800/80 shrink-0">
         {event.imageUrl ? (
           <img src={event.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
@@ -67,23 +88,34 @@ function WziksCard({ event }: { event: UJEvent }) {
             aria-hidden
           />
         )}
-        <div className="absolute top-2 left-2 rounded-lg bg-black/55 px-2 py-1 text-center backdrop-blur-sm border border-[#ffa000]/35">
-          <span className="block text-[9px] font-bold uppercase text-[#ffa000] leading-none">
-            {monthLabel}
+        <div className="absolute top-2 left-2 z-[3] flex flex-col gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-lg border border-[#c9a227]/50 bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#f5e6a8] backdrop-blur-sm">
+            <Shield size={11} className="text-[#f0d060]" strokeWidth={2.5} aria-hidden />
+            OFICJALNE UJ
           </span>
-          <span className="block text-base font-extrabold text-white leading-tight">{dayNum}</span>
+          <div className="rounded-lg bg-black/55 px-2 py-1 text-center backdrop-blur-sm border border-[#c9a227]/35 w-fit min-w-[3rem]">
+            <span className="block text-[9px] font-bold uppercase text-[#f5e6a8] leading-none">
+              {monthLabel}
+            </span>
+            <span className="block text-base font-extrabold text-white leading-tight">{dayNum}</span>
+          </div>
         </div>
       </div>
-      <div className="p-3 flex flex-col flex-1 min-h-0 gap-2">
-        <h3 className="text-[13px] font-semibold text-fg-primary leading-snug line-clamp-3">{event.title}</h3>
+      <div className="relative z-[2] p-3 flex flex-col flex-1 min-h-0 gap-2">
+        <span className="inline-flex w-fit rounded-full border border-[#c9a227]/40 bg-[#c9a227]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-uj-navy dark:text-[#e8c84a]">
+          {facultyChipLabel(event)}
+        </span>
+        <h3 className="text-[13px] font-extrabold text-fg-primary leading-snug line-clamp-3">{event.title}</h3>
         {event.description ? (
-          <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 flex-1">{event.description}</p>
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 flex-1 leading-relaxed">
+            {event.description}
+          </p>
         ) : null}
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#ffa000] px-3 py-2.5 text-xs font-bold text-black hover:bg-[#e69000] transition-colors"
+          className="mt-auto relative z-[3] inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#e8b84d] px-3 py-2.5 text-xs font-extrabold text-[#1a1508] hover:from-[#b8922a] hover:to-[#d9a840] transition-colors shadow-sm"
         >
           <ExternalLink size={14} strokeWidth={2.5} aria-hidden />
           Otwórz w portalu UJ

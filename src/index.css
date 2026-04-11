@@ -23,10 +23,11 @@ html {
   --color-uj-navy:   #002D62;
   --color-uj-gold:   #C49A6C;
   --color-uj-orange: #FF9900;
+  --color-brand-gold: #c9a227;
+  --color-brand-gold-bright: #e8c84a;
   --color-app-bg:    #000000;
   --color-card-bg:   #01020a;
   --color-border-main: #1c2b4e;
-  --color-accent-gold: #ffa000;
 
   --color-bg-app: var(--bg-app);
   --color-bg-card: var(--bg-card);
@@ -59,16 +60,18 @@ html {
     --border: #e2e8f0;
     --modal-bg: #ffffff;
     --modal-border: #e2e8f0;
-    --primary: #ffa000;
+    --brand-gold: #c9a227;
+    --brand-gold-bright: #e8c84a;
+    --primary: var(--brand-gold);
     --bg-app: var(--background);
     --bg-card: var(--card);
     --border-app: var(--border);
     --text-primary: #0f1419;
     --text-secondary: #536471;
     --text-label: #334155;
-    --accent-gold: #b59410;
-    --accent-like: #ffa000;
-    --accent-interactive: #ffa000;
+    --accent-gold: #b8922a;
+    --accent-like: var(--brand-gold);
+    --accent-interactive: #a67c1a;
     --accent-purple: #1e2a4f;
   }
   .dark {
@@ -78,16 +81,18 @@ html {
     --modal-bg: #01020a;
     --modal-border: #1c2b4e;
     --border-main: #1c2b4e;
-    --primary: #ffa000;
+    --brand-gold: #c9a227;
+    --brand-gold-bright: #e8c84a;
+    --primary: var(--brand-gold-bright);
     --bg-app: #000000;
     --bg-card: #01020a;
     --border-app: var(--border);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-label: #94a3b8;
-    --accent-gold: #b59410;
-    --accent-like: #ffa000;
-    --accent-interactive: #ffa000;
+    --accent-gold: var(--brand-gold-bright);
+    --accent-like: #f0d060;
+    --accent-interactive: var(--brand-gold-bright);
     --accent-purple: #1e2a4f;
   }
 }
@@ -154,4 +159,44 @@ body {
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(10px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Oficjalne karty UJ — subtelny połysk (shimmer) */
+@keyframes official-shimmer {
+  0% {
+    transform: translateX(-130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+.official-card-premium {
+  position: relative;
+  overflow: hidden;
+}
+
+.official-card-premium::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 220, 140, 0.22) 50%,
+    transparent 100%
+  );
+  animation: official-shimmer 3.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dark .official-card-premium::after {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 200, 80, 0.12) 50%,
+    transparent 100%
+  );
 }

@@ -23,7 +23,7 @@ type Props = {
 }
 
 const settingsActionBtnClass =
-  'shrink-0 rounded-full border border-slate-200/90 bg-white px-4 py-1 text-sm font-medium text-amber-600 transition-all hover:bg-slate-50 dark:border-amber-500/40 dark:bg-slate-950 dark:text-amber-400 dark:hover:border-amber-400/55 dark:hover:bg-slate-900'
+  'shrink-0 rounded-full border border-slate-200/90 bg-white px-4 py-1 text-sm font-medium text-brand-gold transition-all hover:bg-slate-50 dark:border-brand-gold/45 dark:bg-slate-950 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-slate-900'
 
 function SettingsToggle({
   enabled,
@@ -41,9 +41,9 @@ function SettingsToggle({
       role="switch"
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/50 ${
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${
         enabled
-          ? 'bg-[#ffa000] shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+          ? 'bg-brand-gold shadow-[0_0_10px_rgba(201,162,39,0.35)]'
           : 'bg-slate-300 shadow-none dark:bg-slate-600'
       }`}
     >
@@ -68,7 +68,7 @@ function SectionCard({
   return (
     <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm last:mb-0 dark:bg-slate-900/50">
       <div className="mb-3 flex items-center gap-2">
-        <Icon className="h-5 w-5 shrink-0 text-amber-500" aria-hidden />
+        <Icon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-900 opacity-70 dark:text-white">
           {title}
         </h2>
@@ -119,7 +119,7 @@ export default function SettingsView({ email, onBack }: Props) {
   }
 
   const fieldCls =
-    'w-full rounded-xl border border-[#1c2b4e] bg-[#f8fafc] p-3 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#ffa000] dark:bg-[#01020a] dark:text-white dark:placeholder:text-neutral-500'
+    'w-full rounded-xl border border-[#1c2b4e] bg-[#f8fafc] p-3 text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-gold dark:bg-[#01020a] dark:text-white dark:placeholder:text-neutral-500'
 
   return (
     <div className="min-h-[50vh] space-y-5 bg-[#f8fafc] dark:bg-[#01020a] -mx-4 px-4 py-2 md:mx-0 md:rounded-2xl md:px-0 md:bg-transparent dark:md:bg-transparent">
@@ -130,7 +130,7 @@ export default function SettingsView({ email, onBack }: Props) {
           className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-white/5 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
           aria-label="Wróć"
         >
-          <ArrowLeftIcon className="h-6 w-6 shrink-0 text-[#ffa000]" aria-hidden />
+          <ArrowLeftIcon className="h-6 w-6 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
           <span>Wróć</span>
         </button>
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -146,7 +146,7 @@ export default function SettingsView({ email, onBack }: Props) {
                 E-mail
               </p>
               <p className="mt-1 flex items-center gap-2 truncate text-sm font-medium text-slate-900 dark:text-white">
-                <EnvelopeIcon className="h-4 w-4 shrink-0 text-[#ffa000]" aria-hidden />
+                <EnvelopeIcon className="h-4 w-4 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
                 {displayEmail}
               </p>
             </div>
@@ -161,7 +161,7 @@ export default function SettingsView({ email, onBack }: Props) {
           <div>
             <Row>
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <KeyIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+                <KeyIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
                 <span className="text-sm font-semibold text-slate-900 dark:text-white">Zmiana hasła</span>
               </div>
               <button
@@ -215,7 +215,7 @@ export default function SettingsView({ email, onBack }: Props) {
                 </label>
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-[#ffa000] py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
+                  className="w-full rounded-xl bg-brand-gold py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
                 >
                   Zapisz nowe hasło
                 </button>
@@ -228,9 +228,9 @@ export default function SettingsView({ email, onBack }: Props) {
           <Row>
             <div className="flex items-center gap-3 min-w-0">
               {theme === 'dark' ? (
-                <MoonIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+                <MoonIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
               ) : (
-                <SunIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+                <SunIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
               )}
               <div>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">Motyw</p>
@@ -250,7 +250,7 @@ export default function SettingsView({ email, onBack }: Props) {
         <SectionCard title="Prywatność" icon={ShieldCheckIcon}>
           <Row>
             <div className="flex items-center gap-3 min-w-0 pr-2">
-              <MagnifyingGlassIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+              <MagnifyingGlassIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
               <span className="text-sm font-medium text-slate-900 dark:text-white">
                 Pokaż mój profil w wyszukiwarce
               </span>
@@ -263,7 +263,7 @@ export default function SettingsView({ email, onBack }: Props) {
           </Row>
           <Row>
             <div className="flex items-center gap-3 min-w-0 pr-2">
-              <AcademicCapIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+              <AcademicCapIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
               <span className="text-sm font-medium text-slate-900 dark:text-white">
                 Pokaż mój wydział przy postach
               </span>
@@ -279,7 +279,7 @@ export default function SettingsView({ email, onBack }: Props) {
         <SectionCard title="Informacje" icon={InformationCircleIcon}>
           <Row className="!justify-start flex-col items-stretch sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <InformationCircleIcon className="h-5 w-5 text-[#ffa000]" aria-hidden />
+              <InformationCircleIcon className="h-5 w-5 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
               <span className="text-sm text-slate-600 dark:text-slate-300">Wersja aplikacji</span>
             </div>
             <span className="text-sm font-mono font-semibold text-slate-900 dark:text-white sm:text-right">
@@ -292,7 +292,7 @@ export default function SettingsView({ email, onBack }: Props) {
             className="flex w-full items-center justify-between gap-3 py-3.5 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.04]"
           >
             <span className="flex items-center gap-3 text-sm font-medium text-slate-900 dark:text-white">
-              <DocumentTextIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+              <DocumentTextIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
               Regulamin
             </span>
             <span className="text-slate-400 text-lg">›</span>
@@ -303,7 +303,7 @@ export default function SettingsView({ email, onBack }: Props) {
             className="flex w-full items-center justify-between gap-3 py-3.5 text-left transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.04]"
           >
             <span className="flex items-center gap-3 text-sm font-medium text-slate-900 dark:text-white">
-              <ShieldCheckIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+              <ShieldCheckIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
               Polityka prywatności
             </span>
             <span className="text-slate-400 text-lg">›</span>

@@ -4,8 +4,11 @@
  */
 
 import type { UJEvent } from '../data/mockEvents'
+import { materializeOfficialFallbackEvents } from '../data/officialFallbackEvents'
 
 export const WZIKS_NEWS_URL = 'https://wziks.uj.edu.pl/wiadomosci/aktualnosci'
+/** Główne, stabilne źródło listy wiadomości UJ. */
+export const UJ_NEWS_HUB_URL = 'https://www.uj.edu.pl/wiadomosci'
 export const UJ_CALENDAR_URL = 'https://www.uj.edu.pl/wiadomosci/kalendarz'
 
 const OFFICIAL_CACHE_KEY = 'ujverse_official_ingest_v1'
@@ -16,6 +19,15 @@ let syncPromise: Promise<IngestSyncResult> | null = null
 const CATEGORY_OFFICIAL = 'Oficjalne'
 
 const FETCH_CHAIN_BUDGET_MS = 5000
+const PER_ATTEMPT_MAX_MS = 5000
+
+function ingestDebug(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('ujverse_ingest_debug') === '1'
+  } catch {
+    return false
+  }
+}
 
 const BROWSER_HEADERS: HeadersInit = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -127,7 +139,8 @@ function isLikelyArticleLink(absUrl: string): boolean {
   try {
     const u = new URL(absUrl)
     if (!u.hostname.endsWith('uj.edu.pl') && !u.hostname.endsWith('wziks.uj.edu.pl')) return false
-    if (!u.pathname.includes('/wiadomosci/')) return false
+    if (!u.pathname.includes('/wiadomosci')) return false
+    if (/\/wiadomosci\/?$/i.test(u.pathname)) return false
     if (/\/wiadomosci\/(aktualnosci|kalendarz)\/?$/i.test(u.pathname)) return false
     if (u.pathname.includes('/kategorie/')) return false
     if (/\/-\/|artykul|journal_content/i.test(u.pathname)) return true
@@ -221,6 +234,13 @@ export async function fetchHtml(url: string): Promise<string> {
     if (url === WZIKS_NEWS_URL) {
       attempts.push({ label: 'vite-proxy /api/ingest-wziks', buildUrl: () => '/api/ingest-wziks', sameOrigin: true })
     }
+    if (url === UJ_NEWS_HUB_URL) {
+      attempts.push({
+        label: 'vite-proxy /api/ingest-uj-wiadomosci',
+        buildUrl: () => '/api/ingest-uj-wiadomosci',
+        sameOrigin: true,
+      })
+    }
     if (url === UJ_CALENDAR_URL) {
       attempts.push({
         label: 'vite-proxy /api/ingest-uj-cal',
@@ -245,13 +265,14 @@ export async function fetchHtml(url: string): Promise<string> {
   })
 
   let lastErr: unknown = null
+  const dbg = ingestDebug()
   for (const { label, buildUrl, sameOrigin } of attempts) {
-    const ms = timeLeft()
+    const ms = Math.min(PER_ATTEMPT_MAX_MS, timeLeft())
     if (ms < 250) {
-      console.warn('[Ingestor] Limit 5s — przerywam kolejne próby dla', url)
+      if (dbg) console.warn('[Ingestor] Limit 5s — przerywam kolejne próby dla', url)
       break
     }
-    console.log(`[Ingestor] Próba przez ${label}…`)
+    if (dbg) console.log(`[Ingestor] Próba przez ${label}…`)
     try {
       const r = await fetchWithTimeout(
         buildUrl(),
@@ -278,70 +299,16 @@ export async function fetchHtml(url: string): Promise<string> {
       return t
     } catch (e) {
       lastErr = e
-      console.warn(`[Ingestor] Błąd sieci (${label}):`, e)
+      if (dbg) console.warn(`[Ingestor] Błąd sieci (${label}):`, e)
     }
   }
 
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
 }
 
-/** Zestaw awaryjny — WZiKS / UJ (demo), gdy cała sieć zawiedzie. */
+/** Zestaw awaryjny — stałe, bogate wpisy (Etap 1), gdy sieć / DNS zawiedzie. */
 export function getStaticFallbackOfficialEvents(): UJEvent[] {
-  const y = new Date().getFullYear()
-  const m = new Date().getMonth()
-  const demoBase = 'https://wziks.uj.edu.pl/wiadomosci/aktualnosci'
-  const mk = (
-    i: number,
-    title: string,
-    desc: string,
-    dayOffset: number,
-    faculty: IngestFaculty,
-  ): UJEvent => {
-    const d = new Date(y, m, Math.min(28, new Date().getDate() + dayOffset), 12, 0, 0, 0)
-    const href =
-      faculty === 'WZiKS'
-        ? `${demoBase}#offline-demo-${i}`
-        : `https://www.uj.edu.pl/wiadomosci/kalendarz#offline-demo-${i}`
-    const raw: RawItem = {
-      href,
-      title,
-      description: desc,
-      date: d,
-      faculty,
-    }
-    return rawToUjEvent(raw, true)
-  }
-
-  return dedupeByExternalId([
-    mk(
-      1,
-      'WZiKS — aktualności wydziału (tryb offline)',
-      'To jest przykładowy wpis awaryjny. Po przywróceniu sieci zobaczysz prawdziwe dane z wziks.uj.edu.pl.',
-      2,
-      'WZiKS',
-    ),
-    mk(
-      2,
-      'Wydarzenia i ogłoszenia dla studentów WZiKS',
-      'Zestaw demonstracyjny przy błędzie CORS lub przekroczeniu limitu proxy.',
-      7,
-      'WZiKS',
-    ),
-    mk(
-      3,
-      'Kalendarz UJ — tryb archiwalny',
-      'Przykładowe wydarzenie ze strony głównej UJ (dane offline).',
-      14,
-      'Uniwersytet Jagielloński',
-    ),
-    mk(
-      4,
-      'Spotkania informacyjne — WZiKS',
-      'Kolejny wpis awaryjny; odśwież stronę po naprawie połączenia.',
-      21,
-      'WZiKS',
-    ),
-  ])
+  return dedupeByExternalId(materializeOfficialFallbackEvents())
 }
 
 function parseNewsListing(html: string, pageUrl: string, faculty: IngestFaculty): RawItem[] {
@@ -532,31 +499,28 @@ async function runSyncExternal(force: boolean): Promise<IngestSyncResult> {
   }
 
   let wziksItems: RawItem[] = []
-  let ujItems: RawItem[] = []
+  let ujNewsItems: RawItem[] = []
+  let ujCalItems: RawItem[] = []
 
   try {
-    const [wzHtml, ujHtml] = await Promise.all([
-      fetchHtml(WZIKS_NEWS_URL).catch((e) => {
-        console.warn('[Ingestor] Błąd pobierania WZiKS:', e)
-        return ''
-      }),
-      fetchHtml(UJ_CALENDAR_URL).catch((e) => {
-        console.warn('[Ingestor] Błąd pobierania kalendarza UJ:', e)
-        return ''
-      }),
+    const [hubHtml, wzHtml, calHtml] = await Promise.all([
+      fetchHtml(UJ_NEWS_HUB_URL).catch(() => ''),
+      fetchHtml(WZIKS_NEWS_URL).catch(() => ''),
+      fetchHtml(UJ_CALENDAR_URL).catch(() => ''),
     ])
+    if (hubHtml) ujNewsItems = parseNewsListing(hubHtml, UJ_NEWS_HUB_URL, 'Uniwersytet Jagielloński')
     if (wzHtml) wziksItems = parseNewsListing(wzHtml, WZIKS_NEWS_URL, 'WZiKS')
-    if (ujHtml) ujItems = parseNewsListing(ujHtml, UJ_CALENDAR_URL, 'Uniwersytet Jagielloński')
-  } catch (e) {
-    console.warn('[Ingestor] Błąd podczas przetwarzania list:', e)
+    if (calHtml) ujCalItems = parseNewsListing(calHtml, UJ_CALENDAR_URL, 'Uniwersytet Jagielloński')
+  } catch {
+    /* cicho — poniżej łączymy to, co udało się pobrać */
   }
 
-  let combined = [...wziksItems, ...ujItems]
+  let combined = [...ujNewsItems, ...wziksItems, ...ujCalItems]
   if (combined.length > 0) {
     try {
       combined = await enrichWithOgMeta(combined, 8, 2)
-    } catch (e) {
-      console.warn('[Ingestor] Wzbogacenie meta — pominięte:', e)
+    } catch {
+      /* wzbogacenie opcjonalne */
     }
   }
 
@@ -565,10 +529,8 @@ async function runSyncExternal(force: boolean): Promise<IngestSyncResult> {
   if (events.length === 0) {
     const stale = readStaleOfficialFromStorage()
     if (stale.length > 0) {
-      console.log('[Ingestor] Używam ostatniego zapisanego cache (poza TTL).')
       return { events: dedupeByExternalId(stale), fromStaticFallback: false }
     }
-    console.warn('[Ingestor] Błąd sieci, ładuję dane awaryjne.')
     return { events: getStaticFallbackOfficialEvents(), fromStaticFallback: true }
   }
 
@@ -586,8 +548,7 @@ export async function syncExternalEvents(force = false): Promise<IngestSyncResul
   syncPromise = (async (): Promise<IngestSyncResult> => {
     try {
       return await runSyncExternal(force)
-    } catch (e) {
-      console.error('[Ingestor] Nieoczekiwany błąd — dane awaryjne.', e)
+    } catch {
       return { events: getStaticFallbackOfficialEvents(), fromStaticFallback: true }
     } finally {
       syncPromise = null

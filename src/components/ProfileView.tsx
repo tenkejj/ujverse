@@ -460,8 +460,8 @@ export default function ProfileView({
 
             <div className="mt-1 flex flex-col gap-2.5 text-sm text-slate-600 dark:text-slate-400">
               {profileForDisplay?.department && (
-                <div className="flex items-center gap-2 text-[#ffa000]">
-                  <AcademicCapIcon className="h-5 w-5 shrink-0 text-[#ffa000]" aria-hidden />
+                <div className="flex items-center gap-2 text-accent-interactive">
+                  <AcademicCapIcon className="h-5 w-5 shrink-0 text-accent-interactive" aria-hidden />
                   <span>{profileForDisplay.department}</span>
                 </div>
               )}

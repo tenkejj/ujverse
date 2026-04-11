@@ -43,7 +43,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
   const iconBtn = (isActive: boolean) =>
     `flex flex-1 items-center justify-center min-h-[52px] py-3 px-2 transition-colors rounded-xl ${
       isActive
-        ? 'text-uj-orange'
+        ? 'text-accent-interactive'
         : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white/90'
     }`
 
@@ -82,7 +82,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
             transition={{ type: 'spring', stiffness: 400, damping: 24 }}
             className="h-14 w-14 rounded-full flex items-center justify-center border-0 outline-none shadow-lg
               bg-[#0f172a] text-white
-              dark:bg-gradient-to-br dark:from-amber-400 dark:to-amber-600 dark:text-slate-900 dark:shadow-lg dark:shadow-amber-500/40
+              dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-slate-900 dark:shadow-lg dark:shadow-brand-gold/40
               transition-transform duration-200 hover:brightness-[1.03] active:brightness-[0.97] dark:hover:brightness-105 dark:active:brightness-95"
             aria-label="Napisz wpis"
           >
@@ -103,7 +103,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
               strokeWidth={activeView === 'notifications' ? 2.35 : 1.85}
               className={`h-7 w-7 shrink-0 transition-colors ${
                 activeView === 'notifications'
-                  ? 'text-uj-orange'
+                  ? 'text-accent-interactive'
                   : 'text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white/80'
               }`}
             />

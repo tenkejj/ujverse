@@ -79,9 +79,9 @@ const UJ_ESSENTIAL_LINKS = [
   { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail, tag: 'Poczta' },
 ] as const
 
-const widgetGoldCls = 'text-[#ffa000]'
+const widgetGoldCls = 'text-accent-interactive'
 const widgetSectionTitleCls =
-  'text-[10px] font-semibold uppercase tracking-widest text-[#ffa000]'
+  'text-[10px] font-semibold uppercase tracking-widest text-accent-interactive'
 
 const sideCardCls =
   'bg-bg-card rounded-2xl border border-slate-100 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/20 p-4'
@@ -319,7 +319,7 @@ export default function FeedView({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-start gap-3 rounded-xl border border-slate-100/80 dark:border-border-app/50 bg-bg-card p-3 transition-colors hover:border-slate-200 dark:hover:border-border-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/35"
+                className="flex items-start gap-3 rounded-xl border border-slate-100/80 dark:border-border-app/50 bg-bg-card p-3 transition-colors hover:border-slate-200 dark:hover:border-border-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/35"
               >
                 <div className="shrink-0 flex items-center justify-center min-w-[36px] min-h-[36px]">
                   <Icon size={18} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
@@ -340,20 +340,20 @@ export default function FeedView({
           <button
             type="button"
             onClick={onNavigateToEvents}
-            className="group w-full flex items-center gap-2 mb-3 rounded-lg -mx-1 px-1 py-1 text-left transition-colors hover:bg-slate-100/80 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffa000]/40"
+            className="group w-full flex items-center gap-2 mb-3 rounded-lg -mx-1 px-1 py-1 text-left transition-colors hover:bg-slate-100/80 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40"
             aria-label="Przejdź do wszystkich wydarzeń"
           >
             <CalendarDays
               size={13}
-              className={`${widgetGoldCls} shrink-0 transition-colors group-hover:text-[#ffb84d]`}
+              className={`${widgetGoldCls} shrink-0 transition-colors group-hover:text-brand-gold-bright`}
               strokeWidth={2}
             />
             <span
-              className={`${widgetSectionTitleCls} flex-1 min-w-0 underline-offset-2 group-hover:underline decoration-[#ffa000]/80`}
+              className={`${widgetSectionTitleCls} flex-1 min-w-0 underline-offset-2 group-hover:underline decoration-brand-gold/80`}
             >
               Wydarzenia UJ
             </span>
-            <span className="text-[10px] font-medium text-slate-400 dark:text-gray-500 whitespace-nowrap shrink-0 transition-colors group-hover:text-[#ffa000]">
+            <span className="text-[10px] font-medium text-slate-400 dark:text-gray-500 whitespace-nowrap shrink-0 transition-colors group-hover:text-accent-interactive">
               Zobacz wszystkie →
             </span>
           </button>
@@ -368,7 +368,7 @@ export default function FeedView({
                   onClick={() => setSelectedEventId(ev.id)}
                   className={`w-full text-left flex items-start gap-3 rounded-xl p-3 cursor-pointer transition-colors ${
                     official
-                      ? 'border border-amber-200/90 bg-gradient-to-br from-amber-50/90 to-white shadow-[0_0_22px_-10px_rgba(245,158,11,0.5)] ring-1 ring-amber-300/30 hover:ring-amber-400/40 dark:border-[#ffa000]/35 dark:from-[#ffa000]/[0.09] dark:to-transparent dark:shadow-[0_0_28px_-12px_rgba(255,160,0,0.35)] dark:ring-[#ffa000]/20 dark:hover:bg-white/[0.04]'
+                      ? 'border border-brand-gold/25 bg-gradient-to-br from-brand-gold/[0.08] to-white shadow-[0_0_22px_-10px_rgba(201,162,39,0.45)] ring-1 ring-brand-gold/25 hover:ring-brand-gold/40 dark:border-brand-gold/35 dark:from-brand-gold/[0.09] dark:to-transparent dark:shadow-[0_0_28px_-12px_rgba(201,162,39,0.35)] dark:ring-brand-gold/20 dark:hover:bg-white/[0.04]'
                       : 'border border-slate-100/80 dark:border-border-app/50 bg-bg-card hover:bg-white/5'
                   }`}
                 >
