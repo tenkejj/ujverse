@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Archive, Plus, Radio, Search, Shield, User, Users } from 'lucide-react'
 import { formatEventDateLong, formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
@@ -7,6 +7,10 @@ import EventModal from './EventModal'
 import WziksOfficialHub from './WziksOfficialHub'
 
 type EventFilter = 'all' | 'mine' | 'Wydarzenie' | 'Wydział' | 'Ogłoszenie' | 'Oficjalne'
+
+/** Wspólny styl etykiet „WYRÓŻNIONE” i „OFICJALNE UJ” na karcie wyróżnionej. */
+const featuredHeroPillCls =
+  'inline-flex items-center gap-0.5 rounded-full border border-[#c9a227]/45 bg-black/50 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-brand-gold backdrop-blur-sm dark:text-brand-gold-bright'
 
 const FILTERS: { key: EventFilter; label: string }[] = [
   { key: 'all', label: 'Wszystkie' },
@@ -100,6 +104,33 @@ export default function EventsView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<UJEvent | null>(null)
 
+  const trimmedFeaturedUrl = (featuredEvent?.imageUrl ?? '').trim()
+  const [featuredBannerState, setFeaturedBannerState] = useState<
+    'empty' | 'loading' | 'ok' | 'fail'
+  >('empty')
+
+  useEffect(() => {
+    if (!trimmedFeaturedUrl) {
+      setFeaturedBannerState('empty')
+      return
+    }
+    setFeaturedBannerState('loading')
+    let cancelled = false
+    const probe = new Image()
+    probe.onload = () => {
+      if (!cancelled) setFeaturedBannerState('ok')
+    }
+    probe.onerror = () => {
+      if (!cancelled) setFeaturedBannerState('fail')
+    }
+    probe.src = trimmedFeaturedUrl
+    return () => {
+      cancelled = true
+    }
+  }, [trimmedFeaturedUrl])
+
+  const showFeaturedHeroImage = featuredBannerState === 'ok'
+
   const selectedEvent = useMemo(
     () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
     [events, selectedEventId],
@@ -129,29 +160,34 @@ export default function EventsView() {
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
 
       <div className="lg:col-span-6 space-y-4">
-        {featuredEvent?.imageUrl ? (
+        {featuredEvent ? (
           <button
             type="button"
             onClick={() => setSelectedEventId(featuredEvent.id)}
             className="group relative w-full h-64 lg:h-80 rounded-3xl overflow-hidden mb-8 border border-border-app text-left shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
           >
-            <img
-              src={featuredEvent.imageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-            />
+            {showFeaturedHeroImage ? (
+              <img
+                src={trimmedFeaturedUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+            ) : (
+              <div
+                className="absolute inset-0 bg-gradient-to-br from-amber-600/30 to-zinc-950"
+                aria-hidden
+              />
+            )}
             <div className="absolute inset-0 bg-black/60" aria-hidden />
             <div
-              className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent dark:from-[#01020A] dark:via-[#040521]/80"
+              className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent dark:from-zinc-950 dark:via-zinc-950/80"
               aria-hidden
             />
             <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-black/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-brand-gold-bright backdrop-blur-sm border border-brand-gold/40">
-                🔥 WYRÓŻNIONE
-              </span>
+              <span className={featuredHeroPillCls}>WYRÓŻNIONE</span>
               {featuredEvent.is_official ? (
-                <span className="inline-flex items-center gap-0.5 rounded-lg border border-[#c9a227]/55 bg-black/60 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#f5e6a8] backdrop-blur-sm">
-                  <Shield size={12} className="text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
+                <span className={featuredHeroPillCls}>
+                  <Shield size={12} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.5} aria-hidden />
                   OFICJALNE UJ
                 </span>
               ) : null}
@@ -169,17 +205,6 @@ export default function EventsView() {
               </span>
             </div>
           </button>
-        ) : null}
-
-        {ingestFromStaticFallback ? (
-          <p
-            className="text-xs text-brand-gold dark:text-brand-gold-bright/95 bg-brand-gold/10 dark:bg-brand-gold/15 border border-brand-gold/35 dark:border-brand-gold/30 rounded-xl px-3 py-2.5 mb-2"
-            role="status"
-          >
-            <span className="font-semibold">Dane archiwalne (polecane).</span>{' '}
-            Nie udało się pobrać świeżych aktualności z serwisów UJ — wyświetlamy sprawdzony zestaw wydarzeń i linki do
-            oficjalnych stron uczelni.
-          </p>
         ) : null}
 
         <WziksOfficialHub events={allEvents} showOfflineHint={ingestFromStaticFallback} />
