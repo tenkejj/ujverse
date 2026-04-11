@@ -9,21 +9,53 @@ const inputCls =
 export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  const handleAuth = async (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) toast.error(error.message)
-      else toast.success('Sprawdź e-mail lub zaloguj się!')
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) toast.error(error.message)
+    const trimmedUsername = username.trim()
+    if (!trimmedUsername) {
+      toast.error('Podaj nazwę użytkownika')
+      setLoading(false)
+      return
     }
+
+    const shadowEmail = `${trimmedUsername.toLowerCase()}@ujverse.test`
+    const { error } = await supabase.auth.signInWithPassword({
+      email: shadowEmail,
+      password,
+    })
+    if (error) toast.error(error.message)
+
+    setLoading(false)
+  }
+
+  const handleSignUp = async (e: FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const trimmedUsername = username.trim()
+    if (!trimmedUsername) {
+      toast.error('Podaj nazwę użytkownika')
+      setLoading(false)
+      return
+    }
+
+    const shadowEmail = `${trimmedUsername.toLowerCase()}@ujverse.test`
+    const { error } = await supabase.auth.signUp({
+      email: shadowEmail,
+      password,
+      options: {
+        data: {
+          username: trimmedUsername,
+        },
+      },
+    })
+    if (error) toast.error(error.message)
+    else toast.success('Sprawdź e-mail lub zaloguj się!')
 
     setLoading(false)
   }
@@ -73,16 +105,18 @@ export default function Auth() {
             {isSignUp ? 'Załóż konto' : 'Zaloguj się'}
           </p>
 
-          <form onSubmit={handleAuth} className="mt-8 w-full text-left">
+          <form
+            onSubmit={isSignUp ? handleSignUp : handleLogin}
+            className="mt-8 w-full text-left"
+          >
             <input
-              type="email"
+              type="text"
               className={inputCls}
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Nazwa użytkownika"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
-              autoComplete="email"
-              inputMode="email"
+              autoComplete="username"
             />
 
             <input
