@@ -2,7 +2,7 @@ import { useState, type MouseEvent } from 'react'
 import ReactDOM from 'react-dom'
 import { Heart, MessageCircle, Share2, Trash2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'react-hot-toast'
+import { toast } from '../lib/appToast'
 import type { Comment, Post, Profile } from '../types'
 import { relativeTime } from '../lib/utils'
 import { getDeptAbbreviation } from '../lib/departments'
@@ -59,8 +59,8 @@ type Props = {
   onDeleteComment: (commentId: number) => void
   onNavigateToPost?: () => void
   onNavigateToUser?: (userId: string) => void
-  /** Płaski wpis (np. profil) — bez karty, zaokrągleń i cienia */
-  variant?: 'card' | 'flat'
+  /** card: pojedyncza karta | flat: bez ramki | stacked: wpis na liście (linie z parent divide-y) */
+  variant?: 'card' | 'flat' | 'stacked'
 }
 
 export default function PostCard({
@@ -88,6 +88,7 @@ export default function PostCard({
   variant = 'card',
 }: Props) {
   const isFlat = variant === 'flat'
+  const isStacked = variant === 'stacked'
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [isImageOpen, setIsImageOpen] = useState(false)
 
@@ -114,7 +115,9 @@ export default function PostCard({
       className={
         isFlat
           ? 'bg-transparent rounded-none border-0 shadow-none overflow-visible transition-colors'
-          : 'bg-card rounded-2xl border border-slate-200 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/25 hover:border-slate-300 dark:hover:border-[#2a3a66] transition-all duration-200 hover:scale-[1.005] md:hover:scale-[1.01] active:scale-[0.99] overflow-hidden'
+          : isStacked
+            ? 'bg-transparent rounded-none border-0 shadow-none ring-0 ring-inset ring-transparent transition-[background-color,box-shadow] duration-150 hover:bg-[#0f172a]/[0.02] hover:shadow-[inset_0_0_0_1px_rgb(164_137_85/0.14)] dark:hover:bg-white/[0.04] dark:hover:shadow-[inset_0_0_0_1px_rgb(201_162_39/0.2)] overflow-hidden'
+            : 'bg-card rounded-2xl border border-[#0f172a]/5 dark:border-white/10 shadow-sm dark:shadow-lg dark:shadow-black/25 transition-[border-color,box-shadow] duration-200 hover:shadow-[0_4px_20px_-4px_rgb(15_23_42/0.07)] dark:hover:border-brand-gold/20 dark:hover:shadow-xl active:shadow-sm overflow-hidden'
       }
     >
       {/* Post body */}
@@ -136,9 +139,6 @@ export default function PostCard({
             >
               <UserAvatar profile={author} name={authorName} className="h-10 w-10" textSize="text-sm" />
             </div>
-            {isCommentsOpen && (
-              <div className="w-px flex-1 mt-1.5 bg-gradient-to-b from-accent-interactive/30 via-slate-300/25 to-transparent dark:via-white/10 min-h-[24px]" />
-            )}
           </div>
 
           {/* Right column */}
@@ -155,12 +155,12 @@ export default function PostCard({
                   }}
                 >{authorName}</span>
                 {author?.department && (
-                  <span className="text-[9px] text-accent-interactive font-bold uppercase tracking-wider bg-accent-interactive/10 px-1.5 py-0.5 rounded-full border border-accent-interactive/25 leading-none">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#a48955] bg-[#1e293b]/[0.08] px-1.5 py-0.5 rounded-full border border-[#1e293b]/20 leading-none dark:text-accent-interactive dark:bg-accent-interactive/10 dark:border-accent-interactive/25">
                     {getDeptAbbreviation(author.department)}
                   </span>
                 )}
                 {createdAt && (
-                  <span className="text-xs text-slate-500 ml-auto">{relativeTime(createdAt)}</span>
+                  <span className="text-xs text-fg-secondary ml-auto">{relativeTime(createdAt)}</span>
                 )}
                 {isOwn && (
                   <button
@@ -175,7 +175,7 @@ export default function PostCard({
               </div>
 
               {/* Content */}
-              <p className="mt-1.5 text-[15px] font-normal text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">{content}</p>
+              <p className="mt-1.5 text-[15px] font-normal text-fg-primary dark:text-slate-200 leading-relaxed whitespace-pre-line">{content}</p>
             </div>
 
             {/* Image — stopPropagation opens lightbox, not SinglePostView */}
@@ -199,7 +199,7 @@ export default function PostCard({
                 className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${
                   isCommentsOpen
                     ? 'text-accent-interactive bg-accent-interactive/10 dark:bg-accent-interactive/15'
-                    : 'text-slate-400 dark:text-slate-400 hover:text-accent-interactive hover:bg-accent-interactive/5 dark:hover:bg-accent-interactive/10 [&_svg]:group-hover:text-accent-interactive'
+                    : 'text-fg-primary/50 dark:text-slate-400 hover:text-accent-interactive hover:bg-accent-interactive/5 dark:hover:bg-accent-interactive/10 [&_svg]:group-hover:text-accent-interactive'
                 }`}
                 aria-label="Komentarze"
               >
@@ -219,7 +219,7 @@ export default function PostCard({
                 className={`group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors disabled:opacity-50 ${
                   isLiked
                     ? 'text-accent-interactive bg-accent-interactive/15'
-                    : 'text-slate-400 dark:text-slate-400 hover:text-accent-interactive hover:bg-accent-interactive/10 [&_svg]:group-hover:text-accent-interactive'
+                    : 'text-fg-primary/50 dark:text-slate-400 hover:text-accent-interactive hover:bg-accent-interactive/10 [&_svg]:group-hover:text-accent-interactive'
                 }`}
                 aria-label={isLiked ? 'Usuń polubienie' : 'Polub'}
               >
@@ -254,7 +254,7 @@ export default function PostCard({
                     toast.error('Nie udało się skopiować linku.')
                   })
                 }}
-                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-slate-300 dark:text-slate-500 hover:text-accent-interactive dark:hover:text-accent-interactive hover:bg-slate-100 dark:hover:bg-white/5 text-[13px] transition-colors"
+                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-fg-primary/45 dark:text-slate-500 hover:text-accent-interactive dark:hover:text-accent-interactive hover:bg-[#F0EDE4]/70 dark:hover:bg-white/5 text-[13px] transition-colors"
                 aria-label="Udostępnij"
               >
                 <Share2 size={14} strokeWidth={1.75} />
@@ -266,7 +266,13 @@ export default function PostCard({
 
       {/* Comments thread */}
       {isCommentsOpen && (
-        <div className={isFlat ? 'border-t border-white/10' : 'border-t border-border-app'}>
+        <div
+          className={
+            isFlat
+              ? 'border-t border-white/10'
+              : 'border-t border-[#0f172a]/10 dark:border-white/10'
+          }
+        >
           <CommentThread
             postId={postId}
             comments={comments}

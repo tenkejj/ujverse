@@ -7,7 +7,7 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { toast } from 'react-hot-toast'
+import { toast } from './lib/appToast'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
@@ -24,6 +24,7 @@ import SinglePostView from './components/SinglePostView'
 import ComposeBox from './components/ComposeBox'
 import SettingsView from './components/SettingsView'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
+import { canonicalDepartment } from './lib/departments'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -571,7 +572,11 @@ function App() {
             {...sharedPostProps}
             posts={
               selectedDepartment
-                ? posts.filter((p) => p.profiles?.department === selectedDepartment)
+                ? posts.filter(
+                    (p) =>
+                      canonicalDepartment(p.profiles?.department) ===
+                      canonicalDepartment(selectedDepartment),
+                  )
                 : posts
             }
             postsLoading={postsLoading}
@@ -619,6 +624,7 @@ function App() {
             }
             onOpenProfileModal={() => setProfileModalOpen(true)}
             onNavigateToUser={navigateToUser}
+            onNavigateToEvents={() => setActiveView('events')}
             onAvatarUpdate={(url) =>
               setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
             }
@@ -692,7 +698,7 @@ function App() {
               onClick={resetCompose}
             />
             <motion.div
-              className="bg-slate-50 dark:bg-bg-app border-t border-border-app rounded-t-3xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+90px)] shadow-none max-h-[90vh] overflow-y-auto"
+              className="bg-card dark:bg-bg-app border-t border-border-app rounded-t-3xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+90px)] shadow-none max-h-[90vh] overflow-y-auto"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -723,7 +729,6 @@ function App() {
         <Header
           myProfile={myProfile}
           displayName={displayName}
-          email={session.user.email}
           menuOpen={menuOpen}
           setMenuOpen={setMenuOpen}
           activeView={navActiveView}
@@ -746,16 +751,17 @@ function App() {
           onNavigateToEvents={() => setActiveView('events')}
           onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}
+          onRefreshPosts={() => void fetchPosts()}
         />
 
         <main
           className={`mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
-            activeView === 'feed' || activeView === 'events'
+            activeView === 'feed' || activeView === 'events' || activeView === 'profile' || activeView === 'userProfile'
               ? 'max-w-7xl px-4 lg:px-6'
-              : activeView === 'profile' || activeView === 'userProfile' || activeView === 'settings'
+              : activeView === 'settings'
                 ? 'max-w-2xl px-4 space-y-0'
                 : 'max-w-2xl space-y-3 px-4'
-          }`}
+          } ${activeView === 'profile' || activeView === 'userProfile' ? 'space-y-4' : ''}`}
         >
           <AnimatePresence mode="wait">
             <motion.div

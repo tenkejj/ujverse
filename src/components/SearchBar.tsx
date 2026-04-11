@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, useMemo, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useRef, useState, useEffect, useCallback, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Search,
@@ -8,14 +8,14 @@ import {
   MessageSquareText,
   MapPin,
   Clock,
-  TrendingUp,
+  ChevronLeft,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile, Post } from '../types'
 import UserAvatar from './UserAvatar'
 import { getDeptAbbreviation } from '../lib/departments'
-import { useEvents, compareOfficialThenDate } from '../hooks/useEvents'
+import { useEvents } from '../hooks/useEvents'
 import type { UJEvent } from '../data/mockEvents'
 
 type Props = {
@@ -39,6 +39,47 @@ const WPIA_DEPARTMENT = 'Wydział Prawa i Administracji' as const
 
 const HISTORY_KEY = 'ujverse_search_history_v1'
 const MAX_HISTORY = 12
+
+/** Jak nagłówek „Wydziały” w sidebarze feedu. */
+const crystalSectionTitleCls =
+  'font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold dark:text-brand-gold-bright'
+
+/** Ramka i promień jak karta postu (PostCard, variant card). */
+const searchResultPanelCls =
+  'rounded-2xl border border-[#0f172a]/5 dark:border-white/10 bg-transparent shadow-sm dark:shadow-lg dark:shadow-black/25'
+
+/** Powrót: sama ikona, cel dotykowy min. 44×44, bez ramki / tła (delikatny hover). */
+const backIconBtnCls =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-brand-gold transition-colors duration-200 hover:bg-black/[0.06] dark:text-brand-gold-bright dark:hover:bg-white/[0.06] [-webkit-tap-highlight-color:transparent]'
+
+const searchSpringContent = { type: 'spring' as const, stiffness: 300, damping: 30 }
+
+/** Wejście modala: płynny slide z dołu (Crystal Entry). */
+const searchCrystalEntry = { duration: 0.4, ease: 'easeOut' as const }
+
+const searchStaggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.055, delayChildren: 0.04 },
+  },
+}
+
+/** Historia wyszukiwania: kaskada co 0,05 s. */
+const historyStaggerContainer = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.05, delayChildren: 0 },
+  },
+}
+
+const searchStaggerItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: searchSpringContent,
+  },
+}
 
 function loadSearchHistory(): string[] {
   if (typeof window === 'undefined') return []
@@ -102,6 +143,8 @@ export default function SearchBar({
   const [mobilePill, setMobilePill] = useState<MobilePill>('all')
   const [searchHistory, setSearchHistory] = useState<string[]>(loadSearchHistory)
   const [highlightIndex, setHighlightIndex] = useState(-1)
+  const [desktopInputFocused, setDesktopInputFocused] = useState(false)
+  const [mobileInputFocused, setMobileInputFocused] = useState(false)
 
   const desktopInputRef = useRef<HTMLInputElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
@@ -112,15 +155,6 @@ export default function SearchBar({
     results.users.length > 0 || results.posts.length > 0 || results.places.length > 0
   const searched = !isSearching && query.length >= 2
   const resultCount = results.users.length + results.posts.length + results.places.length
-
-  const popularNow = useMemo(() => {
-    const now = Date.now()
-    const upcoming = [...allEvents]
-      .filter((e) => e.date.getTime() >= now)
-      .sort(compareOfficialThenDate)
-    if (upcoming.length > 0) return upcoming.slice(0, 6)
-    return [...allEvents].sort(compareOfficialThenDate).slice(0, 6)
-  }, [allEvents])
 
   const pushHistory = useCallback((q: string) => {
     const t = q.trim()
@@ -135,6 +169,14 @@ export default function SearchBar({
   const clearHistory = useCallback(() => {
     setSearchHistory([])
     saveSearchHistory([])
+  }, [])
+
+  const removeHistoryItem = useCallback((entry: string) => {
+    setSearchHistory((prev) => {
+      const next = prev.filter((x) => x !== entry)
+      saveSearchHistory(next)
+      return next
+    })
   }, [])
 
   const clearSearch = useCallback(() => {
@@ -314,7 +356,9 @@ export default function SearchBar({
   }, [query, mobileModalOpen, mobilePill, allEvents])
 
   const resultItemBase =
-    'w-full flex items-center gap-3 p-3 rounded-xl cursor-pointer text-left transition-colors duration-200'
+    'w-full flex items-center gap-3 py-2.5 px-1 rounded-xl cursor-pointer text-left transition-colors duration-200'
+  const mobileResultRow =
+    'hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:bg-black/[0.06] dark:active:bg-white/[0.07]'
 
   const desktopRowHover =
     'hover:bg-slate-100/90 dark:hover:bg-white/[0.06] active:bg-slate-200/80 dark:active:bg-white/[0.08]'
@@ -385,6 +429,72 @@ export default function SearchBar({
     }
   }
 
+  const crystalHistorySection = (sectionClassName: string, focusInput: () => void) => (
+    <section className={sectionClassName}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className={crystalSectionTitleCls}>Ostatnio wyszukiwane</h3>
+        {searchHistory.length > 0 && (
+          <motion.button
+            type="button"
+            onClick={clearHistory}
+            whileTap={{ scale: 0.97 }}
+            className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-brand-gold dark:hover:text-brand-gold-bright"
+          >
+            Wyczyść
+          </motion.button>
+        )}
+      </div>
+      {searchHistory.length === 0 ? (
+        <motion.p
+          className="text-[14px] text-slate-500 dark:text-slate-500"
+          variants={searchStaggerItem}
+          initial="hidden"
+          animate="show"
+        >
+          Brak ostatnich wyszukiwań.
+        </motion.p>
+      ) : (
+        <motion.ul
+          className="flex flex-col"
+          variants={historyStaggerContainer}
+          initial="hidden"
+          animate="show"
+        >
+          {searchHistory.map((h) => (
+            <motion.li key={h} variants={searchStaggerItem}>
+              <div className="group flex items-center gap-1 rounded-lg px-1 py-0.5 transition-colors duration-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
+                <motion.button
+                  type="button"
+                  onClick={() => {
+                    setQuery(h)
+                    window.setTimeout(focusInput, 0)
+                  }}
+                  whileTap={{ scale: 0.99 }}
+                  className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-1 pr-0 text-left [-webkit-tap-highlight-color:transparent]"
+                >
+                  <Clock size={15} strokeWidth={2} className="shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+                  <span className="truncate text-[15px] text-fg-primary dark:text-white">{h}</span>
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeHistoryItem(h)
+                  }}
+                  whileTap={{ scale: 0.92 }}
+                  className="shrink-0 rounded-md p-2 text-slate-500 transition-colors duration-200 hover:text-slate-300 [-webkit-tap-highlight-color:transparent]"
+                  aria-label={`Usuń „${h}” z historii`}
+                >
+                  <X size={16} strokeWidth={2} aria-hidden />
+                </motion.button>
+              </div>
+            </motion.li>
+          ))}
+        </motion.ul>
+      )}
+    </section>
+  )
+
   const resultsContentMobile = () => {
     const tTitle = 'text-uj-navy dark:text-slate-200'
     const tMuted = 'text-slate-600 dark:text-slate-400'
@@ -394,45 +504,58 @@ export default function SearchBar({
     const sectionDivider = 'border-border-app'
 
     return (
-      <div onPointerDown={(e) => e.stopPropagation()}>
+      <motion.div
+        variants={searchStaggerContainer}
+        initial="hidden"
+        animate="show"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {isSearching && (
-          <div className={`flex items-center gap-2.5 px-4 py-4 text-[13px] ${tMuted}`}>
+          <motion.div
+            variants={searchStaggerItem}
+            className={`flex items-center gap-2.5 px-4 py-4 text-[13px] ${tMuted}`}
+          >
             <Loader2 size={14} className="animate-spin text-brand-gold dark:text-brand-gold-bright shrink-0" />
             Szukam…
-          </div>
+          </motion.div>
         )}
 
         {!isSearching && query.length === 1 && (
-          <div className={`px-4 py-3 text-[12px] ${tHint}`}>Wpisz co najmniej 2 znaki…</div>
+          <motion.div variants={searchStaggerItem} className={`px-4 py-3 text-[12px] ${tHint}`}>
+            Wpisz co najmniej 2 znaki…
+          </motion.div>
         )}
 
         {!isSearching && searched && !hasResults && (
-          <div className={`px-4 py-5 text-center text-[13px] ${tHint}`}>
+          <motion.div variants={searchStaggerItem} className={`px-4 py-5 text-center text-[13px] ${tHint}`}>
             Brak wyników dla <span className={`font-semibold ${tQuote}`}>"{query}"</span>
-          </div>
+          </motion.div>
         )}
 
         {!isSearching && results.users.length > 0 && (
-          <div className="px-2 pt-2">
+          <motion.div className="px-2 pt-2" variants={searchStaggerItem}>
             <div
               className={`flex items-center gap-2 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-widest ${tHint}`}
             >
               <UserRound size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
               Użytkownicy
             </div>
-            {results.users.map((user, i) => (
+            <motion.div variants={searchStaggerContainer} initial="hidden" animate="show">
+            {results.users.map((user) => (
               <motion.button
                 key={user.id}
                 type="button"
+                variants={searchStaggerItem}
                 onClick={() => handleNavigateUser(user.id)}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1], delay: i * 0.05 }}
-                className={`${resultItemBase} bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-brand-gold/20 hover:bg-brand-gold/[0.08] dark:hover:bg-brand-gold/10 active:bg-brand-gold/[0.12] dark:active:bg-brand-gold/15`}
+                whileTap={{ scale: 0.985 }}
+                className={`${resultItemBase} ${mobileResultRow}`}
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent-gold/40 bg-accent-gold/15 text-accent-gold">
-                  <UserRound size={18} strokeWidth={2} />
-                </span>
+                <UserRound
+                  size={18}
+                  strokeWidth={2}
+                  className="shrink-0 text-slate-400 dark:text-slate-500"
+                  aria-hidden
+                />
                 <span className="flex-1 min-w-0">
                   <span className={`block text-sm font-semibold truncate ${tTitle}`}>
                     {user.full_name ?? 'Użytkownik'}
@@ -445,11 +568,13 @@ export default function SearchBar({
                 </span>
               </motion.button>
             ))}
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {!isSearching && results.posts.length > 0 && (
-          <div
+          <motion.div
+            variants={searchStaggerItem}
             className={`px-2 pb-2 ${
               results.users.length > 0 ? `mt-1 border-t ${sectionDivider} pt-2` : 'pt-2'
             }`}
@@ -460,28 +585,26 @@ export default function SearchBar({
               <MessageSquareText size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
               Wpisy
             </div>
-            {results.posts.map((post, i) => {
+            <motion.div variants={searchStaggerContainer} initial="hidden" animate="show">
+            {results.posts.map((post) => {
               const postId = String(post.id)
               const author = post.profiles
               const authorName = author?.full_name ?? 'Użytkownik'
-              const offset = results.users.length
               return (
                 <motion.button
                   key={postId}
                   type="button"
+                  variants={searchStaggerItem}
                   onClick={() => handleNavigatePost(postId)}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.22,
-                    ease: [0.16, 1, 0.3, 1],
-                    delay: (offset + i) * 0.05,
-                  }}
-                  className={`${resultItemBase} bg-slate-50 dark:bg-white/[0.03] border border-slate-200/90 dark:border-brand-gold/20 hover:bg-brand-gold/[0.08] dark:hover:bg-brand-gold/10 active:bg-brand-gold/[0.12] dark:active:bg-brand-gold/15`}
+                  whileTap={{ scale: 0.985 }}
+                  className={`${resultItemBase} ${mobileResultRow}`}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent-gold/45 bg-accent-gold/12 text-accent-gold">
-                    <MessageSquareText size={18} strokeWidth={2} />
-                  </span>
+                  <MessageSquareText
+                    size={18}
+                    strokeWidth={2}
+                    className="shrink-0 text-slate-400 dark:text-slate-500"
+                    aria-hidden
+                  />
                   <span className="flex-1 min-w-0">
                     <span className={`block text-sm font-semibold truncate ${tTitle}`}>{authorName}</span>
                     <span className={`block text-sm line-clamp-1 mt-0.5 ${tMuted}`}>{post.content ?? ''}</span>
@@ -489,11 +612,13 @@ export default function SearchBar({
                 </motion.button>
               )
             })}
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
         {!isSearching && results.places.length > 0 && (
-          <div
+          <motion.div
+            variants={searchStaggerItem}
             className={`px-2 pb-2 ${
               results.users.length > 0 || results.posts.length > 0
                 ? `mt-1 border-t ${sectionDivider} pt-2`
@@ -506,25 +631,22 @@ export default function SearchBar({
               <MapPin size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
               Miejsca
             </div>
-            {results.places.map((place, i) => {
-              const offset = results.users.length + results.posts.length
-              return (
+            <motion.div variants={searchStaggerContainer} initial="hidden" animate="show">
+            {results.places.map((place) => (
                 <motion.button
                   key={place.id}
                   type="button"
+                  variants={searchStaggerItem}
                   onClick={handleNavigatePlace}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.22,
-                    ease: [0.16, 1, 0.3, 1],
-                    delay: (offset + i) * 0.05,
-                  }}
-                  className={`${resultItemBase} bg-slate-50 dark:bg-white/[0.03] border border-brand-gold/25 dark:border-accent-gold/25 hover:bg-brand-gold/[0.08] dark:hover:bg-accent-gold/10 active:bg-brand-gold/[0.12] dark:active:bg-accent-gold/15`}
+                  whileTap={{ scale: 0.985 }}
+                  className={`${resultItemBase} ${mobileResultRow}`}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent-gold/45 bg-accent-gold/12 text-accent-gold">
-                    <MapPin size={18} strokeWidth={2} />
-                  </span>
+                  <MapPin
+                    size={18}
+                    strokeWidth={2}
+                    className="shrink-0 text-slate-400 dark:text-slate-500"
+                    aria-hidden
+                  />
                   <span className="flex-1 min-w-0">
                     <span className={`block text-sm font-semibold truncate ${tTitle}`}>
                       {place.location.trim() || place.title}
@@ -534,52 +656,13 @@ export default function SearchBar({
                     </span>
                   </span>
                 </motion.button>
-              )
-            })}
-          </div>
+            ))}
+            </motion.div>
+          </motion.div>
         )}
 
         <div className="h-1" />
-      </div>
-    )
-  }
-
-  const renderDesktopPopularColumn = () => {
-    const tTitle = 'text-fg-primary dark:text-slate-200'
-    const tHint = 'text-slate-500 dark:text-slate-500'
-    const sectionIconCls = 'text-brand-gold dark:text-brand-gold-bright shrink-0'
-    const sectionDivider = 'border-slate-200 dark:border-border-app'
-    return (
-      <div className="min-w-0 flex flex-col rounded-xl border border-slate-200/80 dark:border-border-app bg-bg-card/60 overflow-hidden max-h-[min(70vh,520px)] lg:max-h-none lg:flex-1">
-        <div
-          className={`shrink-0 flex items-center gap-2 px-3 py-2 border-b ${sectionDivider} text-[10px] font-bold uppercase tracking-widest ${tHint}`}
-        >
-          <TrendingUp size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
-          Popularne teraz
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1.5">
-          {popularNow.length === 0 ? (
-            <p className={`text-[12px] px-1 py-2 ${tHint}`}>Brak wydarzeń.</p>
-          ) : (
-            popularNow.map((ev) => (
-              <button
-                key={ev.id}
-                type="button"
-                onClick={handleNavigatePlace}
-                className={`w-full text-left rounded-lg px-2 py-2 transition-colors ${desktopRowHover}`}
-              >
-                <span className={`block text-[12px] font-semibold leading-snug line-clamp-2 ${tTitle}`}>
-                  {ev.title}
-                </span>
-                <span className={`block text-[10px] mt-0.5 ${tHint}`}>
-                  {ev.date.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}
-                  {ev.location ? ` · ${ev.location}` : ''}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
+      </motion.div>
     )
   }
 
@@ -589,7 +672,7 @@ export default function SearchBar({
     const tHint = 'text-slate-500 dark:text-slate-500'
     const tQuote = 'text-fg-primary dark:text-slate-300'
     const sectionIconCls = 'text-brand-gold dark:text-brand-gold-bright shrink-0'
-    const sectionDivider = 'border-slate-200 dark:border-border-app'
+    const sectionDivider = 'border-slate-200/80 dark:border-white/10'
     let flatIdx = 0
 
     const mainStatuses = (
@@ -623,7 +706,7 @@ export default function SearchBar({
       query.length >= 2 && !isSearching && hasResults ? (
         <>
           <div
-            className="min-w-0 flex flex-col rounded-xl border border-slate-200/80 dark:border-border-app bg-bg-card/80 overflow-hidden max-h-[min(55vh,420px)] lg:max-h-none"
+            className={`flex min-h-0 max-h-[min(62vh,520px)] min-w-0 flex-col overflow-hidden lg:max-h-none ${searchResultPanelCls}`}
             onPointerDown={(e) => e.stopPropagation()}
             role="listbox"
             aria-label="Użytkownicy"
@@ -634,18 +717,25 @@ export default function SearchBar({
               <UserRound size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
               Użytkownicy
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1">
+            <motion.div
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1"
+              variants={searchStaggerContainer}
+              initial="hidden"
+              animate="show"
+            >
               {results.users.map((user) => {
                 const idx = flatIdx++
                 const hi = highlightIndex === idx
                 return (
-                  <button
+                  <motion.button
                     key={user.id}
                     type="button"
+                    variants={searchStaggerItem}
                     data-search-result-index={idx}
                     role="option"
                     aria-selected={hi}
                     onClick={() => handleNavigateUser(user.id)}
+                    whileTap={{ scale: 0.99 }}
                     className={`${resultItemBase} ${desktopRowHover} ${hi ? desktopHighlight : ''}`}
                   >
                     <UserAvatar
@@ -664,17 +754,17 @@ export default function SearchBar({
                         </span>
                       )}
                     </span>
-                  </button>
+                  </motion.button>
                 )
               })}
               {results.users.length === 0 && (
                 <p className={`text-[12px] px-2 py-3 ${tHint}`}>Brak dopasowań w ludziach.</p>
               )}
-            </div>
+            </motion.div>
           </div>
 
           <div
-            className="min-w-0 flex flex-col rounded-xl border border-slate-200/80 dark:border-border-app bg-bg-card/80 overflow-hidden max-h-[min(55vh,420px)] lg:max-h-none"
+            className={`flex min-h-0 max-h-[min(62vh,520px)] min-w-0 flex-col overflow-hidden lg:max-h-none ${searchResultPanelCls}`}
             onPointerDown={(e) => e.stopPropagation()}
             role="listbox"
             aria-label="Wpisy i miejsca"
@@ -686,7 +776,12 @@ export default function SearchBar({
               Wpisy i miejsca
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-3">
-              <div className="space-y-1">
+              <motion.div
+                className="space-y-1"
+                variants={searchStaggerContainer}
+                initial="hidden"
+                animate="show"
+              >
                 {results.posts.length > 0 && (
                   <div className={`text-[10px] font-bold uppercase tracking-widest ${tHint} px-1 pb-1`}>Wpisy</div>
                 )}
@@ -697,13 +792,15 @@ export default function SearchBar({
                   const idx = flatIdx++
                   const hi = highlightIndex === idx
                   return (
-                    <button
+                    <motion.button
                       key={postId}
                       type="button"
+                      variants={searchStaggerItem}
                       data-search-result-index={idx}
                       role="option"
                       aria-selected={hi}
                       onClick={() => handleNavigatePost(postId)}
+                      whileTap={{ scale: 0.99 }}
                       className={`${resultItemBase} ${desktopRowHover} ${hi ? desktopHighlight : ''}`}
                     >
                       <UserAvatar
@@ -716,24 +813,31 @@ export default function SearchBar({
                         <span className={`block text-sm font-semibold truncate ${tTitle}`}>{authorName}</span>
                         <span className={`block text-sm line-clamp-2 mt-0.5 ${tMuted}`}>{post.content ?? ''}</span>
                       </span>
-                    </button>
+                    </motion.button>
                   )
                 })}
-              </div>
+              </motion.div>
               {results.places.length > 0 && (
-                <div className={`space-y-1 pt-1 border-t ${sectionDivider}`}>
+                <motion.div
+                  className={`space-y-1 pt-1 border-t ${sectionDivider}`}
+                  variants={searchStaggerContainer}
+                  initial="hidden"
+                  animate="show"
+                >
                   <div className={`text-[10px] font-bold uppercase tracking-widest ${tHint} px-1 pb-1`}>Miejsca</div>
                   {results.places.map((place) => {
                     const idx = flatIdx++
                     const hi = highlightIndex === idx
                     return (
-                      <button
+                      <motion.button
                         key={place.id}
                         type="button"
+                        variants={searchStaggerItem}
                         data-search-result-index={idx}
                         role="option"
                         aria-selected={hi}
                         onClick={handleNavigatePlace}
+                        whileTap={{ scale: 0.99 }}
                         className={`${resultItemBase} ${desktopRowHover} ${hi ? desktopHighlight : ''}`}
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent-gold/35 bg-accent-gold/10 text-accent-gold">
@@ -749,10 +853,10 @@ export default function SearchBar({
                               : 'Wydarzenie'}
                           </span>
                         </span>
-                      </button>
+                      </motion.button>
                     )
                   })}
-                </div>
+                </motion.div>
               )}
               {results.posts.length === 0 && results.places.length === 0 && (
                 <p className={`text-[12px] px-2 py-3 ${tHint}`}>Brak wpisów i miejsc.</p>
@@ -764,13 +868,13 @@ export default function SearchBar({
 
     return (
       <div
-        className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0"
+        className="mx-auto flex w-full max-w-5xl flex-1 min-h-0 flex-col"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="flex-1 min-w-0 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 auto-rows-fr lg:items-stretch">
+        <div className="grid min-h-0 w-full flex-1 grid-cols-1 auto-rows-fr gap-4 lg:grid-cols-2 lg:items-stretch">
           {query.length === 0 && (
             <p
-              className={`lg:col-span-2 text-[13px] ${tHint} px-1 py-2 hidden lg:block`}
+              className={`hidden text-center text-[13px] lg:col-span-2 ${tHint} px-1 py-2 lg:block`}
               onPointerDown={(e) => e.stopPropagation()}
             >
               Wyniki wyszukiwania pojawią się tutaj — zacznij wpisywać powyżej.
@@ -779,15 +883,9 @@ export default function SearchBar({
           {mainStatuses}
           {resultsTwoColumns}
         </div>
-        <div className="w-full lg:w-[min(240px,100%)] shrink-0 min-h-0 flex flex-col" onPointerDown={(e) => e.stopPropagation()}>
-          {renderDesktopPopularColumn()}
-        </div>
       </div>
     )
   }
-
-  const kbdClass =
-    'inline-flex items-center justify-center min-w-[1.5rem] h-6 px-1.5 rounded-md border border-slate-200/90 dark:border-slate-600 bg-slate-100/90 dark:bg-slate-800/90 text-[10px] font-semibold text-slate-600 dark:text-slate-400 tabular-nums'
 
   return (
     <>
@@ -819,149 +917,72 @@ export default function SearchBar({
               role="dialog"
               aria-modal="true"
               aria-label="Wyszukiwanie"
-              className="fixed inset-0 z-[200] hidden md:flex flex-col bg-bg-app/88 dark:bg-bg-app/90 backdrop-blur-3xl"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed inset-0 z-[200] hidden md:flex flex-col bg-bg-app/95"
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)', WebkitBackdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
               onPointerDown={() => closeDesktopOverlay()}
             >
               <motion.div
-                className="relative flex flex-1 min-h-0 flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] max-w-6xl mx-auto w-full"
-                initial={{ opacity: 0, y: 10 }}
+                className="relative mx-auto flex w-full max-w-6xl flex-1 min-h-0 flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={searchCrystalEntry}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="relative w-full max-w-2xl mx-auto shrink-0">
-                  <AnimatePresence>
-                    {query.trim().length > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.92 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.25 }}
-                        className="pointer-events-none absolute -inset-x-4 top-full mt-1 h-16 rounded-full bg-brand-gold/25 dark:bg-brand-gold-bright/20 blur-3xl"
-                        aria-hidden
-                      />
-                    )}
-                  </AnimatePresence>
-
-                  <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                    <div className="relative flex-1 min-w-0">
-                      <Search
-                        size={18}
-                        strokeWidth={2}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-gold dark:text-brand-gold-bright pointer-events-none"
-                      />
-                      <input
-                        ref={desktopInputRef}
-                        type="search"
-                        name="ujverse-desktop-search"
-                        autoComplete="off"
-                        spellCheck={false}
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={onDesktopSearchKeyDown}
-                        placeholder="Szukaj użytkowników, wpisów, miejsc…"
-                        className="w-full h-12 pl-11 pr-24 rounded-2xl border border-slate-200/90 dark:border-border-app bg-white dark:bg-white/[0.06] text-[15px] text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-sm outline-none ring-0 transition-shadow duration-200 focus:border-brand-gold/45 focus:ring-2 focus:ring-brand-gold/25 dark:focus:ring-brand-gold-bright/25 caret-brand-gold dark:caret-brand-gold-bright"
-                      />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        <AnimatePresence>
-                          {query.length > 0 && (
-                            <motion.button
-                              type="button"
-                              initial={{ opacity: 0, scale: 0.85 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.85 }}
-                              transition={{ duration: 0.15 }}
-                              onClick={() => {
-                                setQuery('')
-                                setResults({ users: [], posts: [], places: [] })
-                                desktopInputRef.current?.focus()
-                              }}
-                              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-brand-gold dark:hover:text-brand-gold-bright hover:bg-brand-gold/10 transition-colors"
-                              aria-label="Wyczyść zapytanie"
-                            >
-                              <X size={18} strokeWidth={2.25} />
-                            </motion.button>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5 shrink-0">
-                      <span className={`${kbdClass} gap-0.5`} title="Zamknij">
-                        Esc
-                      </span>
-                      {resultCount > 0 && !isSearching && query.length >= 2 && (
-                        <>
-                          <kbd className={kbdClass} aria-hidden>
-                            ↑
-                          </kbd>
-                          <kbd className={kbdClass} aria-hidden>
-                            ↓
-                          </kbd>
-                        </>
-                      )}
-                    </div>
+                <div className="relative mx-auto flex w-full max-w-5xl shrink-0 items-center gap-2">
+                  <motion.button
+                    type="button"
+                    onClick={closeDesktopOverlay}
+                    whileTap={{ scale: 0.96 }}
+                    className={backIconBtnCls}
+                    aria-label="Wróć do feedu"
+                  >
+                    <ChevronLeft size={24} strokeWidth={2.25} className="h-6 w-6 shrink-0" aria-hidden />
+                  </motion.button>
+                  <div className="relative min-w-0 flex-1 rounded-2xl">
+                    <motion.div
+                      aria-hidden
+                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-brand-gold dark:border-brand-gold-bright"
+                      initial={false}
+                      animate={{
+                        opacity: desktopInputFocused ? 1 : 0,
+                        scale: desktopInputFocused ? 1 : 0.992,
+                      }}
+                      transition={searchSpringContent}
+                    />
+                    <Search
+                      size={18}
+                      strokeWidth={2}
+                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-brand-gold dark:text-brand-gold-bright"
+                    />
+                    <input
+                      ref={desktopInputRef}
+                      type="search"
+                      name="ujverse-desktop-search"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={onDesktopSearchKeyDown}
+                      onFocus={() => setDesktopInputFocused(true)}
+                      onBlur={() => setDesktopInputFocused(false)}
+                      placeholder="Szukaj użytkowników, wpisów, miejsc…"
+                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[15px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-brand-gold dark:caret-brand-gold-bright"
+                    />
                   </div>
                 </div>
 
                 <div className="flex-1 min-h-0 flex flex-col mt-6 overflow-hidden">
-                  {query.length === 0 && (
-                    <section className="max-w-2xl mx-auto w-full mb-6 shrink-0">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-[12px] font-bold uppercase tracking-[0.18em] text-slate-700 dark:text-slate-400 flex items-center gap-2">
-                          <Clock size={15} className="text-accent-gold shrink-0" strokeWidth={2} />
-                          Ostatnio wyszukiwane
-                        </h3>
-                        {searchHistory.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={clearHistory}
-                            className="text-[13px] font-medium text-slate-600 dark:text-slate-500 hover:text-accent-gold transition-colors"
-                          >
-                            Wyczyść
-                          </button>
-                        )}
-                      </div>
-                      {searchHistory.length === 0 ? (
-                        <p className="text-[14px] text-slate-500 dark:text-slate-500">Brak ostatnich wyszukiwań.</p>
-                      ) : (
-                        <ul className="flex flex-col gap-1.5">
-                          {searchHistory.map((h) => (
-                            <li key={h}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setQuery(h)
-                                  window.setTimeout(() => desktopInputRef.current?.focus(), 0)
-                                }}
-                                className="w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left bg-slate-100/80 dark:bg-slate-800/50 border border-transparent hover:border-accent-gold/30 dark:hover:border-accent-gold/25 transition-colors"
-                              >
-                                <Clock size={15} className="text-accent-gold/90 shrink-0" strokeWidth={2} />
-                                <span className="truncate text-[15px] text-slate-800 dark:text-slate-200">{h}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-                  )}
+                  {query.length === 0 &&
+                    crystalHistorySection('mx-auto mb-6 w-full max-w-5xl shrink-0', () => {
+                      desktopInputRef.current?.focus({ preventScroll: true })
+                    })}
 
                   <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{renderDesktopResultsGrid()}</div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={closeDesktopOverlay}
-                  className="absolute top-[max(1rem,env(safe-area-inset-top))] right-5 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-200/80 dark:hover:bg-white/10 dark:text-slate-400 transition-colors"
-                  aria-label="Zamknij wyszukiwanie"
-                >
-                  <X size={22} strokeWidth={2} />
-                </button>
               </motion.div>
             </motion.div>
           )}
@@ -977,26 +998,44 @@ export default function SearchBar({
               role="dialog"
               aria-modal="true"
               aria-label="Wyszukiwanie"
-              className="fixed inset-0 z-[200] md:hidden flex flex-col bg-bg-app/93 dark:bg-bg-app/93 backdrop-blur-2xl"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-              style={{ transformOrigin: '50% 0%' }}
+              className="fixed inset-0 z-[200] md:hidden flex flex-col bg-bg-app/95"
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)', WebkitBackdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <motion.div
-                className="flex flex-1 min-h-0 flex-col px-4 pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
-                initial={{ opacity: 0, y: 14 }}
+                className="relative flex flex-1 min-h-0 flex-col px-4 pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={searchCrystalEntry}
               >
-                <div className="flex items-center gap-3 shrink-0 mb-5">
-                  <div className="relative flex-1 min-w-0">
+                <div className="mb-5 flex shrink-0 items-center gap-2">
+                  <motion.button
+                    type="button"
+                    onClick={closeMobileModal}
+                    whileTap={{ scale: 0.96 }}
+                    className={backIconBtnCls}
+                    aria-label="Wróć do feedu"
+                  >
+                    <ChevronLeft size={24} strokeWidth={2.25} className="h-6 w-6 shrink-0" aria-hidden />
+                  </motion.button>
+                  <div className="relative min-w-0 flex-1 rounded-2xl">
+                    <motion.div
+                      aria-hidden
+                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-brand-gold dark:border-brand-gold-bright"
+                      initial={false}
+                      animate={{
+                        opacity: mobileInputFocused ? 1 : 0,
+                        scale: mobileInputFocused ? 1 : 0.992,
+                      }}
+                      transition={searchSpringContent}
+                    />
                     <Search
                       size={18}
                       strokeWidth={2}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-gold dark:text-brand-gold-bright pointer-events-none"
+                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-brand-gold dark:text-brand-gold-bright"
                     />
                     <input
                       ref={mobileInputRef}
@@ -1013,140 +1052,88 @@ export default function SearchBar({
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') closeMobileModal()
                       }}
+                      onFocus={() => setMobileInputFocused(true)}
+                      onBlur={() => setMobileInputFocused(false)}
                       placeholder="Szukaj…"
-                      className="w-full h-12 pl-11 pr-11 rounded-2xl border border-transparent bg-slate-100 dark:bg-slate-800 text-[16px] text-uj-navy dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-500 shadow-none outline-none ring-0 transition-shadow duration-200 focus:border-brand-gold/35 focus:ring-2 focus:ring-brand-gold/35 focus:ring-offset-0 dark:focus:ring-brand-gold-bright/30 caret-brand-gold dark:caret-brand-gold-bright"
+                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[16px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-brand-gold dark:caret-brand-gold-bright"
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
-                      <AnimatePresence>
-                        {query.length > 0 && (
-                          <motion.button
-                            type="button"
-                            initial={{ opacity: 0, scale: 0.85 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.85 }}
-                            transition={{ duration: 0.15 }}
-                            onClick={() => {
-                              setQuery('')
-                              setResults({ users: [], posts: [], places: [] })
-                              mobileInputRef.current?.focus()
-                            }}
-                            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-brand-gold dark:hover:text-brand-gold-bright hover:bg-brand-gold/10 transition-colors"
-                            aria-label="Wyczyść zapytanie"
-                          >
-                            <X size={18} strokeWidth={2.25} />
-                          </motion.button>
-                        )}
-                      </AnimatePresence>
-                    </div>
                   </div>
-                  <motion.button
-                    type="button"
-                    onClick={closeMobileModal}
-                    className="shrink-0 py-2 pl-1 pr-0 text-[15px] font-medium text-uj-navy dark:text-slate-300 hover:text-brand-gold dark:hover:text-brand-gold-bright transition-colors duration-200 [-webkit-tap-highlight-color:transparent]"
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  >
-                    Anuluj
-                  </motion.button>
                 </div>
 
-                <div className="-mx-4 mb-6 shrink-0">
-                  <div className="flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none [-webkit-overflow-scrolling:touch]">
-                    {(
-                      [
-                        { id: 'all' as const, label: '#Wszystko' },
-                        { id: 'users' as const, label: '#Ludzie' },
-                        {
-                          id: 'events' as const,
-                          label: '#Wydarzenia',
-                          action: 'navigate-events' as const,
-                        },
-                        { id: 'places' as const, label: '#Miejsca' },
-                        { id: 'wpi' as const, label: '#WPiA' },
-                      ] as const
-                    ).map((pill) => {
-                      const isActive = pill.id !== 'events' && mobilePill === pill.id
-                      const base =
-                        'shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-[13px] font-semibold tracking-tight transition-all duration-200 border [-webkit-tap-highlight-color:transparent]'
-                      const inactive =
-                        'border-slate-200/90 dark:border-slate-700 bg-slate-100/90 dark:bg-slate-800/90 text-uj-navy dark:text-slate-300 active:scale-[0.98]'
-                      const active =
-                        'border-brand-gold/50 bg-brand-gold/12 text-brand-gold dark:text-brand-gold-bright shadow-[0_0_20px_-4px_rgba(201,162,39,0.38)]'
-                      if (pill.id === 'events') {
+                <div className="-mx-4 mb-6 shrink-0 border-b border-border-app dark:border-white/10">
+                  <LayoutGroup>
+                    <nav
+                      className="relative flex overflow-x-auto px-2 scrollbar-none [-webkit-overflow-scrolling:touch] gap-0.5"
+                      role="tablist"
+                      aria-label="Zakres wyszukiwania"
+                    >
+                      {(
+                        [
+                          { id: 'all' as const, label: 'Wszystko' },
+                          { id: 'users' as const, label: 'Ludzie' },
+                          {
+                            id: 'events' as const,
+                            label: 'Wydarzenia',
+                            action: 'navigate-events' as const,
+                          },
+                          { id: 'places' as const, label: 'Miejsca' },
+                          { id: 'wpi' as const, label: 'WP' },
+                        ] as const
+                      ).map((pill) => {
+                        const isActive = pill.id !== 'events' && mobilePill === pill.id
+                        const tabBase =
+                          'relative shrink-0 whitespace-nowrap px-3 py-2.5 text-[13px] font-medium transition-colors duration-200 border-b-2 border-transparent -mb-px [-webkit-tap-highlight-color:transparent]'
+                        const tabInactive =
+                          'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                        const tabActive = 'text-logo-navy dark:text-slate-100'
+                        if (pill.id === 'events') {
+                          return (
+                            <button
+                              key={pill.id}
+                              type="button"
+                              role="tab"
+                              className={`${tabBase} ${tabInactive}`}
+                              onClick={() => {
+                                closeMobileModal()
+                                onNavigateToEvents()
+                              }}
+                            >
+                              {pill.label}
+                            </button>
+                          )
+                        }
                         return (
                           <button
                             key={pill.id}
                             type="button"
-                            className={`${base} ${inactive}`}
+                            role="tab"
+                            aria-selected={isActive}
+                            className={`${tabBase} ${isActive ? tabActive : tabInactive}`}
                             onClick={() => {
-                              closeMobileModal()
-                              onNavigateToEvents()
+                              setMobilePill(pill.id)
+                              setTimeout(() => mobileInputRef.current?.focus(), 0)
                             }}
                           >
                             {pill.label}
+                            {isActive && (
+                              <motion.span
+                                layoutId="searchMobileTabIndicator"
+                                className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-brand-gold dark:bg-brand-gold-bright"
+                                transition={searchSpringContent}
+                              />
+                            )}
                           </button>
                         )
-                      }
-                      return (
-                        <button
-                          key={pill.id}
-                          type="button"
-                          className={`${base} ${isActive ? active : inactive}`}
-                          onClick={() => {
-                            setMobilePill(pill.id)
-                            setTimeout(() => mobileInputRef.current?.focus(), 0)
-                          }}
-                        >
-                          {pill.label}
-                        </button>
-                      )
-                    })}
-                  </div>
+                      })}
+                    </nav>
+                  </LayoutGroup>
                 </div>
 
                 <div className="flex-1 overflow-y-auto overscroll-contain min-h-0 -mx-1">
-                  {query.length === 0 && (
-                    <section className="px-1 pb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-[12px] font-bold uppercase tracking-[0.18em] text-uj-navy dark:text-slate-400 flex items-center gap-2">
-                          <Clock size={15} className="text-accent-gold shrink-0" strokeWidth={2} />
-                          Ostatnio wyszukiwane
-                        </h3>
-                        {searchHistory.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={clearHistory}
-                            className="text-[13px] font-medium text-slate-600 dark:text-slate-500 hover:text-accent-gold transition-colors"
-                          >
-                            Wyczyść
-                          </button>
-                        )}
-                      </div>
-                      {searchHistory.length === 0 ? (
-                        <p className="text-[14px] text-slate-500 dark:text-slate-500 pl-0.5">
-                          Brak ostatnich wyszukiwań.
-                        </p>
-                      ) : (
-                        <ul className="flex flex-col gap-1.5">
-                          {searchHistory.map((h) => (
-                            <li key={h}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setQuery(h)
-                                  setTimeout(() => mobileInputRef.current?.focus(), 0)
-                                }}
-                                className="w-full flex items-center gap-3 rounded-2xl px-3 py-3 text-left bg-slate-100/80 dark:bg-slate-800/60 border border-transparent hover:border-accent-gold/30 dark:hover:border-accent-gold/25 transition-colors [-webkit-tap-highlight-color:transparent]"
-                              >
-                                <Clock size={15} className="text-accent-gold/90 shrink-0" strokeWidth={2} />
-                                <span className="truncate text-[15px] text-uj-navy dark:text-slate-200">{h}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-                  )}
+                  {query.length === 0 &&
+                    crystalHistorySection('mx-auto w-full max-w-5xl px-1 pb-6', () => {
+                      mobileInputRef.current?.focus({ preventScroll: true })
+                    })}
 
                   <AnimatePresence mode="wait">
                     {query.length > 0 && (

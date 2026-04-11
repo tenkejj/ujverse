@@ -9,13 +9,13 @@ import SearchBar from './SearchBar'
 import NotificationsView from './NotificationsView'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
+import { useScrollY } from '../hooks/useScrollY'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
 type Props = {
   myProfile: Profile | null
   displayName: string
-  email: string | undefined
   menuOpen: boolean
   setMenuOpen: (v: boolean | ((prev: boolean) => boolean)) => void
   activeView: ActiveView
@@ -38,12 +38,12 @@ type Props = {
   onNavigateToEvents: () => void
   onOpenProfileModal: () => void
   onNavigateToSettings: () => void
+  onRefreshPosts: () => void
 }
 
 export default function Header({
   myProfile,
   displayName,
-  email,
   menuOpen,
   setMenuOpen,
   activeView,
@@ -66,7 +66,10 @@ export default function Header({
   onNavigateToEvents,
   onOpenProfileModal,
   onNavigateToSettings,
+  onRefreshPosts,
 }: Props) {
+  const scrollY = useScrollY()
+  const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
   const notificationsRef = useRef<HTMLDivElement | null>(null)
   const { theme, toggleTheme } = useTheme()
@@ -120,7 +123,13 @@ export default function Header({
 
   return (
     <>
-    <header className="h-16 w-full flex items-center gap-2 px-4 bg-white dark:bg-[#000000] border-b border-slate-200 dark:border-[#1c2b4e] sticky top-0 z-50 overflow-visible">
+    <header
+      className={`h-16 w-full flex items-center gap-2 px-4 sticky top-0 z-50 overflow-visible transition-all duration-300 border-t-0 outline-none ring-0 shadow-none ${
+        isScrolled
+          ? 'bg-bg-app/80 backdrop-blur-lg border-b border-slate-200 dark:border-white/10'
+          : 'bg-bg-app border-b border-transparent'
+      }`}
+    >
       <div className="w-24 flex-shrink-0 flex items-center justify-start relative z-10">
         <SearchBar
           onNavigateToUser={onNavigateToUser}
@@ -130,9 +139,14 @@ export default function Header({
       </div>
 
       <div className="flex-1 flex justify-center items-center overflow-visible">
-        <button
+        <motion.button
           type="button"
-          onClick={onNavigateToFeed}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            onNavigateToFeed()
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+            onRefreshPosts()
+          }}
           className="overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 inline-flex items-center justify-center border-0"
           aria-label="Strona główna"
         >
@@ -149,9 +163,9 @@ export default function Header({
               WebkitMaskPosition: 'center',
               width: '12rem',
             }}
-            className="h-32 w-auto scale-[0.85] translate-y-[2px] transition-colors dark:bg-brand-gold-bright bg-[#0f172a]"
+            className="h-32 w-auto scale-[0.85] translate-y-[2px] transition-colors dark:bg-brand-gold-bright bg-logo-navy"
           />
-        </button>
+        </motion.button>
       </div>
 
       <div className="w-24 flex-shrink-0 flex items-center justify-end gap-4 relative z-10">
@@ -161,8 +175,8 @@ export default function Header({
             onClick={onNavigateToFeed}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10 ${
               activeView === 'feed'
-                ? 'text-accent-interactive'
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'text-[#a48955] dark:text-accent-interactive'
+                : 'text-[#1e293b] dark:text-gray-400'
             }`}
             aria-label="Strona główna"
           >
@@ -173,8 +187,8 @@ export default function Header({
             onClick={onNavigateToEvents}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
               activeView === 'events'
-                ? 'text-accent-interactive'
-                : 'text-gray-500 dark:text-gray-400'
+                ? 'text-[#a48955] dark:text-accent-interactive'
+                : 'text-[#1e293b] dark:text-gray-400'
             }`}
             aria-label="Wydarzenia"
           >
@@ -193,8 +207,8 @@ export default function Header({
               aria-label="Powiadomienia"
               className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-black/5 dark:hover:bg-white/10 ${
                 bellActive
-                  ? 'text-brand-gold dark:text-brand-gold-bright ring-2 ring-brand-gold/40 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(201,162,39,0.55)]'
-                  : 'text-gray-500 dark:text-gray-400'
+                  ? 'text-[#a48955] dark:text-brand-gold-bright ring-2 ring-[#a48955]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(180,83,9,0.4)]'
+                  : 'text-[#1e293b] dark:text-gray-400'
               }`}
             >
               <motion.span
@@ -211,13 +225,13 @@ export default function Header({
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center pointer-events-none">
                   <motion.span
-                    className="absolute rounded-full bg-brand-gold dark:bg-brand-gold-bright"
+                    className="absolute rounded-full bg-[#a48955] dark:bg-brand-gold-bright"
                     style={{ width: 22, height: 22 }}
                     animate={{ scale: [1, 1.35], opacity: [0.45, 0] }}
                     transition={{ duration: 1.25, repeat: Infinity, ease: 'easeOut' }}
                     aria-hidden
                   />
-                  <span className="relative z-10 min-w-[16px] h-4 rounded-full bg-accent-interactive text-black text-[9px] font-bold flex items-center justify-center px-0.5 shadow-sm">
+                  <span className="relative z-10 min-w-[16px] h-4 rounded-full bg-[#a48955] text-[#1e293b] text-[9px] font-bold flex items-center justify-center px-0.5 shadow-sm dark:bg-accent-interactive dark:text-black">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 </span>
@@ -229,7 +243,7 @@ export default function Header({
         <button
           type="button"
           onClick={toggleTheme}
-          className="shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2 text-gray-500 dark:text-gray-400 hover:text-accent-interactive hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className="shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2 text-[#1e293b] dark:text-gray-400 hover:text-[#a48955] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
         >
           {theme === 'dark' ? (
@@ -246,24 +260,24 @@ export default function Header({
               onCloseNotificationsPanel()
               setMenuOpen((v) => !v)
             }}
-            className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1.5 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all"
+            className="group flex items-center gap-2 rounded-full pl-1 pr-2 py-1.5 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1 hover:bg-[#a48955]/10 transition-all duration-300"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label="Menu użytkownika"
           >
             <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9" textSize="text-xs" />
             {myProfile?.department && (
-              <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider text-accent-interactive border border-accent-interactive/25 rounded-full px-1.5 py-0.5 leading-none shrink-0">
+              <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider text-[#a48955] dark:text-brand-gold-bright border border-[#a48955]/35 dark:border-brand-gold-bright/40 rounded-full px-1.5 py-0.5 leading-none shrink-0 transition-colors duration-300">
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
-            <span className="hidden sm:inline text-gray-700 dark:text-gray-200 text-sm font-medium max-w-[100px] truncate">
+            <span className="hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium max-w-[100px] truncate transition-colors duration-300 group-hover:text-[#a48955] dark:group-hover:text-brand-gold-bright">
               {displayName}
             </span>
             <ChevronDown
               size={24}
               strokeWidth={2}
-              className={`shrink-0 ml-1 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`}
+              className={`shrink-0 ml-1 text-[#1e293b] dark:text-gray-500 transition-all duration-300 group-hover:text-[#a48955] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -271,54 +285,55 @@ export default function Header({
             {menuOpen && (
               <motion.div
                 role="menu"
-                initial={{ opacity: 0, scale: 0.95, y: -8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -8 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200/20 bg-white/80 shadow-2xl backdrop-blur-lg origin-top-right dark:border-slate-700/30 dark:bg-slate-900/80"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-[#0f172a]/10 bg-white/85 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl backdrop-saturate-150 origin-top-right dark:border-white/5 dark:bg-black/55 dark:shadow-2xl dark:shadow-black/50"
               >
-                <div className="flex items-center gap-3 border-b border-slate-200/20 bg-white/50 px-4 py-3 dark:border-slate-700/30 dark:bg-slate-900/40">
-                  <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9" textSize="text-sm" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-blue-50 truncate">{displayName}</p>
-                    <p className="text-xs text-slate-400 dark:text-gray-500 truncate">{email}</p>
+                <div className="flex items-center gap-3 border-b border-[#0f172a]/10 px-4 py-3.5 dark:border-white/5">
+                  <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9 shrink-0" textSize="text-sm" />
+                  <div className="flex min-h-9 min-w-0 flex-1 items-center">
+                    <p className="w-full text-sm font-semibold leading-tight text-[#1e293b] dark:text-white truncate">
+                      {displayName}
+                    </p>
                   </div>
                 </div>
 
-                <div className="px-1 py-1">
+                <div className="px-2 py-2">
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToProfile() }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-white/90 dark:text-gray-300 dark:hover:bg-white/10"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#a48955] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <User size={15} className="shrink-0 text-slate-400 dark:text-gray-500" />
+                    <User size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
                     Mój profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onOpenProfileModal() }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-white/90 dark:text-gray-300 dark:hover:bg-white/10"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#a48955] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <Pencil size={15} className="shrink-0 text-slate-400 dark:text-gray-500" />
+                    <Pencil size={15} className="shrink-0 text-[#a48955] dark:text-brand-gold-bright" />
                     Edytuj profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToSettings() }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-white/90 dark:text-gray-300 dark:hover:bg-white/10"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#a48955] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <Settings size={15} className="shrink-0 text-slate-400 dark:text-gray-500" />
+                    <Settings size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
                     Ustawienia
                   </button>
                 </div>
 
-                <div className="border-t border-slate-200/20 px-1 py-1 dark:border-slate-700/30">
+                <div className="border-t border-[#0f172a]/10 px-2 py-2 dark:border-white/5">
                   <button
                     role="menuitem"
                     onClick={() => void supabase.auth.signOut()}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-500 transition-colors hover:bg-red-50/90 dark:text-red-400 dark:hover:bg-red-900/25"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-rose-500/80 transition-colors hover:bg-rose-500/[0.08] hover:text-rose-600/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 dark:text-rose-400/80 dark:hover:bg-white/5 dark:hover:text-rose-400/90"
                   >
-                    <LogOut size={15} className="shrink-0" />
+                    <LogOut size={15} className="shrink-0 text-rose-500/80 dark:text-rose-400/80" />
                     Wyloguj się
                   </button>
                 </div>

@@ -44,7 +44,7 @@ function ActionBadge({ type, clean }: { type: 'like' | 'comment'; clean?: boolea
   if (type === 'like') {
     return (
       <span
-        className={`${base} border-white bg-gradient-to-br from-brand-gold to-amber-600 dark:border-slate-950 dark:from-brand-gold-bright dark:to-amber-400`}
+        className={`${base} border-white bg-gradient-to-br from-[#a48955] to-[#7a6b45] dark:border-slate-950 dark:from-brand-gold-bright dark:to-amber-400`}
         aria-hidden
       >
         <Heart size={10} className="text-slate-900 dark:text-slate-950" fill="currentColor" strokeWidth={0} />

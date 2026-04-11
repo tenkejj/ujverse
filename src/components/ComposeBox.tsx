@@ -51,31 +51,29 @@ export default function ComposeBox({
 
   return (
     <div
-      className={`bg-slate-50 dark:bg-bg-app rounded-2xl border border-border-app transition-colors duration-200 overflow-hidden shadow-none ${
+      className={`bg-card dark:bg-bg-app rounded-2xl border border-[#0f172a]/5 transition-[border-color,box-shadow] duration-200 overflow-hidden shadow-sm dark:border-white/10 ${
         isComposing
-          ? 'border-uj-blue/30 dark:border-border-app dark:border-t-brand-gold/25 shadow-[0_0_0_3px_rgba(0,51,153,0.06),0_1px_8px_rgba(0,51,153,0.08)]'
-          : 'border-slate-200/60 dark:border-border-app shadow-uj-soft dark:shadow-lg dark:shadow-black/20'
+          ? 'border-[#0f172a]/12 shadow-[0_0_0_1px_rgb(164_137_85/0.12),0_2px_10px_-2px_rgb(15_23_42/0.06)] dark:border-white/10 dark:shadow-[inset_0_0_0_1px_rgb(201_162_39/0.15),0_8px_32px_-12px_rgb(0_0_0/0.45)]'
+          : 'dark:shadow-lg dark:shadow-black/20'
       }`}
     >
       <div className="p-4 flex gap-3 items-start">
 
-        {/* Avatar + thread line */}
         <div className="flex flex-col items-center shrink-0">
           <UserAvatar profile={myProfile} name={displayName} className="h-10 w-10" textSize="text-sm" />
-          {isComposing && (
-            <div className="w-px flex-1 mt-2 bg-gradient-to-b from-uj-blue/20 to-transparent min-h-[8px]" />
-          )}
         </div>
 
         <div className="flex-1 min-w-0">
           {!isComposing ? (
-            <button
-              type="button"
-              onClick={() => { onOpen() }}
-              className="w-full text-left text-slate-400 dark:text-gray-500 text-[15px] py-2.5 hover:text-slate-500 dark:hover:text-gray-400 transition-colors"
-            >
-              Co słychać na uczelni?
-            </button>
+            <div className="rounded-xl bg-card px-3 py-2 -mx-0.5 ring-1 ring-[#0f172a]/[0.04] dark:bg-transparent dark:ring-0">
+              <button
+                type="button"
+                onClick={() => { onOpen() }}
+                className="w-full text-left text-fg-secondary dark:text-gray-500 text-[15px] py-2 hover:text-fg-primary/90 dark:hover:text-gray-400 transition-colors"
+              >
+                Co słychać na uczelni?
+              </button>
+            </div>
           ) : (
             <div className="space-y-3">
               <textarea
@@ -89,7 +87,7 @@ export default function ComposeBox({
                 placeholder="Co słychać na uczelni?"
                 rows={3}
                 maxLength={BODY_MAX}
-                className="w-full bg-transparent resize-none text-[15px] text-slate-900 dark:text-blue-50 placeholder-slate-500 dark:placeholder-gray-600 leading-relaxed focus:outline-none min-h-[80px]"
+                className="w-full min-h-[80px] resize-none rounded-xl bg-card px-3 py-2.5 text-[15px] text-fg-primary placeholder:text-fg-secondary leading-relaxed ring-1 ring-inset ring-[#0f172a]/[0.05] focus:outline-none focus:ring-2 focus:ring-[#0f172a]/[0.08] dark:bg-transparent dark:ring-1 dark:ring-inset dark:ring-white/10 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-2 dark:focus:ring-brand-gold/25"
               />
 
               {/* Image preview */}
@@ -98,7 +96,7 @@ export default function ComposeBox({
                   <img
                     src={imagePreview}
                     alt="Podgląd"
-                    className="max-h-56 rounded-xl border border-slate-200 dark:border-gray-700 object-cover"
+                    className="max-h-56 rounded-xl border border-[#0f172a]/10 dark:border-white/10 object-cover"
                   />
                   <button
                     type="button"
@@ -115,7 +113,7 @@ export default function ComposeBox({
               )}
 
               {/* Toolbar */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-gray-700">
+              <div className="flex items-center justify-between pt-2 border-t border-[#0f172a]/8 dark:border-white/10">
                 <div className="flex items-center gap-0.5">
                   <input
                     ref={imageInputRef}
@@ -127,7 +125,7 @@ export default function ComposeBox({
                   <button
                     type="button"
                     onClick={() => imageInputRef.current?.click()}
-                    className="p-2 rounded-full text-uj-blue/50 hover:text-uj-blue hover:bg-uj-blue/8 transition-all"
+                    className="p-2 rounded-full text-[#0f172a] hover:text-[#8a6d3b] dark:text-brand-gold/60 dark:hover:text-brand-gold transition-colors"
                     title="Dodaj zdjęcie"
                   >
                     <ImagePlus size={18} />
@@ -138,13 +136,34 @@ export default function ComposeBox({
                   {/* Character ring */}
                   <div className="relative h-6 w-6" title={`${BODY_MAX - bodyLen} znaków`}>
                     <svg viewBox="0 0 24 24" className="h-6 w-6 -rotate-90">
-                      <circle cx="12" cy="12" r="10" fill="none" stroke="#e2e8f0" strokeWidth="2.5" />
                       <circle
-                        cx="12" cy="12" r="10" fill="none" strokeWidth="2.5"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="none"
+                        strokeWidth="2.5"
+                        className="stroke-[#0f172a]/15 dark:stroke-brand-gold/25"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="none"
+                        strokeWidth="2.5"
                         strokeLinecap="round"
-                        stroke={ringProgress > 0.9 ? '#ef4444' : ringProgress > 0.7 ? '#f59e0b' : '#002147'}
+                        stroke={
+                          ringProgress > 0.9
+                            ? '#ef4444'
+                            : ringProgress > 0.7
+                              ? '#f59e0b'
+                              : undefined
+                        }
+                        className={
+                          ringProgress > 0.9 || ringProgress > 0.7
+                            ? 'transition-all duration-100'
+                            : 'stroke-[#0f172a] dark:stroke-brand-gold transition-all duration-100'
+                        }
                         strokeDasharray={`${ringDash} ${RING_CIRCUMFERENCE}`}
-                        className="transition-all duration-100"
                       />
                     </svg>
                     {ringProgress > 0.8 && (
@@ -154,12 +173,12 @@ export default function ComposeBox({
                     )}
                   </div>
 
-                  <div className="h-4 w-px bg-slate-200 dark:bg-gray-700" />
+                  <div className="h-4 w-px bg-slate-200 dark:bg-white/10" />
 
                   <button
                     type="button"
                     onClick={onReset}
-                    className="text-sm text-slate-400 dark:text-gray-500 hover:text-slate-600 dark:hover:text-gray-300 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors"
+                    className="text-sm text-[#0f172a] dark:text-slate-400 hover:text-[#8a6d3b] dark:hover:text-slate-300 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
                   >
                     Anuluj
                   </button>
@@ -167,8 +186,8 @@ export default function ComposeBox({
                     type="button"
                     onClick={onSubmit}
                     disabled={isLoading || !body.trim()}
-                    whileTap={{ scale: 0.94 }}
-                    className="px-5 py-1.5 rounded-full bg-uj-blue text-white text-sm font-bold hover:bg-uj-blue/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-none"
+                    whileTap={{ scale: 0.98 }}
+                    className="px-5 py-1.5 rounded-full bg-[#0f172a] text-white text-sm font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity shadow-none"
                   >
                     {isLoading ? 'Publikuję…' : 'Opublikuj'}
                   </motion.button>

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { toast } from 'react-hot-toast'
+import { toast } from './lib/appToast'
 import { supabase } from './supabaseClient.ts'
 
 export default function Auth() {

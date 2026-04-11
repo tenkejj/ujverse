@@ -1,46 +1,71 @@
+/** Kolejność zgodna z oficjalną listą skrótów UJ (sidebar / pigułki). */
 export const UJ_DEPARTMENTS = [
-  'Wydział Zarządzania i Komunikacji Społecznej',
+  'Wydział Lekarski',
+  'Wydział Lekarsko-Stomatologiczny',
   'Wydział Filozoficzny',
-  'Wydział Biologii',
-  'Wydział Matematyki i Informatyki',
+  'Wydział Nauk o Zdrowiu',
   'Wydział Prawa i Administracji',
-  'Collegium Medicum – Wydział Lekarski',
-  'Collegium Medicum – Wydział Farmaceutyczny',
-  'Collegium Medicum – Wydział Nauk o Zdrowiu',
-  'Wydział Chemii',
-  'Wydział Fizyki, Astronomii i Informatyki Stosowanej',
-  'Wydział Geografii i Geologii',
+  'Wydział Farmaceutyczny',
   'Wydział Historyczny',
   'Wydział Filologiczny',
-  'Wydział Polonistyki',
   'Wydział Studiów Międzynarodowych i Politycznych',
+  'Wydział Zarządzania i Komunikacji Społecznej',
+  'Wydział Polonistyki',
+  'Wydział Fizyki, Astronomii i Informatyki Stosowanej',
+  'Wydział Matematyki i Informatyki',
+  'Wydział Chemii',
+  'Wydział Biologii',
+  'Wydział Geografii i Geologii',
   'Wydział Biochemii, Biofizyki i Biotechnologii',
-  'Szkoła Doktorska Nauk Humanistycznych',
-  'Szkoła Doktorska Nauk Ścisłych i Przyrodniczych',
 ] as const
 
 export type Department = (typeof UJ_DEPARTMENTS)[number]
 
-/** Oficjalne skróty wydziałów UJ do badge'ów i pigułek filtra. */
+const CANONICAL_SET = new Set<string>(UJ_DEPARTMENTS)
+
+/** Stare zapisy profili / pełne nazwy → aktualny string z UJ_DEPARTMENTS. */
+export const LEGACY_TO_CANONICAL: Record<string, string> = {
+  'Collegium Medicum – Wydział Lekarski': 'Wydział Lekarski',
+  'Collegium Medicum – Wydział Farmaceutyczny': 'Wydział Farmaceutyczny',
+  'Collegium Medicum – Wydział Nauk o Zdrowiu': 'Wydział Nauk o Zdrowiu',
+}
+
+/** Skróty dla kanonicznych nazw + aliasy legacy (wyświetlanie w UI). */
 export const DEPT_SHORT: Record<string, string> = {
-  'Wydział Zarządzania i Komunikacji Społecznej':  'WZiKS',
-  'Wydział Filozoficzny':                          'WF',
-  'Wydział Biologii':                              'WB',
-  'Wydział Matematyki i Informatyki':              'WMiI',
-  'Wydział Prawa i Administracji':                 'WPiA',
-  'Collegium Medicum – Wydział Lekarski':          'CM Lek.',
-  'Collegium Medicum – Wydział Farmaceutyczny':    'CM Farm.',
-  'Collegium Medicum – Wydział Nauk o Zdrowiu':   'CM Zdr.',
-  'Wydział Chemii':                                'WCh',
-  'Wydział Fizyki, Astronomii i Informatyki Stosowanej': 'WFAiIS',
-  'Wydział Geografii i Geologii':                  'WGiG',
-  'Wydział Historyczny':                           'WHist.',
-  'Wydział Filologiczny':                          'WFil.',
-  'Wydział Polonistyki':                           'WPol.',
-  'Wydział Studiów Międzynarodowych i Politycznych': 'WSMiP',
-  'Wydział Biochemii, Biofizyki i Biotechnologii': 'WBBiB',
-  'Szkoła Doktorska Nauk Humanistycznych':         'SDNH',
+  'Wydział Lekarski': 'WL',
+  'Wydział Lekarsko-Stomatologiczny': 'WLS',
+  'Wydział Filozoficzny': 'WF',
+  'Wydział Nauk o Zdrowiu': 'WNoZ',
+  'Wydział Prawa i Administracji': 'WP',
+  'Wydział Farmaceutyczny': 'WFz',
+  'Wydział Historyczny': 'WH',
+  'Wydział Filologiczny': 'WFil',
+  'Wydział Studiów Międzynarodowych i Politycznych': 'WSP',
+  'Wydział Zarządzania i Komunikacji Społecznej': 'WZiKS',
+  'Wydział Polonistyki': 'WPol',
+  'Wydział Fizyki, Astronomii i Informatyki Stosowanej': 'WFAIS',
+  'Wydział Matematyki i Informatyki': 'WMI',
+  'Wydział Chemii': 'WCh',
+  'Wydział Biologii': 'WB',
+  'Wydział Geografii i Geologii': 'WGG',
+  'Wydział Biochemii, Biofizyki i Biotechnologii': 'WBBB',
+
+  'Collegium Medicum – Wydział Lekarski': 'WL',
+  'Collegium Medicum – Wydział Farmaceutyczny': 'WFz',
+  'Collegium Medicum – Wydział Nauk o Zdrowiu': 'WNoZ',
+
+  'Szkoła Doktorska Nauk Humanistycznych': 'SDNH',
   'Szkoła Doktorska Nauk Ścisłych i Przyrodniczych': 'SDNŚiP',
+}
+
+/** Zwraca kanoniczną nazwę z listy wydziałów albo null dla pustego. */
+export function canonicalDepartment(stored: string | null | undefined): string | null {
+  if (stored == null || !String(stored).trim()) return null
+  const t = stored.trim()
+  if (CANONICAL_SET.has(t)) return t as Department
+  const mapped = LEGACY_TO_CANONICAL[t]
+  if (mapped && CANONICAL_SET.has(mapped)) return mapped as Department
+  return t
 }
 
 /** Zwraca oficjalny skrót wydziału lub pełną nazwę jako fallback. */

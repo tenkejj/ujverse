@@ -8,11 +8,11 @@ type Props = {
 }
 
 const pillBase =
-  'shrink-0 inline-flex items-center justify-center px-4 py-2 md:px-3 md:py-1.5 rounded-full text-[13px] font-sans whitespace-nowrap transition-colors duration-150 focus:outline-none border border-border-app bg-bg-app min-h-[44px] md:min-h-0'
+  'shrink-0 inline-flex items-center justify-center px-4 py-2 md:px-3 md:py-1.5 rounded-full text-sm whitespace-nowrap transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:focus-visible:ring-brand-gold/35 border border-border-app bg-bg-app min-h-[44px] md:min-h-0'
 
 const pillActive = `${pillBase} font-bold text-accent-interactive`
 
-const pillInactive = `${pillBase} font-medium text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5`
+const pillInactive = `${pillBase} font-medium text-[#1e293b] dark:text-slate-200 hover:bg-[#F0EDE4]/60 dark:hover:bg-white/[0.03]`
 
 export default function DepartmentFilter({ selected, onChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)

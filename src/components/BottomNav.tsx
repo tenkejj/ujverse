@@ -1,5 +1,6 @@
 import { Bell, CalendarDays, Home, User } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useScrollY } from '../hooks/useScrollY'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -40,16 +41,22 @@ function ComposePlusIcon() {
 }
 
 export default function BottomNav({ activeView, setActiveView, onOpenCompose, unreadCount }: Props) {
+  const scrollY = useScrollY()
+  const isScrolled = scrollY > 10
   const iconBtn = (isActive: boolean) =>
     `flex flex-1 items-center justify-center min-h-[52px] py-3 px-2 transition-colors rounded-xl ${
       isActive
-        ? 'text-accent-interactive'
-        : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white/90'
+        ? 'text-[#a48955] dark:text-accent-interactive'
+        : 'text-[#1e293b] dark:text-gray-300 dark:hover:text-white/90'
     }`
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-bg-app/90 backdrop-blur-md border-t border-gray-100 dark:border-border-app"
+      className={`md:hidden fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 border-t ${
+        isScrolled
+          ? 'bg-bg-app/80 backdrop-blur-lg border-slate-200 dark:border-white/5'
+          : 'bg-bg-app border-border-app'
+      }`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-center justify-center gap-1 px-2 py-1.5 max-w-lg mx-auto min-h-16">
@@ -81,7 +88,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
             whileTap={{ scale: 1.08 }}
             transition={{ type: 'spring', stiffness: 400, damping: 24 }}
             className="h-14 w-14 rounded-full flex items-center justify-center border-0 outline-none shadow-lg
-              bg-[#0f172a] text-white
+              bg-logo-navy text-white
               dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-slate-900 dark:shadow-lg dark:shadow-brand-gold/40
               transition-transform duration-200 hover:brightness-[1.03] active:brightness-[0.97] dark:hover:brightness-105 dark:active:brightness-95"
             aria-label="Napisz wpis"
@@ -103,12 +110,12 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
               strokeWidth={activeView === 'notifications' ? 2.35 : 1.85}
               className={`h-7 w-7 shrink-0 transition-colors ${
                 activeView === 'notifications'
-                  ? 'text-accent-interactive'
-                  : 'text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white/80'
+                  ? 'text-[#a48955] dark:text-accent-interactive'
+                  : 'text-[#1e293b] dark:text-white dark:hover:text-white/80'
               }`}
             />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-accent-gold text-[#060e1f] text-[9px] font-bold flex items-center justify-center px-0.5">
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-[#a48955] text-[#1e293b] text-[9px] font-bold flex items-center justify-center px-0.5 dark:bg-accent-gold dark:text-[#060e1f]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}

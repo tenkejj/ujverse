@@ -97,7 +97,7 @@ export default function SinglePostView({
       <button
         type="button"
         onClick={onBack}
-        className="p-2 w-fit rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-300"
+        className="p-2 w-fit rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-fg-primary/70 dark:text-slate-300"
         aria-label="Wróć"
       >
         <ArrowLeft size={18} strokeWidth={2} />

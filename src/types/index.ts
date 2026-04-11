@@ -5,6 +5,8 @@ export type Profile = {
   banner_url?: string | null
   bio?: string | null
   department?: string | null
+  /** Jeśli kolumna istnieje w Supabase — data utworzenia profilu. */
+  created_at?: string | null
 }
 
 export type Post = {

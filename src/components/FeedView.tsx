@@ -19,8 +19,7 @@ import EventModal from './EventModal'
 import PostCard from './PostCard'
 import DepartmentFilter from './DepartmentFilter'
 import EmptyState from './EmptyState'
-import UserAvatar from './UserAvatar'
-import { UJ_DEPARTMENTS, DEPT_SHORT, getDeptAbbreviation } from '../lib/departments'
+import { UJ_DEPARTMENTS, DEPT_SHORT } from '../lib/departments'
 
 type Props = {
   myProfile: Profile | null
@@ -79,24 +78,36 @@ const UJ_ESSENTIAL_LINKS = [
   { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail, tag: 'Poczta' },
 ] as const
 
-const widgetGoldCls = 'text-accent-interactive'
-const widgetSectionTitleCls =
-  'text-[10px] font-semibold uppercase tracking-widest text-accent-interactive'
+const widgetGoldCls = 'text-[#a48955] dark:text-brand-gold-bright'
 
 const sideCardCls =
-  'bg-bg-card rounded-2xl border border-slate-100 dark:border-border-app shadow-sm dark:shadow-lg dark:shadow-black/20 p-4'
+  'rounded-2xl border border-[#0f172a]/5 bg-card shadow-sm p-4 dark:border-white/5 dark:bg-bg-card/40 dark:backdrop-blur-md dark:shadow-none'
+
+const sidePanelHoverFocus =
+  'hover:bg-[#F0EDE4]/60 dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:focus-visible:ring-brand-gold/35'
 
 const deptFilterBtnBase =
-  'w-full flex items-center text-left px-3 py-2 rounded-lg text-[13px] font-sans transition-colors'
+  `w-full flex items-center text-left px-3 py-2.5 rounded-2xl border border-transparent text-sm transition-colors ${sidePanelHoverFocus}`
 
 const deptFilterInactive =
-  `${deptFilterBtnBase} font-medium text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5`
+  `${deptFilterBtnBase} font-medium text-[#1e293b] dark:text-slate-200`
 
 const deptFilterActive =
-  `${deptFilterBtnBase} font-bold text-accent-interactive`
+  `${deptFilterBtnBase} font-bold text-[#a48955] dark:text-accent-interactive`
 
-const sectionLabelCls =
-  'text-[10px] font-sans font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400 mb-3 block'
+const sectionTitleCls = 'font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold'
+
+const sectionLabelCls = `${sectionTitleCls} mb-3 block`
+
+/** Podtytuły w panelach (tagi, kategorie) — czytelne w light i dark. */
+const sideMutedCls = 'text-logo-navy/60 dark:text-slate-400'
+
+/** Link „Zobacz wszystkie” — nieco jaśniejszy w dark mode. */
+const sideMutedLinkCls =
+  'text-logo-navy/60 dark:text-slate-300 group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright'
+
+const sideRowCls =
+  `group w-full flex items-start gap-3 rounded-2xl border border-[#0f172a]/5 bg-transparent p-3 cursor-pointer transition-colors dark:border-white/5 ${sidePanelHoverFocus}`
 
 export default function FeedView({
   myProfile,
@@ -146,14 +157,14 @@ export default function FeedView({
   )
 
   const feedContent = (
-    <div className="space-y-0">
+    <div className="space-y-3">
       {!postsLoading && postsError && (
         <div className="bg-red-50 text-red-600 text-sm rounded-2xl px-4 py-3 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/40 mb-3">
           Błąd: {postsError}
         </div>
       )}
 
-      <div className="overflow-hidden bg-transparent">
+      <div className="overflow-visible bg-transparent">
         {postsLoading && (
           <div className="flex justify-center py-16">
             <div className="h-8 w-8 rounded-full border-[3px] border-uj-blue border-t-transparent animate-spin" />
@@ -176,45 +187,50 @@ export default function FeedView({
           )
         )}
 
-        <AnimatePresence mode="sync">
-          {!postsLoading && !postsError && posts.map((post, idx) => {
-            const postId = String(post?.id ?? `fallback-${idx}`)
-            return (
-              <motion.div
-                key={postId}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
-                className="m-0 p-0 last:[&_article]:border-b-0"
-              >
-                <PostCard
-                  post={post}
-                  index={idx}
-                  currentUserId={currentUserId}
-                  myProfile={myProfile}
-                  displayName={displayName}
-                  likeCount={likesCountByPost[postId] ?? 0}
-                  isLiked={Boolean(likedPostIds[postId])}
-                  isPop={heartPopPostId === postId}
-                  commentCount={commentsCountByPost[postId] ?? 0}
-                  isCommentsOpen={expandedComments.has(postId)}
-                  comments={commentsByPost[postId] ?? []}
-                  commentInputValue={commentInput[postId] ?? ''}
-                  isCommentSubmitting={Boolean(commentSubmitting[postId])}
-                  onToggleLike={() => onToggleLike(postId)}
-                  onToggleComments={() => onToggleComments(postId)}
-                  onSubmitComment={() => onSubmitComment(postId)}
-                  onCommentInputChange={(v) => onCommentInputChange(postId, v)}
-                  onDeletePost={() => onDeletePost(postId)}
-                  onDeleteComment={(cId) => onDeleteComment(cId, postId)}
-                  onNavigateToPost={() => onNavigateToPost(postId)}
-                  onNavigateToUser={onNavigateToUser}
-                />
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
+        {!postsLoading && !postsError && posts.length > 0 && (
+          <div className="rounded-2xl border border-[#0f172a]/10 bg-card overflow-hidden shadow-sm divide-y divide-[#0f172a]/10 dark:border-white/10 dark:divide-white/10">
+            <AnimatePresence mode="sync">
+              {posts.map((post, idx) => {
+                const postId = String(post?.id ?? `fallback-${idx}`)
+                return (
+                  <motion.div
+                    key={postId}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2, delay: Math.min(idx * 0.03, 0.3) }}
+                    className="w-full"
+                  >
+                    <PostCard
+                      variant="stacked"
+                      post={post}
+                      index={idx}
+                      currentUserId={currentUserId}
+                      myProfile={myProfile}
+                      displayName={displayName}
+                      likeCount={likesCountByPost[postId] ?? 0}
+                      isLiked={Boolean(likedPostIds[postId])}
+                      isPop={heartPopPostId === postId}
+                      commentCount={commentsCountByPost[postId] ?? 0}
+                      isCommentsOpen={expandedComments.has(postId)}
+                      comments={commentsByPost[postId] ?? []}
+                      commentInputValue={commentInput[postId] ?? ''}
+                      isCommentSubmitting={Boolean(commentSubmitting[postId])}
+                      onToggleLike={() => onToggleLike(postId)}
+                      onToggleComments={() => onToggleComments(postId)}
+                      onSubmitComment={() => onSubmitComment(postId)}
+                      onCommentInputChange={(v) => onCommentInputChange(postId, v)}
+                      onDeletePost={() => onDeletePost(postId)}
+                      onDeleteComment={(cId) => onDeleteComment(cId, postId)}
+                      onNavigateToPost={() => onNavigateToPost(postId)}
+                      onNavigateToUser={onNavigateToUser}
+                    />
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -223,33 +239,8 @@ export default function FeedView({
     <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
 
       {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
-      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
+      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1">
 
-        {/* Mini profile widget */}
-        <div className={sideCardCls}>
-          <div className="flex items-center gap-3">
-            <UserAvatar
-              profile={myProfile}
-              name={displayName}
-              className="h-11 w-11 shrink-0"
-              textSize="text-base"
-            />
-            <div className="min-w-0">
-              <p className="font-bold text-[14px] text-fg-primary truncate leading-snug">
-                {displayName}
-              </p>
-              {myProfile?.department ? (
-                <span className="text-[10px] text-accent-interactive font-bold uppercase tracking-wider bg-accent-interactive/10 px-1.5 py-0.5 rounded-full border border-accent-interactive/25 leading-none mt-0.5 inline-block">
-                  {getDeptAbbreviation(myProfile.department)}
-                </span>
-              ) : (
-                <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-0.5">Ustaw wydział</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Vertical department filter */}
         <div className={sideCardCls}>
           <span className={sectionLabelCls}>Wydziały</span>
           <div className="space-y-0.5">
@@ -304,31 +295,35 @@ export default function FeedView({
       </div>
 
       {/* ── RIGHT SIDEBAR (desktop only) ────────────────────────────── */}
-      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-24 self-start max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
+      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1">
 
         {/* Niezbędnik UJ — szybkie linki (layout jak Wydarzenia UJ) */}
         <div className={sideCardCls}>
           <div className="flex items-center gap-2 mb-3">
-            <LinkIcon size={13} className={`${widgetGoldCls} shrink-0`} />
-            <span className={widgetSectionTitleCls}>Niezbędnik UJ</span>
+            <LinkIcon size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
+            <span className={sectionTitleCls}>Niezbędnik UJ</span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {UJ_ESSENTIAL_LINKS.map(({ label, href, Icon, tag }) => (
               <a
                 key={label}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-start gap-3 rounded-xl border border-slate-100/80 dark:border-border-app/50 bg-bg-card p-3 transition-colors hover:border-slate-200 dark:hover:border-border-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/35"
+                className={sideRowCls}
               >
                 <div className="shrink-0 flex items-center justify-center min-w-[36px] min-h-[36px]">
-                  <Icon size={18} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
+                  <Icon
+                    size={18}
+                    className={`${widgetGoldCls} shrink-0 transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
+                    strokeWidth={2}
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-slate-800 dark:text-[#e7e9ea] leading-snug truncate">
+                  <p className="text-sm font-medium text-[#1e293b] dark:text-white leading-snug truncate">
                     {label}
                   </p>
-                  <span className="text-[10px] text-slate-400 dark:text-gray-500">{tag}</span>
+                  <span className={`text-xs ${sideMutedCls}`}>{tag}</span>
                 </div>
               </a>
             ))}
@@ -340,24 +335,20 @@ export default function FeedView({
           <button
             type="button"
             onClick={onNavigateToEvents}
-            className="group w-full flex items-center gap-2 mb-3 rounded-lg -mx-1 px-1 py-1 text-left transition-colors hover:bg-slate-100/80 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40"
+            className={`group w-full flex items-center gap-2 mb-3 rounded-xl -mx-1 px-1 py-1.5 text-left transition-colors ${sidePanelHoverFocus}`}
             aria-label="Przejdź do wszystkich wydarzeń"
           >
             <CalendarDays
               size={13}
-              className={`${widgetGoldCls} shrink-0 transition-colors group-hover:text-brand-gold-bright`}
+              className={`${widgetGoldCls} shrink-0 transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
               strokeWidth={2}
             />
-            <span
-              className={`${widgetSectionTitleCls} flex-1 min-w-0 underline-offset-2 group-hover:underline decoration-brand-gold/80`}
-            >
-              Wydarzenia UJ
-            </span>
-            <span className="text-[10px] font-medium text-slate-400 dark:text-gray-500 whitespace-nowrap shrink-0 transition-colors group-hover:text-accent-interactive">
+            <span className={`${sectionTitleCls} flex-1 min-w-0`}>Wydarzenia UJ</span>
+            <span className={`text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${sideMutedLinkCls}`}>
               Zobacz wszystkie →
             </span>
           </button>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {events.slice(0, 3).map((ev) => {
               const { monthLabel, dayNum } = formatEventDateParts(ev.date)
               const official = Boolean(ev.is_official)
@@ -366,39 +357,35 @@ export default function FeedView({
                   key={ev.id}
                   type="button"
                   onClick={() => setSelectedEventId(ev.id)}
-                  className={`w-full text-left flex items-start gap-3 rounded-xl p-3 cursor-pointer transition-colors ${
-                    official
-                      ? 'border border-brand-gold/25 bg-gradient-to-br from-brand-gold/[0.08] to-white shadow-[0_0_22px_-10px_rgba(201,162,39,0.45)] ring-1 ring-brand-gold/25 hover:ring-brand-gold/40 dark:border-brand-gold/35 dark:from-brand-gold/[0.09] dark:to-transparent dark:shadow-[0_0_28px_-12px_rgba(201,162,39,0.35)] dark:ring-brand-gold/20 dark:hover:bg-white/[0.04]'
-                      : 'border border-slate-100/80 dark:border-border-app/50 bg-bg-card hover:bg-white/5'
+                  className={`${sideRowCls} text-left ${
+                    official ? 'ring-1 ring-[#a48955]/25 bg-[#a48955]/[0.08] dark:ring-brand-gold/25 dark:bg-brand-gold/[0.06]' : ''
                   }`}
                 >
                   <div className="shrink-0 text-center min-w-[36px]">
                     <span
-                      className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide`}
+                      className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
                     >
                       {monthLabel}
                     </span>
-                    <span className="block text-[15px] font-extrabold text-slate-800 dark:text-white leading-tight">
+                    <span className="block text-[15px] font-extrabold text-[#1e293b] dark:text-white leading-tight">
                       {dayNum}
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-1.5">
-                      <p className="text-[12px] font-semibold text-slate-800 dark:text-[#e7e9ea] leading-snug truncate min-w-0">
+                      <p className="text-sm font-medium text-[#1e293b] dark:text-white leading-snug truncate min-w-0">
                         {ev.title}
                       </p>
                       {official ? (
                         <BadgeCheck
                           size={14}
-                          className={`${widgetGoldCls} shrink-0 mt-0.5`}
+                          className={`${widgetGoldCls} shrink-0 mt-0.5 transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
                           strokeWidth={2.5}
                           aria-label="Oficjalne UJ"
                         />
                       ) : null}
                     </div>
-                    <span className="text-[10px] text-slate-400 dark:text-gray-500">
-                      {ev.category}
-                    </span>
+                    <span className={`text-xs ${sideMutedCls}`}>{ev.category}</span>
                   </div>
                 </button>
               )
@@ -407,7 +394,7 @@ export default function FeedView({
         </div>
 
         {/* Footer note */}
-        <p className="text-[11px] text-slate-300 dark:text-gray-600 text-center px-2">
+        <p className="text-[11px] text-logo-navy/50 dark:text-slate-400 text-center px-2">
           UJverse &copy; {new Date().getFullYear()} &middot; dla społeczności UJ
         </p>
       </aside>

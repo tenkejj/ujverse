@@ -23,8 +23,8 @@ html {
   --color-uj-navy:   #002D62;
   --color-uj-gold:   #C49A6C;
   --color-uj-orange: #FF9900;
-  --color-brand-gold: #c9a227;
-  --color-brand-gold-bright: #e8c84a;
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-gold-bright: var(--brand-gold-bright);
   --color-app-bg:    #000000;
   --color-card-bg:   #01020a;
   --color-border-main: #1c2b4e;
@@ -39,6 +39,9 @@ html {
   --color-accent-like: var(--accent-like);
   --color-accent-interactive: var(--accent-interactive);
   --color-accent-purple: var(--accent-purple);
+  --color-logo-navy: var(--logo-navy);
+  /* Ciepły bursztyn — akcenty w light (czytelny na jasnym tle) */
+  --color-uj-deep-gold: var(--uj-deep-gold);
 
   --radius-uj-xl:   1rem;
   --radius-uj-full: 9999px;
@@ -55,32 +58,40 @@ html {
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --card: #ffffff;
-    --border: #e2e8f0;
-    --modal-bg: #ffffff;
-    --modal-border: #e2e8f0;
-    --brand-gold: #c9a227;
+    /* Light: granat z logo (slate-800), bez pomarańczu na tekstach */
+    --logo-navy: #1e293b;
+    /* Kość słoniowa — tło i karty w light */
+    --background: #F9F7F2;
+    --card: #F9F7F2;
+    --border: rgb(15 23 42 / 0.08);
+    --modal-bg: #F9F7F2;
+    --modal-border: rgb(15 23 42 / 0.1);
+    /* W light: stonowane złoto zamiast jaskrawego żółtego z dark */
+    --brand-gold: #a48955;
     --brand-gold-bright: #e8c84a;
     --primary: var(--brand-gold);
     --bg-app: var(--background);
     --bg-card: var(--card);
     --border-app: var(--border);
-    --text-primary: #0f1419;
-    --text-secondary: #536471;
-    --text-label: #334155;
-    --accent-gold: #b8922a;
-    --accent-like: var(--brand-gold);
-    --accent-interactive: #a67c1a;
+    --text-primary: var(--logo-navy);
+    --text-secondary: rgb(30 41 59 / 0.62);
+    --text-label: rgb(30 41 59 / 0.72);
+    --uj-deep-gold: #a48955;
+    --accent-gold: var(--uj-deep-gold);
+    --accent-like: var(--uj-deep-gold);
+    --accent-interactive: var(--uj-deep-gold);
     --accent-purple: #1e2a4f;
   }
   .dark {
+    --logo-navy: #0f172a;
+    --uj-deep-gold: #a48955;
     --background: #000000;
     --card: #01020a;
-    --border: #1c2b4e;
+    /* Szklane, neutralne krawędzie zamiast niebieskawego #1c2b4e */
+    --border: rgb(255 255 255 / 0.08);
     --modal-bg: #01020a;
-    --modal-border: #1c2b4e;
-    --border-main: #1c2b4e;
+    --modal-border: rgb(255 255 255 / 0.1);
+    --border-main: rgb(30 41 59 / 0.45);
     --brand-gold: #c9a227;
     --brand-gold-bright: #e8c84a;
     --primary: var(--brand-gold-bright);
@@ -99,6 +110,19 @@ html {
 
 body {
   @apply min-h-screen bg-bg-app text-fg-primary transition-colors duration-200;
+}
+
+/* Moduł wyszukiwania: ukryj natywny niebieski „X” przeglądarki w polach type=search */
+input[type="search"].ujverse-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+input[type="search"].ujverse-search-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+input[type="search"].ujverse-search-input::-moz-search-clear-button {
+  display: none;
 }
 
 .scrollbar-hide {
@@ -199,4 +223,23 @@ body {
     rgba(255, 200, 80, 0.12) 50%,
     transparent 100%
   );
+}
+
+/* react-hot-toast: szklany pasek, spójny z motywem (bez „fabrycznego” niebieskiego + czerwonej ikony) */
+.ujverse-toast {
+  background: color-mix(in srgb, var(--bg-app) 80%, transparent) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  color: var(--text-primary) !important;
+  border-style: solid !important;
+  border-width: 1px !important;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.22) !important;
+}
+
+html:not(.dark) .ujverse-toast {
+  border-color: rgb(226 232 240) !important; /* slate-200 */
+}
+
+.dark .ujverse-toast {
+  border-color: rgb(255 255 255 / 0.05) !important;
 }

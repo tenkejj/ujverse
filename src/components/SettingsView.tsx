@@ -14,7 +14,7 @@ import {
   SunIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
-import { toast } from 'react-hot-toast'
+import { toast } from '../lib/appToast'
 import { useTheme } from '../ThemeContext'
 
 type Props = {
