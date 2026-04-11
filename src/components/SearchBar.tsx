@@ -918,9 +918,9 @@ export default function SearchBar({
               aria-modal="true"
               aria-label="Wyszukiwanie"
               className="fixed inset-0 z-[200] hidden md:flex flex-col bg-bg-app/95"
-              initial={{ opacity: 0, backdropFilter: 'blur(0px)', WebkitBackdropFilter: 'blur(0px)' }}
-              animate={{ opacity: 1, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
-              exit={{ opacity: 0, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(20px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(6px)' }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
               onPointerDown={() => closeDesktopOverlay()}
             >
@@ -999,9 +999,9 @@ export default function SearchBar({
               aria-modal="true"
               aria-label="Wyszukiwanie"
               className="fixed inset-0 z-[200] md:hidden flex flex-col bg-bg-app/95"
-              initial={{ opacity: 0, backdropFilter: 'blur(0px)', WebkitBackdropFilter: 'blur(0px)' }}
-              animate={{ opacity: 1, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
-              exit={{ opacity: 0, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+              animate={{ opacity: 1, backdropFilter: 'blur(20px)' }}
+              exit={{ opacity: 0, backdropFilter: 'blur(6px)' }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <motion.div
