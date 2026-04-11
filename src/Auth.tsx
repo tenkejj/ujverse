@@ -60,12 +60,12 @@ export default function Auth() {
             WebkitMaskRepeat: 'no-repeat',
             maskPosition: 'center',
             WebkitMaskPosition: 'center',
-            width: '8.5rem',
+            width: '14.5rem',
           }}
-          className="mb-6 h-24 shrink-0 bg-brand-gold-bright drop-shadow-[0_0_24px_rgba(232,200,74,0.35)]"
+          className="mb-12 h-40 shrink-0 bg-[#C5A059] drop-shadow-[0_0_28px_rgba(197,160,89,0.45)]"
         />
 
-        <div className="w-full rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur-xl">
+        <div className="w-full rounded-3xl border border-[#C5A059]/30 bg-white/5 p-8 text-center backdrop-blur-xl">
           <h1 className="text-2xl font-extrabold tracking-tight text-white">UJverse</h1>
           <p className="mt-2 text-sm text-white/80">
             {isSignUp ? 'Załóż konto' : 'Zaloguj się'}
@@ -98,7 +98,7 @@ export default function Auth() {
               disabled={loading}
               whileHover={loading ? undefined : { y: -2 }}
               whileTap={loading ? undefined : { scale: 0.98 }}
-              className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-4 font-bold text-black shadow-none disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-xl bg-gradient-to-br from-[#d4b87a] via-[#C5A059] to-[#9a7840] py-4 font-bold text-neutral-950 shadow-none transition-all duration-200 hover:from-amber-700 hover:via-amber-800 hover:to-amber-900 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:from-[#d4b87a] disabled:hover:via-[#C5A059] disabled:hover:to-[#9a7840]"
             >
               {loading ? 'Proszę czekać…' : isSignUp ? 'Zarejestruj się' : 'Zaloguj się'}
             </motion.button>
