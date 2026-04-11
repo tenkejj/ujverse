@@ -29,7 +29,7 @@ export default function Auth() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black flex items-center justify-center p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
       <div
         className="pointer-events-none absolute -left-1/4 top-1/4 h-[min(50vw,28rem)] w-[min(50vw,28rem)] rounded-full bg-amber-600/15 blur-[100px]"
         aria-hidden
@@ -66,12 +66,14 @@ export default function Auth() {
         />
 
         <div className="w-full rounded-3xl border border-[#C5A059]/30 bg-white/5 p-8 text-center backdrop-blur-xl">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">UJverse</h1>
-          <p className="mt-2 text-sm text-white/80">
+          <h1 className="w-full text-center text-4xl font-extrabold tracking-tight text-white">
+            UJverse
+          </h1>
+          <p className="mt-2 text-center text-sm text-white/80">
             {isSignUp ? 'Załóż konto' : 'Zaloguj się'}
           </p>
 
-          <form onSubmit={handleAuth} className="mt-8 text-left">
+          <form onSubmit={handleAuth} className="mt-8 w-full text-left">
             <input
               type="email"
               className={inputCls}
@@ -98,7 +100,7 @@ export default function Auth() {
               disabled={loading}
               whileHover={loading ? undefined : { y: -2 }}
               whileTap={loading ? undefined : { scale: 0.98 }}
-              className="w-full rounded-xl bg-gradient-to-br from-[#d4b87a] via-[#C5A059] to-[#9a7840] py-4 font-bold text-neutral-950 shadow-none transition-all duration-200 hover:from-amber-700 hover:via-amber-800 hover:to-amber-900 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:from-[#d4b87a] disabled:hover:via-[#C5A059] disabled:hover:to-[#9a7840]"
+              className="w-full rounded-xl bg-[#C5A059] py-4 font-bold text-neutral-950 shadow-none transition-colors duration-200 hover:bg-[#A6864A] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-[#C5A059]"
             >
               {loading ? 'Proszę czekać…' : isSignUp ? 'Zarejestruj się' : 'Zaloguj się'}
             </motion.button>
