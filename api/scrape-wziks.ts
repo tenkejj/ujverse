@@ -2,6 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import axios from 'axios'
 import { load, type CheerioAPI } from 'cheerio'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'node:crypto'
+
+/** Zgodne z triggerem DB `md5(body)` — jawny klucz dla `upsert(..., onConflict: 'body_fingerprint')`. */
+function bodyFingerprintHex(body: string): string {
+  return crypto.createHash('md5').update(body, 'utf8').digest('hex')
+}
 
 export const WZIK_ISI_KOMUNIKATY_URL = 'https://isi.uj.edu.pl/studenci/news/komunikaty'
 const SOURCE_URL = WZIK_ISI_KOMUNIKATY_URL
@@ -243,7 +249,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
-  
+
   const tokenParam = req.query.token
   const token =
     typeof tokenParam === 'string' ? tokenParam : Array.isArray(tokenParam) ? tokenParam[0] : undefined
@@ -288,8 +294,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, upserted: 0, scanned: 0, message: 'No blocks parsed' })
     }
 
+    /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
+    const rowsForDb = rows.map((r) => ({
+      ...r,
+      body_fingerprint: bodyFingerprintHex(r.body),
+    }))
+
     const supabase = createClient(supabaseUrl, serviceKey)
-    const { error } = await supabase.from('announcements').upsert(rows, {
+    const { error } = await supabase.from('announcements').upsert(rowsForDb, {
       onConflict: 'body_fingerprint',
     })
 
