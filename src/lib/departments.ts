@@ -28,6 +28,8 @@ export const LEGACY_TO_CANONICAL: Record<string, string> = {
   'Collegium Medicum – Wydział Lekarski': 'Wydział Lekarski',
   'Collegium Medicum – Wydział Farmaceutyczny': 'Wydział Farmaceutyczny',
   'Collegium Medicum – Wydział Nauk o Zdrowiu': 'Wydział Nauk o Zdrowiu',
+  /** Skrót ze scrapera ISI / importów zewnętrznych */
+  WZiKS: 'Wydział Zarządzania i Komunikacji Społecznej',
 }
 
 /** Skróty dla kanonicznych nazw + aliasy legacy (wyświetlanie w UI). */

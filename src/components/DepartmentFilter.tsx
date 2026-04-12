@@ -7,12 +7,15 @@ type Props = {
   onChange: (dept: string) => void
 }
 
-const pillBase =
-  'shrink-0 inline-flex items-center justify-center px-4 py-2 md:px-3 md:py-1.5 rounded-full text-sm whitespace-nowrap transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:focus-visible:ring-brand-gold/35 border border-border-app bg-bg-app min-h-[44px] md:min-h-0'
+const chipBase =
+  'shrink-0 inline-flex items-center justify-center px-4 py-2 rounded-full text-sm whitespace-nowrap transition-[color,box-shadow,border-color,background-color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]/40 min-h-[44px] md:min-h-0 backdrop-blur-md border'
 
-const pillActive = `${pillBase} font-bold text-accent-interactive`
+const chipInactive = `${chipBase} font-medium bg-black/[0.04] border-black/10 text-[#1e293b] hover:bg-black/[0.06] dark:bg-white/5 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.08]`
 
-const pillInactive = `${pillBase} font-medium text-[#1e293b] dark:text-slate-200 hover:bg-[#F0EDE4]/60 dark:hover:bg-white/[0.03]`
+const chipActive = `${chipBase} font-bold border-[#C5A059] text-[#1e293b] shadow-[0_0_10px_rgba(197,160,89,0.3)] dark:text-white dark:shadow-[0_0_10px_rgba(197,160,89,0.35)] bg-black/[0.06] dark:bg-white/[0.08]`
+
+const navBtnCls =
+  'absolute z-20 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full backdrop-blur-sm border transition-colors duration-150 bg-white/90 border-black/10 text-slate-500 hover:text-[#0f172a] dark:bg-white/10 dark:border-white/10 dark:text-slate-400 dark:hover:text-white'
 
 export default function DepartmentFilter({ selected, onChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,7 +57,7 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
           type="button"
           onClick={scrollLeft}
           aria-label="Przewiń w lewo"
-          className="absolute left-0 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-bg-app/95 backdrop-blur-sm text-slate-500 border border-border-app hover:text-fg-primary transition-colors duration-150"
+          className={`${navBtnCls} left-0`}
         >
           <ChevronLeft size={18} />
         </button>
@@ -62,13 +65,13 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
 
       <div
         ref={containerRef}
-        className="flex overflow-x-auto scroll-smooth snap-x gap-2 px-8 [&::-webkit-scrollbar]:hidden"
+        className="flex overflow-x-auto scroll-smooth snap-x gap-2 px-8 w-full [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: 'none' }}
       >
         <button
           type="button"
           onClick={() => onChange('')}
-          className={selected === '' ? pillActive : pillInactive}
+          className={selected === '' ? chipActive : chipInactive}
         >
           Wszystkie
         </button>
@@ -78,7 +81,7 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
             key={dept}
             type="button"
             onClick={() => onChange(dept)}
-            className={selected === dept ? pillActive : pillInactive}
+            className={selected === dept ? chipActive : chipInactive}
           >
             {DEPT_SHORT[dept] ?? dept}
           </button>
@@ -90,7 +93,7 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
           type="button"
           onClick={scrollRight}
           aria-label="Przewiń w prawo"
-          className="absolute right-0 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-bg-app/95 backdrop-blur-sm text-slate-500 border border-border-app hover:text-fg-primary transition-colors duration-150"
+          className={`${navBtnCls} right-0`}
         >
           <ChevronRight size={18} />
         </button>

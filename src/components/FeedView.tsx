@@ -18,8 +18,8 @@ import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
 import PostCard from './PostCard'
 import DepartmentFilter from './DepartmentFilter'
+import AcademicAnnouncementsWidget from './AcademicAnnouncementsWidget'
 import EmptyState from './EmptyState'
-import { UJ_DEPARTMENTS, DEPT_SHORT } from '../lib/departments'
 
 type Props = {
   myProfile: Profile | null
@@ -86,18 +86,7 @@ const sideCardCls =
 const sidePanelHoverFocus =
   'hover:bg-[#F0EDE4]/60 dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:focus-visible:ring-brand-gold/35'
 
-const deptFilterBtnBase =
-  `w-full flex items-center text-left px-3 py-2.5 rounded-2xl border border-transparent text-sm transition-colors ${sidePanelHoverFocus}`
-
-const deptFilterInactive =
-  `${deptFilterBtnBase} font-medium text-[#1e293b] dark:text-slate-200`
-
-const deptFilterActive =
-  `${deptFilterBtnBase} font-bold text-[#a48955] dark:text-accent-interactive`
-
 const sectionTitleCls = 'font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold'
-
-const sectionLabelCls = `${sectionTitleCls} mb-3 block`
 
 /** Podtytuły w panelach (tagi, kategorie) — czytelne w light i dark. */
 const sideMutedCls = 'text-logo-navy/60 dark:text-slate-400'
@@ -240,29 +229,7 @@ export default function FeedView({
 
       {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
       <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1">
-
-        <div className={sideCardCls}>
-          <span className={sectionLabelCls}>Wydziały</span>
-          <div className="space-y-0.5">
-            <button
-              type="button"
-              onClick={() => onDepartmentChange('')}
-              className={selectedDepartment === '' ? deptFilterActive : deptFilterInactive}
-            >
-              Wszystkie
-            </button>
-            {UJ_DEPARTMENTS.map((dept) => (
-              <button
-                key={dept}
-                type="button"
-                onClick={() => onDepartmentChange(dept)}
-                className={selectedDepartment === dept ? deptFilterActive : deptFilterInactive}
-              >
-                {DEPT_SHORT[dept] ?? dept}
-              </button>
-            ))}
-          </div>
-        </div>
+        <AcademicAnnouncementsWidget selectedDepartment={selectedDepartment} />
       </aside>
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
@@ -286,8 +253,7 @@ export default function FeedView({
           />
         </div>
 
-        {/* Horizontal dept filter — mobile only (desktop uses sidebar) */}
-        <div className="lg:hidden mb-3">
+        <div className="mb-3">
           <DepartmentFilter selected={selectedDepartment} onChange={onDepartmentChange} />
         </div>
 

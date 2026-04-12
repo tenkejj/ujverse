@@ -37,3 +37,14 @@ export type AppNotification = {
   created_at: string
   actor?: Profile | null
 }
+
+export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty'
+
+export type AcademicAnnouncement = {
+  id: string
+  department: string | null
+  lecturer_name: string
+  body: string
+  status: AnnouncementStatus
+  created_at: string
+}
