@@ -597,6 +597,10 @@ function App() {
             onNavigateToPost={navigateToPost}
             onNavigateToUser={navigateToUser}
             onNavigateToEvents={() => setActiveView('events')}
+            onMobileComposeTap={() => {
+              setCreateError(null)
+              setIsMobileComposeOpen(true)
+            }}
           />
         )
       case 'events':

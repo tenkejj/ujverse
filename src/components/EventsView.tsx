@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, Plus, Radio, Search, Shield, User, Users } from 'lucide-react'
+import { Archive, CalendarDays, Plus, Radio, Search, Shield, User, Users } from 'lucide-react'
 import { formatEventDateLong, formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
+import CompactEventRow from './CompactEventRow'
 import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
 import WziksOfficialHub from './WziksOfficialHub'
@@ -160,6 +161,32 @@ export default function EventsView() {
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
 
       <div className="lg:col-span-6 space-y-4">
+        <div className="md:hidden space-y-2 rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur-md dark:bg-black/40">
+          <div className="flex items-center gap-2">
+            <CalendarDays
+              size={14}
+              className="shrink-0 text-[#a48955] dark:text-brand-gold-bright"
+              strokeWidth={2}
+              aria-hidden
+            />
+            <span className="font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold">
+              Wydarzenia UJ
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Te same nadchodzące wydarzenia co w panelu na desktopie.
+          </p>
+          <div className="space-y-2">
+            {events.slice(0, 3).map((ev) => (
+              <CompactEventRow
+                key={ev.id}
+                event={ev}
+                onSelect={(e) => setSelectedEventId(e.id)}
+              />
+            ))}
+          </div>
+        </div>
+
         {featuredEvent ? (
           <button
             type="button"

@@ -51,7 +51,7 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
   }
 
   return (
-    <div className="relative flex items-center w-full">
+    <div className="relative m-0 flex w-full min-w-0 max-w-full items-stretch p-0">
       {canScrollLeft && (
         <button
           type="button"
@@ -65,13 +65,12 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
 
       <div
         ref={containerRef}
-        className="flex overflow-x-auto scroll-smooth snap-x gap-2 px-8 w-full [&::-webkit-scrollbar]:hidden"
-        style={{ scrollbarWidth: 'none' }}
+        className="scrollbar-hide m-0 flex w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto scroll-smooth scroll-pl-0 scroll-pe-4 snap-x py-0 pl-0 pr-4"
       >
         <button
           type="button"
           onClick={() => onChange('')}
-          className={selected === '' ? chipActive : chipInactive}
+          className={`m-0 ${selected === '' ? chipActive : chipInactive}`}
         >
           Wszystkie
         </button>
@@ -81,7 +80,7 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
             key={dept}
             type="button"
             onClick={() => onChange(dept)}
-            className={selected === dept ? chipActive : chipInactive}
+            className={`m-0 ${selected === dept ? chipActive : chipInactive}`}
           >
             {DEPT_SHORT[dept] ?? dept}
           </button>

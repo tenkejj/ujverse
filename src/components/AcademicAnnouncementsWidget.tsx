@@ -1,21 +1,16 @@
 import { Megaphone } from 'lucide-react'
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { canonicalDepartment } from '../lib/departments'
-import { useAnnouncements } from '../hooks/useAnnouncements'
+import {
+  sectionTitleCls,
+  sideCardCls,
+  sideInnerRowCls,
+  sideMutedCls,
+  widgetGoldCls,
+} from '../lib/sidePanelStyles'
+import { sortAnnouncements } from '../hooks/useAnnouncements'
 import type { AcademicAnnouncement, AnnouncementStatus } from '../types'
-
-const widgetGoldCls = 'text-[#a48955] dark:text-brand-gold-bright'
-
-const sideCardCls =
-  'rounded-2xl border border-[#0f172a]/5 bg-card shadow-sm p-4 dark:border-white/5 dark:bg-bg-card/40 dark:backdrop-blur-md dark:shadow-none'
-
-const sectionTitleCls = 'font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold'
-
-const sideMutedCls = 'text-logo-navy/60 dark:text-slate-400'
-
-const announcementCardCls =
-  'rounded-2xl border border-[#0f172a]/8 bg-white/[0.45] p-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]'
 
 const STATUS_META: Record<
   AnnouncementStatus,
@@ -60,9 +55,53 @@ function filterByDepartment(
 
 const MAX_VISIBLE = 12
 
+function AnnouncementBodyClamp({
+  body,
+  expanded,
+  onToggle,
+}: {
+  body: string
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const ref = useRef<HTMLParagraphElement>(null)
+  const [overflows, setOverflows] = useState(false)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (expanded) {
+      return
+    }
+    setOverflows(el.scrollHeight > el.clientHeight + 1)
+  }, [body, expanded])
+
+  return (
+    <div className="min-h-0">
+      <p
+        ref={ref}
+        className={`text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap break-words ${
+          expanded ? '' : 'line-clamp-4'
+        }`}
+      >
+        {body}
+      </p>
+      {(overflows || expanded) && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`mt-1.5 text-xs font-medium ${sideMutedCls} hover:text-logo-navy/80 dark:hover:text-slate-300 transition-colors`}
+        >
+          {expanded ? 'zwiń' : 'rozwiń'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function SkeletonBlock() {
   return (
-    <div className={`${announcementCardCls} animate-pulse space-y-2`}>
+    <div className={`${sideInnerRowCls} animate-pulse space-y-2`}>
       <div className="flex justify-between gap-2">
         <div className="h-4 rounded-md bg-black/10 dark:bg-white/10 w-2/5" />
         <div className="h-3 rounded-md bg-black/10 dark:bg-white/10 w-16 shrink-0" />
@@ -76,14 +115,22 @@ function SkeletonBlock() {
 
 type Props = {
   selectedDepartment: string
+  announcements: AcademicAnnouncement[]
+  loading: boolean
+  error: string | null
 }
 
-export default function AcademicAnnouncementsWidget({ selectedDepartment }: Props) {
-  const { announcements, loading, error } = useAnnouncements()
+export default function AcademicAnnouncementsWidget({
+  selectedDepartment,
+  announcements,
+  loading,
+  error,
+}: Props) {
+  const [expandedById, setExpandedById] = useState<Record<string, boolean>>({})
 
   const visible = useMemo(() => {
     const filtered = filterByDepartment(announcements, selectedDepartment)
-    return filtered.slice(0, MAX_VISIBLE)
+    return sortAnnouncements(filtered).slice(0, MAX_VISIBLE)
   }, [announcements, selectedDepartment])
 
   return (
@@ -115,6 +162,7 @@ export default function AcademicAnnouncementsWidget({ selectedDepartment }: Prop
           <AnimatePresence mode="sync">
             {visible.map((ann, idx) => {
               const meta = STATUS_META[ann.status]
+              const expanded = Boolean(expandedById[ann.id])
               return (
                 <motion.article
                   key={ann.id}
@@ -123,10 +171,10 @@ export default function AcademicAnnouncementsWidget({ selectedDepartment }: Prop
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.24) }}
-                  className={announcementCardCls}
+                  className={sideInnerRowCls}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+                    <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug min-w-0 break-words whitespace-normal">
                       {ann.lecturer_name}
                     </p>
                     <time
@@ -147,9 +195,13 @@ export default function AcademicAnnouncementsWidget({ selectedDepartment }: Prop
                       {meta.label}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed">
-                    {ann.body}
-                  </p>
+                  <AnnouncementBodyClamp
+                    body={ann.body}
+                    expanded={expanded}
+                    onToggle={() =>
+                      setExpandedById((p) => ({ ...p, [ann.id]: !p[ann.id] }))
+                    }
+                  />
                 </motion.article>
               )
             })}

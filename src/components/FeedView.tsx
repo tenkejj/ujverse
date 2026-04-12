@@ -1,17 +1,9 @@
-import {
-  BadgeCheck,
-  BookOpen,
-  CalendarDays,
-  Filter,
-  GraduationCap,
-  Link2 as LinkIcon,
-  Mail,
-  MessageCircle,
-} from 'lucide-react'
+import { BookOpen, CalendarDays, Filter, GraduationCap, Link2 as LinkIcon, Mail, MessageCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
-import { formatEventDateParts, type UJEvent } from '../data/mockEvents'
+import type { UJEvent } from '../data/mockEvents'
+import { useAnnouncements } from '../hooks/useAnnouncements'
 import { useEvents } from '../hooks/useEvents'
 import ComposeBox from './ComposeBox'
 import CreateEventModal from './CreateEventModal'
@@ -19,7 +11,20 @@ import EventModal from './EventModal'
 import PostCard from './PostCard'
 import DepartmentFilter from './DepartmentFilter'
 import AcademicAnnouncementsWidget from './AcademicAnnouncementsWidget'
+import CompactEventRow from './CompactEventRow'
 import EmptyState from './EmptyState'
+import AnnouncementPills from './AnnouncementPills'
+import MobileQuickAccessBar from './MobileQuickAccessBar'
+import {
+  sectionTitleCls,
+  sideAsideTrackCls,
+  sideCardCls,
+  sideMutedCls,
+  sideHeaderLinkCls,
+  sidePanelHoverFocus,
+  sideInnerRowCls,
+  widgetGoldCls,
+} from '../lib/sidePanelStyles'
 
 type Props = {
   myProfile: Profile | null
@@ -70,6 +75,8 @@ type Props = {
   onNavigateToPost: (postId: string) => void
   onNavigateToUser?: (userId: string) => void
   onNavigateToEvents: () => void
+  /** Mobile: otwiera arkusz compose (FAB). */
+  onMobileComposeTap?: () => void
 }
 
 const UJ_ESSENTIAL_LINKS = [
@@ -78,25 +85,7 @@ const UJ_ESSENTIAL_LINKS = [
   { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail, tag: 'Poczta' },
 ] as const
 
-const widgetGoldCls = 'text-[#a48955] dark:text-brand-gold-bright'
-
-const sideCardCls =
-  'rounded-2xl border border-[#0f172a]/5 bg-card shadow-sm p-4 dark:border-white/5 dark:bg-bg-card/40 dark:backdrop-blur-md dark:shadow-none'
-
-const sidePanelHoverFocus =
-  'hover:bg-[#F0EDE4]/60 dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:focus-visible:ring-brand-gold/35'
-
-const sectionTitleCls = 'font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold'
-
-/** Podtytuły w panelach (tagi, kategorie) — czytelne w light i dark. */
-const sideMutedCls = 'text-logo-navy/60 dark:text-slate-400'
-
-/** Link „Zobacz wszystkie” — nieco jaśniejszy w dark mode. */
-const sideMutedLinkCls =
-  'text-logo-navy/60 dark:text-slate-300 group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright'
-
-const sideRowCls =
-  `group w-full flex items-start gap-3 rounded-2xl border border-[#0f172a]/5 bg-transparent p-3 cursor-pointer transition-colors dark:border-white/5 ${sidePanelHoverFocus}`
+const sideRowCls = `group w-full flex cursor-pointer items-start gap-3 transition-colors ${sideInnerRowCls} ${sidePanelHoverFocus}`
 
 export default function FeedView({
   myProfile,
@@ -135,8 +124,14 @@ export default function FeedView({
   onNavigateToPost,
   onNavigateToUser,
   onNavigateToEvents,
+  onMobileComposeTap,
 }: Props) {
   const { events, toggleRsvp, updateEvent } = useEvents()
+  const {
+    announcements: academicAnnouncements,
+    loading: academicAnnouncementsLoading,
+    error: academicAnnouncementsError,
+  } = useAnnouncements()
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [editTarget, setEditTarget] = useState<UJEvent | null>(null)
 
@@ -228,41 +223,72 @@ export default function FeedView({
     <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
 
       {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
-      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1">
-        <AcademicAnnouncementsWidget selectedDepartment={selectedDepartment} />
+      <aside
+        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
+      >
+        <AcademicAnnouncementsWidget
+          selectedDepartment={selectedDepartment}
+          announcements={academicAnnouncements}
+          loading={academicAnnouncementsLoading}
+          error={academicAnnouncementsError}
+        />
       </aside>
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
-      <div className="lg:col-span-6 flex flex-col gap-0">
-        {/* ComposeBox — desktop only */}
-        <div className="hidden md:block mb-3">
-          <ComposeBox
-            myProfile={myProfile}
-            displayName={displayName}
-            isComposing={isComposing}
-            body={createBody}
-            imageFile={createImageFile}
-            imagePreview={createImagePreview}
-            isLoading={createLoading}
-            error={createError}
-            onBodyChange={onBodyChange}
-            onImageFileChange={onImageFileChange}
-            onOpen={onComposeOpen}
-            onReset={onComposeReset}
-            onSubmit={onCreatePost}
-          />
-        </div>
+      <div className="lg:col-span-6 flex min-w-0 w-full max-w-full flex-col items-stretch gap-0 overflow-x-hidden">
+        <div className="mx-auto w-full max-w-md -mx-4 space-y-2 px-4 md:mx-0 md:max-w-none md:space-y-0 md:px-0">
+          <div className="space-y-2 md:hidden">
+            <button
+              type="button"
+              onClick={() => onMobileComposeTap?.()}
+              className="m-0 w-full rounded-2xl border border-white/10 bg-black/35 py-2.5 text-left backdrop-blur-md transition-colors hover:bg-white/[0.06] active:bg-white/[0.08] dark:bg-black/35"
+            >
+              <span className="text-[15px] text-slate-600 dark:text-gray-400">Co słychać na uczelni?</span>
+            </button>
+            <MobileQuickAccessBar
+              items={[
+                { label: 'USOS', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap },
+                { label: 'PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen },
+                { label: 'POCZTA', href: 'https://outlook.office.com/mail/', Icon: Mail },
+              ]}
+            />
+            <AnnouncementPills
+              selectedDepartment={selectedDepartment}
+              announcements={academicAnnouncements}
+              loading={academicAnnouncementsLoading}
+            />
+          </div>
 
-        <div className="mb-3">
-          <DepartmentFilter selected={selectedDepartment} onChange={onDepartmentChange} />
-        </div>
+          <div className="mb-3 hidden md:block">
+            <ComposeBox
+              myProfile={myProfile}
+              displayName={displayName}
+              isComposing={isComposing}
+              body={createBody}
+              imageFile={createImageFile}
+              imagePreview={createImagePreview}
+              isLoading={createLoading}
+              error={createError}
+              onBodyChange={onBodyChange}
+              onImageFileChange={onImageFileChange}
+              onOpen={onComposeOpen}
+              onReset={onComposeReset}
+              onSubmit={onCreatePost}
+            />
+          </div>
 
-        {feedContent}
+          <div className="mb-2 m-0 w-full min-w-0 max-w-full p-0 md:mb-3">
+            <DepartmentFilter selected={selectedDepartment} onChange={onDepartmentChange} />
+          </div>
+
+          {feedContent}
+        </div>
       </div>
 
       {/* ── RIGHT SIDEBAR (desktop only) ────────────────────────────── */}
-      <aside className="hidden lg:flex lg:col-span-3 flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1">
-
+      <aside
+        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
+      >
         {/* Niezbędnik UJ — szybkie linki (layout jak Wydarzenia UJ) */}
         <div className={sideCardCls}>
           <div className="flex items-center gap-2 mb-3">
@@ -298,64 +324,22 @@ export default function FeedView({
 
         {/* Upcoming events widget */}
         <div className={sideCardCls}>
-          <button
-            type="button"
-            onClick={onNavigateToEvents}
-            className={`group w-full flex items-center gap-2 mb-3 rounded-xl -mx-1 px-1 py-1.5 text-left transition-colors ${sidePanelHoverFocus}`}
-            aria-label="Przejdź do wszystkich wydarzeń"
-          >
-            <CalendarDays
-              size={13}
-              className={`${widgetGoldCls} shrink-0 transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
-              strokeWidth={2}
-            />
-            <span className={`${sectionTitleCls} flex-1 min-w-0`}>Wydarzenia UJ</span>
-            <span className={`text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${sideMutedLinkCls}`}>
+          <div className="mb-3 flex min-w-0 items-center gap-2">
+            <CalendarDays size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
+            <span className={`${sectionTitleCls} min-w-0 flex-1`}>Wydarzenia UJ</span>
+            <button
+              type="button"
+              onClick={onNavigateToEvents}
+              className={`shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors ${sideHeaderLinkCls} ${sidePanelHoverFocus}`}
+              aria-label="Przejdź do wszystkich wydarzeń"
+            >
               Zobacz wszystkie →
-            </span>
-          </button>
+            </button>
+          </div>
           <div className="space-y-2">
-            {events.slice(0, 3).map((ev) => {
-              const { monthLabel, dayNum } = formatEventDateParts(ev.date)
-              const official = Boolean(ev.is_official)
-              return (
-                <button
-                  key={ev.id}
-                  type="button"
-                  onClick={() => setSelectedEventId(ev.id)}
-                  className={`${sideRowCls} text-left ${
-                    official ? 'ring-1 ring-[#a48955]/25 bg-[#a48955]/[0.08] dark:ring-brand-gold/25 dark:bg-brand-gold/[0.06]' : ''
-                  }`}
-                >
-                  <div className="shrink-0 text-center min-w-[36px]">
-                    <span
-                      className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
-                    >
-                      {monthLabel}
-                    </span>
-                    <span className="block text-[15px] font-extrabold text-[#1e293b] dark:text-white leading-tight">
-                      {dayNum}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-1.5">
-                      <p className="text-sm font-medium text-[#1e293b] dark:text-white leading-snug truncate min-w-0">
-                        {ev.title}
-                      </p>
-                      {official ? (
-                        <BadgeCheck
-                          size={14}
-                          className={`${widgetGoldCls} shrink-0 mt-0.5 transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
-                          strokeWidth={2.5}
-                          aria-label="Oficjalne UJ"
-                        />
-                      ) : null}
-                    </div>
-                    <span className={`text-xs ${sideMutedCls}`}>{ev.category}</span>
-                  </div>
-                </button>
-              )
-            })}
+            {events.slice(0, 3).map((ev) => (
+              <CompactEventRow key={ev.id} event={ev} onSelect={() => setSelectedEventId(ev.id)} />
+            ))}
           </div>
         </div>
 

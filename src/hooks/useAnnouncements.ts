@@ -17,8 +17,15 @@ function parseRow(row: Record<string, unknown>): AcademicAnnouncement | null {
       : typeof row.department === 'string'
         ? row.department
         : null
+  const body_fingerprint =
+    row.body_fingerprint === null || row.body_fingerprint === undefined
+      ? null
+      : typeof row.body_fingerprint === 'string'
+        ? row.body_fingerprint
+        : null
   return {
     id,
+    body_fingerprint,
     department,
     lecturer_name,
     body,
@@ -27,13 +34,23 @@ function parseRow(row: Record<string, unknown>): AcademicAnnouncement | null {
   }
 }
 
+/** Odwołane na górze, potem malejąco po created_at. */
+export function sortAnnouncements(rows: AcademicAnnouncement[]): AcademicAnnouncement[] {
+  return [...rows].sort((a, b) => {
+    const ac = a.status === 'cancelled' ? 0 : 1
+    const bc = b.status === 'cancelled' ? 0 : 1
+    if (ac !== bc) return ac - bc
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+}
+
 async function fetchAnnouncements(): Promise<{
   rows: AcademicAnnouncement[]
   error: string | null
 }> {
   const { data, error: qError } = await supabase
     .from('announcements')
-    .select('id, department, lecturer_name, body, status, created_at')
+    .select('id, body_fingerprint, department, lecturer_name, body, status, created_at')
     .order('created_at', { ascending: false })
 
   if (qError) {
@@ -45,7 +62,7 @@ async function fetchAnnouncements(): Promise<{
         .map((r) => parseRow(r as Record<string, unknown>))
         .filter((x): x is AcademicAnnouncement => x !== null)
     : []
-  return { rows, error: null }
+  return { rows: sortAnnouncements(rows), error: null }
 }
 
 export function useAnnouncements() {

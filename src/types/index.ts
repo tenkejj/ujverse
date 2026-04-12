@@ -42,6 +42,8 @@ export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty'
 
 export type AcademicAnnouncement = {
   id: string
+  /** Unikalny odcisk treści (md5) — spójny z DB; stabilny fallback dla klucza React. */
+  body_fingerprint?: string | null
   department: string | null
   lecturer_name: string
   body: string
