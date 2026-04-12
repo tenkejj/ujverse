@@ -243,14 +243,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
+  
+  const tokenParam = req.query.token
+  const token =
+    typeof tokenParam === 'string' ? tokenParam : Array.isArray(tokenParam) ? tokenParam[0] : undefined
+
+  console.log('DEBUG: Received token from URL:', req.query.token)
+  console.log('DEBUG: CRON_SECRET exists in env:', Boolean(process.env.CRON_SECRET))
 
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret) {
-    const auth = typeof req.headers.authorization === 'string' ? req.headers.authorization : ''
-    if (auth !== `Bearer ${cronSecret}`) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
+  if (!cronSecret) {
+    console.log('DEBUG: reject — CRON_SECRET not set')
+    return res.status(500).json({ error: 'CRON_SECRET not configured' })
   }
+  if (token !== cronSecret) {
+    console.log('DEBUG: reject — token mismatch or missing')
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+  console.log('DEBUG: auth OK (query token matches CRON_SECRET)')
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
