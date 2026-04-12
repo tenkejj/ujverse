@@ -21,6 +21,8 @@ type Props = {
   onOpen: () => void
   onReset: () => void
   onSubmit: () => void
+  /** Mobilna szuflada: nieprzezroczyste tło rodzica — karta compose bez własnego „szkła”. */
+  sheetMode?: boolean
 }
 
 export default function ComposeBox({
@@ -37,6 +39,7 @@ export default function ComposeBox({
   onOpen,
   onReset,
   onSubmit,
+  sheetMode = false,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
@@ -49,15 +52,19 @@ export default function ComposeBox({
   const ringProgress = Math.min(bodyLen / BODY_MAX, 1)
   const ringDash = RING_CIRCUMFERENCE * ringProgress
 
-  return (
-    <div
-      className={`bg-card dark:bg-bg-app rounded-2xl border border-[#0f172a]/5 transition-[border-color,box-shadow] duration-200 overflow-hidden shadow-sm dark:border-white/10 ${
+  const rootCls = sheetMode
+    ? 'overflow-hidden rounded-none border-0 bg-transparent shadow-none'
+    : `bg-card dark:bg-bg-app rounded-2xl border border-[#0f172a]/5 transition-[border-color,box-shadow] duration-200 overflow-hidden shadow-sm dark:border-white/10 ${
         isComposing
           ? 'border-[#0f172a]/12 shadow-[0_0_0_1px_rgb(164_137_85/0.12),0_2px_10px_-2px_rgb(15_23_42/0.06)] dark:border-white/10 dark:shadow-[inset_0_0_0_1px_rgb(201_162_39/0.15),0_8px_32px_-12px_rgb(0_0_0/0.45)]'
           : 'dark:shadow-lg dark:shadow-black/20'
-      }`}
-    >
-      <div className="p-4 flex gap-3 items-start">
+      }`
+
+  const innerPad = sheetMode ? 'p-3 sm:p-4' : 'p-4'
+
+  return (
+    <div className={rootCls}>
+      <div className={`${innerPad} flex gap-3 items-start`}>
 
         <div className="flex flex-col items-center shrink-0">
           <UserAvatar profile={myProfile} name={displayName} className="h-10 w-10" textSize="text-sm" />
@@ -87,7 +94,11 @@ export default function ComposeBox({
                 placeholder="Co słychać na uczelni?"
                 rows={3}
                 maxLength={BODY_MAX}
-                className="w-full min-h-[80px] resize-none rounded-xl bg-card px-3 py-2.5 text-[15px] text-fg-primary placeholder:text-fg-secondary leading-relaxed ring-1 ring-inset ring-[#0f172a]/[0.05] focus:outline-none focus:ring-2 focus:ring-[#0f172a]/[0.08] dark:bg-transparent dark:ring-1 dark:ring-inset dark:ring-white/10 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-2 dark:focus:ring-brand-gold/25"
+                className={`w-full min-h-[80px] resize-none rounded-xl px-3 py-2.5 text-[15px] leading-relaxed focus:outline-none ${
+                  sheetMode
+                    ? 'border border-zinc-200 bg-zinc-50 text-zinc-900 placeholder:text-zinc-500 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-300/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-600 dark:focus:ring-brand-gold/30'
+                    : 'bg-card text-fg-primary placeholder:text-fg-secondary ring-1 ring-inset ring-[#0f172a]/[0.05] focus:ring-2 focus:ring-[#0f172a]/[0.08] dark:bg-transparent dark:ring-1 dark:ring-inset dark:ring-white/10 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-2 dark:focus:ring-brand-gold/25'
+                }`}
               />
 
               {/* Image preview */}
@@ -113,8 +124,12 @@ export default function ComposeBox({
               )}
 
               {/* Toolbar */}
-              <div className="flex items-center justify-between pt-2 border-t border-[#0f172a]/8 dark:border-white/10">
-                <div className="flex items-center gap-0.5">
+              <div
+                className={`mt-1 flex flex-nowrap items-center justify-between gap-3 border-t border-zinc-200 pt-3 dark:border-white/10 ${
+                  sheetMode ? 'pb-1' : 'pt-2'
+                }`}
+              >
+                <div className="flex shrink-0 items-center gap-0.5">
                   <input
                     ref={imageInputRef}
                     type="file"
@@ -132,7 +147,7 @@ export default function ComposeBox({
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 flex-nowrap items-center gap-2 sm:gap-3">
                   {/* Character ring */}
                   <div className="relative h-6 w-6" title={`${BODY_MAX - bodyLen} znaków`}>
                     <svg viewBox="0 0 24 24" className="h-6 w-6 -rotate-90">
@@ -178,7 +193,7 @@ export default function ComposeBox({
                   <button
                     type="button"
                     onClick={onReset}
-                    className="text-sm text-[#0f172a] dark:text-slate-400 hover:text-[#8a6d3b] dark:hover:text-slate-300 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                    className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#0f172a] transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
                   >
                     Anuluj
                   </button>
@@ -187,7 +202,7 @@ export default function ComposeBox({
                     onClick={onSubmit}
                     disabled={isLoading || !body.trim()}
                     whileTap={{ scale: 0.98 }}
-                    className="px-5 py-1.5 rounded-full bg-[#0f172a] text-white text-sm font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity shadow-none"
+                    className="whitespace-nowrap rounded-full bg-[#0f172a] px-4 py-2 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-900 dark:shadow-none"
                   >
                     {isLoading ? 'Publikuję…' : 'Opublikuj'}
                   </motion.button>

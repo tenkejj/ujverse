@@ -236,27 +236,31 @@ export default function FeedView({
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
       <div className="lg:col-span-6 flex min-w-0 w-full max-w-full flex-col items-stretch gap-0 overflow-x-hidden">
-        <div className="mx-auto w-full max-w-md -mx-4 space-y-2 px-4 md:mx-0 md:max-w-none md:space-y-0 md:px-0">
-          <div className="space-y-2 md:hidden">
+        <div className="mx-auto w-full max-w-md -mx-4 space-y-2 px-4 pt-5 md:mx-0 md:max-w-none md:space-y-0 md:px-0 md:pt-0">
+          <div className="md:hidden">
             <button
               type="button"
               onClick={() => onMobileComposeTap?.()}
-              className="m-0 w-full rounded-2xl border border-white/10 bg-black/35 py-2.5 text-left backdrop-blur-md transition-colors hover:bg-white/[0.06] active:bg-white/[0.08] dark:bg-black/35"
+              className="m-0 w-full rounded-2xl border border-zinc-200/90 bg-white py-2.5 pl-4 pr-3 text-left shadow-lg transition-[background-color,border-color,box-shadow] hover:bg-zinc-50 active:bg-zinc-100 focus-visible:outline-none focus-visible:border-[#C5A059]/55 focus-visible:ring-2 focus-visible:ring-[#C5A059]/20 dark:border-white/5 dark:bg-zinc-900/40 dark:shadow-none dark:backdrop-blur-md dark:hover:bg-zinc-900/55 dark:active:bg-zinc-900/65 dark:focus-visible:border-brand-gold/50 dark:focus-visible:ring-brand-gold/25"
             >
-              <span className="text-[15px] text-slate-600 dark:text-gray-400">Co słychać na uczelni?</span>
+              <span className="text-[15px] font-medium text-zinc-900 dark:text-zinc-400">
+                Co słychać na uczelni?
+              </span>
             </button>
-            <MobileQuickAccessBar
-              items={[
-                { label: 'USOS', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap },
-                { label: 'PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen },
-                { label: 'POCZTA', href: 'https://outlook.office.com/mail/', Icon: Mail },
-              ]}
-            />
-            <AnnouncementPills
-              selectedDepartment={selectedDepartment}
-              announcements={academicAnnouncements}
-              loading={academicAnnouncementsLoading}
-            />
+            <div className="mt-6 space-y-4">
+              <MobileQuickAccessBar
+                items={[
+                  { label: 'USOS', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap },
+                  { label: 'PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen },
+                  { label: 'POCZTA', href: 'https://outlook.office.com/mail/', Icon: Mail },
+                ]}
+              />
+              <AnnouncementPills
+                selectedDepartment={selectedDepartment}
+                announcements={academicAnnouncements}
+                loading={academicAnnouncementsLoading}
+              />
+            </div>
           </div>
 
           <div className="mb-3 hidden md:block">

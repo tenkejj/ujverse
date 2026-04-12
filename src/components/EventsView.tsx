@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, CalendarDays, Plus, Radio, Search, Shield, User, Users } from 'lucide-react'
+import { Archive, Plus, Radio, Search, Shield, User, Users } from 'lucide-react'
 import { formatEventDateLong, formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
-import CompactEventRow from './CompactEventRow'
 import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
 import WziksOfficialHub from './WziksOfficialHub'
 
 type EventFilter = 'all' | 'mine' | 'Wydarzenie' | 'Wydział' | 'Ogłoszenie' | 'Oficjalne'
 
-/** Wspólny styl etykiet „WYRÓŻNIONE” i „OFICJALNE UJ” na karcie wyróżnionej. */
+/** Etykiety na banerze wyróżnionym — w light theme łagodniejszy kontrast niż czarny „alert”. */
 const featuredHeroPillCls =
-  'inline-flex items-center gap-0.5 rounded-full border border-[#c9a227]/45 bg-black/50 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-brand-gold backdrop-blur-sm dark:text-brand-gold-bright'
+  'inline-flex items-center gap-0.5 rounded-full border border-white/30 bg-zinc-950/45 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-white/90 backdrop-blur-md dark:border-[#c9a227]/45 dark:bg-black/50 dark:text-brand-gold-bright'
 
 const FILTERS: { key: EventFilter; label: string }[] = [
   { key: 'all', label: 'Wszystkie' },
@@ -161,32 +160,6 @@ export default function EventsView() {
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
 
       <div className="lg:col-span-6 space-y-4">
-        <div className="md:hidden space-y-2 rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur-md dark:bg-black/40">
-          <div className="flex items-center gap-2">
-            <CalendarDays
-              size={14}
-              className="shrink-0 text-[#a48955] dark:text-brand-gold-bright"
-              strokeWidth={2}
-              aria-hidden
-            />
-            <span className="font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold">
-              Wydarzenia UJ
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Te same nadchodzące wydarzenia co w panelu na desktopie.
-          </p>
-          <div className="space-y-2">
-            {events.slice(0, 3).map((ev) => (
-              <CompactEventRow
-                key={ev.id}
-                event={ev}
-                onSelect={(e) => setSelectedEventId(e.id)}
-              />
-            ))}
-          </div>
-        </div>
-
         {featuredEvent ? (
           <button
             type="button"
@@ -214,7 +187,7 @@ export default function EventsView() {
               <span className={featuredHeroPillCls}>WYRÓŻNIONE</span>
               {featuredEvent.is_official ? (
                 <span className={featuredHeroPillCls}>
-                  <Shield size={12} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.5} aria-hidden />
+                  <Shield size={12} className="text-[#e8c84a] dark:text-brand-gold-bright" strokeWidth={2.5} aria-hidden />
                   OFICJALNE UJ
                 </span>
               ) : null}
@@ -227,7 +200,7 @@ export default function EventsView() {
                 {formatEventDateLong(featuredEvent.date)}
               </p>
               <p className="mt-1 text-sm text-slate-400 line-clamp-2">{featuredEvent.location}</p>
-              <span className="mt-5 inline-flex w-fit items-center rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-bold text-black transition-colors group-hover:bg-brand-gold/85">
+              <span className="mt-5 inline-flex w-fit items-center rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-black/20 transition-colors group-hover:bg-zinc-800 dark:bg-brand-gold dark:text-zinc-900 dark:shadow-none dark:group-hover:bg-brand-gold/88">
                 Sprawdź szczegóły
               </span>
             </div>

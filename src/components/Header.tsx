@@ -126,8 +126,8 @@ export default function Header({
     <header
       className={`h-16 w-full flex items-center gap-2 px-4 sticky top-0 z-50 overflow-visible transition-all duration-300 border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
-          ? 'bg-bg-app/80 backdrop-blur-lg border-b border-slate-200 dark:border-white/10'
-          : 'bg-bg-app border-b border-transparent'
+          ? 'border-b border-slate-200/90 bg-white/85 backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/55 dark:backdrop-blur-md'
+          : 'border-b border-transparent bg-bg-app/90 backdrop-blur-md dark:border-transparent dark:bg-black/25 dark:backdrop-blur-md'
       }`}
     >
       <div className="w-24 flex-shrink-0 flex items-center justify-start relative z-10">

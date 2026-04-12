@@ -71,7 +71,7 @@ export default function AnnouncementPills({
   }, [announcements, selectedDepartment])
 
   const pillBtn =
-    'm-0 inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 text-left transition-colors hover:bg-white/12 active:bg-white/10 dark:bg-white/[0.05]'
+    'm-0 inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-zinc-200 bg-white/80 px-3 text-left shadow-sm backdrop-blur-sm transition-colors hover:bg-white active:bg-zinc-50 dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none dark:backdrop-blur-none dark:hover:bg-white/12 dark:active:bg-white/10'
 
   return (
     <>
@@ -83,7 +83,7 @@ export default function AnnouncementPills({
           {loading ? (
             <>
               {[1, 2, 3, 4, 5].map((k) => (
-                <div key={k} className="h-9 w-24 shrink-0 animate-pulse rounded-full bg-white/10" />
+                <div key={k} className="h-9 w-24 shrink-0 animate-pulse rounded-full bg-zinc-200/80 dark:bg-white/10" />
               ))}
             </>
           ) : pills.length === 0 ? (

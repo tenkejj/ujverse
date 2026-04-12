@@ -77,7 +77,7 @@ function OfficialUjCard({ event }: { event: UJEvent }) {
 
   return (
     <article
-      className="official-card-premium snap-start shrink-0 w-[min(280px,78vw)] rounded-2xl border-2 border-brand-gold/60 bg-gradient-to-br from-[#fdf8ed] via-brand-gold/12 to-white shadow-[0_0_28px_-10px_rgba(201,162,39,0.45)] ring-1 ring-brand-gold/25 dark:from-[#1a1508]/95 dark:via-brand-gold/[0.07] dark:to-transparent dark:border-brand-gold/45 dark:ring-brand-gold/15 dark:shadow-[0_0_36px_-12px_rgba(201,162,39,0.28)] overflow-hidden flex flex-col"
+      className="official-card-premium snap-start shrink-0 w-[min(280px,78vw)] rounded-2xl border-2 border-brand-gold/60 bg-gradient-to-br from-[#fdf8ed] via-brand-gold/12 to-white shadow-[0_2px_8px_rgba(15,23,42,0.08),0_0_26px_-10px_rgba(201,162,39,0.42)] ring-1 ring-zinc-300/90 dark:from-[#1a1508]/95 dark:via-brand-gold/[0.07] dark:to-transparent dark:border-brand-gold/45 dark:ring-brand-gold/15 dark:shadow-[0_0_36px_-12px_rgba(201,162,39,0.28)] overflow-hidden flex flex-col"
     >
       <div className="relative z-[2] h-28 bg-slate-200/80 dark:bg-slate-800/80 shrink-0">
         {event.imageUrl ? (
@@ -101,7 +101,7 @@ function OfficialUjCard({ event }: { event: UJEvent }) {
           </div>
         </div>
       </div>
-      <div className="relative z-[2] p-3 flex flex-col flex-1 min-h-0 gap-2">
+      <div className="relative z-[2] flex min-h-0 flex-1 flex-col gap-2 border-t border-zinc-200/90 bg-white/95 p-3 shadow-sm dark:border-white/10 dark:bg-transparent dark:shadow-none">
         <span className="inline-flex w-fit rounded-full border border-[#c9a227]/40 bg-[#c9a227]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-uj-navy dark:text-[#e8c84a]">
           {facultyChipLabel(event)}
         </span>

@@ -13,10 +13,10 @@ export const sideAsideTrackCls =
  * Używany przez karty sekcji i wewnętrzne wiersze — jedna seria wizualna.
  */
 const sideGlassLight =
-  'border border-[#0f172a]/10 bg-white/65 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/50 dark:shadow-xl dark:backdrop-blur-md'
+  'border border-zinc-200 bg-white/70 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/50 dark:shadow-xl dark:backdrop-blur-md'
 
 const sideGlassInnerLight =
-  'border border-[#0f172a]/10 bg-white/55 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-black/40 dark:shadow-xl dark:backdrop-blur-md'
+  'border border-zinc-200 bg-white/70 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-black/40 dark:shadow-xl dark:backdrop-blur-md'
 
 /** Zewnętrzna karta sekcji (Komunikaty / Niezbędnik / Wydarzenia). */
 export const sideCardCls = `rounded-2xl p-4 min-h-0 ${sideGlassLight}`

@@ -691,25 +691,27 @@ function App() {
         {isMobileComposeOpen && (
           <motion.div
             key="mobile-compose-overlay"
-            className="fixed inset-0 z-[60] md:hidden flex flex-col justify-end"
+            className="fixed inset-0 z-[320] md:hidden flex flex-col justify-end"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
             <div
-              className="flex-1 bg-black/50"
+              className="flex-1 bg-black/55 backdrop-blur-[2px]"
+              aria-hidden
               onClick={resetCompose}
             />
             <motion.div
-              className="bg-card dark:bg-bg-app border-t border-border-app rounded-t-3xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+90px)] shadow-none max-h-[90vh] overflow-y-auto"
+              className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-t border-zinc-200 bg-white px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-[0_-12px_40px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_-16px_48px_rgba(0,0,0,0.5)]"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             >
-              <div className="w-12 h-1.5 rounded-full bg-slate-300/50 dark:bg-white/10 mx-auto my-3" />
+              <div className="mx-auto mb-2 h-1.5 w-12 shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-600" />
               <ComposeBox
+                sheetMode
                 myProfile={myProfile}
                 displayName={displayName}
                 isComposing={true}
