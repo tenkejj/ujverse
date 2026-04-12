@@ -13,6 +13,10 @@ export const WZIK_ISI_KOMUNIKATY_URL = 'https://isi.uj.edu.pl/studenci/news/komu
 const SOURCE_URL = WZIK_ISI_KOMUNIKATY_URL
 const DEPARTMENT = 'WZiKS'
 
+/** Chrome na macOS — wygląda jak zwykła przeglądarka (mniej „bot” w logach WAF). */
+const BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
 export type ParsedWziksAnnouncement = {
   lecturer_name: string
   body: string
@@ -277,8 +281,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { data: html, status } = await axios.get<string>(SOURCE_URL, {
       headers: {
-        'User-Agent': 'UJverse-scraper/1.0 (+https://github.com)',
-        Accept: 'text/html,application/xhtml+xml',
+        'User-Agent': BROWSER_USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
       },
       timeout: 30000,
       responseType: 'text',
