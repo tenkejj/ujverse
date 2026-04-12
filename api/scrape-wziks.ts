@@ -13,6 +13,12 @@ export const WZIK_ISI_KOMUNIKATY_URL = 'https://isi.uj.edu.pl/studenci/news/komu
 const SOURCE_URL = WZIK_ISI_KOMUNIKATY_URL
 const DEPARTMENT = 'WZiKS'
 
+/** Tekst zastępczy gdy nie uda się wyciągnąć wykładowcy — bez wywołania AI. */
+const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
+
+const LECTURER_NOMINATIVE_SYSTEM_PROMPT =
+  'Przekształć podane imię i nazwisko wykładowcy na mianownik (np. dr hab. Magdalenę Wójcik -> dr hab. Magdalena Wójcik, prof. Jana Kowalskiego -> prof. Jan Kowalski). Zwróć tylko poprawione imię i nazwisko.'
+
 /** Chrome na macOS — wygląda jak zwykła przeglądarka (mniej „bot” w logach WAF). */
 const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -203,7 +209,92 @@ function extractLecturer(block: string): string {
     const m = oneLine.match(re)
     if (m?.[1]) return clipLecturerPhrase(m[1])
   }
-  return 'Komunikat ISI / WZiKS'
+  return FALLBACK_LECTURER_NAME
+}
+
+function sanitizeNominativeModelOutput(text: string, fallback: string): string {
+  let t = text
+    .replace(/^```[a-z]*\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim()
+  const firstLine = t.split('\n').find((line) => line.trim().length > 0)?.trim() ?? t
+  if (firstLine.length < 2 || firstLine.length > 220) return fallback
+  return firstLine
+}
+
+type OpenAIChatCompletionResponse = {
+  choices?: Array<{ message?: { content?: string | null } }>
+}
+
+/**
+ * Mianownik imienia i nazwiska (OpenAI-compatible Chat Completions).
+ * `OPENAI_API_BASE` opcjonalnie (np. inny dostawca), domyślnie https://api.openai.com/v1
+ */
+export async function lecturerNameToNominative(
+  raw: string,
+  opts: { apiKey: string; baseUrl: string; model: string; timeoutMs: number },
+): Promise<string> {
+  const base = opts.baseUrl.replace(/\/$/, '')
+  const url = `${base}/chat/completions`
+  const { data } = await axios.post<OpenAIChatCompletionResponse>(
+    url,
+    {
+      model: opts.model,
+      messages: [
+        { role: 'system', content: LECTURER_NOMINATIVE_SYSTEM_PROMPT },
+        { role: 'user', content: raw },
+      ],
+      max_tokens: 200,
+      temperature: 0,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${opts.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: opts.timeoutMs,
+    },
+  )
+  const text = data?.choices?.[0]?.message?.content?.trim() ?? ''
+  if (!text) return raw
+  return sanitizeNominativeModelOutput(text, raw)
+}
+
+async function applyNominativeLecturerNames(rows: Row[]): Promise<Row[]> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    console.log('OPENAI_API_KEY not set — skipping lecturer nominative normalization')
+    return rows
+  }
+
+  const baseUrl = process.env.OPENAI_API_BASE ?? 'https://api.openai.com/v1'
+  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
+  const timeoutMs = 20_000
+
+  const unique = new Set<string>()
+  for (const r of rows) {
+    if (r.lecturer_name && r.lecturer_name !== FALLBACK_LECTURER_NAME) unique.add(r.lecturer_name)
+  }
+  if (unique.size === 0) return rows
+
+  const normalizedByRaw = new Map<string, string>()
+  await Promise.all(
+    [...unique].map(async (name) => {
+      try {
+        const fixed = await lecturerNameToNominative(name, { apiKey, baseUrl, model, timeoutMs })
+        normalizedByRaw.set(name, fixed)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.log('lecturer nominative AI error:', name.slice(0, 80), msg)
+        normalizedByRaw.set(name, name)
+      }
+    }),
+  )
+
+  return rows.map((r) => ({
+    ...r,
+    lecturer_name: normalizedByRaw.get(r.lecturer_name) ?? r.lecturer_name,
+  }))
 }
 
 function isTechnicalJunkBlock(block: string): boolean {
@@ -299,8 +390,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, upserted: 0, scanned: 0, message: 'No blocks parsed' })
     }
 
+    const rowsNormalized = await applyNominativeLecturerNames(rows)
+
     /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = rows.map((r) => ({
+    const rowsForDb = rowsNormalized.map((r) => ({
       ...r,
       body_fingerprint: bodyFingerprintHex(r.body),
     }))
