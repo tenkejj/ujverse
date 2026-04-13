@@ -16,14 +16,9 @@ const DEPARTMENT = 'WZiKS'
 /** Tekst zastępczy gdy nie uda się wyciągnąć wykładowcy. */
 const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 
-/**
- * Znane błędne formy (np. biernik z komunikatu) → mianownik do pigułek.
- * Klucze: małe litery, pojedyncze spacje — dopasowanie po normalizacji wyciągniętego ciągu.
- */
-export const lecturerNameMapper: Record<string, string> = {
-  'dr hab. magdalenę wójcik': 'dr hab. Magdalena Wójcik',
-  'prof. jana kowalskiego': 'prof. Jan Kowalski',
-}
+const GROQ_API_BASE_URL = 'https://api.groq.com/openai/v1'
+const GROQ_MODEL = 'llama3-8b-8192'
+const LECTURER_NOMINATIVE_PROMPT = 'Zamień nazwisko na mianownik, zwróć tylko wynik'
 
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
 const LECTURER_INTRO_PHRASES: RegExp[] = [
@@ -34,19 +29,78 @@ const LECTURER_INTRO_PHRASES: RegExp[] = [
   /\bwyklad\s+prowadzony\s+przez\s*:?\s*/gi,
 ]
 
-function normalizeLecturerLookupKey(s: string): string {
-  return s.replace(/\s+/g, ' ').trim().toLowerCase()
-}
-
-export function mapLecturerName(raw: string): string {
-  const mapped = lecturerNameMapper[normalizeLecturerLookupKey(raw)]
-  return mapped ?? raw
-}
-
 export function stripLecturerIntroPhrases(text: string): string {
   let t = text
   for (const re of LECTURER_INTRO_PHRASES) t = t.replace(re, '')
   return cleanWhitespace(t)
+}
+
+type OpenAIChatCompletionResponse = {
+  choices?: Array<{ message?: { content?: string | null } }>
+}
+
+function sanitizeNominativeModelOutput(text: string, fallback: string): string {
+  let t = text
+    .replace(/^```[a-z]*\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim()
+  const firstLine = t.split('\n').find((line) => line.trim().length > 0)?.trim() ?? t
+  if (firstLine.length < 2 || firstLine.length > 220) return fallback
+  return firstLine
+}
+
+export async function lecturerNameToNominative(raw: string): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) return raw
+
+  try {
+    const { data } = await axios.post<OpenAIChatCompletionResponse>(
+      `${GROQ_API_BASE_URL}/chat/completions`,
+      {
+        model: GROQ_MODEL,
+        messages: [
+          { role: 'system', content: LECTURER_NOMINATIVE_PROMPT },
+          { role: 'user', content: raw },
+        ],
+        max_tokens: 120,
+        temperature: 0,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      },
+    )
+
+    const text = data?.choices?.[0]?.message?.content?.trim()
+    if (!text) return raw
+    return sanitizeNominativeModelOutput(text, raw)
+  } catch {
+    return raw
+  }
+}
+
+async function applyNominativeLecturerNames(rows: Row[]): Promise<Row[]> {
+  const unique = new Set<string>()
+  for (const r of rows) {
+    if (r.lecturer_name && r.lecturer_name !== FALLBACK_LECTURER_NAME) unique.add(r.lecturer_name)
+  }
+  if (unique.size === 0) return rows
+
+  const normalizedByRaw = new Map<string, string>()
+  await Promise.all(
+    [...unique].map(async (name) => {
+      const fixed = await lecturerNameToNominative(name)
+      normalizedByRaw.set(name, fixed)
+    }),
+  )
+
+  return rows.map((r) => ({
+    ...r,
+    lecturer_name: normalizedByRaw.get(r.lecturer_name) ?? r.lecturer_name,
+  }))
 }
 
 /** Chrome na macOS — wygląda jak zwykła przeglądarka (mniej „bot” w logach WAF). */
@@ -276,7 +330,7 @@ export function parsePage(html: string): Row[] {
     body = stripLecturerIntroPhrases(body)
     if (junkBlock(body)) continue
     rows.push({
-      lecturer_name: mapLecturerName(extractLecturer(body)),
+      lecturer_name: extractLecturer(body),
       body,
       status: detectStatus(body),
       department: DEPARTMENT,
@@ -336,8 +390,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, upserted: 0, scanned: 0, message: 'No blocks parsed' })
     }
 
+    const rowsNormalized = await applyNominativeLecturerNames(rows)
+
     /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = rows.map((r) => ({
+    const rowsForDb = rowsNormalized.map((r) => ({
       ...r,
       body_fingerprint: bodyFingerprintHex(r.body),
     }))
