@@ -87,7 +87,9 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
     if (!nominativeName) {
       throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
     }
-    return sanitizeNominativeModelOutput(nominativeName, raw)
+    const fixed = sanitizeNominativeModelOutput(nominativeName, raw)
+    console.log('Groq odebrał i poprawił:', fixed)
+    return fixed
   } catch (e) {
     if (e instanceof Error && e.message.includes('pustą odpowiedź')) {
       throw e
@@ -384,20 +386,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const originalRows = rows.map((r) => ({ ...r }))
-    await Promise.all(
-      rows.map(async (row) => {
-        const before = row.lecturer_name
-        row.lecturer_name = await lecturerNameToNominative(row.lecturer_name)
-        if (row.lecturer_name !== before) {
-          console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
-        }
-      }),
+    const rowsWithAI = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        lecturer_name: await lecturerNameToNominative(row.lecturer_name),
+      })),
     )
-    console.log('Finalne dane do wysłania:', rows.map((r) => r.lecturer_name))
+    rowsWithAI.forEach((row, i) => {
+      const before = originalRows[i]?.lecturer_name
+      if (before && row.lecturer_name !== before) {
+        console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
+      }
+    })
+    console.log('Finalne dane do wysłania:', rowsWithAI.map((r) => r.lecturer_name))
 
     const renamedRows = originalRows
       .map((original, i) => {
-        const normalized = rows[i]
+        const normalized = rowsWithAI[i]
         if (!normalized) return null
         if (normalized.lecturer_name === original.lecturer_name) return null
         return {
@@ -409,7 +414,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(Boolean) as Array<{ body_fingerprint: string; from: string; to: string }>
 
     /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = rows.map((r) => ({
+    const rowsForDb = rowsWithAI.map((r) => ({
       ...r,
       body_fingerprint: bodyFingerprintHex(r.body),
     }))
