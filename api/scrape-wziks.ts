@@ -52,6 +52,7 @@ function sanitizeNominativeModelOutput(text: string, fallback: string): string {
 
 export async function lecturerNameToNominative(raw: string): Promise<string> {
   console.log(`Próbuję poprawić nazwisko: ${raw}`)
+  console.log('Klucz API obecny?', !!process.env.GROQ_API_KEY)
 
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
@@ -60,7 +61,7 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
   }
 
   try {
-    const { data } = await axios.post<OpenAIChatCompletionResponse>(
+    const response = await axios.post<OpenAIChatCompletionResponse>(
       GROQ_CHAT_COMPLETIONS_URL,
       {
         model: GROQ_MODEL,
@@ -79,9 +80,13 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
         timeout: 15000,
       },
     )
-    console.log('SUROWA ODPOWIEDŹ GROQ:', data)
+    if (response.status < 200 || response.status >= 300) {
+      console.error('Groq Status:', response.status)
+      throw new Error(`Groq HTTP status ${response.status}`)
+    }
+    console.log('SUROWA ODPOWIEDŹ GROQ:', response.data)
 
-    const modelOutput = data?.choices?.[0]?.message?.content
+    const modelOutput = response.data?.choices?.[0]?.message?.content
     const nominativeName = modelOutput?.trim() ?? ''
     console.log('AI zwróciło:', nominativeName)
     if (!nominativeName) {
@@ -91,9 +96,14 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
     console.log('Groq odebrał i poprawił:', result)
     console.log('Groq faktycznie zwrócił:', result)
     return result
-  } catch (e) {
-    if (e instanceof Error && e.message.includes('pustą odpowiedź')) {
-      throw e
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status) {
+      console.error('Groq Status:', error.response.status)
+    }
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('BŁĄD GROQ:', message)
+    if (error instanceof Error && error.message.includes('pustą odpowiedź')) {
+      throw error
     }
     return raw
   }
