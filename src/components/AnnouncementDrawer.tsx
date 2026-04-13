@@ -1,5 +1,10 @@
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import {
+  ACADEMIC_ISI_BADGE_LABEL,
+  ACADEMIC_ISI_BADGE_TITLE,
+  showAcademicIsiBadge,
+} from '../lib/announcementBranding'
 import type { AcademicAnnouncement, AnnouncementStatus } from '../types'
 import UserAvatar from './UserAvatar'
 
@@ -70,9 +75,22 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
             <div className="flex items-start gap-3 border-b border-zinc-800 pb-4">
               <UserAvatar profile={null} name={announcement.lecturer_name} className="h-11 w-11 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p id="announcement-drawer-title" className="text-lg font-bold leading-snug text-zinc-50">
-                  {announcement.lecturer_name}
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                  <p
+                    id="announcement-drawer-title"
+                    className="text-lg font-bold leading-snug text-zinc-50 min-w-0 flex-1"
+                  >
+                    {announcement.lecturer_name}
+                  </p>
+                  {showAcademicIsiBadge(announcement.source) && (
+                    <span
+                      className="text-[9px] font-medium leading-none whitespace-nowrap text-zinc-500 opacity-60 shrink-0 text-right"
+                      title={ACADEMIC_ISI_BADGE_TITLE}
+                    >
+                      {ACADEMIC_ISI_BADGE_LABEL}
+                    </span>
+                  )}
+                </div>
                 <time className="mt-0.5 block text-xs tabular-nums text-zinc-500" dateTime={announcement.created_at}>
                   {formatAnnDate(announcement.created_at)}
                 </time>

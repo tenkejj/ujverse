@@ -45,6 +45,8 @@ export type AcademicAnnouncement = {
   /** Unikalny odcisk treści (md5) — spójny z DB; stabilny fallback dla klucza React. */
   body_fingerprint?: string | null
   department: string | null
+  /** Źródło treści, np. komunikaty ISI UJ. */
+  source?: string | null
   lecturer_name: string
   body: string
   status: AnnouncementStatus

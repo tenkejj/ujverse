@@ -23,10 +23,17 @@ function parseRow(row: Record<string, unknown>): AcademicAnnouncement | null {
       : typeof row.body_fingerprint === 'string'
         ? row.body_fingerprint
         : null
+  const source =
+    row.source === null || row.source === undefined
+      ? null
+      : typeof row.source === 'string'
+        ? row.source
+        : null
   return {
     id,
     body_fingerprint,
     department,
+    source,
     lecturer_name,
     body,
     status: status as AnnouncementStatus,
@@ -50,7 +57,7 @@ async function fetchAnnouncements(): Promise<{
 }> {
   const { data, error: qError } = await supabase
     .from('announcements')
-    .select('id, body_fingerprint, department, lecturer_name, body, status, created_at')
+    .select('id, body_fingerprint, department, source, lecturer_name, body, status, created_at')
     .order('created_at', { ascending: false })
 
   if (qError) {

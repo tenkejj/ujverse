@@ -3,6 +3,11 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { canonicalDepartment } from '../lib/departments'
 import {
+  ACADEMIC_ISI_BADGE_LABEL,
+  ACADEMIC_ISI_BADGE_TITLE,
+  showAcademicIsiBadge,
+} from '../lib/announcementBranding'
+import {
   sectionTitleCls,
   sideCardCls,
   sideInnerRowCls,
@@ -177,12 +182,22 @@ export default function AcademicAnnouncementsWidget({
                     <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug min-w-0 break-words whitespace-normal">
                       {ann.lecturer_name}
                     </p>
-                    <time
-                      dateTime={ann.created_at}
-                      className={`text-[10px] tabular-nums shrink-0 pt-0.5 ${sideMutedCls}`}
-                    >
-                      {formatAnnDate(ann.created_at)}
-                    </time>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
+                      {showAcademicIsiBadge(ann.source) && (
+                        <span
+                          className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-zinc-500 opacity-60 dark:text-zinc-400 text-right"
+                          title={ACADEMIC_ISI_BADGE_TITLE}
+                        >
+                          {ACADEMIC_ISI_BADGE_LABEL}
+                        </span>
+                      )}
+                      <time
+                        dateTime={ann.created_at}
+                        className={`text-[10px] tabular-nums ${sideMutedCls}`}
+                      >
+                        {formatAnnDate(ann.created_at)}
+                      </time>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <span

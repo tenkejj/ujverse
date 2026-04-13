@@ -12,6 +12,8 @@ function bodyFingerprintHex(body: string): string {
 export const WZIK_ISI_KOMUNIKATY_URL = 'https://isi.uj.edu.pl/studenci/news/komunikaty'
 const SOURCE_URL = WZIK_ISI_KOMUNIKATY_URL
 const DEPARTMENT = 'WZiKS'
+/** Źródło danych zapisywane przy każdym upsercie (komunikaty ISI). */
+const ANNOUNCEMENT_SOURCE = 'ISI UJ'
 
 /** Tekst zastępczy gdy nie uda się wyciągnąć wykładowcy. */
 const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
@@ -112,6 +114,7 @@ export type ParsedWziksAnnouncement = {
   body: string
   status: 'cancelled' | 'remote' | 'duty'
   department: string
+  source: string
 }
 
 type Row = ParsedWziksAnnouncement
@@ -331,6 +334,7 @@ export function parsePage(html: string): Row[] {
       body,
       status: detectStatus(body),
       department: DEPARTMENT,
+      source: ANNOUNCEMENT_SOURCE,
     })
   }
   return rows
