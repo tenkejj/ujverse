@@ -19,7 +19,7 @@ const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama3-8b-8192'
 const LECTURER_NOMINATIVE_PROMPT =
-  'Jesteś ekspertem od polskiej gramatyki. Podane imię i nazwisko zamień na mianownik (np. dr hab. Magdalenę Wójcik -> dr hab. Magdalena Wójcik). Zwróć TYLKO poprawioną formę, bez żadnych dodatkowych słów czy znaków.'
+  'Jesteś profesorem polonistyki. Twoim zadaniem jest zamiana nazwiska z formy dopełniacza na mianownik. Przykład: "dr Palomy Korycińskiej" -> "dr Paloma Korycińska". Zwróć WYŁĄCZNIE poprawiony tekst, bez kropek na końcu i bez dodatkowych komentarzy.'
 
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
 const LECTURER_INTRO_PHRASES: RegExp[] = [
@@ -80,10 +80,17 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
       },
     )
 
-    const text = data?.choices?.[0]?.message?.content?.trim()
-    if (!text) return raw
-    return sanitizeNominativeModelOutput(text, raw)
-  } catch {
+    const modelOutput = data?.choices?.[0]?.message?.content
+    const nominativeName = modelOutput?.trim() ?? ''
+    console.log('AI zwróciło:', nominativeName)
+    if (!nominativeName) {
+      throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
+    }
+    return sanitizeNominativeModelOutput(nominativeName, raw)
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('pustą odpowiedź')) {
+      throw e
+    }
     return raw
   }
 }
