@@ -19,6 +19,16 @@ const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.1-8b-instant'
 
+const LECTURER_NOMINATIVE_SYSTEM_PROMPT = `Jesteś ekspertem języka polskiego. Zmień nazwisko z dopełniacza na mianownik.
+Zasady:
+
+Jeśli nazwisko to "Rak", w mianowniku brzmi "Rak".
+
+Jeśli nazwisko żeńskie kończy się na spółgłoskę, nie odmieniaj go (np. Dorota Rak).
+
+Zwróć TYLKO imię i nazwisko w mianowniku, bez żadnych dodatkowych słów i kropek.
+Przykład: "dr Palomy Korycińskiej" -> "dr Paloma Korycińska".`
+
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
 const LECTURER_INTRO_PHRASES: RegExp[] = [
   /\bzajęcia\s+prowadzone\s+przez\s*:?\s*/gi,
@@ -55,7 +65,10 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
   try {
     const body = {
       model: GROQ_MODEL,
-      messages: [{ role: 'user', content: `Zmień na mianownik: ${raw}. Zwróć tylko tekst.` }],
+      messages: [
+        { role: 'system', content: LECTURER_NOMINATIVE_SYSTEM_PROMPT },
+        { role: 'user', content: raw },
+      ],
       temperature: 0,
     }
 
@@ -80,7 +93,7 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
       throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
     }
     const result = sanitizeNominativeModelOutput(nominativeName, raw)
-    console.log('Poprawione nazwisko:', result)
+    console.log('Poprawiono:', raw, '->', result)
     return result
   } catch (error) {
     if (error instanceof Error && error.message.includes('pustą odpowiedź')) {
@@ -306,10 +319,7 @@ function junkBlock(block: string): boolean {
 }
 
 export function parsePage(html: string): Row[] {
-  console.log('Raw HTML length:', html.length)
-
   const blocks = extractBlocksFromHtml(html)
-  console.log('Found blocks:', blocks.length)
 
   const rows: Row[] = []
   for (const raw of blocks) {
@@ -323,7 +333,6 @@ export function parsePage(html: string): Row[] {
       department: DEPARTMENT,
     })
   }
-  console.log('Rows after junk filter:', rows.length)
   return rows
 }
 
@@ -356,19 +365,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token =
     typeof tokenParam === 'string' ? tokenParam : Array.isArray(tokenParam) ? tokenParam[0] : undefined
 
-  console.log('DEBUG: Received token from URL:', req.query.token)
-  console.log('DEBUG: CRON_SECRET exists in env:', Boolean(process.env.CRON_SECRET))
-
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {
-    console.log('DEBUG: reject — CRON_SECRET not set')
     return res.status(500).json({ error: 'CRON_SECRET not configured' })
   }
   if (token !== cronSecret) {
-    console.log('DEBUG: reject — token mismatch or missing')
     return res.status(401).json({ error: 'Unauthorized' })
   }
-  console.log('DEBUG: auth OK (query token matches CRON_SECRET)')
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -414,20 +417,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
     if (error) {
-      console.log('Supabase upsert error:', error.message)
       return res.status(500).json({ error: error.message })
     }
 
     if (renamedRows.length > 0) {
       await Promise.all(
         renamedRows.map(async (row) => {
-          const { error: updateError } = await supabase
+          await supabase
             .from('announcements')
             .update({ lecturer_name: row.to })
             .eq('body_fingerprint', row.body_fingerprint)
-          if (updateError) {
-            console.log('Supabase force-update lecturer_name error:', row.from, '->', row.to, updateError.message)
-          }
         }),
       )
     }
@@ -435,7 +434,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ok: true, upserted: finalRows.length, scanned: finalRows.length })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
-    console.log('scrape-wziks error:', msg)
     return res.status(500).json({ error: msg })
   }
 }
