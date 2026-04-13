@@ -16,9 +16,10 @@ const DEPARTMENT = 'WZiKS'
 /** Tekst zastępczy gdy nie uda się wyciągnąć wykładowcy. */
 const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 
-const GROQ_API_BASE_URL = 'https://api.groq.com/openai/v1'
+const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama3-8b-8192'
-const LECTURER_NOMINATIVE_PROMPT = 'Zamień nazwisko na mianownik, zwróć tylko wynik'
+const LECTURER_NOMINATIVE_PROMPT =
+  'Jesteś ekspertem od polskiej gramatyki. Podane imię i nazwisko zamień na mianownik (np. dr hab. Magdalenę Wójcik -> dr hab. Magdalena Wójcik). Zwróć TYLKO poprawioną formę, bez żadnych dodatkowych słów czy znaków.'
 
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
 const LECTURER_INTRO_PHRASES: RegExp[] = [
@@ -55,7 +56,7 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
 
   try {
     const { data } = await axios.post<OpenAIChatCompletionResponse>(
-      `${GROQ_API_BASE_URL}/chat/completions`,
+      GROQ_CHAT_COMPLETIONS_URL,
       {
         model: GROQ_MODEL,
         messages: [
