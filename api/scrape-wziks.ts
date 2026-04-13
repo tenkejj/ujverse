@@ -19,7 +19,7 @@ const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama3-8b-8192'
 const LECTURER_NOMINATIVE_PROMPT =
-  'Jesteś profesorem polonistyki. Twoim zadaniem jest zamiana nazwiska z formy dopełniacza na mianownik. Przykład: "dr Palomy Korycińskiej" -> "dr Paloma Korycińska". Zwróć WYŁĄCZNIE poprawiony tekst, bez kropek na końcu i bez dodatkowych komentarzy.'
+  'Podaj mianownik dla: [NAZWISKO]. Zwróć tylko wynik. Przykład: dr Palomy Korycińskiej -> dr Paloma Korycińska'
 
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
 const LECTURER_INTRO_PHRASES: RegExp[] = [
@@ -65,8 +65,8 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
       {
         model: GROQ_MODEL,
         messages: [
-          { role: 'system', content: LECTURER_NOMINATIVE_PROMPT },
-          { role: 'user', content: raw },
+          { role: 'system', content: 'Jesteś korektorem polskiej fleksji.' },
+          { role: 'user', content: LECTURER_NOMINATIVE_PROMPT.replace('[NAZWISKO]', raw) },
         ],
         max_tokens: 120,
         temperature: 0,
@@ -79,6 +79,7 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
         timeout: 15000,
       },
     )
+    console.log('SUROWA ODPOWIEDŹ GROQ:', data)
 
     const modelOutput = data?.choices?.[0]?.message?.content
     const nominativeName = modelOutput?.trim() ?? ''
@@ -383,13 +384,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const originalRows = rows.map((r) => ({ ...r }))
-    for (const row of rows) {
-      const before = row.lecturer_name
-      row.lecturer_name = await lecturerNameToNominative(row.lecturer_name)
-      if (row.lecturer_name !== before) {
-        console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
-      }
-    }
+    await Promise.all(
+      rows.map(async (row) => {
+        const before = row.lecturer_name
+        row.lecturer_name = await lecturerNameToNominative(row.lecturer_name)
+        if (row.lecturer_name !== before) {
+          console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
+        }
+      }),
+    )
     console.log('Finalne dane do wysłania:', rows.map((r) => r.lecturer_name))
 
     const renamedRows = originalRows
