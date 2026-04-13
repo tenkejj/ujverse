@@ -336,6 +336,26 @@ export function parsePage(html: string): Row[] {
   return rows
 }
 
+/** Pobiera HTML z ISI i zwraca sparsowane wiersze (bez Groq). */
+async function scrapeData(): Promise<Row[]> {
+  const { data: html, status } = await axios.get<string>(SOURCE_URL, {
+    headers: {
+      'User-Agent': BROWSER_USER_AGENT,
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
+    },
+    timeout: 30000,
+    responseType: 'text',
+    transformResponse: [(d) => d],
+  })
+
+  if (status !== 200 || typeof html !== 'string') {
+    throw new Error('Bad response from ISI')
+  }
+
+  return parsePage(html)
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -366,44 +386,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { data: html, status } = await axios.get<string>(SOURCE_URL, {
-      headers: {
-        'User-Agent': BROWSER_USER_AGENT,
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      timeout: 30000,
-      responseType: 'text',
-      transformResponse: [(d) => d],
-    })
-
-    if (status !== 200 || typeof html !== 'string') {
-      return res.status(502).json({ error: 'Bad response from ISI' })
-    }
-
-    const rows = parsePage(html)
+    const rows = await scrapeData()
     if (rows.length === 0) {
       return res.status(200).json({ ok: true, upserted: 0, scanned: 0, message: 'No blocks parsed' })
     }
 
     const originalRows = rows.map((r) => ({ ...r }))
-    const normalizedRows = await Promise.all(
-      rows.map(async (row) => ({
-        ...row,
-        lecturer_name: await lecturerNameToNominative(row.lecturer_name),
-      })),
-    )
-    normalizedRows.forEach((row, i) => {
+    const finalRows: Row[] = []
+    const groqStartedAt = Date.now()
+    console.log(`Groq: sekwencyjna normalizacja ${rows.length} wierszy (start)`)
+    for (const row of rows) {
+      const fixedName = await lecturerNameToNominative(row.lecturer_name)
+      finalRows.push({ ...row, lecturer_name: fixedName })
+    }
+    console.log(`Groq: sekwencyjna normalizacja zakończona po ${Date.now() - groqStartedAt} ms`)
+
+    finalRows.forEach((row, i) => {
       const before = originalRows[i]?.lecturer_name
       if (before && row.lecturer_name !== before) {
         console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
       }
     })
-    console.log('Finalne dane do wysłania:', normalizedRows.map((r) => r.lecturer_name))
+    console.log('Finalne dane do wysłania:', finalRows.map((r) => r.lecturer_name))
 
     const renamedRows = originalRows
       .map((original, i) => {
-        const normalized = normalizedRows[i]
+        const normalized = finalRows[i]
         if (!normalized) return null
         if (normalized.lecturer_name === original.lecturer_name) return null
         return {
@@ -415,7 +423,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(Boolean) as Array<{ body_fingerprint: string; from: string; to: string }>
 
     /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = normalizedRows.map((r) => ({
+    const rowsForDb = finalRows.map((r) => ({
       ...r,
       body_fingerprint: bodyFingerprintHex(r.body),
     }))
@@ -460,7 +468,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('Upsert zwrócił lecturer_name: ', upsertedRows[0].lecturer_name)
     }
 
-    return res.status(200).json({ ok: true, upserted: rows.length, scanned: rows.length })
+    return res.status(200).json({ ok: true, upserted: finalRows.length, scanned: finalRows.length })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
     console.log('scrape-wziks error:', msg)
