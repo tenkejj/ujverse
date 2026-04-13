@@ -61,32 +61,35 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
   }
 
   try {
-    const response = await axios.post<OpenAIChatCompletionResponse>(
-      GROQ_CHAT_COMPLETIONS_URL,
-      {
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: 'Jesteś korektorem polskiej fleksji.' },
-          { role: 'user', content: LECTURER_NOMINATIVE_PROMPT.replace('[NAZWISKO]', raw) },
-        ],
-        max_tokens: 120,
-        temperature: 0,
+    const body = {
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: `Zmień na mianownik: ${raw}. Zwróć tylko tekst.` }],
+      temperature: 0,
+    }
+    console.log('Wysyłam Body:', JSON.stringify(body))
+
+    const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 15000,
-      },
-    )
-    if (response.status < 200 || response.status >= 300) {
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
       console.error('Groq Status:', response.status)
+      if (response.status === 400) {
+        const errData = await response.json()
+        console.error('Szczegóły błędu 400:', JSON.stringify(errData))
+      }
       throw new Error(`Groq HTTP status ${response.status}`)
     }
-    console.log('SUROWA ODPOWIEDŹ GROQ:', response.data)
 
-    const modelOutput = response.data?.choices?.[0]?.message?.content
+    const data = (await response.json()) as OpenAIChatCompletionResponse
+    console.log('SUROWA ODPOWIEDŹ GROQ:', data)
+
+    const modelOutput = data?.choices?.[0]?.message?.content
     const nominativeName = modelOutput?.trim() ?? ''
     console.log('AI zwróciło:', nominativeName)
     if (!nominativeName) {
@@ -97,9 +100,6 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
     console.log('Groq faktycznie zwrócił:', result)
     return result
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status) {
-      console.error('Groq Status:', error.response.status)
-    }
     const message = error instanceof Error ? error.message : String(error)
     console.error('BŁĄD GROQ:', message)
     if (error instanceof Error && error.message.includes('pustą odpowiedź')) {
