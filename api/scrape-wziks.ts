@@ -47,7 +47,7 @@ function sanitizeNominativeModelOutput(text: string, fallback: string): string {
     .trim()
   const firstLine = t.split('\n').find((line) => line.trim().length > 0)?.trim() ?? t
   if (firstLine.length < 2 || firstLine.length > 220) return fallback
-  return firstLine
+  return firstLine.replace(/\.$/, '').trim()
 }
 
 export async function lecturerNameToNominative(raw: string): Promise<string> {
@@ -91,10 +91,18 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
 async function applyNominativeLecturerNames(rows: Row[]): Promise<Row[]> {
   // Wołamy Groq dla KAŻDEGO wiersza, zanim cokolwiek trafi do upsertu.
   return Promise.all(
-    rows.map(async (r) => ({
-      ...r,
-      lecturer_name: await lecturerNameToNominative(r.lecturer_name),
-    })),
+    rows.map(async (r) => {
+      const before = r.lecturer_name
+      const fixedName = await lecturerNameToNominative(before)
+      if (fixedName !== before) {
+        console.log(`Groq nazwisko: "${before}" -> "${fixedName}"`)
+      }
+      return {
+        ...r,
+        // Nadpisujemy zawsze; fallback do oryginału jest wewnątrz lecturerNameToNominative.
+        lecturer_name: fixedName,
+      }
+    }),
   )
 }
 
@@ -411,9 +419,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const rowsForDb = rowsNormalizedWithFingerprint
 
     const supabase = createClient(supabaseUrl, serviceKey)
-    const { error } = await supabase.from('announcements').upsert(rowsForDb, {
-      onConflict: 'body_fingerprint',
-    })
+    const { error, data: upsertedRows } = await supabase
+      .from('announcements')
+      .upsert(rowsForDb, {
+        onConflict: 'body_fingerprint',
+      })
+      .select('body_fingerprint, lecturer_name')
 
     if (error) {
       console.log('Supabase upsert error:', error.message)
@@ -421,8 +432,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (renamedRows.length > 0) {
+      console.log(`Wymuszam lecturer_name dla ${renamedRows.length} rekordów (różnica scraper vs Groq)`)
       const forceUpdateResults = await Promise.all(
         renamedRows.map(async (row) => {
+          console.log(
+            `Force-update DB: "${row.from}" -> "${row.to}" (fp ${row.body_fingerprint.slice(0, 8)}…)`,
+          )
           const { error: updateError } = await supabase
             .from('announcements')
             .update({ lecturer_name: row.to })
@@ -436,6 +451,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
       const okCount = forceUpdateResults.filter(Boolean).length
       console.log(`Force-update lecturer_name done: ${okCount}/${renamedRows.length}`)
+    }
+
+    console.log('Zapisano w bazie: ', rowsForDb[0]?.lecturer_name ?? null)
+    if (upsertedRows?.[0]?.lecturer_name) {
+      console.log('Upsert zwrócił lecturer_name: ', upsertedRows[0].lecturer_name)
     }
 
     return res.status(200).json({ ok: true, upserted: rows.length, scanned: rows.length })
