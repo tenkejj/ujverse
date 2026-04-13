@@ -17,9 +17,7 @@ const DEPARTMENT = 'WZiKS'
 const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 
 const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama3-8b-8192'
-const LECTURER_NOMINATIVE_PROMPT =
-  'Podaj mianownik dla: [NAZWISKO]. Zwróć tylko wynik. Przykład: dr Palomy Korycińskiej -> dr Paloma Korycińska'
+const GROQ_MODEL = 'llama-3.1-8b-instant'
 
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
 const LECTURER_INTRO_PHRASES: RegExp[] = [
@@ -51,14 +49,8 @@ function sanitizeNominativeModelOutput(text: string, fallback: string): string {
 }
 
 export async function lecturerNameToNominative(raw: string): Promise<string> {
-  console.log(`Próbuję poprawić nazwisko: ${raw}`)
-  console.log('Klucz API obecny?', !!process.env.GROQ_API_KEY)
-
   const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) {
-    console.error('BRAK KLUCZA GROQ_API_KEY!')
-    return raw
-  }
+  if (!apiKey) return raw
 
   try {
     const body = {
@@ -66,7 +58,6 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
       messages: [{ role: 'user', content: `Zmień na mianownik: ${raw}. Zwróć tylko tekst.` }],
       temperature: 0,
     }
-    console.log('Wysyłam Body:', JSON.stringify(body))
 
     const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
       method: 'POST',
@@ -78,30 +69,20 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
     })
 
     if (!response.ok) {
-      console.error('Groq Status:', response.status)
-      if (response.status === 400) {
-        const errData = await response.json()
-        console.error('Szczegóły błędu 400:', JSON.stringify(errData))
-      }
       throw new Error(`Groq HTTP status ${response.status}`)
     }
 
     const data = (await response.json()) as OpenAIChatCompletionResponse
-    console.log('SUROWA ODPOWIEDŹ GROQ:', data)
 
     const modelOutput = data?.choices?.[0]?.message?.content
     const nominativeName = modelOutput?.trim() ?? ''
-    console.log('AI zwróciło:', nominativeName)
     if (!nominativeName) {
       throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
     }
     const result = sanitizeNominativeModelOutput(nominativeName, raw)
-    console.log('Groq odebrał i poprawił:', result)
-    console.log('Groq faktycznie zwrócił:', result)
+    console.log('Poprawione nazwisko:', result)
     return result
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error('BŁĄD GROQ:', message)
     if (error instanceof Error && error.message.includes('pustą odpowiedź')) {
       throw error
     }
@@ -403,21 +384,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const originalRows = rows.map((r) => ({ ...r }))
     const finalRows: Row[] = []
-    const groqStartedAt = Date.now()
-    console.log(`Groq: sekwencyjna normalizacja ${rows.length} wierszy (start)`)
     for (const row of rows) {
       const fixedName = await lecturerNameToNominative(row.lecturer_name)
       finalRows.push({ ...row, lecturer_name: fixedName })
     }
-    console.log(`Groq: sekwencyjna normalizacja zakończona po ${Date.now() - groqStartedAt} ms`)
-
-    finalRows.forEach((row, i) => {
-      const before = originalRows[i]?.lecturer_name
-      if (before && row.lecturer_name !== before) {
-        console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
-      }
-    })
-    console.log('Finalne dane do wysłania:', finalRows.map((r) => r.lecturer_name))
 
     const renamedRows = originalRows
       .map((original, i) => {
@@ -439,12 +409,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }))
 
     const supabase = createClient(supabaseUrl, serviceKey)
-    const { error, data: upsertedRows } = await supabase
-      .from('announcements')
-      .upsert(rowsForDb, {
-        onConflict: 'body_fingerprint',
-      })
-      .select('body_fingerprint, lecturer_name')
+    const { error } = await supabase.from('announcements').upsert(rowsForDb, {
+      onConflict: 'body_fingerprint',
+    })
 
     if (error) {
       console.log('Supabase upsert error:', error.message)
@@ -452,30 +419,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (renamedRows.length > 0) {
-      console.log(`Wymuszam lecturer_name dla ${renamedRows.length} rekordów (różnica scraper vs Groq)`)
-      const forceUpdateResults = await Promise.all(
+      await Promise.all(
         renamedRows.map(async (row) => {
-          console.log(
-            `Force-update DB: "${row.from}" -> "${row.to}" (fp ${row.body_fingerprint.slice(0, 8)}…)`,
-          )
           const { error: updateError } = await supabase
             .from('announcements')
             .update({ lecturer_name: row.to })
             .eq('body_fingerprint', row.body_fingerprint)
           if (updateError) {
             console.log('Supabase force-update lecturer_name error:', row.from, '->', row.to, updateError.message)
-            return false
           }
-          return true
         }),
       )
-      const okCount = forceUpdateResults.filter(Boolean).length
-      console.log(`Force-update lecturer_name done: ${okCount}/${renamedRows.length}`)
-    }
-
-    console.log('Zapisano w bazie: ', rowsForDb[0]?.lecturer_name ?? null)
-    if (upsertedRows?.[0]?.lecturer_name) {
-      console.log('Upsert zwrócił lecturer_name: ', upsertedRows[0].lecturer_name)
     }
 
     return res.status(200).json({ ok: true, upserted: finalRows.length, scanned: finalRows.length })
