@@ -51,8 +51,13 @@ function sanitizeNominativeModelOutput(text: string, fallback: string): string {
 }
 
 export async function lecturerNameToNominative(raw: string): Promise<string> {
+  console.log(`Próbuję poprawić nazwisko: ${raw}`)
+
   const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return raw
+  if (!apiKey) {
+    console.error('BRAK KLUCZA GROQ_API_KEY!')
+    return raw
+  }
 
   try {
     const { data } = await axios.post<OpenAIChatCompletionResponse>(
@@ -84,24 +89,13 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
 }
 
 async function applyNominativeLecturerNames(rows: Row[]): Promise<Row[]> {
-  const unique = new Set<string>()
-  for (const r of rows) {
-    if (r.lecturer_name && r.lecturer_name !== FALLBACK_LECTURER_NAME) unique.add(r.lecturer_name)
-  }
-  if (unique.size === 0) return rows
-
-  const normalizedByRaw = new Map<string, string>()
-  await Promise.all(
-    [...unique].map(async (name) => {
-      const fixed = await lecturerNameToNominative(name)
-      normalizedByRaw.set(name, fixed)
-    }),
+  // Wołamy Groq dla KAŻDEGO wiersza, zanim cokolwiek trafi do upsertu.
+  return Promise.all(
+    rows.map(async (r) => ({
+      ...r,
+      lecturer_name: await lecturerNameToNominative(r.lecturer_name),
+    })),
   )
-
-  return rows.map((r) => ({
-    ...r,
-    lecturer_name: normalizedByRaw.get(r.lecturer_name) ?? r.lecturer_name,
-  }))
 }
 
 /** Chrome na macOS — wygląda jak zwykła przeglądarka (mniej „bot” w logach WAF). */
@@ -392,12 +386,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const rowsNormalized = await applyNominativeLecturerNames(rows)
-
-    /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = rowsNormalized.map((r) => ({
+    const rowsWithFingerprint = rows.map((r) => ({
       ...r,
       body_fingerprint: bodyFingerprintHex(r.body),
     }))
+    const rowsNormalizedWithFingerprint = rowsNormalized.map((r) => ({
+      ...r,
+      body_fingerprint: bodyFingerprintHex(r.body),
+    }))
+    const renamedRows = rowsWithFingerprint
+      .map((original, i) => {
+        const normalized = rowsNormalizedWithFingerprint[i]
+        if (!normalized) return null
+        if (normalized.lecturer_name === original.lecturer_name) return null
+        return {
+          body_fingerprint: original.body_fingerprint,
+          from: original.lecturer_name,
+          to: normalized.lecturer_name,
+        }
+      })
+      .filter(Boolean) as Array<{ body_fingerprint: string; from: string; to: string }>
+
+    /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
+    const rowsForDb = rowsNormalizedWithFingerprint
 
     const supabase = createClient(supabaseUrl, serviceKey)
     const { error } = await supabase.from('announcements').upsert(rowsForDb, {
@@ -407,6 +418,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (error) {
       console.log('Supabase upsert error:', error.message)
       return res.status(500).json({ error: error.message })
+    }
+
+    if (renamedRows.length > 0) {
+      const forceUpdateResults = await Promise.all(
+        renamedRows.map(async (row) => {
+          const { error: updateError } = await supabase
+            .from('announcements')
+            .update({ lecturer_name: row.to })
+            .eq('body_fingerprint', row.body_fingerprint)
+          if (updateError) {
+            console.log('Supabase force-update lecturer_name error:', row.from, '->', row.to, updateError.message)
+            return false
+          }
+          return true
+        }),
+      )
+      const okCount = forceUpdateResults.filter(Boolean).length
+      console.log(`Force-update lecturer_name done: ${okCount}/${renamedRows.length}`)
     }
 
     return res.status(200).json({ ok: true, upserted: rows.length, scanned: rows.length })
