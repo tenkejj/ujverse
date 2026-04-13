@@ -88,24 +88,6 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
   }
 }
 
-async function applyNominativeLecturerNames(rows: Row[]): Promise<Row[]> {
-  // Wołamy Groq dla KAŻDEGO wiersza, zanim cokolwiek trafi do upsertu.
-  return Promise.all(
-    rows.map(async (r) => {
-      const before = r.lecturer_name
-      const fixedName = await lecturerNameToNominative(before)
-      if (fixedName !== before) {
-        console.log(`Groq nazwisko: "${before}" -> "${fixedName}"`)
-      }
-      return {
-        ...r,
-        // Nadpisujemy zawsze; fallback do oryginału jest wewnątrz lecturerNameToNominative.
-        lecturer_name: fixedName,
-      }
-    }),
-  )
-}
-
 /** Chrome na macOS — wygląda jak zwykła przeglądarka (mniej „bot” w logach WAF). */
 const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -393,22 +375,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, upserted: 0, scanned: 0, message: 'No blocks parsed' })
     }
 
-    const rowsNormalized = await applyNominativeLecturerNames(rows)
-    const rowsWithFingerprint = rows.map((r) => ({
-      ...r,
-      body_fingerprint: bodyFingerprintHex(r.body),
-    }))
-    const rowsNormalizedWithFingerprint = rowsNormalized.map((r) => ({
-      ...r,
-      body_fingerprint: bodyFingerprintHex(r.body),
-    }))
-    const renamedRows = rowsWithFingerprint
+    const originalRows = rows.map((r) => ({ ...r }))
+    for (const row of rows) {
+      const before = row.lecturer_name
+      row.lecturer_name = await lecturerNameToNominative(row.lecturer_name)
+      if (row.lecturer_name !== before) {
+        console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
+      }
+    }
+    console.log('Finalne dane do wysłania:', rows.map((r) => r.lecturer_name))
+
+    const renamedRows = originalRows
       .map((original, i) => {
-        const normalized = rowsNormalizedWithFingerprint[i]
+        const normalized = rows[i]
         if (!normalized) return null
         if (normalized.lecturer_name === original.lecturer_name) return null
         return {
-          body_fingerprint: original.body_fingerprint,
+          body_fingerprint: bodyFingerprintHex(original.body),
           from: original.lecturer_name,
           to: normalized.lecturer_name,
         }
@@ -416,7 +399,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(Boolean) as Array<{ body_fingerprint: string; from: string; to: string }>
 
     /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = rowsNormalizedWithFingerprint
+    const rowsForDb = rows.map((r) => ({
+      ...r,
+      body_fingerprint: bodyFingerprintHex(r.body),
+    }))
 
     const supabase = createClient(supabaseUrl, serviceKey)
     const { error, data: upsertedRows } = await supabase
