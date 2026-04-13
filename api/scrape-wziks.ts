@@ -87,9 +87,10 @@ export async function lecturerNameToNominative(raw: string): Promise<string> {
     if (!nominativeName) {
       throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
     }
-    const fixed = sanitizeNominativeModelOutput(nominativeName, raw)
-    console.log('Groq odebrał i poprawił:', fixed)
-    return fixed
+    const result = sanitizeNominativeModelOutput(nominativeName, raw)
+    console.log('Groq odebrał i poprawił:', result)
+    console.log('Groq faktycznie zwrócił:', result)
+    return result
   } catch (e) {
     if (e instanceof Error && e.message.includes('pustą odpowiedź')) {
       throw e
@@ -386,23 +387,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const originalRows = rows.map((r) => ({ ...r }))
-    const rowsWithAI = await Promise.all(
+    const normalizedRows = await Promise.all(
       rows.map(async (row) => ({
         ...row,
         lecturer_name: await lecturerNameToNominative(row.lecturer_name),
       })),
     )
-    rowsWithAI.forEach((row, i) => {
+    normalizedRows.forEach((row, i) => {
       const before = originalRows[i]?.lecturer_name
       if (before && row.lecturer_name !== before) {
         console.log(`Groq nazwisko: "${before}" -> "${row.lecturer_name}"`)
       }
     })
-    console.log('Finalne dane do wysłania:', rowsWithAI.map((r) => r.lecturer_name))
+    console.log('Finalne dane do wysłania:', normalizedRows.map((r) => r.lecturer_name))
 
     const renamedRows = originalRows
       .map((original, i) => {
-        const normalized = rowsWithAI[i]
+        const normalized = normalizedRows[i]
         if (!normalized) return null
         if (normalized.lecturer_name === original.lecturer_name) return null
         return {
@@ -414,7 +415,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(Boolean) as Array<{ body_fingerprint: string; from: string; to: string }>
 
     /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = rowsWithAI.map((r) => ({
+    const rowsForDb = normalizedRows.map((r) => ({
       ...r,
       body_fingerprint: bodyFingerprintHex(r.body),
     }))
