@@ -3,6 +3,7 @@ import axios from 'axios'
 import { load, type CheerioAPI } from 'cheerio'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'node:crypto'
+import { lecturerNameToNominativeWithCache } from '../src/lib/ai-utils'
 
 /** Zgodne z triggerem DB `md5(body)` — jawny klucz dla `upsert(..., onConflict: 'body_fingerprint')`. */
 function bodyFingerprintHex(body: string): string {
@@ -18,19 +19,6 @@ const ANNOUNCEMENT_SOURCE = 'ISI UJ'
 /** Tekst zastępczy gdy nie uda się wyciągnąć wykładowcy. */
 const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 
-const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.1-8b-instant'
-
-const LECTURER_NOMINATIVE_SYSTEM_PROMPT = `Jesteś ekspertem języka polskiego. Zmień nazwisko z dopełniacza na mianownik.
-Zasady:
-
-Jeśli nazwisko to "Rak", w mianowniku brzmi "Rak".
-
-Jeśli nazwisko żeńskie kończy się na spółgłoskę, nie odmieniaj go (np. Dorota Rak).
-
-Zwróć TYLKO imię i nazwisko w mianowniku, bez żadnych dodatkowych słów i kropek.
-Przykład: "dr Palomy Korycińskiej" -> "dr Paloma Korycińska".`
-
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
 const LECTURER_INTRO_PHRASES: RegExp[] = [
   /\bzajęcia\s+prowadzone\s+przez\s*:?\s*/gi,
@@ -44,65 +32,6 @@ export function stripLecturerIntroPhrases(text: string): string {
   let t = text
   for (const re of LECTURER_INTRO_PHRASES) t = t.replace(re, '')
   return cleanWhitespace(t)
-}
-
-type OpenAIChatCompletionResponse = {
-  choices?: Array<{ message?: { content?: string | null } }>
-}
-
-function sanitizeNominativeModelOutput(text: string, fallback: string): string {
-  let t = text
-    .replace(/^```[a-z]*\s*/i, '')
-    .replace(/\s*```\s*$/i, '')
-    .trim()
-  const firstLine = t.split('\n').find((line) => line.trim().length > 0)?.trim() ?? t
-  if (firstLine.length < 2 || firstLine.length > 220) return fallback
-  return firstLine.replace(/\.$/, '').trim()
-}
-
-export async function lecturerNameToNominative(raw: string): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return raw
-
-  try {
-    const body = {
-      model: GROQ_MODEL,
-      messages: [
-        { role: 'system', content: LECTURER_NOMINATIVE_SYSTEM_PROMPT },
-        { role: 'user', content: raw },
-      ],
-      temperature: 0,
-    }
-
-    const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Groq HTTP status ${response.status}`)
-    }
-
-    const data = (await response.json()) as OpenAIChatCompletionResponse
-
-    const modelOutput = data?.choices?.[0]?.message?.content
-    const nominativeName = modelOutput?.trim() ?? ''
-    if (!nominativeName) {
-      throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
-    }
-    const result = sanitizeNominativeModelOutput(nominativeName, raw)
-    console.log('Poprawiono:', raw, '->', result)
-    return result
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('pustą odpowiedź')) {
-      throw error
-    }
-    return raw
-  }
 }
 
 /** Chrome na macOS — wygląda jak zwykła przeglądarka (mniej „bot” w logach WAF). */
@@ -382,6 +311,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!supabaseUrl || !serviceKey) {
     return res.status(500).json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' })
   }
+  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
+  if (anonKey && serviceKey === anonKey) {
+    return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY misconfigured (matches anon key)' })
+  }
 
   try {
     const rows = await scrapeData()
@@ -389,10 +322,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, upserted: 0, scanned: 0, message: 'No blocks parsed' })
     }
 
+    const supabase = createClient(supabaseUrl, serviceKey)
+
     const originalRows = rows.map((r) => ({ ...r }))
     const finalRows: Row[] = []
     for (const row of rows) {
-      const fixedName = await lecturerNameToNominative(row.lecturer_name)
+      const fixedName = await lecturerNameToNominativeWithCache(supabase, row.lecturer_name)
       finalRows.push({ ...row, lecturer_name: fixedName })
     }
 
@@ -415,7 +350,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body_fingerprint: bodyFingerprintHex(r.body),
     }))
 
-    const supabase = createClient(supabaseUrl, serviceKey)
     const { error } = await supabase.from('announcements').upsert(rowsForDb, {
       onConflict: 'body_fingerprint',
     })
