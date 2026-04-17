@@ -59,6 +59,7 @@ function filterByDepartment(
 }
 
 const MAX_VISIBLE = 12
+const RECENT_DAYS = 7
 
 function AnnouncementBodyClamp({
   body,
@@ -135,11 +136,22 @@ export default function AcademicAnnouncementsWidget({
 
   const visible = useMemo(() => {
     const filtered = filterByDepartment(announcements, selectedDepartment)
-    return sortAnnouncements(filtered).slice(0, MAX_VISIBLE)
+    const cutoff = new Date()
+    cutoff.setHours(0, 0, 0, 0)
+    cutoff.setDate(cutoff.getDate() - RECENT_DAYS)
+
+    const recent = filtered.filter((ann) => {
+      const createdAt = new Date(ann.created_at)
+      return !Number.isNaN(createdAt.getTime()) && createdAt >= cutoff
+    })
+
+    return sortAnnouncements(recent)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, MAX_VISIBLE)
   }, [announcements, selectedDepartment])
 
   return (
-    <div className={sideCardCls}>
+    <div className={`${sideCardCls} h-[600px] flex flex-col overflow-hidden`}>
       <div className="flex items-center gap-2 mb-3">
         <Megaphone size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
         <span className={sectionTitleCls}>Komunikaty Akademickie</span>
@@ -158,12 +170,13 @@ export default function AcademicAnnouncementsWidget({
 
       {!loading && !error && visible.length === 0 && (
         <p className={`text-xs ${sideMutedCls} leading-relaxed`}>
-          Brak komunikatów dla aktualnego filtra.
+          Brak nowych komunikatów z ostatnich 7 dni.
         </p>
       )}
 
       {!loading && !error && visible.length > 0 && (
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto pr-2 pb-8 scrollbar-thin scrollbar-thumb-zinc-800">
+          <div className="h-auto space-y-4">
           <AnimatePresence mode="sync">
             {visible.map((ann, idx) => {
               const meta = STATUS_META[ann.status]
@@ -179,13 +192,13 @@ export default function AcademicAnnouncementsWidget({
                   className={sideInnerRowCls}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
-                    <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug min-w-0 break-words whitespace-normal">
+                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug min-w-0 break-words whitespace-normal">
                       {ann.lecturer_name}
                     </p>
                     <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
                       {showAcademicIsiBadge(ann.source) && (
                         <span
-                          className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-zinc-500 opacity-60 dark:text-zinc-400 text-right"
+                          className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-zinc-600 dark:text-zinc-400 opacity-60 text-right"
                           title={ACADEMIC_ISI_BADGE_TITLE}
                         >
                           {ACADEMIC_ISI_BADGE_LABEL}
@@ -221,6 +234,7 @@ export default function AcademicAnnouncementsWidget({
               )
             })}
           </AnimatePresence>
+          </div>
         </div>
       )}
     </div>

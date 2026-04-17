@@ -18,11 +18,9 @@ import MobileQuickAccessBar from './MobileQuickAccessBar'
 import {
   sectionTitleCls,
   sideAsideTrackCls,
-  sideCardCls,
   sideMutedCls,
   sideHeaderLinkCls,
   sidePanelHoverFocus,
-  sideInnerRowCls,
   widgetGoldCls,
 } from '../lib/sidePanelStyles'
 
@@ -85,7 +83,8 @@ const UJ_ESSENTIAL_LINKS = [
   { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail, tag: 'Poczta' },
 ] as const
 
-const sideRowCls = `group w-full flex cursor-pointer items-start gap-3 transition-colors ${sideInnerRowCls} ${sidePanelHoverFocus}`
+const sideRowCls = `group w-full flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 transition-colors dark:border-zinc-800 dark:bg-zinc-950 ${sidePanelHoverFocus}`
+const rightWidgetCls = 'rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950'
 
 export default function FeedView({
   myProfile,
@@ -224,7 +223,7 @@ export default function FeedView({
 
       {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
+        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] h-fit flex-col gap-3 sticky top-20 self-start custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
       >
         <AcademicAnnouncementsWidget
           selectedDepartment={selectedDepartment}
@@ -291,10 +290,10 @@ export default function FeedView({
 
       {/* ── RIGHT SIDEBAR (desktop only) ────────────────────────────── */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col gap-3 sticky top-20 self-start max-h-[calc(100vh-7rem)] overflow-y-auto custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
+        className="hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col gap-4 sticky top-16 self-start pt-0"
       >
         {/* Niezbędnik UJ — szybkie linki (layout jak Wydarzenia UJ) */}
-        <div className={sideCardCls}>
+        <div className={rightWidgetCls}>
           <div className="flex items-center gap-2 mb-3">
             <LinkIcon size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
             <span className={sectionTitleCls}>Niezbędnik UJ</span>
@@ -316,7 +315,7 @@ export default function FeedView({
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[#1e293b] dark:text-white leading-snug truncate">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 leading-snug truncate">
                     {label}
                   </p>
                   <span className={`text-xs ${sideMutedCls}`}>{tag}</span>
@@ -327,7 +326,7 @@ export default function FeedView({
         </div>
 
         {/* Upcoming events widget */}
-        <div className={sideCardCls}>
+        <div className={rightWidgetCls}>
           <div className="mb-3 flex min-w-0 items-center gap-2">
             <CalendarDays size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
             <span className={`${sectionTitleCls} min-w-0 flex-1`}>Wydarzenia UJ</span>
@@ -348,7 +347,7 @@ export default function FeedView({
         </div>
 
         {/* Footer note */}
-        <p className="text-[11px] text-logo-navy/50 dark:text-slate-400 text-center px-2">
+        <p className="text-[11px] text-zinc-600 dark:text-zinc-400 text-center px-2">
           UJverse &copy; {new Date().getFullYear()} &middot; dla społeczności UJ
         </p>
       </aside>
