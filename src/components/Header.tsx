@@ -7,31 +7,12 @@ import type { AppNotification, Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import SearchBar from './SearchBar'
 import NotificationsView from './NotificationsView'
+import ClubsModal from './ClubsModal'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
-type StudentClub = { id: string; name: string; department: string; category: string }
-
-const STUDENT_CLUBS: StudentClub[] = [
-  { id: 'strateg', name: 'Koło Naukowe Strateg', department: 'WZiKS', category: '#marketing' },
-  {
-    id: 'media-kom',
-    name: 'Koło Naukowe Mediów i Komunikacji Społecznej',
-    department: 'WZiKS',
-    category: '#media',
-  },
-  {
-    id: 'kreatywne-branding',
-    name: 'Koło Naukowe Kreatywnego Brandingu',
-    department: 'WZiKS',
-    category: '#branding',
-  },
-  { id: 'nowe-media', name: 'Koło Naukowe Nowych Mediów', department: 'WZiKS', category: '#it' },
-]
-
-const CLUBS_SOURCE_URL = 'https://wzks.uj.edu.pl/studenci/kola-naukowe'
 
 type Props = {
   myProfile: Profile | null
@@ -141,23 +122,6 @@ export default function Header({
       document.documentElement.style.overflow = prevHtml
     }
   }, [notificationsPanelOpen])
-
-  useEffect(() => {
-    if (!clubsModalOpen) return
-    const prevBody = document.body.style.overflow
-    const prevHtml = document.documentElement.style.overflow
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setClubsModalOpen(false)
-    }
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = prevBody
-      document.documentElement.style.overflow = prevHtml
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [clubsModalOpen])
 
   return (
     <>
@@ -397,87 +361,10 @@ export default function Header({
       </div>
     </header>
 
+    <ClubsModal isOpen={clubsModalOpen} onClose={() => setClubsModalOpen(false)} />
+
     {createPortal(
       <AnimatePresence>
-        {clubsModalOpen && (
-          <motion.div
-            key="clubs-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Koła naukowe"
-            className="fixed inset-0 z-[210] flex flex-col bg-bg-app/95 dark:bg-bg-app/95 backdrop-blur-2xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            onPointerDown={() => setClubsModalOpen(false)}
-          >
-            <motion.div
-              className="relative flex flex-1 min-h-0 flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] max-w-6xl mx-auto w-full"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={() => setClubsModalOpen(false)}
-                className="absolute top-[max(1rem,env(safe-area-inset-top))] right-5 z-20 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-brand-gold dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
-                aria-label="Zamknij koła naukowe"
-              >
-                <X size={22} strokeWidth={2} />
-              </button>
-
-              <div className="mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col pt-20">
-                <div className="flex shrink-0 items-center justify-between gap-4 pr-12">
-                  <div>
-                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-600 dark:text-slate-400">
-                      Koła Naukowe
-                    </h2>
-                    <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
-                      Przegląd aktywnych kół naukowych UJ. Kliknij kartę, aby przejść do procesu dołączenia.
-                    </p>
-                  </div>
-                  <a
-                    href={CLUBS_SOURCE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors hover:text-brand-gold hover:border-brand-gold/50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:text-brand-gold-bright dark:hover:border-brand-gold-bright/40"
-                  >
-                    Oficjalna lista WZiKS
-                  </a>
-                </div>
-
-                <div className="mt-6 min-h-0 flex-1 overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                    {STUDENT_CLUBS.map((club) => (
-                      <article
-                        key={club.id}
-                        className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
-                      >
-                        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">
-                          {club.name}
-                        </h3>
-                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                          {club.department}
-                          <span className="ml-1">{club.category}</span>
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setClubsModalOpen(false)}
-                          className="mt-4 inline-flex items-center rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:text-brand-gold hover:border-brand-gold/50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:text-brand-gold-bright dark:hover:border-brand-gold-bright/40"
-                        >
-                          Dołącz / szczegóły
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
         {notificationsPanelOpen && (
           <motion.div
             key="notifications-overlay"
