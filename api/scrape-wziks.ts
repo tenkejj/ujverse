@@ -21,15 +21,8 @@ const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.1-8b-instant'
 
-const LECTURER_NOMINATIVE_SYSTEM_PROMPT = `Jesteś ekspertem języka polskiego. Zmień nazwisko z dopełniacza na mianownik.
-Zasady:
-
-Jeśli nazwisko to "Rak", w mianowniku brzmi "Rak".
-
-Jeśli nazwisko żeńskie kończy się na spółgłoskę, nie odmieniaj go (np. Dorota Rak).
-
-Zwróć TYLKO imię i nazwisko w mianowniku, bez żadnych dodatkowych słów i kropek.
-Przykład: "dr Palomy Korycińskiej" -> "dr Paloma Korycińska".`
+const LECTURER_NOMINATIVE_SYSTEM_PROMPT =
+  'Jesteś precyzyjnym parserem. Otrzymasz imię i nazwisko w różnych przypadkach. Twoim JEDYNYM zadaniem jest zwrócić to imię i nazwisko w mianowniku. Nie dodawaj wyjaśnień, nie używaj strzałek, nie pokazuj procesu zamiany. Zwróć tylko wynikowy ciąg znaków.'
 
 type OpenAIChatCompletionResponse = {
   choices?: Array<{ message?: { content?: string | null } }>
@@ -40,6 +33,8 @@ function sanitizeNominativeModelOutput(text: string, fallback: string): string {
     .replace(/^```[a-z]*\s*/i, '')
     .replace(/\s*```\s*$/i, '')
     .trim()
+  // Safety catch: if model outputs "a -> b", keep only the final result.
+  t = t.split('->').pop()?.trim() ?? t
   const firstLine = t.split('\n').find((line) => line.trim().length > 0)?.trim() ?? t
   if (firstLine.length < 2 || firstLine.length > 220) return fallback
   return firstLine.replace(/\.$/, '').trim()
