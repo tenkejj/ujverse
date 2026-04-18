@@ -150,6 +150,7 @@ export type ParsedWziksAnnouncement = {
 }
 
 type Row = ParsedWziksAnnouncement
+const SCRAPER_DEBUG_RAW = process.env.SCRAPER_DEBUG_RAW === '1'
 
 function cleanWhitespace(text: string): string {
   return text
@@ -278,13 +279,27 @@ function fallbackRootText($: CheerioAPI): string {
 function extractBlocksFromHtml(html: string): string[] {
   const $ = load(html)
 
-  const newsItems = $('.news-item')
+  // ISI/Drupal variants differ between templates, so collect from multiple selectors.
+  const itemSelectors = '.news-item, .views-row, .node--type-news, .article-list-item, .news-list-item'
+  const newsItems = $(itemSelectors)
   if (newsItems.length > 0) {
     const fromItems = newsItems
-      .map((_, el) => cleanWhitespace($(el).text()))
+      .map((i, el) => {
+        const rawHtml = $(el).html() ?? ''
+        const text = cleanWhitespace($(el).text())
+        if (SCRAPER_DEBUG_RAW) {
+          console.log(`[SCRAPER_DEBUG_RAW][item:${i}] RAW_HTML_START`)
+          console.log(rawHtml)
+          console.log(`[SCRAPER_DEBUG_RAW][item:${i}] RAW_HTML_END`)
+          console.log(`[SCRAPER_DEBUG_RAW][item:${i}] RAW_TEXT_START`)
+          console.log(text)
+          console.log(`[SCRAPER_DEBUG_RAW][item:${i}] RAW_TEXT_END`)
+        }
+        return text
+      })
       .get()
       .filter((t) => t.length >= 20)
-    if (fromItems.length > 0) return fromItems
+    if (fromItems.length > 0) return Array.from(new Set(fromItems))
   }
 
   const articleRoots = $('.article-content, .field--name-body, .node__content, .article .content')
@@ -303,7 +318,7 @@ function extractBlocksFromHtml(html: string): string[] {
   }
 
   const text = fallbackRootText($)
-  return splitBlocksByDashLines(text)
+  return Array.from(new Set(splitBlocksByDashLines(text)))
 }
 
 function detectStatus(block: string): 'cancelled' | 'remote' | 'duty' {
@@ -316,7 +331,8 @@ function detectStatus(block: string): 'cancelled' | 'remote' | 'duty' {
 
 function extractLecturer(block: string): string {
   const oneLine = block.replace(/\s+/g, ' ').trim()
-  const namePart = String.raw`[A-ZĆŁŚŹŻÓŃĄĘ][a-ząćęłńóśźżę]+(?:\s+[A-ZĆŁŚŹŻÓŃĄĘ][a-ząćęłńóśźżę]+)?`
+  // Keep support for short surnames (e.g. Zych) and hyphenated forms.
+  const namePart = String.raw`[A-ZĆŁŚŹŻÓŃĄĘ][a-ząćęłńóśźż]+(?:-[A-ZĆŁŚŹŻÓŃĄĘ][a-ząćęłńóśźż]+)?(?:\s+[A-ZĆŁŚŹŻÓŃĄĘ][a-ząćęłńóśźż]+(?:-[A-ZĆŁŚŹŻÓŃĄĘ][a-ząćęłńóśźż]+)?)?`
   const patterns: RegExp[] = [
     new RegExp(String.raw`\b(dr\s+hab\.\s+${namePart}(?:\s*,\s*prof\.\s+UJ)?)`, 'i'),
     new RegExp(String.raw`\b(dr\.?\s+inż\.?\s+${namePart})`, 'i'),
@@ -353,21 +369,59 @@ function junkBlock(block: string): boolean {
   return false
 }
 
+const ANNOUNCEMENT_START_RE = /(Szanowni Państwo|Drogie Studentki,\s*Drodzy Studenci)/gi
+
+function splitCandidateAnnouncements(block: string): string[] {
+  const starts = Array.from(block.matchAll(ANNOUNCEMENT_START_RE))
+  if (starts.length === 0) return [block]
+  const slices: string[] = []
+  for (let i = 0; i < starts.length; i++) {
+    const start = starts[i]?.index ?? 0
+    const nextStart = starts[i + 1]?.index ?? block.length
+    const chunk = block.slice(start, nextStart).trim()
+    if (chunk.length >= 20) slices.push(chunk)
+  }
+  return slices.length > 0 ? slices : [block]
+}
+
 export function parsePage(html: string): Row[] {
   const blocks = extractBlocksFromHtml(html)
 
   const rows: Row[] = []
-  for (const raw of blocks) {
-    let body = cleanupAnnouncementText(raw)
-    body = stripLecturerIntroPhrases(body)
-    if (junkBlock(body)) continue
-    rows.push({
-      lecturer_name: extractLecturer(body),
-      body,
-      status: detectStatus(body),
-      department: DEPARTMENT,
-      source: ANNOUNCEMENT_SOURCE,
-    })
+  for (let i = 0; i < blocks.length; i++) {
+    const raw = blocks[i]
+    if (SCRAPER_DEBUG_RAW) {
+      console.log(`[SCRAPER_DEBUG_RAW][block:${i}] PRE_FILTER_START`)
+      console.log(raw)
+      console.log(`[SCRAPER_DEBUG_RAW][block:${i}] PRE_FILTER_END`)
+    }
+
+    const cleaned = cleanupAnnouncementText(raw)
+    const candidates = splitCandidateAnnouncements(cleaned)
+
+    for (let c = 0; c < candidates.length; c++) {
+      let body = stripLecturerIntroPhrases(candidates[c] ?? '')
+      if (junkBlock(body)) {
+        if (SCRAPER_DEBUG_RAW) {
+          console.log(`[SCRAPER_DEBUG_RAW][block:${i}][candidate:${c}] SKIPPED_AS_JUNK`)
+        }
+        continue
+      }
+      rows.push({
+        lecturer_name: extractLecturer(body),
+        body,
+        status: detectStatus(body),
+        department: DEPARTMENT,
+        source: ANNOUNCEMENT_SOURCE,
+      })
+    }
+  }
+  if (SCRAPER_DEBUG_RAW) {
+    const uniqueBodies = new Set(rows.map((r) => bodyFingerprintHex(r.body)))
+    console.log('[SCRAPER_DEBUG_RAW] parsed rows:', rows.length, 'unique body hashes:', uniqueBodies.size)
+    if (uniqueBodies.size !== rows.length) {
+      console.log('[SCRAPER_DEBUG_RAW] potential duplicate bodies detected in scrape payload')
+    }
   }
   return rows
 }

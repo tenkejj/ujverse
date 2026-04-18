@@ -58,7 +58,7 @@ function filterByDepartment(
   })
 }
 
-const RECENT_DAYS = 14
+const DAYS_TO_SHOW = 30
 
 function getTimestamp(value: string): number {
   const time = new Date(value).getTime()
@@ -142,7 +142,7 @@ export default function AcademicAnnouncementsWidget({
     const filtered = filterByDepartment(announcements, selectedDepartment)
     const cutoff = new Date()
     cutoff.setHours(0, 0, 0, 0)
-    cutoff.setDate(cutoff.getDate() - RECENT_DAYS)
+    cutoff.setDate(cutoff.getDate() - DAYS_TO_SHOW)
 
     // Keep full dataset for diagnostics and then filter only what is shown.
     const sortedAll = sortAnnouncements(filtered).sort(
@@ -191,7 +191,7 @@ export default function AcademicAnnouncementsWidget({
 
       {!loading && !error && visible.length === 0 && (
         <p className={`text-xs ${sideMutedCls} leading-relaxed`}>
-          Brak nowych komunikatów z ostatnich 14 dni.
+          Brak nowych komunikatów z ostatnich {DAYS_TO_SHOW} dni.
         </p>
       )}
 
