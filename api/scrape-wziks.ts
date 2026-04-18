@@ -51,7 +51,7 @@ async function fetchGroqNominative(raw: string): Promise<{ value: string; cachea
         { role: 'system', content: LECTURER_NOMINATIVE_SYSTEM_PROMPT },
         { role: 'user', content: raw },
       ],
-      temperature: 0,
+      temperature: 0.0,
     }
 
     const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
@@ -69,7 +69,11 @@ async function fetchGroqNominative(raw: string): Promise<{ value: string; cachea
 
     const data = (await response.json()) as OpenAIChatCompletionResponse
     const modelOutput = data?.choices?.[0]?.message?.content
-    const nominativeName = modelOutput?.trim() ?? ''
+    const rawLlamaOutput = modelOutput?.trim() ?? ''
+    const cleanAuthor = rawLlamaOutput.includes('->')
+      ? rawLlamaOutput.split('->').pop()?.trim() ?? ''
+      : rawLlamaOutput.trim()
+    const nominativeName = cleanAuthor.replace(/^dr\s+dr\s+/i, 'dr ')
     if (!nominativeName) {
       throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
     }
