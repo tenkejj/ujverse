@@ -58,8 +58,12 @@ function filterByDepartment(
   })
 }
 
-const MAX_VISIBLE = 12
-const RECENT_DAYS = 7
+const RECENT_DAYS = 14
+
+function getTimestamp(value: string): number {
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
+}
 
 function AnnouncementBodyClamp({
   body,
@@ -134,21 +138,38 @@ export default function AcademicAnnouncementsWidget({
 }: Props) {
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({})
 
-  const visible = useMemo(() => {
+  const { visible, totalFiltered, olderCount } = useMemo(() => {
     const filtered = filterByDepartment(announcements, selectedDepartment)
     const cutoff = new Date()
     cutoff.setHours(0, 0, 0, 0)
     cutoff.setDate(cutoff.getDate() - RECENT_DAYS)
 
-    const recent = filtered.filter((ann) => {
-      const createdAt = new Date(ann.created_at)
-      return !Number.isNaN(createdAt.getTime()) && createdAt >= cutoff
-    })
+    // Keep full dataset for diagnostics and then filter only what is shown.
+    const sortedAll = sortAnnouncements(filtered).sort(
+      (a, b) => getTimestamp(b.created_at) - getTimestamp(a.created_at),
+    )
+    const recent = sortedAll.filter((ann) => getTimestamp(ann.created_at) >= cutoff.getTime())
 
-    return sortAnnouncements(recent)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, MAX_VISIBLE)
+    return {
+      visible: recent,
+      totalFiltered: sortedAll.length,
+      olderCount: sortedAll.length - recent.length,
+    }
   }, [announcements, selectedDepartment])
+
+  useLayoutEffect(() => {
+    if (process.env.NODE_ENV === 'production') return
+    console.debug('[AcademicAnnouncementsWidget] dataset check', {
+      totalIncoming: announcements.length,
+      totalFiltered,
+      visibleCount: visible.length,
+      olderCount,
+      sortDescValid: visible.every(
+        (item, index, arr) =>
+          index === 0 || getTimestamp(arr[index - 1].created_at) >= getTimestamp(item.created_at),
+      ),
+    })
+  }, [announcements.length, totalFiltered, visible, olderCount])
 
   return (
     <div className={`${sideCardCls} h-[600px] flex flex-col overflow-hidden`}>
@@ -170,12 +191,12 @@ export default function AcademicAnnouncementsWidget({
 
       {!loading && !error && visible.length === 0 && (
         <p className={`text-xs ${sideMutedCls} leading-relaxed`}>
-          Brak nowych komunikatów z ostatnich 7 dni.
+          Brak nowych komunikatów z ostatnich 14 dni.
         </p>
       )}
 
       {!loading && !error && visible.length > 0 && (
-        <div className="flex-1 overflow-y-auto pr-2 pb-8 scrollbar-thin scrollbar-thumb-zinc-800">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-8 scrollbar-thin scrollbar-thumb-zinc-800">
           <div className="h-auto space-y-4">
           <AnimatePresence mode="sync">
             {visible.map((ann, idx) => {
