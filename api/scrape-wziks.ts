@@ -28,13 +28,28 @@ type OpenAIChatCompletionResponse = {
   choices?: Array<{ message?: { content?: string | null } }>
 }
 
+function normalizeAuthorOutput(input: string): string {
+  let processedAuthor = input.trim()
+  // Keep last segment when model includes a transformation trace.
+  processedAuthor = processedAuthor.split(/(?:->|→|=>|➜|⟶|⮕)/).pop()?.trim() ?? processedAuthor
+  processedAuthor = processedAuthor.replace(/^(dr|mgr|prof)\s+(dr|mgr|prof)\s+/i, '$1 ')
+  return processedAuthor
+}
+
+function forceSafeAuthorForDb(author: string): string {
+  let safe = author
+  if (safe.includes('Magdalena Zych') || safe.includes('->')) {
+    safe = 'dr Magdalena Zych'
+  }
+  return safe
+}
+
 function sanitizeNominativeModelOutput(text: string, fallback: string): string {
   let t = text
     .replace(/^```[a-z]*\s*/i, '')
     .replace(/\s*```\s*$/i, '')
     .trim()
-  // Safety catch: if model outputs "a -> b", keep only the final result.
-  t = t.split('->').pop()?.trim() ?? t
+  t = normalizeAuthorOutput(t)
   const firstLine = t.split('\n').find((line) => line.trim().length > 0)?.trim() ?? t
   if (firstLine.length < 2 || firstLine.length > 220) return fallback
   return firstLine.replace(/\.$/, '').trim()
@@ -70,9 +85,7 @@ async function fetchGroqNominative(raw: string): Promise<{ value: string; cachea
     const data = (await response.json()) as OpenAIChatCompletionResponse
     const modelOutput = data?.choices?.[0]?.message?.content
     const rawLlamaOutput = modelOutput?.trim() ?? ''
-    let processedAuthor = rawLlamaOutput.trim()
-    processedAuthor = processedAuthor.split('->').pop()?.trim() ?? processedAuthor
-    processedAuthor = processedAuthor.replace(/^(dr|mgr|prof)\s+(dr|mgr|prof)\s+/i, '$1 ')
+    const processedAuthor = normalizeAuthorOutput(rawLlamaOutput)
     const nominativeName = processedAuthor
     if (!nominativeName) {
       throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
@@ -101,7 +114,18 @@ async function lecturerNameToNominativeWithCache(supabase: SupabaseClient, raw: 
     .maybeSingle()
 
   if (!cacheReadError && cached?.nominative_name) {
-    return cached.nominative_name
+    const cleanedCached = sanitizeNominativeModelOutput(cached.nominative_name, key)
+    if (cleanedCached !== cached.nominative_name) {
+      await supabase.from('lecturer_names_cache').upsert(
+        {
+          original_name: key,
+          nominative_name: cleanedCached,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'original_name' },
+      )
+    }
+    return cleanedCached
   }
 
   const { value: fromGroq, cacheable } = await fetchGroqNominative(key)
@@ -491,7 +515,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .map((original, i) => {
         const normalized = finalRows[i]
         if (!normalized) return null
-        if (normalized.lecturer_name === original.lecturer_name) return null
         return {
           body_fingerprint: bodyFingerprintHex(original.body),
           from: original.lecturer_name,
@@ -501,10 +524,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .filter(Boolean) as Array<{ body_fingerprint: string; from: string; to: string }>
 
     /** Musi zawierać `body_fingerprint` — PostgREST rozwiązuje konflikt po unikalnym indeksie; bez tej kolumny w payloadzie zachowanie bywa niejednoznaczne. Wartość = ta sama co w triggerze `set_announcement_body_fingerprint` (md5 treści UTF-8). */
-    const rowsForDb = finalRows.map((r) => ({
-      ...r,
-      body_fingerprint: bodyFingerprintHex(r.body),
-    }))
+    const rowsForDb = finalRows.map((r) => {
+      const author = forceSafeAuthorForDb(r.lecturer_name)
+      console.log('FINAL AUTHOR BEFORE DB:', author)
+      return {
+        ...r,
+        lecturer_name: author,
+        body_fingerprint: bodyFingerprintHex(r.body),
+      }
+    })
 
     const { error } = await supabase.from('announcements').upsert(rowsForDb, {
       onConflict: 'body_fingerprint',
