@@ -128,13 +128,13 @@ export default function Header({
   return (
     <>
     <header
-      className={`h-16 w-full flex items-center gap-2 px-4 sticky top-0 z-50 overflow-visible transition-all duration-300 border-t-0 outline-none ring-0 shadow-none ${
+      className={`h-16 w-full flex items-center justify-between gap-2 px-4 sticky top-0 z-50 overflow-visible transition-all duration-300 border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'border-b border-slate-200/90 bg-white/85 backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/55 dark:backdrop-blur-md'
           : 'border-b border-transparent bg-bg-app/90 backdrop-blur-md dark:border-transparent dark:bg-black/25 dark:backdrop-blur-md'
       }`}
     >
-      <div className="w-24 flex-shrink-0 flex items-center justify-start relative z-10">
+      <div className="w-12 md:w-24 flex-shrink-0 flex items-center justify-start relative z-10">
         <SearchBar
           onNavigateToUser={onNavigateToUser}
           onNavigateToPost={onNavigateToPost}
@@ -142,7 +142,7 @@ export default function Header({
         />
       </div>
 
-      <div className="flex-1 flex justify-center items-center overflow-visible">
+      <div className="flex-1 flex justify-center items-center overflow-visible min-w-0">
         <motion.button
           type="button"
           whileTap={{ scale: 0.95 }}
@@ -166,12 +166,12 @@ export default function Header({
               maskPosition: 'center',
               WebkitMaskPosition: 'center',
             }}
-            className="h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] transition-colors dark:bg-brand-gold-bright bg-logo-navy"
+            className="mx-auto h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] -translate-x-[1px] md:translate-x-0 transition-colors dark:bg-brand-gold-bright bg-logo-navy"
           />
         </motion.button>
       </div>
 
-      <div className="w-24 flex-shrink-0 flex items-center justify-end gap-4 relative z-10">
+      <div className="w-12 md:w-24 flex-shrink-0 flex items-center justify-center md:justify-end gap-4 relative z-10">
         <div className="hidden md:flex items-center gap-0.5 shrink-0">
           <button
             type="button"
@@ -271,7 +271,7 @@ export default function Header({
           )}
         </button>
 
-        <div className="relative shrink-0 min-w-0" ref={menuRef}>
+        <div className="relative shrink-0 min-w-0 hidden md:block" ref={menuRef}>
           <button
             type="button"
             onClick={() => {
