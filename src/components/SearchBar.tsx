@@ -17,6 +17,7 @@ import UserAvatar from './UserAvatar'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useEvents } from '../hooks/useEvents'
 import type { UJEvent } from '../data/mockEvents'
+import { ICONS_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
 
 type Props = {
   onNavigateToUser: (userId: string) => void
@@ -49,28 +50,17 @@ const searchResultPanelCls =
   'rounded-2xl border border-[#0f172a]/5 dark:border-white/10 bg-transparent shadow-sm dark:shadow-lg dark:shadow-black/25'
 
 /** Powrót: sama ikona, cel dotykowy min. 44×44, bez ramki / tła (delikatny hover). */
-const backIconBtnCls =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#1e293b] transition-colors duration-200 hover:bg-black/[0.06] dark:text-brand-gold-bright dark:hover:bg-white/[0.06] [-webkit-tap-highlight-color:transparent]'
+const backIconBtnCls = SEARCH_MOBILE.backButtonClass
 
-const searchSpringContent = { type: 'spring' as const, stiffness: 300, damping: 30 }
+const searchSpringContent = SEARCH_MOBILE.motion.springContent
 
 /** Wejście modala: płynny slide z dołu (Crystal Entry). */
-const searchCrystalEntry = { duration: 0.4, ease: 'easeOut' as const }
+const searchCrystalEntry = SEARCH_MOBILE.motion.overlayEntry
 
-const searchStaggerContainer = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.055, delayChildren: 0.04 },
-  },
-}
+const searchStaggerContainer = SEARCH_MOBILE.motion.staggerContainer
 
 /** Historia wyszukiwania: kaskada co 0,05 s. */
-const historyStaggerContainer = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.05, delayChildren: 0 },
-  },
-}
+const historyStaggerContainer = SEARCH_MOBILE.motion.historyStaggerContainer
 
 const searchStaggerItem = {
   hidden: { opacity: 0, y: 12 },
@@ -357,8 +347,7 @@ export default function SearchBar({
 
   const resultItemBase =
     'w-full flex items-center gap-3 py-2.5 px-1 rounded-xl cursor-pointer text-left transition-colors duration-200'
-  const mobileResultRow =
-    'hover:bg-black/[0.04] dark:hover:bg-white/[0.05] active:bg-black/[0.06] dark:active:bg-white/[0.07]'
+  const mobileResultRow = SEARCH_MOBILE.mobileResults.rowClass
 
   const desktopRowHover =
     'hover:bg-slate-100/90 dark:hover:bg-white/[0.06] active:bg-slate-200/80 dark:active:bg-white/[0.08]'
@@ -513,31 +502,39 @@ export default function SearchBar({
         {isSearching && (
           <motion.div
             variants={searchStaggerItem}
-            className={`flex items-center gap-2.5 px-4 py-4 text-[13px] ${tMuted}`}
+            className={`${SEARCH_MOBILE.mobileResults.searchingClass} ${tMuted}`}
           >
-            <Loader2 size={14} className="animate-spin text-[#1e293b] dark:text-brand-gold-bright shrink-0" />
+            <Loader2
+              size={ICONS_MOBILE.searchSectionIconSize}
+              className="animate-spin text-[#1e293b] dark:text-brand-gold-bright shrink-0"
+            />
             Szukam…
           </motion.div>
         )}
 
         {!isSearching && query.length === 1 && (
-          <motion.div variants={searchStaggerItem} className={`px-4 py-3 text-[12px] ${tHint}`}>
+          <motion.div variants={searchStaggerItem} className={`${SEARCH_MOBILE.mobileResults.shortHintClass} ${tHint}`}>
             Wpisz co najmniej 2 znaki…
           </motion.div>
         )}
 
         {!isSearching && searched && !hasResults && (
-          <motion.div variants={searchStaggerItem} className={`px-4 py-5 text-center text-[13px] ${tHint}`}>
+          <motion.div variants={searchStaggerItem} className={`${SEARCH_MOBILE.mobileResults.emptyClass} ${tHint}`}>
             Brak wyników dla <span className={`font-semibold ${tQuote}`}>"{query}"</span>
           </motion.div>
         )}
 
         {!isSearching && results.users.length > 0 && (
-          <motion.div className="px-2 pt-2" variants={searchStaggerItem}>
+          <motion.div className={SEARCH_MOBILE.mobileResults.sectionWrapperClass} variants={searchStaggerItem}>
             <div
-              className={`flex items-center gap-2 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-widest ${tHint}`}
+              className={`${SEARCH_MOBILE.mobileResults.sectionTitleClass} ${tHint}`}
             >
-              <UserRound size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
+              <UserRound
+                size={ICONS_MOBILE.searchSectionIconSize}
+                strokeWidth={ICONS_MOBILE.searchSectionIconStrokeWidth}
+                className={sectionIconCls}
+                aria-hidden
+              />
               Użytkownicy
             </div>
             <motion.div variants={searchStaggerContainer} initial="hidden" animate="show">
@@ -547,12 +544,12 @@ export default function SearchBar({
                 type="button"
                 variants={searchStaggerItem}
                 onClick={() => handleNavigateUser(user.id)}
-                whileTap={{ scale: 0.985 }}
-                className={`${resultItemBase} ${mobileResultRow}`}
+                whileTap={{ scale: SEARCH_MOBILE.mobileResults.tapScale }}
+                className={mobileResultRow}
               >
                 <UserRound
-                  size={18}
-                  strokeWidth={2}
+                  size={ICONS_MOBILE.searchResultIconSize}
+                  strokeWidth={ICONS_MOBILE.searchResultIconStrokeWidth}
                   className="shrink-0 text-slate-400 dark:text-slate-500"
                   aria-hidden
                 />
@@ -575,14 +572,19 @@ export default function SearchBar({
         {!isSearching && results.posts.length > 0 && (
           <motion.div
             variants={searchStaggerItem}
-            className={`px-2 pb-2 ${
+            className={`${SEARCH_MOBILE.mobileResults.sectionSecondaryWrapperClass} ${
               results.users.length > 0 ? `mt-1 border-t ${sectionDivider} pt-2` : 'pt-2'
             }`}
           >
             <div
-              className={`flex items-center gap-2 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-widest ${tHint}`}
+              className={`${SEARCH_MOBILE.mobileResults.sectionTitleClass} ${tHint}`}
             >
-              <MessageSquareText size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
+              <MessageSquareText
+                size={ICONS_MOBILE.searchSectionIconSize}
+                strokeWidth={ICONS_MOBILE.searchSectionIconStrokeWidth}
+                className={sectionIconCls}
+                aria-hidden
+              />
               Wpisy
             </div>
             <motion.div variants={searchStaggerContainer} initial="hidden" animate="show">
@@ -596,12 +598,12 @@ export default function SearchBar({
                   type="button"
                   variants={searchStaggerItem}
                   onClick={() => handleNavigatePost(postId)}
-                  whileTap={{ scale: 0.985 }}
-                  className={`${resultItemBase} ${mobileResultRow}`}
+                  whileTap={{ scale: SEARCH_MOBILE.mobileResults.tapScale }}
+                  className={mobileResultRow}
                 >
                   <MessageSquareText
-                    size={18}
-                    strokeWidth={2}
+                    size={ICONS_MOBILE.searchResultIconSize}
+                    strokeWidth={ICONS_MOBILE.searchResultIconStrokeWidth}
                     className="shrink-0 text-slate-400 dark:text-slate-500"
                     aria-hidden
                   />
@@ -619,16 +621,21 @@ export default function SearchBar({
         {!isSearching && results.places.length > 0 && (
           <motion.div
             variants={searchStaggerItem}
-            className={`px-2 pb-2 ${
+            className={`${SEARCH_MOBILE.mobileResults.sectionSecondaryWrapperClass} ${
               results.users.length > 0 || results.posts.length > 0
                 ? `mt-1 border-t ${sectionDivider} pt-2`
                 : 'pt-2'
             }`}
           >
             <div
-              className={`flex items-center gap-2 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-widest ${tHint}`}
+              className={`${SEARCH_MOBILE.mobileResults.sectionTitleClass} ${tHint}`}
             >
-              <MapPin size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
+              <MapPin
+                size={ICONS_MOBILE.searchSectionIconSize}
+                strokeWidth={ICONS_MOBILE.searchSectionIconStrokeWidth}
+                className={sectionIconCls}
+                aria-hidden
+              />
               Miejsca
             </div>
             <motion.div variants={searchStaggerContainer} initial="hidden" animate="show">
@@ -638,12 +645,12 @@ export default function SearchBar({
                   type="button"
                   variants={searchStaggerItem}
                   onClick={handleNavigatePlace}
-                  whileTap={{ scale: 0.985 }}
-                  className={`${resultItemBase} ${mobileResultRow}`}
+                  whileTap={{ scale: SEARCH_MOBILE.mobileResults.tapScale }}
+                  className={mobileResultRow}
                 >
                   <MapPin
-                    size={18}
-                    strokeWidth={2}
+                    size={ICONS_MOBILE.searchResultIconSize}
+                    strokeWidth={ICONS_MOBILE.searchResultIconStrokeWidth}
                     className="shrink-0 text-slate-400 dark:text-slate-500"
                     aria-hidden
                   />
@@ -661,7 +668,7 @@ export default function SearchBar({
           </motion.div>
         )}
 
-        <div className="h-1" />
+        <div className={SEARCH_MOBILE.mobileResults.bottomSpacerClass} />
       </motion.div>
     )
   }
@@ -893,10 +900,14 @@ export default function SearchBar({
         <button
           type="button"
           onClick={() => setMobileModalOpen(true)}
-          className="md:hidden min-w-[40px] min-h-[40px] w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className={SEARCH_MOBILE.triggerButtonClass}
           aria-label="Szukaj"
         >
-          <Search size={26} strokeWidth={2} className="shrink-0 stroke-[2.5] md:stroke-2" />
+          <Search
+            size={ICONS_MOBILE.searchTriggerSize}
+            strokeWidth={ICONS_MOBILE.searchInputIconStrokeWidth}
+            className={`shrink-0 ${ICONS_MOBILE.strongStrokeClass}`}
+          />
         </button>
 
         <button
@@ -905,7 +916,7 @@ export default function SearchBar({
           className="hidden md:flex w-9 h-9 shrink-0 items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Szukaj"
         >
-          <Search size={20} strokeWidth={2} className="shrink-0 md:stroke-2" />
+          <Search size={ICONS_MOBILE.searchDesktopTriggerSize} strokeWidth={2} className="shrink-0 md:stroke-2" />
         </button>
       </div>
 
@@ -998,20 +1009,20 @@ export default function SearchBar({
               role="dialog"
               aria-modal="true"
               aria-label="Wyszukiwanie"
-              className="fixed inset-0 z-[200] md:hidden flex flex-col bg-bg-app/95"
+              className={SEARCH_MOBILE.mobileOverlayClass}
               initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
               animate={{ opacity: 1, backdropFilter: 'blur(20px)' }}
               exit={{ opacity: 0, backdropFilter: 'blur(6px)' }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <motion.div
-                className="relative flex w-full max-w-full overflow-x-clip flex-1 min-h-0 flex-col px-4 pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+                className={SEARCH_MOBILE.mobileOverlayContainerClass}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
                 transition={searchCrystalEntry}
               >
-                <div className="mb-5 flex shrink-0 items-center gap-2">
+                <div className={SEARCH_MOBILE.mobileHeaderRowClass}>
                   <motion.button
                     type="button"
                     onClick={closeMobileModal}
@@ -1019,7 +1030,12 @@ export default function SearchBar({
                     className={backIconBtnCls}
                     aria-label="Wróć do feedu"
                   >
-                    <ChevronLeft size={24} strokeWidth={2.25} className="h-6 w-6 shrink-0" aria-hidden />
+                    <ChevronLeft
+                      size={ICONS_MOBILE.searchBackIconSize}
+                      strokeWidth={ICONS_MOBILE.searchBackIconStrokeWidth}
+                      className="h-6 w-6 shrink-0"
+                      aria-hidden
+                    />
                   </motion.button>
                   <div className="relative min-w-0 flex-1 rounded-2xl">
                     <motion.div
@@ -1033,8 +1049,8 @@ export default function SearchBar({
                       transition={searchSpringContent}
                     />
                     <Search
-                      size={18}
-                      strokeWidth={2}
+                      size={ICONS_MOBILE.searchInputIconSize}
+                      strokeWidth={ICONS_MOBILE.searchInputIconStrokeWidth}
                       className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-[#1e293b] dark:text-brand-gold-bright"
                     />
                     <input
@@ -1055,15 +1071,15 @@ export default function SearchBar({
                       onFocus={() => setMobileInputFocused(true)}
                       onBlur={() => setMobileInputFocused(false)}
                       placeholder="Szukaj…"
-                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[16px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-[#1e293b] dark:caret-brand-gold-bright"
+                      className={SEARCH_MOBILE.mobileInputClass}
                     />
                   </div>
                 </div>
 
-                <div className="mb-6 w-full min-w-0 max-w-full shrink-0 overflow-x-clip border-b border-border-app dark:border-white/10">
+                <div className={SEARCH_MOBILE.mobilePillsWrapperClass}>
                   <LayoutGroup>
                     <nav
-                      className="relative flex w-full min-w-0 max-w-full gap-0.5 overflow-x-auto overscroll-x-contain px-2 scrollbar-none [-webkit-overflow-scrolling:touch]"
+                      className={SEARCH_MOBILE.mobilePillsNavClass}
                       role="tablist"
                       aria-label="Zakres wyszukiwania"
                     >
@@ -1081,8 +1097,7 @@ export default function SearchBar({
                         ] as const
                       ).map((pill) => {
                         const isActive = pill.id !== 'events' && mobilePill === pill.id
-                        const tabBase =
-                          'relative shrink-0 whitespace-nowrap px-3 py-2.5 text-[13px] font-medium transition-colors duration-200 border-b-2 border-transparent -mb-px [-webkit-tap-highlight-color:transparent]'
+                        const tabBase = SEARCH_MOBILE.mobilePillTabBaseClass
                         const tabInactive =
                           'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                         const tabActive = 'text-logo-navy dark:text-slate-100'
@@ -1118,7 +1133,7 @@ export default function SearchBar({
                             {isActive && (
                               <motion.span
                                 layoutId="searchMobileTabIndicator"
-                                className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[#1e293b] dark:bg-brand-gold-bright"
+                                className={SEARCH_MOBILE.mobilePillIndicatorClass}
                                 transition={searchSpringContent}
                               />
                             )}
@@ -1129,9 +1144,9 @@ export default function SearchBar({
                   </LayoutGroup>
                 </div>
 
-                <div className="flex-1 overflow-y-auto overscroll-contain min-h-0 -mx-1">
+                <div className={SEARCH_MOBILE.mobileResultsScrollClass}>
                   {query.length === 0 &&
-                    crystalHistorySection('mx-auto w-full max-w-5xl px-1 pb-6', () => {
+                    crystalHistorySection(SEARCH_MOBILE.mobileHistorySectionClass, () => {
                       mobileInputRef.current?.focus({ preventScroll: true })
                     })}
 
@@ -1143,7 +1158,7 @@ export default function SearchBar({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                        className="px-1 pb-6"
+                        className={SEARCH_MOBILE.mobileResultsWrapperClass}
                       >
                         {resultsContentMobile()}
                       </motion.div>

@@ -12,6 +12,7 @@ import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
+import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -128,13 +129,13 @@ export default function Header({
   return (
     <>
     <header
-      className={`h-16 w-full flex items-center justify-between gap-2 px-4 sticky top-0 z-50 overflow-visible transition-all duration-300 border-t-0 outline-none ring-0 shadow-none ${
+      className={`${HEADER_MOBILE.containerClass} w-full flex items-center justify-between sticky top-0 z-50 overflow-visible transition-all duration-300 border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'border-b border-slate-200/90 bg-white/85 backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/55 dark:backdrop-blur-md'
           : 'border-b border-transparent bg-bg-app/90 backdrop-blur-md dark:border-transparent dark:bg-black/25 dark:backdrop-blur-md'
       }`}
     >
-      <div className="w-[100px] min-w-[100px] md:w-24 md:min-w-24 flex-shrink-0 flex items-center justify-start relative z-10">
+      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
         <SearchBar
           onNavigateToUser={onNavigateToUser}
           onNavigateToPost={onNavigateToPost}
@@ -166,12 +167,12 @@ export default function Header({
               maskPosition: 'center',
               WebkitMaskPosition: 'center',
             }}
-            className="mx-auto h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] translate-x-[1.75px] md:translate-x-0 transition-colors dark:bg-brand-gold-bright bg-logo-navy"
+            className={`mx-auto ${HEADER_MOBILE.logoClass} transition-colors dark:bg-brand-gold-bright bg-logo-navy`}
           />
         </motion.button>
       </div>
 
-      <div className="w-[100px] min-w-[100px] md:w-24 md:min-w-24 flex-shrink-0 flex items-center justify-end gap-3 relative z-10">
+      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-end gap-3 relative z-10`}>
         <div className="hidden md:flex items-center gap-0.5 shrink-0">
           <button
             type="button"
@@ -261,13 +262,21 @@ export default function Header({
         <button
           type="button"
           onClick={toggleTheme}
-          className="shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2 text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className={`${HEADER_MOBILE.themeToggleButtonClass} text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors`}
           aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
         >
           {theme === 'dark' ? (
-            <Sun size={26} strokeWidth={2} className="shrink-0 stroke-[2.5] md:stroke-2" />
+            <Sun
+              size={ICONS_MOBILE.headerThemeToggleSize}
+              strokeWidth={ICONS_MOBILE.headerThemeToggleStrokeWidth}
+              className={`shrink-0 ${ICONS_MOBILE.strongStrokeClass}`}
+            />
           ) : (
-            <Moon size={26} strokeWidth={2} className="shrink-0 stroke-[2.5] md:stroke-2" />
+            <Moon
+              size={ICONS_MOBILE.headerThemeToggleSize}
+              strokeWidth={ICONS_MOBILE.headerThemeToggleStrokeWidth}
+              className={`shrink-0 ${ICONS_MOBILE.strongStrokeClass}`}
+            />
           )}
         </button>
 
@@ -278,18 +287,27 @@ export default function Header({
               onCloseNotificationsPanel()
               setMenuOpen((v) => !v)
             }}
-            className="group flex items-center gap-2 rounded-full pl-1 pr-1 py-1 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1 hover:bg-[#1e293b]/10 transition-all duration-300"
+            className={`${HEADER_MOBILE.userMenuButtonClass} hover:bg-[#1e293b]/10 transition-all duration-300`}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label="Menu użytkownika"
           >
-            <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9" textSize="text-xs" />
+            <UserAvatar
+              profile={myProfile}
+              name={displayName}
+              className={HEADER_MOBILE.userAvatarClass}
+              textSize={HEADER_MOBILE.userAvatarTextSize}
+            />
             {myProfile?.department && (
-              <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider text-[#1e293b] dark:text-brand-gold-bright border border-[#1e293b] dark:border-brand-gold-bright/40 rounded-full px-1.5 py-0.5 leading-none shrink-0 transition-colors duration-300">
+              <span
+                className={`hidden sm:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-[#1e293b] dark:text-brand-gold-bright border border-[#1e293b] dark:border-brand-gold-bright/40 rounded-full leading-none shrink-0 transition-colors duration-300`}
+              >
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
-            <span className="hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium max-w-[100px] truncate transition-colors duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright">
+            <span
+              className={`hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium ${HEADER_MOBILE.userNameMaxWidthClass} truncate transition-colors duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright`}
+            >
               {displayName}
             </span>
             <ChevronDown
