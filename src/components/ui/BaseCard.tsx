@@ -1,4 +1,12 @@
-import { forwardRef, type ComponentPropsWithoutRef, type ElementType, type ReactNode } from 'react'
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ComponentPropsWithRef,
+  type ElementType,
+  type ForwardedRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { theme } from '../../styles/theme'
 
 /**
@@ -23,13 +31,17 @@ type BaseCardOwnProps = {
   /** Kiedy true, karta renderuje się bez paddingu — np. jeśli treść sama steruje odstępami. */
   flush?: boolean
   className?: string
-  children: ReactNode
+  children?: ReactNode
 }
 
 type BaseCardProps<T extends ElementType> = BaseCardOwnProps &
   Omit<ComponentPropsWithoutRef<T>, keyof BaseCardOwnProps | 'as'> & {
     as?: T
   }
+
+type BaseCardComponent = <T extends ElementType = 'div'>(
+  props: BaseCardProps<T> & { ref?: ComponentPropsWithRef<T>['ref'] },
+) => ReactElement | null
 
 function variantClasses(variant: BaseCardVariant): string {
   const { colors, radius, shadow } = theme
@@ -76,9 +88,17 @@ function interactiveClasses(variant: BaseCardVariant): string {
   return base
 }
 
-function BaseCardInner<T extends ElementType = 'div'>(
-  { as, variant = 'default', interactive = false, flush = false, className = '', children, ...rest }: BaseCardProps<T>,
-  ref: React.Ref<Element>,
+function BaseCardInner(
+  {
+    as,
+    variant = 'default',
+    interactive = false,
+    flush = false,
+    className = '',
+    children,
+    ...rest
+  }: BaseCardProps<ElementType>,
+  ref: ForwardedRef<Element>,
 ) {
   const Component = (as ?? 'div') as ElementType
   const variantCls = variantClasses(variant)
@@ -97,8 +117,6 @@ function BaseCardInner<T extends ElementType = 'div'>(
 /**
  * Polimorficzny komponent z `as`. Forwardowanie ref dla framer-motion / buttonów.
  */
-const BaseCard = forwardRef(BaseCardInner) as <T extends ElementType = 'div'>(
-  props: BaseCardProps<T> & { ref?: React.Ref<Element> },
-) => ReturnType<typeof BaseCardInner>
+const BaseCard = forwardRef(BaseCardInner) as BaseCardComponent
 
 export default BaseCard

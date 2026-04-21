@@ -19,7 +19,6 @@ import BaseCard from './ui/BaseCard'
 import {
   sectionTitleCls,
   sideAsideTrackCls,
-  sideMutedCls,
   sideHeaderLinkCls,
   sidePanelHoverFocus,
   widgetGoldCls,
