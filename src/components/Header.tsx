@@ -166,7 +166,7 @@ export default function Header({
               maskPosition: 'center',
               WebkitMaskPosition: 'center',
             }}
-            className="mx-auto h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] translate-x-[2px] md:translate-x-0 transition-colors dark:bg-brand-gold-bright bg-logo-navy"
+            className="mx-auto h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] translate-x-[1.75px] md:translate-x-0 transition-colors dark:bg-brand-gold-bright bg-logo-navy"
           />
         </motion.button>
       </div>
