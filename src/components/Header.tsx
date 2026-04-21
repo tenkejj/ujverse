@@ -165,9 +165,8 @@ export default function Header({
               WebkitMaskRepeat: 'no-repeat',
               maskPosition: 'center',
               WebkitMaskPosition: 'center',
-              width: '12rem',
             }}
-            className="h-32 w-auto scale-[0.85] translate-y-[2px] transition-colors dark:bg-brand-gold-bright bg-logo-navy"
+            className="h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] transition-colors dark:bg-brand-gold-bright bg-logo-navy"
           />
         </motion.button>
       </div>

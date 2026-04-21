@@ -14,6 +14,9 @@
 html {
   scroll-behavior: smooth;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -120,6 +123,15 @@ html {
 
 body {
   @apply min-h-screen bg-bg-app text-fg-primary transition-colors duration-200;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* Moduł wyszukiwania: ukryj natywny niebieski „X” przeglądarki w polach type=search */
