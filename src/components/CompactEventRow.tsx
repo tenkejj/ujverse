@@ -1,13 +1,7 @@
 import { BadgeCheck } from 'lucide-react'
 import { formatEventDateParts, type UJEvent } from '../data/mockEvents'
-import {
-  sideInnerRowCls,
-  sideMutedCls,
-  sidePanelHoverFocus,
-  widgetGoldCls,
-} from '../lib/sidePanelStyles'
-
-const sideRowCls = `group flex w-full cursor-pointer items-start gap-3 text-left transition-colors ${sideInnerRowCls} ${sidePanelHoverFocus}`
+import { sideMutedCls, sidePanelHoverFocus, widgetGoldCls } from '../lib/sidePanelStyles'
+import BaseCard from './ui/BaseCard'
 
 type Props = {
   event: UJEvent
@@ -18,16 +12,19 @@ export default function CompactEventRow({ event: ev, onSelect }: Props) {
   const { monthLabel, dayNum } = formatEventDateParts(ev.date)
   const official = Boolean(ev.is_official)
   return (
-    <button
+    <BaseCard
+      as="button"
       type="button"
+      variant="inner"
+      interactive
       onClick={() => onSelect(ev)}
-      className={`${sideRowCls} text-left ${
+      className={`group m-0 p-3 w-full flex cursor-pointer items-start gap-3 text-left transition-colors ${sidePanelHoverFocus} ${
         official
           ? 'ring-1 ring-[#a48955]/25 bg-[#a48955]/[0.08] dark:ring-brand-gold/25 dark:bg-brand-gold/[0.06]'
           : ''
       }`}
     >
-      <div className="shrink-0 text-center min-w-[36px]">
+      <div className="shrink-0 text-center w-12">
         <span
           className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
         >
@@ -53,6 +50,6 @@ export default function CompactEventRow({ event: ev, onSelect }: Props) {
         </div>
         <span className={`text-xs ${sideMutedCls}`}>{ev.category}</span>
       </div>
-    </button>
+    </BaseCard>
   )
 }

@@ -5,7 +5,7 @@ import {
   ACADEMIC_ISI_BADGE_TITLE,
   showAcademicIsiBadge,
 } from '../lib/announcementBranding'
-import type { AcademicAnnouncement, AnnouncementStatus } from '../types'
+import type { AnnouncementMeta, AnnouncementStatus, UnifiedContent } from '../types/content'
 import UserAvatar from './UserAvatar'
 
 const STATUS_DOT: Record<AnnouncementStatus, string> = {
@@ -33,7 +33,7 @@ function formatAnnDate(iso: string): string {
 }
 
 type Props = {
-  announcement: AcademicAnnouncement | null
+  announcement: UnifiedContent<AnnouncementMeta> | null
   onClose: () => void
 }
 
@@ -73,16 +73,20 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-600" aria-hidden />
             <div className="flex items-start gap-3 border-b border-zinc-800 pb-4">
-              <UserAvatar profile={null} name={announcement.lecturer_name} className="h-11 w-11 shrink-0" />
+              <UserAvatar
+                profile={null}
+                name={announcement.author.displayName}
+                className="h-11 w-11 shrink-0"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
                   <p
                     id="announcement-drawer-title"
                     className="text-lg font-bold leading-snug text-zinc-50 min-w-0 flex-1"
                   >
-                    {announcement.lecturer_name}
+                    {announcement.author.displayName}
                   </p>
-                  {showAcademicIsiBadge(announcement.source) && (
+                  {showAcademicIsiBadge(announcement.metadata.source) && (
                     <span
                       className="text-[9px] font-medium leading-none whitespace-nowrap text-zinc-500 opacity-60 shrink-0 text-right"
                       title={ACADEMIC_ISI_BADGE_TITLE}
@@ -91,18 +95,23 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                     </span>
                   )}
                 </div>
-                <time className="mt-0.5 block text-xs tabular-nums text-zinc-500" dateTime={announcement.created_at}>
-                  {formatAnnDate(announcement.created_at)}
-                </time>
+                {announcement.timestamp && (
+                  <time
+                    className="mt-0.5 block text-xs tabular-nums text-zinc-500"
+                    dateTime={announcement.timestamp}
+                  >
+                    {formatAnnDate(announcement.timestamp)}
+                  </time>
+                )}
                 <div className="mt-2 flex items-center gap-2">
                   <span
-                    className={`inline-block size-2 shrink-0 rounded-full ${STATUS_DOT[announcement.status]}`}
+                    className={`inline-block size-2 shrink-0 rounded-full ${STATUS_DOT[announcement.metadata.status]}`}
                     aria-hidden
                   />
                   <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${BADGE[announcement.status]}`}
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${BADGE[announcement.metadata.status]}`}
                   >
-                    {STATUS_LABEL[announcement.status]}
+                    {STATUS_LABEL[announcement.metadata.status]}
                   </span>
                 </div>
               </div>

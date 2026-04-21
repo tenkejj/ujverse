@@ -11,6 +11,7 @@ import ClubsModal from './ClubsModal'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
+import { useClubs } from '../hooks/useContent'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -76,6 +77,7 @@ export default function Header({
   const { theme, toggleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const [clubsModalOpen, setClubsModalOpen] = useState(false)
+  const { clubs, loading: clubsLoading, error: clubsError, reload: reloadClubs } = useClubs()
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
   const hasAnyNotifications = notifications.length > 0
 
@@ -149,7 +151,7 @@ export default function Header({
             window.scrollTo({ top: 0, behavior: 'smooth' })
             onRefreshPosts()
           }}
-          className="overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 inline-flex items-center justify-center border-0"
+          className="overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 inline-flex items-center justify-center border-0"
           aria-label="Strona główna"
         >
           <div
@@ -179,7 +181,7 @@ export default function Header({
               onCloseNotificationsPanel()
               setClubsModalOpen(true)
             }}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium text-[#1e293b] transition-colors hover:text-[#a48955] hover:bg-black/5 dark:text-gray-300 dark:hover:text-brand-gold-bright dark:hover:bg-white/10"
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium text-[#1e293b] transition-colors hover:text-[#1e293b] hover:bg-black/5 dark:text-gray-300 dark:hover:text-brand-gold-bright dark:hover:bg-white/10"
             aria-haspopup="dialog"
             aria-expanded={clubsModalOpen}
             aria-label="Koła naukowe"
@@ -192,7 +194,7 @@ export default function Header({
             onClick={onNavigateToFeed}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10 ${
               activeView === 'feed'
-                ? 'text-[#a48955] dark:text-accent-interactive'
+                ? 'text-[#1e293b] dark:text-accent-interactive'
                 : 'text-[#1e293b] dark:text-gray-400'
             }`}
             aria-label="Strona główna"
@@ -204,7 +206,7 @@ export default function Header({
             onClick={onNavigateToEvents}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
               activeView === 'events'
-                ? 'text-[#a48955] dark:text-accent-interactive'
+                ? 'text-[#1e293b] dark:text-accent-interactive'
                 : 'text-[#1e293b] dark:text-gray-400'
             }`}
             aria-label="Wydarzenia"
@@ -224,7 +226,7 @@ export default function Header({
               aria-label="Powiadomienia"
               className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-black/5 dark:hover:bg-white/10 ${
                 bellActive
-                  ? 'text-[#a48955] dark:text-brand-gold-bright ring-2 ring-[#a48955]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(180,83,9,0.4)]'
+                  ? 'text-[#1e293b] dark:text-brand-gold-bright ring-2 ring-[#1e293b]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(30,41,59,0.35)]'
                   : 'text-[#1e293b] dark:text-gray-400'
               }`}
             >
@@ -242,13 +244,13 @@ export default function Header({
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center pointer-events-none">
                   <motion.span
-                    className="absolute rounded-full bg-[#a48955] dark:bg-brand-gold-bright"
+                    className="absolute rounded-full bg-[#1e293b] dark:bg-brand-gold-bright"
                     style={{ width: 22, height: 22 }}
                     animate={{ scale: [1, 1.35], opacity: [0.45, 0] }}
                     transition={{ duration: 1.25, repeat: Infinity, ease: 'easeOut' }}
                     aria-hidden
                   />
-                  <span className="relative z-10 min-w-[16px] h-4 rounded-full bg-[#a48955] text-[#1e293b] text-[9px] font-bold flex items-center justify-center px-0.5 shadow-sm dark:bg-accent-interactive dark:text-black">
+                  <span className="relative z-10 min-w-[16px] h-4 rounded-full bg-[#1e293b] text-white text-[9px] font-bold flex items-center justify-center px-0.5 shadow-sm dark:bg-accent-interactive dark:text-black">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 </span>
@@ -260,7 +262,7 @@ export default function Header({
         <button
           type="button"
           onClick={toggleTheme}
-          className="shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2 text-[#1e293b] dark:text-gray-400 hover:text-[#a48955] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className="shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2 text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
         >
           {theme === 'dark' ? (
@@ -277,24 +279,24 @@ export default function Header({
               onCloseNotificationsPanel()
               setMenuOpen((v) => !v)
             }}
-            className="group flex items-center gap-2 rounded-full pl-1 pr-2 py-1.5 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1 hover:bg-[#a48955]/10 transition-all duration-300"
+            className="group flex items-center gap-2 rounded-full pl-1 pr-2 py-1.5 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1 hover:bg-[#1e293b]/10 transition-all duration-300"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label="Menu użytkownika"
           >
             <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9" textSize="text-xs" />
             {myProfile?.department && (
-              <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider text-[#a48955] dark:text-brand-gold-bright border border-[#a48955]/35 dark:border-brand-gold-bright/40 rounded-full px-1.5 py-0.5 leading-none shrink-0 transition-colors duration-300">
+              <span className="hidden sm:inline text-[9px] font-bold uppercase tracking-wider text-[#1e293b] dark:text-brand-gold-bright border border-[#1e293b] dark:border-brand-gold-bright/40 rounded-full px-1.5 py-0.5 leading-none shrink-0 transition-colors duration-300">
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
-            <span className="hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium max-w-[100px] truncate transition-colors duration-300 group-hover:text-[#a48955] dark:group-hover:text-brand-gold-bright">
+            <span className="hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium max-w-[100px] truncate transition-colors duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright">
               {displayName}
             </span>
             <ChevronDown
               size={24}
               strokeWidth={2}
-              className={`shrink-0 ml-1 text-[#1e293b] dark:text-gray-500 transition-all duration-300 group-hover:text-[#a48955] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
+              className={`shrink-0 ml-1 text-[#1e293b] dark:text-gray-500 transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -321,7 +323,7 @@ export default function Header({
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToProfile() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#a48955] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
                     <User size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
                     Mój profil
@@ -329,15 +331,15 @@ export default function Header({
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onOpenProfileModal() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#a48955] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <Pencil size={15} className="shrink-0 text-[#a48955] dark:text-brand-gold-bright" />
+                    <Pencil size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
                     Edytuj profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToSettings() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48955]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#a48955] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
                     <Settings size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
                     Ustawienia
@@ -361,7 +363,14 @@ export default function Header({
       </div>
     </header>
 
-    <ClubsModal isOpen={clubsModalOpen} onClose={() => setClubsModalOpen(false)} />
+    <ClubsModal
+      isOpen={clubsModalOpen}
+      onClose={() => setClubsModalOpen(false)}
+      clubs={clubs}
+      loading={clubsLoading}
+      error={clubsError}
+      onRetry={() => void reloadClubs()}
+    />
 
     {createPortal(
       <AnimatePresence>
@@ -390,7 +399,7 @@ export default function Header({
               <button
                 type="button"
                 onClick={onCloseNotificationsPanel}
-                className="absolute top-[max(1rem,env(safe-area-inset-top))] right-5 z-20 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-brand-gold dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
+                className="absolute top-[max(1rem,env(safe-area-inset-top))] right-5 z-20 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-[#1e293b] dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
                 aria-label="Zamknij powiadomienia"
               >
                 <X size={22} strokeWidth={2} />
@@ -405,7 +414,7 @@ export default function Header({
                     type="button"
                     onClick={onClearAllNotifications}
                     disabled={!hasAnyNotifications || notificationsLoading}
-                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 transition-colors hover:text-brand-gold disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-500 dark:hover:text-brand-gold-bright"
+                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 transition-colors hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-500 dark:hover:text-brand-gold-bright"
                   >
                     Wyczyść
                   </button>

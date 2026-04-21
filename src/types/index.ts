@@ -38,17 +38,8 @@ export type AppNotification = {
   actor?: Profile | null
 }
 
-export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty'
-
-export type AcademicAnnouncement = {
-  id: string
-  /** Unikalny odcisk treści (md5) — spójny z DB; stabilny fallback dla klucza React. */
-  body_fingerprint?: string | null
-  department: string | null
-  /** Źródło treści, np. komunikaty ISI UJ. */
-  source?: string | null
-  lecturer_name: string
-  body: string
-  status: AnnouncementStatus
-  created_at: string
-}
+/**
+ * Typy związane z komunikatami akademickimi żyją w `src/types/content.ts`
+ * (`AnnouncementMeta`, `AnnouncementStatus`, `UnifiedContent`) — ten plik
+ * zostawiamy dla legacy Profile/Post/Comment/AppNotification.
+ */

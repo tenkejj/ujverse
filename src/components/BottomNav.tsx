@@ -46,7 +46,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
   const iconBtn = (isActive: boolean) =>
     `flex flex-1 items-center justify-center min-h-[52px] py-3 px-2 transition-colors rounded-xl ${
       isActive
-        ? 'text-[#a48955] dark:text-accent-interactive'
+        ? 'text-[#1e293b] dark:text-accent-interactive'
         : 'text-[#1e293b] dark:text-gray-300 dark:hover:text-white/90'
     }`
 
@@ -110,12 +110,12 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
               strokeWidth={activeView === 'notifications' ? 2.35 : 1.85}
               className={`h-7 w-7 shrink-0 transition-colors ${
                 activeView === 'notifications'
-                  ? 'text-[#a48955] dark:text-accent-interactive'
+                  ? 'text-[#1e293b] dark:text-accent-interactive'
                   : 'text-[#1e293b] dark:text-white dark:hover:text-white/80'
               }`}
             />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-[#a48955] text-[#1e293b] text-[9px] font-bold flex items-center justify-center px-0.5 dark:bg-accent-gold dark:text-[#060e1f]">
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-[#1e293b] text-white text-[9px] font-bold flex items-center justify-center px-0.5 dark:bg-accent-gold dark:text-[#060e1f]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}

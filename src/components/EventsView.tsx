@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Archive, Plus, Radio, Search, Shield, User, Users } from 'lucide-react'
 import { formatEventDateLong, formatEventDateParts, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
+import { useUnifiedEvents } from '../hooks/useContent'
+import type { EventMeta, UnifiedContent } from '../types/content'
+import BaseCard from './ui/BaseCard'
 import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
 import WziksOfficialHub from './WziksOfficialHub'
@@ -21,69 +24,97 @@ const FILTERS: { key: EventFilter; label: string }[] = [
   { key: 'Ogłoszenie', label: 'Ogłoszenie' },
 ]
 
-function facultyTag(event: UJEvent): string | null {
-  if (!event.is_official) return null
-  if (event.faculty === 'WZiKS') return 'WZiKS'
-  if (event.source_name && event.source_name.length < 28) return event.source_name
+function facultyTag(content: UnifiedContent<EventMeta>): string | null {
+  if (!content.metadata.isOfficial) return null
+  if (content.metadata.faculty === 'WZiKS') return 'WZiKS'
+  const src = content.metadata.sourceName
+  if (src && src.length < 28) return src
   return 'UJ'
 }
 
-function EventCard({ event, onSelect }: { event: UJEvent; onSelect: (e: UJEvent) => void }) {
-  const { monthLabel, dayNum } = formatEventDateParts(event.date)
-  const official = Boolean(event.is_official)
-  const tag = facultyTag(event)
+function EventCard({
+  content,
+  onSelect,
+}: {
+  content: UnifiedContent<EventMeta>
+  onSelect: (id: string) => void
+}) {
+  const eventDate = new Date(content.metadata.date)
+  const { monthLabel, dayNum } = formatEventDateParts(eventDate)
+  const official = content.metadata.isOfficial
+  const tag = facultyTag(content)
+  const body = (
+    <div className="relative z-[2] flex items-start gap-3">
+      <div className="shrink-0 text-center min-w-[40px]">
+        <span
+          className={`block text-[10px] font-bold leading-none uppercase tracking-wide ${
+            official ? 'text-brand-gold dark:text-brand-gold-bright' : 'text-accent-interactive'
+          }`}
+        >
+          {monthLabel}
+        </span>
+        <span className="block text-lg font-extrabold text-fg-primary leading-tight">
+          {dayNum}
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        {official && tag ? (
+          <span className="inline-flex mb-1 rounded-full border border-[#c9a227]/40 bg-[#c9a227]/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-uj-navy dark:text-[#e8c84a]">
+            {tag}
+          </span>
+        ) : null}
+        <div className="flex items-start justify-between gap-2">
+          <p
+            className={`text-sm leading-snug min-w-0 ${
+              official ? 'font-extrabold text-fg-primary' : 'font-semibold text-fg-primary'
+            }`}
+          >
+            {content.title}
+          </p>
+          {official ? (
+            <span
+              className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-[#c9a227]/45 bg-black/[0.04] dark:bg-black/30 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-uj-navy dark:text-[#f0d060]"
+              title={content.metadata.sourceName ? `Źródło: ${content.metadata.sourceName}` : undefined}
+            >
+              <Shield size={11} className="text-[#b8922a] dark:text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
+              OFICJALNE UJ
+            </span>
+          ) : null}
+        </div>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+          {content.metadata.location}
+        </p>
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+          <Users size={16} strokeWidth={2} className="shrink-0 text-accent-interactive" aria-hidden />
+          <span>{content.metadata.attendees} uczestników</span>
+        </p>
+      </div>
+    </div>
+  )
+
+  if (official) {
+    return (
+      <BaseCard
+        as="button"
+        variant="premium"
+        interactive
+        flush
+        type="button"
+        onClick={() => onSelect(content.id)}
+        className="official-card-premium w-full text-left p-4 cursor-pointer relative bg-gradient-to-br from-[#fdf8ed] via-brand-gold/8 to-slate-50/85 dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent"
+      >
+        {body}
+      </BaseCard>
+    )
+  }
+
   return (
     <button
       type="button"
-      onClick={() => onSelect(event)}
-      className={`w-full text-left rounded-2xl p-4 cursor-pointer transition-colors relative ${
-        official
-          ? 'official-card-premium bg-gradient-to-br from-[#fdf8ed] via-brand-gold/8 to-slate-50/85 border border-brand-gold/45 shadow-[0_0_28px_-12px_rgba(201,162,39,0.4)] ring-1 ring-brand-gold/25 hover:ring-brand-gold/40 dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent dark:border-brand-gold/35 dark:shadow-[0_0_36px_-14px_rgba(201,162,39,0.25)] dark:ring-brand-gold/20 dark:hover:bg-white/[0.03]'
-          : 'bg-card border border-border-app hover:bg-slate-50 dark:hover:bg-white/5'
-      }`}
+      onClick={() => onSelect(content.id)}
+      className="w-full text-left rounded-2xl p-4 cursor-pointer transition-colors relative bg-card border border-border-app hover:bg-slate-50 dark:hover:bg-white/5"
     >
-      <div className="relative z-[2] flex items-start gap-3">
-        <div className="shrink-0 text-center min-w-[40px]">
-          <span
-            className={`block text-[10px] font-bold leading-none uppercase tracking-wide ${
-              official ? 'text-brand-gold dark:text-brand-gold-bright' : 'text-accent-interactive'
-            }`}
-          >
-            {monthLabel}
-          </span>
-          <span className="block text-lg font-extrabold text-fg-primary leading-tight">{dayNum}</span>
-        </div>
-        <div className="min-w-0 flex-1">
-          {official && tag ? (
-            <span className="inline-flex mb-1 rounded-full border border-[#c9a227]/40 bg-[#c9a227]/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-uj-navy dark:text-[#e8c84a]">
-              {tag}
-            </span>
-          ) : null}
-          <div className="flex items-start justify-between gap-2">
-            <p
-              className={`text-sm leading-snug min-w-0 ${
-                official ? 'font-extrabold text-fg-primary' : 'font-semibold text-fg-primary'
-              }`}
-            >
-              {event.title}
-            </p>
-            {official ? (
-              <span
-                className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-[#c9a227]/45 bg-black/[0.04] dark:bg-black/30 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-uj-navy dark:text-[#f0d060]"
-                title={event.source_name ? `Źródło: ${event.source_name}` : undefined}
-              >
-                <Shield size={11} className="text-[#b8922a] dark:text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
-                OFICJALNE UJ
-              </span>
-            ) : null}
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{event.location}</p>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-            <Users size={16} strokeWidth={2} className="shrink-0 text-accent-interactive" aria-hidden />
-            <span>{event.attendees} uczestników</span>
-          </p>
-        </div>
-      </div>
+      {body}
     </button>
   )
 }
@@ -154,6 +185,15 @@ export default function EventsView() {
     if (!featuredEvent) return filtered
     return filtered.filter((ev) => ev.id !== featuredEvent.id)
   }, [filtered, featuredEvent])
+
+  // Mapowanie do UnifiedContent wyłącznie na potrzeby wizualnych kart siatki.
+  // Mutacje (toggleRsvp, deleteEvent) nadal operują na UJEvent w kontekście.
+  const unifiedGrid = useUnifiedEvents()
+  const unifiedGridById = useMemo(() => {
+    const map = new Map<string, UnifiedContent<EventMeta>>()
+    for (const uc of unifiedGrid.events) map.set(uc.id, uc)
+    return map
+  }, [unifiedGrid.events])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6">
@@ -282,9 +322,17 @@ export default function EventsView() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {gridEvents.map((ev) => (
-            <EventCard key={ev.id} event={ev} onSelect={(e) => setSelectedEventId(e.id)} />
-          ))}
+          {gridEvents.map((ev) => {
+            const uc = unifiedGridById.get(ev.id)
+            if (!uc) return null
+            return (
+              <EventCard
+                key={ev.id}
+                content={uc}
+                onSelect={(id) => setSelectedEventId(id)}
+              />
+            )
+          })}
         </div>
       </div>
 

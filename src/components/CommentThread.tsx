@@ -83,7 +83,7 @@ export default function CommentThread({
       {/* Comment input */}
       <div className="flex gap-2.5 items-center pt-1">
         <UserAvatar profile={myProfile} name={displayName} className="h-7 w-7 shrink-0" textSize="text-xs" />
-        <div className="flex flex-1 items-center gap-2 rounded-full border border-slate-200 bg-slate-100 py-1.5 pl-4 pr-1.5 transition-colors focus-within:border-brand-gold/50 dark:border-white/10 dark:bg-[#01020a]">
+        <div className="flex flex-1 items-center gap-2 rounded-full border border-slate-200 bg-slate-100 py-1.5 pl-4 pr-1.5 transition-colors focus-within:border-[#1e293b]/50 dark:border-white/10 dark:bg-[#01020a]">
           <input
             type="text"
             value={inputValue}
@@ -100,7 +100,7 @@ export default function CommentThread({
             type="button"
             onClick={onSubmit}
             disabled={!inputValue.trim() || isSubmitting}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-accent-interactive transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:opacity-30 active:scale-90"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#1e293b] dark:text-accent-interactive transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:opacity-30 active:scale-90"
             aria-label="Wyślij komentarz"
           >
             <Send size={14} strokeWidth={2} />

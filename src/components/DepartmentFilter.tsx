@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { UJ_DEPARTMENTS, DEPT_SHORT } from '../lib/departments'
 
@@ -8,14 +8,11 @@ type Props = {
 }
 
 const chipBase =
-  'shrink-0 inline-flex items-center justify-center px-4 py-2 rounded-full text-sm whitespace-nowrap transition-[color,box-shadow,border-color,background-color] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]/40 min-h-[44px] md:min-h-0 backdrop-blur-md border'
+  'shrink-0 inline-flex items-center justify-center px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 min-h-[34px] md:min-h-0 border'
 
-const chipInactive = `${chipBase} font-medium bg-black/[0.04] border-black/10 text-[#1e293b] hover:bg-black/[0.06] dark:bg-white/5 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.08]`
+const chipInactive = `${chipBase} font-medium bg-transparent border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:text-zinc-700 dark:bg-transparent dark:border-white/10 dark:text-zinc-100 dark:hover:border-white/20`
 
-const chipActive = `${chipBase} font-bold border-[#C5A059] text-[#1e293b] shadow-[0_0_10px_rgba(197,160,89,0.3)] dark:text-white dark:shadow-[0_0_10px_rgba(197,160,89,0.35)] bg-black/[0.06] dark:bg-white/[0.08]`
-
-const navBtnCls =
-  'absolute z-20 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full backdrop-blur-sm border transition-colors duration-150 bg-white/90 border-black/10 text-slate-500 hover:text-[#0f172a] dark:bg-white/10 dark:border-white/10 dark:text-slate-400 dark:hover:text-white'
+const chipActive = `${chipBase} font-semibold bg-transparent border-[#1e293b] text-[#1e293b] dark:text-[#D4AF37] dark:border-[#D4AF37]`
 
 export default function DepartmentFilter({ selected, onChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -42,30 +39,19 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
     }
   }, [updateScrollState])
 
-  const scrollLeft = () => {
-    containerRef.current?.scrollBy({ left: -200, behavior: 'smooth' })
+  const scrollRight = () => {
+    containerRef.current?.scrollBy({ left: 220, behavior: 'smooth' })
   }
 
-  const scrollRight = () => {
-    containerRef.current?.scrollBy({ left: 200, behavior: 'smooth' })
+  const scrollLeft = () => {
+    containerRef.current?.scrollBy({ left: -220, behavior: 'smooth' })
   }
 
   return (
-    <div className="relative m-0 flex w-full min-w-0 max-w-full items-stretch p-0">
-      {canScrollLeft && (
-        <button
-          type="button"
-          onClick={scrollLeft}
-          aria-label="Przewiń w lewo"
-          className={`${navBtnCls} left-0`}
-        >
-          <ChevronLeft size={18} />
-        </button>
-      )}
-
+    <div className="relative w-full">
       <div
         ref={containerRef}
-        className="scrollbar-hide m-0 flex w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto scroll-smooth scroll-pl-0 scroll-pe-4 snap-x py-0 pl-0 pr-4"
+        className="m-0 flex w-full min-w-0 max-w-full flex-nowrap justify-start gap-2 overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:[display:none] py-0 px-4 md:px-6"
       >
         <button
           type="button"
@@ -86,16 +72,29 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
           </button>
         ))}
       </div>
-
+      {canScrollLeft && (
+        <div className="absolute left-0 top-0 z-10 hidden h-full w-12 bg-gradient-to-r from-white to-transparent pointer-events-none dark:from-black/20 md:flex">
+          <button
+            type="button"
+            onClick={scrollLeft}
+            aria-label="Przewiń wydziały w lewo"
+            className="pointer-events-auto absolute left-1 top-1/2 z-20 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 dark:bg-zinc-800/40 backdrop-blur-md border border-white/20 dark:border-white/10 text-[#1e293b] dark:text-white hover:bg-white/20 dark:hover:bg-zinc-700/60 transition-colors"
+          >
+            <ChevronLeft size={14} />
+          </button>
+        </div>
+      )}
       {canScrollRight && (
-        <button
-          type="button"
-          onClick={scrollRight}
-          aria-label="Przewiń w prawo"
-          className={`${navBtnCls} right-0`}
-        >
-          <ChevronRight size={18} />
-        </button>
+        <div className="absolute right-0 top-0 z-10 hidden h-full w-12 bg-gradient-to-l from-white to-transparent pointer-events-none dark:from-black/20 md:flex">
+          <button
+            type="button"
+            onClick={scrollRight}
+            aria-label="Przewiń wydziały w prawo"
+            className="pointer-events-auto absolute right-1 top-1/2 z-20 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 dark:bg-zinc-800/40 backdrop-blur-md border border-white/20 dark:border-white/10 text-[#1e293b] dark:text-white hover:bg-white/20 dark:hover:bg-zinc-700/60 transition-colors"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
       )}
     </div>
   )

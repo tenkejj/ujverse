@@ -1,7 +1,6 @@
 import { Megaphone } from 'lucide-react'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { canonicalDepartment } from '../lib/departments'
 import {
   ACADEMIC_ISI_BADGE_LABEL,
   ACADEMIC_ISI_BADGE_TITLE,
@@ -9,13 +8,11 @@ import {
 } from '../lib/announcementBranding'
 import {
   sectionTitleCls,
-  sideCardCls,
-  sideInnerRowCls,
   sideMutedCls,
   widgetGoldCls,
 } from '../lib/sidePanelStyles'
-import { sortAnnouncements } from '../hooks/useAnnouncements'
-import type { AcademicAnnouncement, AnnouncementStatus } from '../types'
+import BaseCard from './ui/BaseCard'
+import type { AnnouncementMeta, AnnouncementStatus, UnifiedContent } from '../types/content'
 
 const STATUS_META: Record<
   AnnouncementStatus,
@@ -24,17 +21,17 @@ const STATUS_META: Record<
   cancelled: {
     label: 'Odwołane',
     dot: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]',
-    badge: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/25',
+    badge: 'bg-[#1e293b]/10 text-[#1e293b] dark:text-red-400 border-[#1e293b]',
   },
   remote: {
     label: 'Zdalne',
     dot: 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.45)]',
-    badge: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25',
+    badge: 'bg-[#1e293b]/10 text-[#1e293b] dark:text-blue-300 border-[#1e293b]',
   },
   duty: {
     label: 'Dyżur',
     dot: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.45)]',
-    badge: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/25',
+    badge: 'bg-[#1e293b]/10 text-[#1e293b] dark:text-emerald-300 border-[#1e293b]',
   },
 }
 
@@ -44,23 +41,10 @@ function formatAnnDate(iso: string): string {
   return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function filterByDepartment(
-  items: AcademicAnnouncement[],
-  selectedDepartment: string,
-): AcademicAnnouncement[] {
-  if (!selectedDepartment.trim()) return items
-  const sel = canonicalDepartment(selectedDepartment)
-  if (!sel) return items
-  return items.filter((a) => {
-    const rowDept = canonicalDepartment(a.department)
-    if (rowDept == null) return true
-    return rowDept === sel
-  })
-}
-
 const DAYS_TO_SHOW = 30
 
-function getTimestamp(value: string): number {
+function getTimestamp(value: string | null): number {
+  if (!value) return Number.NEGATIVE_INFINITY
   const time = new Date(value).getTime()
   return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
 }
@@ -80,9 +64,7 @@ function AnnouncementBodyClamp({
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    if (expanded) {
-      return
-    }
+    if (expanded) return
     setOverflows(el.scrollHeight > el.clientHeight + 1)
   }, [body, expanded])
 
@@ -111,7 +93,7 @@ function AnnouncementBodyClamp({
 
 function SkeletonBlock() {
   return (
-    <div className={`${sideInnerRowCls} animate-pulse space-y-2`}>
+    <BaseCard variant="inner" className="m-0 p-3 animate-pulse space-y-2">
       <div className="flex justify-between gap-2">
         <div className="h-4 rounded-md bg-black/10 dark:bg-white/10 w-2/5" />
         <div className="h-3 rounded-md bg-black/10 dark:bg-white/10 w-16 shrink-0" />
@@ -119,19 +101,18 @@ function SkeletonBlock() {
       <div className="h-5 w-20 rounded-full bg-black/10 dark:bg-white/10" />
       <div className="h-3 rounded-md bg-black/10 dark:bg-white/10 w-full" />
       <div className="h-3 rounded-md bg-black/10 dark:bg-white/10 w-4/5" />
-    </div>
+    </BaseCard>
   )
 }
 
 type Props = {
-  selectedDepartment: string
-  announcements: AcademicAnnouncement[]
+  /** Komunikaty już przefiltrowane po wydziale (zrobione w `DataService.listAnnouncements`). */
+  announcements: UnifiedContent<AnnouncementMeta>[]
   loading: boolean
   error: string | null
 }
 
 export default function AcademicAnnouncementsWidget({
-  selectedDepartment,
   announcements,
   loading,
   error,
@@ -139,23 +120,20 @@ export default function AcademicAnnouncementsWidget({
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({})
 
   const { visible, totalFiltered, olderCount } = useMemo(() => {
-    const filtered = filterByDepartment(announcements, selectedDepartment)
     const cutoff = new Date()
     cutoff.setHours(0, 0, 0, 0)
     cutoff.setDate(cutoff.getDate() - DAYS_TO_SHOW)
 
-    // Keep full dataset for diagnostics and then filter only what is shown.
-    const sortedAll = sortAnnouncements(filtered).sort(
-      (a, b) => getTimestamp(b.created_at) - getTimestamp(a.created_at),
+    const recent = announcements.filter(
+      (ann) => getTimestamp(ann.timestamp) >= cutoff.getTime(),
     )
-    const recent = sortedAll.filter((ann) => getTimestamp(ann.created_at) >= cutoff.getTime())
 
     return {
       visible: recent,
-      totalFiltered: sortedAll.length,
-      olderCount: sortedAll.length - recent.length,
+      totalFiltered: announcements.length,
+      olderCount: announcements.length - recent.length,
     }
-  }, [announcements, selectedDepartment])
+  }, [announcements])
 
   useLayoutEffect(() => {
     if (import.meta.env.PROD) return
@@ -166,13 +144,13 @@ export default function AcademicAnnouncementsWidget({
       olderCount,
       sortDescValid: visible.every(
         (item, index, arr) =>
-          index === 0 || getTimestamp(arr[index - 1].created_at) >= getTimestamp(item.created_at),
+          index === 0 || getTimestamp(arr[index - 1].timestamp) >= getTimestamp(item.timestamp),
       ),
     })
   }, [announcements.length, totalFiltered, visible, olderCount])
 
   return (
-    <div className={`${sideCardCls} h-[600px] flex flex-col overflow-hidden`}>
+    <BaseCard variant="default" className="p-4 flex h-[600px] flex-col gap-4 overflow-hidden">
       <div className="flex items-center gap-2 mb-3">
         <Megaphone size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
         <span className={sectionTitleCls}>Komunikaty Akademickie</span>
@@ -198,66 +176,70 @@ export default function AcademicAnnouncementsWidget({
       {!loading && !error && visible.length > 0 && (
         <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-8 scrollbar-thin scrollbar-thumb-zinc-800">
           <div className="h-auto space-y-4">
-          <AnimatePresence mode="sync">
-            {visible.map((ann, idx) => {
-              const meta = STATUS_META[ann.status]
-              const expanded = Boolean(expandedById[ann.id])
-              return (
-                <motion.article
-                  key={ann.id}
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.24) }}
-                  className={sideInnerRowCls}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
-                    <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug min-w-0 break-words whitespace-normal">
-                      {ann.lecturer_name}
-                    </p>
-                    <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
-                      {showAcademicIsiBadge(ann.source) && (
+            <AnimatePresence mode="sync">
+              {visible.map((ann, idx) => {
+                const meta = STATUS_META[ann.metadata.status]
+                const expanded = Boolean(expandedById[ann.id])
+                return (
+                  <motion.article
+                    key={ann.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.24) }}
+                    className="min-h-0"
+                  >
+                    <BaseCard variant="inner" className="m-0 p-3 min-h-0">
+                      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug min-w-0 break-words whitespace-normal">
+                          {ann.author.displayName}
+                        </p>
+                        <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
+                          {showAcademicIsiBadge(ann.metadata.source) && (
+                            <span
+                              className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-[#1e293b] dark:text-zinc-400 opacity-70 text-right"
+                              title={ACADEMIC_ISI_BADGE_TITLE}
+                            >
+                              {ACADEMIC_ISI_BADGE_LABEL}
+                            </span>
+                          )}
+                          {ann.timestamp && (
+                            <time
+                              dateTime={ann.timestamp}
+                              className={`text-[10px] tabular-nums ${sideMutedCls}`}
+                            >
+                              {formatAnnDate(ann.timestamp)}
+                            </time>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
                         <span
-                          className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-zinc-600 dark:text-zinc-400 opacity-60 text-right"
-                          title={ACADEMIC_ISI_BADGE_TITLE}
+                          className={`inline-block size-2 rounded-full shrink-0 ${meta.dot}`}
+                          aria-hidden
+                        />
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${meta.badge}`}
                         >
-                          {ACADEMIC_ISI_BADGE_LABEL}
+                          {meta.label}
                         </span>
-                      )}
-                      <time
-                        dateTime={ann.created_at}
-                        className={`text-[10px] tabular-nums ${sideMutedCls}`}
-                      >
-                        {formatAnnDate(ann.created_at)}
-                      </time>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className={`inline-block size-2 rounded-full shrink-0 ${meta.dot}`}
-                      aria-hidden
-                    />
-                    <span
-                      className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${meta.badge}`}
-                    >
-                      {meta.label}
-                    </span>
-                  </div>
-                  <AnnouncementBodyClamp
-                    body={ann.body}
-                    expanded={expanded}
-                    onToggle={() =>
-                      setExpandedById((p) => ({ ...p, [ann.id]: !p[ann.id] }))
-                    }
-                  />
-                </motion.article>
-              )
-            })}
-          </AnimatePresence>
+                      </div>
+                      <AnnouncementBodyClamp
+                        body={ann.body}
+                        expanded={expanded}
+                        onToggle={() =>
+                          setExpandedById((p) => ({ ...p, [ann.id]: !p[ann.id] }))
+                        }
+                      />
+                    </BaseCard>
+                  </motion.article>
+                )
+              })}
+            </AnimatePresence>
           </div>
         </div>
       )}
-    </div>
+    </BaseCard>
   )
 }

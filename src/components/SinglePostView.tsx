@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { supabase } from '../supabaseClient'
 import type { Comment, Post, Profile } from '../types'
 import PostCard from './PostCard'
+import { DataService } from '../services/DataService'
+import type { PostMeta, UnifiedContent } from '../types/content'
 
 type Props = {
   postId: string
@@ -61,36 +62,45 @@ export default function SinglePostView({
     const load = async () => {
       setLoading(true)
       setError(null)
-      const { data, error: fetchError } = await supabase
-        .from('posts')
-        .select('*, profiles(id, full_name, avatar_url, department)')
-        .eq('id', Number(postId))
-        .single()
-
-      if (cancelled) return
-
-      if (fetchError || !data) {
-        setError(fetchError?.message ?? 'Nie znaleziono wpisu.')
+      try {
+        const data = await DataService.fetchPostById(postId)
+        if (cancelled) return
+        if (!data) {
+          setError('Nie znaleziono wpisu.')
+          setLoading(false)
+          return
+        }
+        setPost(data)
         setLoading(false)
-        return
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Nie znaleziono wpisu.')
+        setLoading(false)
       }
-
-      setPost(data as Post)
-      setLoading(false)
     }
 
     void load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [postId])
 
-  // Auto-expand comments when arriving at this view
   useEffect(() => {
     if (!expandedComments.has(postId)) {
       void onToggleComments(postId)
     }
-  // Run only on mount for this postId
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId])
+
+  const unifiedPost: UnifiedContent<PostMeta> | null = useMemo(() => {
+    if (!post) return null
+    const list = DataService.toUnifiedPosts([post], {
+      likesCountByPost,
+      likedPostIds,
+      commentsCountByPost,
+    })
+    return list[0] ?? null
+  }, [post, likesCountByPost, likedPostIds, commentsCountByPost])
 
   return (
     <div className="space-y-3">
@@ -122,17 +132,14 @@ export default function SinglePostView({
         </div>
       )}
 
-      {!loading && !error && post && (
+      {!loading && !error && unifiedPost && (
         <PostCard
-          post={post}
+          content={unifiedPost}
           index={0}
           currentUserId={currentUserId}
           myProfile={myProfile}
           displayName={displayName}
-          likeCount={likesCountByPost[postId] ?? 0}
-          isLiked={Boolean(likedPostIds[postId])}
           isPop={heartPopPostId === postId}
-          commentCount={commentsCountByPost[postId] ?? 0}
           isCommentsOpen={expandedComments.has(postId)}
           comments={commentsByPost[postId] ?? []}
           commentInputValue={commentInput[postId] ?? ''}
@@ -141,7 +148,10 @@ export default function SinglePostView({
           onToggleComments={() => onToggleComments(postId)}
           onSubmitComment={() => onSubmitComment(postId)}
           onCommentInputChange={(v) => onCommentInputChange(postId, v)}
-          onDeletePost={() => { onDeletePost(postId); onBack() }}
+          onDeletePost={() => {
+            onDeletePost(postId)
+            onBack()
+          }}
           onDeleteComment={(cId) => onDeleteComment(cId, postId)}
           onNavigateToUser={onNavigateToUser}
         />

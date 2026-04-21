@@ -3,6 +3,7 @@ import { ImagePlus, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
+import { theme } from '../styles/theme'
 
 const BODY_MAX = 1000
 const RING_CIRCUMFERENCE = 2 * Math.PI * 10
@@ -23,6 +24,8 @@ type Props = {
   onSubmit: () => void
   /** Mobilna szuflada: nieprzezroczyste tło rodzica — karta compose bez własnego „szkła”. */
   sheetMode?: boolean
+  /** Feed desktop opakowuje ComposeBox w BaseCard — wyłącz wewnętrzną obwódkę. */
+  embeddedInCard?: boolean
 }
 
 export default function ComposeBox({
@@ -40,6 +43,7 @@ export default function ComposeBox({
   onReset,
   onSubmit,
   sheetMode = false,
+  embeddedInCard = false,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
@@ -52,7 +56,7 @@ export default function ComposeBox({
   const ringProgress = Math.min(bodyLen / BODY_MAX, 1)
   const ringDash = RING_CIRCUMFERENCE * ringProgress
 
-  const rootCls = sheetMode
+  const rootCls = sheetMode || embeddedInCard
     ? 'overflow-hidden rounded-none border-0 bg-transparent shadow-none'
     : `bg-card dark:bg-bg-app rounded-2xl border border-[#0f172a]/5 transition-[border-color,box-shadow] duration-200 overflow-hidden shadow-sm dark:border-white/10 ${
         isComposing
@@ -60,23 +64,23 @@ export default function ComposeBox({
           : 'dark:shadow-lg dark:shadow-black/20'
       }`
 
-  const innerPad = sheetMode ? 'p-3 sm:p-4' : 'p-4'
+  const innerPad = sheetMode ? 'p-3 sm:p-4' : embeddedInCard ? 'p-6' : 'p-4'
 
   return (
     <div className={rootCls}>
-      <div className={`${innerPad} flex gap-3 items-start`}>
+      <div className={`${innerPad} flex gap-2 items-start`}>
 
         <div className="flex flex-col items-center shrink-0">
-          <UserAvatar profile={myProfile} name={displayName} className="h-10 w-10" textSize="text-sm" />
+          <UserAvatar profile={myProfile} name={displayName} className="h-8 w-8" textSize="text-xs" />
         </div>
 
         <div className="flex-1 min-w-0">
           {!isComposing ? (
-            <div className="rounded-xl bg-card px-3 py-2 -mx-0.5 ring-1 ring-[#0f172a]/[0.04] dark:bg-transparent dark:ring-0">
+            <div className="px-3 py-2">
               <button
                 type="button"
                 onClick={() => { onOpen() }}
-                className="w-full text-left text-fg-secondary dark:text-gray-500 text-[15px] py-2 hover:text-fg-primary/90 dark:hover:text-gray-400 transition-colors"
+                className="w-full text-left text-fg-secondary dark:text-gray-500 text-base py-2 hover:text-fg-primary/90 dark:hover:text-gray-400 transition-colors"
               >
                 Co słychać na uczelni?
               </button>
@@ -94,10 +98,12 @@ export default function ComposeBox({
                 placeholder="Co słychać na uczelni?"
                 rows={3}
                 maxLength={BODY_MAX}
-                className={`w-full min-h-[80px] resize-none rounded-xl px-3 py-2.5 text-[15px] leading-relaxed focus:outline-none ${
+                className={`w-full min-h-[80px] resize-none rounded-xl px-3 py-2.5 text-[15px] leading-relaxed focus:outline-none ${theme.colors.surface.inner} ${
                   sheetMode
                     ? 'border border-zinc-200 bg-zinc-50 text-zinc-900 placeholder:text-zinc-500 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-300/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-600 dark:focus:ring-brand-gold/30'
-                    : 'bg-card text-fg-primary placeholder:text-fg-secondary ring-1 ring-inset ring-[#0f172a]/[0.05] focus:ring-2 focus:ring-[#0f172a]/[0.08] dark:bg-transparent dark:ring-1 dark:ring-inset dark:ring-white/10 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-2 dark:focus:ring-brand-gold/25'
+                    : embeddedInCard
+                      ? 'border-0 ring-0 shadow-none bg-transparent text-fg-primary dark:text-slate-100 placeholder:text-fg-secondary dark:placeholder:text-slate-500'
+                      : 'border border-zinc-200 dark:border-white/10 text-fg-primary placeholder:text-fg-secondary ring-1 ring-inset ring-[#0f172a]/[0.05] focus:ring-2 focus:ring-[#0f172a]/[0.08] dark:ring-1 dark:ring-inset dark:ring-white/10 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-2 dark:focus:ring-brand-gold/25'
                 }`}
               />
 
@@ -125,8 +131,10 @@ export default function ComposeBox({
 
               {/* Toolbar */}
               <div
-                className={`mt-1 flex flex-nowrap items-center justify-between gap-3 border-t border-zinc-200 pt-3 dark:border-white/10 ${
-                  sheetMode ? 'pb-1' : 'pt-2'
+                className={`mt-1 flex flex-nowrap items-center justify-between gap-3 ${
+                  embeddedInCard
+                    ? 'border-0 pt-1'
+                    : `border-t border-zinc-200 pt-3 dark:border-white/10 ${sheetMode ? 'pb-1' : 'pt-2'}`
                 }`}
               >
                 <div className="flex shrink-0 items-center gap-0.5">

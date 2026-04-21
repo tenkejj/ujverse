@@ -42,7 +42,7 @@ const MAX_HISTORY = 12
 
 /** Jak nagłówek „Wydziały” w sidebarze feedu. */
 const crystalSectionTitleCls =
-  'font-bold text-[10px] uppercase tracking-[0.2em] text-brand-gold dark:text-brand-gold-bright'
+  'font-bold text-[10px] uppercase tracking-[0.2em] text-[#1e293b] dark:text-brand-gold-bright'
 
 /** Ramka i promień jak karta postu (PostCard, variant card). */
 const searchResultPanelCls =
@@ -50,7 +50,7 @@ const searchResultPanelCls =
 
 /** Powrót: sama ikona, cel dotykowy min. 44×44, bez ramki / tła (delikatny hover). */
 const backIconBtnCls =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-brand-gold transition-colors duration-200 hover:bg-black/[0.06] dark:text-brand-gold-bright dark:hover:bg-white/[0.06] [-webkit-tap-highlight-color:transparent]'
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#1e293b] transition-colors duration-200 hover:bg-black/[0.06] dark:text-brand-gold-bright dark:hover:bg-white/[0.06] [-webkit-tap-highlight-color:transparent]'
 
 const searchSpringContent = { type: 'spring' as const, stiffness: 300, damping: 30 }
 
@@ -363,7 +363,7 @@ export default function SearchBar({
   const desktopRowHover =
     'hover:bg-slate-100/90 dark:hover:bg-white/[0.06] active:bg-slate-200/80 dark:active:bg-white/[0.08]'
   const desktopHighlight =
-    'ring-2 ring-brand-gold/45 dark:ring-brand-gold-bright/50 bg-brand-gold/[0.08] dark:bg-brand-gold/10'
+    'ring-2 ring-[#1e293b]/45 dark:ring-brand-gold-bright/50 bg-[#1e293b]/[0.08] dark:bg-brand-gold/10'
 
   const activateHighlightedResult = useCallback(() => {
     const hi = highlightIndexRef.current
@@ -438,7 +438,7 @@ export default function SearchBar({
             type="button"
             onClick={clearHistory}
             whileTap={{ scale: 0.97 }}
-            className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-brand-gold dark:hover:text-brand-gold-bright"
+            className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-[#1e293b] dark:hover:text-brand-gold-bright"
           >
             Wyczyść
           </motion.button>
@@ -472,7 +472,7 @@ export default function SearchBar({
                   whileTap={{ scale: 0.99 }}
                   className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-1 pr-0 text-left [-webkit-tap-highlight-color:transparent]"
                 >
-                  <Clock size={15} strokeWidth={2} className="shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+                  <Clock size={15} strokeWidth={2} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
                   <span className="truncate text-[15px] text-fg-primary dark:text-white">{h}</span>
                 </motion.button>
                 <motion.button
@@ -500,7 +500,7 @@ export default function SearchBar({
     const tMuted = 'text-slate-600 dark:text-slate-400'
     const tHint = 'text-slate-600 dark:text-slate-500'
     const tQuote = 'text-uj-navy dark:text-slate-300'
-    const sectionIconCls = 'text-brand-gold dark:text-brand-gold-bright shrink-0'
+    const sectionIconCls = 'text-[#1e293b] dark:text-brand-gold-bright shrink-0'
     const sectionDivider = 'border-border-app'
 
     return (
@@ -515,7 +515,7 @@ export default function SearchBar({
             variants={searchStaggerItem}
             className={`flex items-center gap-2.5 px-4 py-4 text-[13px] ${tMuted}`}
           >
-            <Loader2 size={14} className="animate-spin text-brand-gold dark:text-brand-gold-bright shrink-0" />
+            <Loader2 size={14} className="animate-spin text-[#1e293b] dark:text-brand-gold-bright shrink-0" />
             Szukam…
           </motion.div>
         )}
@@ -671,7 +671,7 @@ export default function SearchBar({
     const tMuted = 'text-fg-secondary dark:text-slate-400'
     const tHint = 'text-slate-500 dark:text-slate-500'
     const tQuote = 'text-fg-primary dark:text-slate-300'
-    const sectionIconCls = 'text-brand-gold dark:text-brand-gold-bright shrink-0'
+    const sectionIconCls = 'text-[#1e293b] dark:text-brand-gold-bright shrink-0'
     const sectionDivider = 'border-slate-200/80 dark:border-white/10'
     let flatIdx = 0
 
@@ -682,7 +682,7 @@ export default function SearchBar({
             className={`lg:col-span-2 flex items-center justify-center gap-2.5 py-10 text-[13px] ${tMuted}`}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <Loader2 size={14} className="animate-spin text-brand-gold dark:text-brand-gold-bright shrink-0" />
+            <Loader2 size={14} className="animate-spin text-[#1e293b] dark:text-brand-gold-bright shrink-0" />
             Szukam…
           </div>
         )}
@@ -741,7 +741,7 @@ export default function SearchBar({
                     <UserAvatar
                       profile={user}
                       name={user.full_name ?? 'U'}
-                      className="h-9 w-9 shrink-0 ring-2 ring-brand-gold/25 dark:ring-brand-gold/30"
+                      className="h-9 w-9 shrink-0 ring-2 ring-[#1e293b]/25 dark:ring-brand-gold/30"
                       textSize="text-sm"
                     />
                     <span className="flex-1 min-w-0">
@@ -806,7 +806,7 @@ export default function SearchBar({
                       <UserAvatar
                         profile={author}
                         name={authorName}
-                        className="h-9 w-9 shrink-0 ring-2 ring-brand-gold/25 dark:ring-brand-gold/30"
+                        className="h-9 w-9 shrink-0 ring-2 ring-[#1e293b]/25 dark:ring-brand-gold/30"
                         textSize="text-sm"
                       />
                       <span className="flex-1 min-w-0">
@@ -893,7 +893,7 @@ export default function SearchBar({
         <button
           type="button"
           onClick={() => setMobileModalOpen(true)}
-          className="md:hidden min-w-[40px] min-h-[40px] w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-brand-gold dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className="md:hidden min-w-[40px] min-h-[40px] w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Szukaj"
         >
           <Search size={24} strokeWidth={2} className="shrink-0" />
@@ -902,7 +902,7 @@ export default function SearchBar({
         <button
           type="button"
           onClick={() => setDesktopOverlayOpen(true)}
-          className="hidden md:flex w-9 h-9 shrink-0 items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-brand-gold dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className="hidden md:flex w-9 h-9 shrink-0 items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Szukaj"
         >
           <Search size={20} strokeWidth={2} className="shrink-0" />
@@ -945,7 +945,7 @@ export default function SearchBar({
                   <div className="relative min-w-0 flex-1 rounded-2xl">
                     <motion.div
                       aria-hidden
-                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-brand-gold dark:border-brand-gold-bright"
+                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-[#1e293b] dark:border-brand-gold-bright"
                       initial={false}
                       animate={{
                         opacity: desktopInputFocused ? 1 : 0,
@@ -956,7 +956,7 @@ export default function SearchBar({
                     <Search
                       size={18}
                       strokeWidth={2}
-                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-brand-gold dark:text-brand-gold-bright"
+                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-[#1e293b] dark:text-brand-gold-bright"
                     />
                     <input
                       ref={desktopInputRef}
@@ -970,7 +970,7 @@ export default function SearchBar({
                       onFocus={() => setDesktopInputFocused(true)}
                       onBlur={() => setDesktopInputFocused(false)}
                       placeholder="Szukaj użytkowników, wpisów, miejsc…"
-                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[15px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-brand-gold dark:caret-brand-gold-bright"
+                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[15px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-[#1e293b] dark:caret-brand-gold-bright"
                     />
                   </div>
                 </div>
@@ -1024,7 +1024,7 @@ export default function SearchBar({
                   <div className="relative min-w-0 flex-1 rounded-2xl">
                     <motion.div
                       aria-hidden
-                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-brand-gold dark:border-brand-gold-bright"
+                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-[#1e293b] dark:border-brand-gold-bright"
                       initial={false}
                       animate={{
                         opacity: mobileInputFocused ? 1 : 0,
@@ -1035,7 +1035,7 @@ export default function SearchBar({
                     <Search
                       size={18}
                       strokeWidth={2}
-                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-brand-gold dark:text-brand-gold-bright"
+                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-[#1e293b] dark:text-brand-gold-bright"
                     />
                     <input
                       ref={mobileInputRef}
@@ -1055,7 +1055,7 @@ export default function SearchBar({
                       onFocus={() => setMobileInputFocused(true)}
                       onBlur={() => setMobileInputFocused(false)}
                       placeholder="Szukaj…"
-                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[16px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-brand-gold dark:caret-brand-gold-bright"
+                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[16px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-[#1e293b] dark:caret-brand-gold-bright"
                     />
                   </div>
                 </div>
@@ -1118,7 +1118,7 @@ export default function SearchBar({
                             {isActive && (
                               <motion.span
                                 layoutId="searchMobileTabIndicator"
-                                className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-brand-gold dark:bg-brand-gold-bright"
+                                className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[#1e293b] dark:bg-brand-gold-bright"
                                 transition={searchSpringContent}
                               />
                             )}

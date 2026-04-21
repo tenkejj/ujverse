@@ -12,6 +12,7 @@ import { supabase } from '../supabaseClient'
 import { useEvents } from '../hooks/useEvents'
 import UserAvatar from './UserAvatar'
 import PostCard from './PostCard'
+import { DataService } from '../services/DataService'
 import ImageCropperModal from './ImageCropperModal'
 import EmptyState from './EmptyState'
 import FollowListsModal, { type FollowModalTab } from './FollowListsModal'
@@ -461,23 +462,25 @@ export default function ProfileView({
 
   const renderPostList = (list: Post[]) => {
     if (list.length === 0) return null
+    const unifiedList = DataService.toUnifiedPosts(list, {
+      likesCountByPost,
+      likedPostIds,
+      commentsCountByPost,
+    })
     return (
       <div className="rounded-2xl border border-[#0f172a]/10 bg-card overflow-hidden divide-y divide-[#0f172a]/10 dark:border-white/10 dark:divide-white/10">
-        {list.map((post, idx) => {
-          const postId = String(post?.id ?? `fallback-${idx}`)
+        {unifiedList.map((uc, idx) => {
+          const postId = uc.id
           return (
             <PostCard
               key={postId}
               variant="stacked"
-              post={post}
+              content={uc}
               index={idx}
               currentUserId={currentUserId}
               myProfile={myProfile}
               displayName={displayName}
-              likeCount={likesCountByPost[postId] ?? 0}
-              isLiked={Boolean(likedPostIds[postId])}
               isPop={heartPopPostId === postId}
-              commentCount={commentsCountByPost[postId] ?? 0}
               isCommentsOpen={expandedComments.has(postId)}
               comments={commentsByPost[postId] ?? []}
               commentInputValue={commentInput[postId] ?? ''}

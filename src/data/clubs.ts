@@ -8,6 +8,12 @@ export type Club = {
   tone: ClubTagTone
 }
 
+export type ClubsState = {
+  items: Club[]
+  loading: boolean
+  error: string | null
+}
+
 export const CLUBS_SOURCE_URL = 'https://wzks.uj.edu.pl/studenci/kola-naukowe'
 
 export const CLUBS: Club[] = [
