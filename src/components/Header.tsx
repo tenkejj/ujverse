@@ -265,9 +265,9 @@ export default function Header({
           aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
         >
           {theme === 'dark' ? (
-            <Sun size={24} strokeWidth={2} className="shrink-0" />
+            <Sun size={26} strokeWidth={2} className="shrink-0 stroke-[2.5] md:stroke-2" />
           ) : (
-            <Moon size={24} strokeWidth={2} className="shrink-0" />
+            <Moon size={26} strokeWidth={2} className="shrink-0 stroke-[2.5] md:stroke-2" />
           )}
         </button>
 

@@ -896,7 +896,7 @@ export default function SearchBar({
           className="md:hidden min-w-[40px] min-h-[40px] w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Szukaj"
         >
-          <Search size={24} strokeWidth={2} className="shrink-0" />
+          <Search size={26} strokeWidth={2} className="shrink-0 stroke-[2.5] md:stroke-2" />
         </button>
 
         <button
@@ -905,7 +905,7 @@ export default function SearchBar({
           className="hidden md:flex w-9 h-9 shrink-0 items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label="Szukaj"
         >
-          <Search size={20} strokeWidth={2} className="shrink-0" />
+          <Search size={20} strokeWidth={2} className="shrink-0 md:stroke-2" />
         </button>
       </div>
 
