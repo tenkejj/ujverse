@@ -1005,7 +1005,7 @@ export default function SearchBar({
               transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <motion.div
-                className="relative flex flex-1 min-h-0 flex-col px-4 pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+                className="relative flex w-full max-w-full overflow-x-clip flex-1 min-h-0 flex-col px-4 pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
@@ -1060,10 +1060,10 @@ export default function SearchBar({
                   </div>
                 </div>
 
-                <div className="-mx-4 mb-6 shrink-0 border-b border-border-app dark:border-white/10">
+                <div className="mb-6 w-full min-w-0 max-w-full shrink-0 overflow-x-clip border-b border-border-app dark:border-white/10">
                   <LayoutGroup>
                     <nav
-                      className="relative flex overflow-x-auto px-2 scrollbar-none [-webkit-overflow-scrolling:touch] gap-0.5"
+                      className="relative flex w-full min-w-0 max-w-full gap-0.5 overflow-x-auto overscroll-x-contain px-2 scrollbar-none [-webkit-overflow-scrolling:touch]"
                       role="tablist"
                       aria-label="Zakres wyszukiwania"
                     >

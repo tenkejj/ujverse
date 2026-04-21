@@ -51,7 +51,7 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
     <div className="relative w-full">
       <div
         ref={containerRef}
-        className="m-0 flex w-full min-w-0 max-w-full flex-nowrap justify-start gap-2 overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:[display:none] py-0 px-4 md:px-6"
+        className="m-0 flex w-full min-w-0 max-w-full flex-nowrap justify-start gap-2 overflow-x-auto overscroll-x-contain scrollbar-hide [-webkit-overflow-scrolling:touch] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:[display:none] py-0 px-4 md:px-6"
       >
         <button
           type="button"

@@ -60,7 +60,7 @@ export default function WziksOfficialHub({ events, showOfflineHint }: Props) {
         </span>
       </div>
       <div
-        className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory [-webkit-overflow-scrolling:touch] custom-scrollbar"
+        className="flex w-full min-w-0 max-w-full gap-4 overflow-x-auto overscroll-x-contain pb-2 px-1 snap-x snap-mandatory [-webkit-overflow-scrolling:touch] custom-scrollbar"
         style={{ scrollbarGutter: 'stable' }}
       >
         {official.map((ev) => (
