@@ -134,7 +134,7 @@ export default function Header({
           : 'border-b border-transparent bg-bg-app/90 backdrop-blur-md dark:border-transparent dark:bg-black/25 dark:backdrop-blur-md'
       }`}
     >
-      <div className="w-12 md:w-24 flex-shrink-0 flex items-center justify-start relative z-10">
+      <div className="w-[100px] min-w-[100px] md:w-24 md:min-w-24 flex-shrink-0 flex items-center justify-start relative z-10">
         <SearchBar
           onNavigateToUser={onNavigateToUser}
           onNavigateToPost={onNavigateToPost}
@@ -166,12 +166,12 @@ export default function Header({
               maskPosition: 'center',
               WebkitMaskPosition: 'center',
             }}
-            className="mx-auto h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] -translate-x-[1px] md:translate-x-0 transition-colors dark:bg-brand-gold-bright bg-logo-navy"
+            className="mx-auto h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2px] translate-x-[4px] md:translate-x-0 transition-colors dark:bg-brand-gold-bright bg-logo-navy"
           />
         </motion.button>
       </div>
 
-      <div className="w-12 md:w-24 flex-shrink-0 flex items-center justify-center md:justify-end gap-4 relative z-10">
+      <div className="w-[100px] min-w-[100px] md:w-24 md:min-w-24 flex-shrink-0 flex items-center justify-end gap-3 relative z-10">
         <div className="hidden md:flex items-center gap-0.5 shrink-0">
           <button
             type="button"
@@ -271,14 +271,14 @@ export default function Header({
           )}
         </button>
 
-        <div className="relative shrink-0 min-w-0 hidden md:block" ref={menuRef}>
+        <div className="relative shrink-0 min-w-0 block" ref={menuRef}>
           <button
             type="button"
             onClick={() => {
               onCloseNotificationsPanel()
               setMenuOpen((v) => !v)
             }}
-            className="group flex items-center gap-2 rounded-full pl-1 pr-2 py-1.5 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1 hover:bg-[#1e293b]/10 transition-all duration-300"
+            className="group flex items-center gap-2 rounded-full pl-1 pr-1 py-1 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1 hover:bg-[#1e293b]/10 transition-all duration-300"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label="Menu użytkownika"
@@ -295,7 +295,7 @@ export default function Header({
             <ChevronDown
               size={24}
               strokeWidth={2}
-              className={`shrink-0 ml-1 text-[#1e293b] dark:text-gray-500 transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
+              className={`hidden md:block shrink-0 ml-1 text-[#1e293b] dark:text-gray-500 transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 

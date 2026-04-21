@@ -15,8 +15,9 @@ html {
   scroll-behavior: smooth;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   width: 100%;
-  max-width: 100%;
-  overflow-x: clip;
+  max-width: 100vw;
+  overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -124,8 +125,9 @@ html {
 body {
   @apply min-h-screen bg-bg-app text-fg-primary transition-colors duration-200;
   width: 100%;
-  max-width: 100%;
-  overflow-x: clip;
+  max-width: 100vw;
+  overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 #root {
