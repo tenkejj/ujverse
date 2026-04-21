@@ -12,6 +12,10 @@ import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
+import {
+  DESKTOP_ICON_STROKE,
+  HEADER_SIDE_SECTION_WIDTH,
+} from '../constants/ui-theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -80,6 +84,10 @@ export default function Header({
   const { clubs, loading: clubsLoading, error: clubsError, reload: reloadClubs } = useClubs()
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
   const hasAnyNotifications = notifications.length > 0
+  const headerSideSectionStyle = {
+    width: HEADER_SIDE_SECTION_WIDTH,
+    minWidth: HEADER_SIDE_SECTION_WIDTH,
+  }
 
   useEffect(() => {
     if (bellRingTick === 0) return
@@ -134,7 +142,10 @@ export default function Header({
           : 'border-b border-transparent bg-bg-app/90 backdrop-blur-md dark:border-transparent dark:bg-black/25 dark:backdrop-blur-md'
       }`}
     >
-      <div className="w-[100px] min-w-[100px] md:w-24 md:min-w-24 flex-shrink-0 flex items-center justify-start relative z-10">
+      <div
+        className="flex-shrink-0 flex items-center justify-start relative z-10"
+        style={headerSideSectionStyle}
+      >
         <SearchBar
           onNavigateToUser={onNavigateToUser}
           onNavigateToPost={onNavigateToPost}
@@ -171,7 +182,10 @@ export default function Header({
         </motion.button>
       </div>
 
-      <div className="w-[100px] min-w-[100px] md:w-24 md:min-w-24 flex-shrink-0 flex items-center justify-end gap-3 relative z-10">
+      <div
+        className="flex-shrink-0 flex items-center justify-end gap-3 relative z-10"
+        style={headerSideSectionStyle}
+      >
         <div className="hidden md:flex items-center gap-0.5 shrink-0">
           <button
             type="button"
@@ -180,12 +194,12 @@ export default function Header({
               onCloseNotificationsPanel()
               setClubsModalOpen(true)
             }}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium text-[#1e293b] transition-colors hover:text-[#1e293b] hover:bg-black/5 dark:text-gray-300 dark:hover:text-brand-gold-bright dark:hover:bg-white/10"
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium text-[#1e293b] transition-colors hover:text-[#1e293b] hover:bg-black/5 dark:text-brand-gold-bright/85 dark:hover:text-brand-gold-bright dark:hover:bg-white/10"
             aria-haspopup="dialog"
             aria-expanded={clubsModalOpen}
             aria-label="Koła naukowe"
           >
-            <Users size={15} strokeWidth={1.95} />
+            <Users size={15} strokeWidth={DESKTOP_ICON_STROKE} />
             <span>Koła Naukowe</span>
           </button>
           <button
@@ -194,11 +208,11 @@ export default function Header({
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10 ${
               activeView === 'feed'
                 ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
+                : 'text-[#1e293b] dark:text-brand-gold-bright/85'
             }`}
             aria-label="Strona główna"
           >
-            <Home size={20} strokeWidth={activeView === 'feed' ? 2.35 : 1.85} />
+            <Home size={20} strokeWidth={DESKTOP_ICON_STROKE} />
           </button>
           <button
             type="button"
@@ -206,11 +220,11 @@ export default function Header({
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
               activeView === 'events'
                 ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
+                : 'text-[#1e293b] dark:text-brand-gold-bright/85'
             }`}
             aria-label="Wydarzenia"
           >
-            <CalendarDays size={20} strokeWidth={activeView === 'events' ? 2.35 : 1.85} />
+            <CalendarDays size={20} strokeWidth={DESKTOP_ICON_STROKE} />
           </button>
 
           <div className="relative shrink-0">
@@ -226,7 +240,7 @@ export default function Header({
               className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-black/5 dark:hover:bg-white/10 ${
                 bellActive
                   ? 'text-[#1e293b] dark:text-brand-gold-bright ring-2 ring-[#1e293b]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(30,41,59,0.35)]'
-                  : 'text-[#1e293b] dark:text-gray-400'
+                  : 'text-[#1e293b] dark:text-brand-gold-bright/85'
               }`}
             >
               <motion.span
@@ -238,7 +252,7 @@ export default function Header({
                 }
                 transition={{ duration: 0.48, ease: [0.36, 0.07, 0.19, 0.99] }}
               >
-                <Bell size={20} strokeWidth={bellActive ? 2.35 : 1.85} />
+                <Bell size={20} strokeWidth={DESKTOP_ICON_STROKE} />
               </motion.span>
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center pointer-events-none">
@@ -261,7 +275,7 @@ export default function Header({
         <button
           type="button"
           onClick={toggleTheme}
-          className="shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2 text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          className="shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2 text-[#1e293b] dark:text-brand-gold-bright hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
         >
           {theme === 'dark' ? (
@@ -289,13 +303,13 @@ export default function Header({
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
-            <span className="hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium max-w-[100px] truncate transition-colors duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright">
+            <span className="hidden sm:inline text-[#1e293b] dark:text-brand-gold-bright text-sm font-medium max-w-[100px] truncate transition-colors duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright">
               {displayName}
             </span>
             <ChevronDown
               size={24}
               strokeWidth={2}
-              className={`hidden md:block shrink-0 ml-1 text-[#1e293b] dark:text-gray-500 transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
+              className={`hidden md:block shrink-0 ml-1 text-[#1e293b] dark:text-brand-gold-bright/75 transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -312,7 +326,7 @@ export default function Header({
                 <div className="flex items-center gap-3 border-b border-[#0f172a]/10 px-4 py-3.5 dark:border-white/5">
                   <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9 shrink-0" textSize="text-sm" />
                   <div className="flex min-h-9 min-w-0 flex-1 items-center">
-                    <p className="w-full text-sm font-semibold leading-tight text-[#1e293b] dark:text-white truncate">
+                    <p className="w-full text-sm font-semibold leading-tight text-[#1e293b] dark:text-brand-gold-bright truncate">
                       {displayName}
                     </p>
                   </div>

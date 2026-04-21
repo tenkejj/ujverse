@@ -1,6 +1,7 @@
 import { Bell, CalendarDays, Home, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useScrollY } from '../hooks/useScrollY'
+import { MOBILE_ICON_SIZE, MOBILE_ICON_STROKE } from '../constants/ui-theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -10,8 +11,6 @@ type Props = {
   onOpenCompose: () => void
   unreadCount: number
 }
-
-const ICON = 28
 
 function ComposePlusIcon() {
   return (
@@ -47,7 +46,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
     `flex flex-1 items-center justify-center min-h-[52px] py-3 px-2 transition-colors rounded-xl ${
       isActive
         ? 'text-[#1e293b] dark:text-accent-interactive'
-        : 'text-[#1e293b] dark:text-gray-300 dark:hover:text-white/90'
+        : 'text-[#1e293b] dark:text-brand-gold-bright/85 dark:hover:text-brand-gold-bright'
     }`
 
   return (
@@ -67,7 +66,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           className={iconBtn(activeView === 'feed')}
           aria-label="Strona główna"
         >
-          <Home size={ICON} strokeWidth={activeView === 'feed' ? 2.35 : 1.85} className="shrink-0" />
+          <Home size={MOBILE_ICON_SIZE} strokeWidth={MOBILE_ICON_STROKE} className="shrink-0" />
         </motion.button>
 
         <motion.button
@@ -77,7 +76,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           className={iconBtn(activeView === 'events')}
           aria-label="Wydarzenia"
         >
-          <CalendarDays size={ICON} strokeWidth={activeView === 'events' ? 2.35 : 1.85} className="shrink-0" />
+          <CalendarDays size={MOBILE_ICON_SIZE} strokeWidth={MOBILE_ICON_STROKE} className="shrink-0" />
         </motion.button>
 
         <div className="flex items-center justify-center shrink-0 px-0.5 min-h-[52px]">
@@ -106,12 +105,12 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
         >
           <div className="relative shrink-0">
             <Bell
-              size={ICON}
-              strokeWidth={activeView === 'notifications' ? 2.35 : 1.85}
+              size={MOBILE_ICON_SIZE}
+              strokeWidth={MOBILE_ICON_STROKE}
               className={`h-7 w-7 shrink-0 transition-colors ${
                 activeView === 'notifications'
                   ? 'text-[#1e293b] dark:text-accent-interactive'
-                  : 'text-[#1e293b] dark:text-white dark:hover:text-white/80'
+                  : 'text-[#1e293b] dark:text-brand-gold-bright/85 dark:hover:text-brand-gold-bright'
               }`}
             />
             {unreadCount > 0 && (
@@ -129,7 +128,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
           className={iconBtn(activeView === 'profile')}
           aria-label="Profil"
         >
-          <User size={ICON} strokeWidth={activeView === 'profile' ? 2.35 : 1.85} className="shrink-0" />
+          <User size={MOBILE_ICON_SIZE} strokeWidth={MOBILE_ICON_STROKE} className="shrink-0" />
         </motion.button>
       </div>
     </nav>
