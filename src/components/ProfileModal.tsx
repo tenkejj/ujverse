@@ -5,10 +5,9 @@ import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import ImageCropperModal from './ImageCropperModal'
 import FacultyAccent from './profile/FacultyAccent'
-import { PROFILE_MOBILE } from '../styles/mobile-theme'
+import { PROFILE_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
 
-const fieldInputCls =
-  'w-full rounded-xl border border-black/10 bg-black/[0.05] p-3 text-slate-900 shadow-none ring-0 outline-none transition-colors placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:shadow-none focus:border-[var(--profile-accent)] dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-neutral-500'
+const fieldInputCls = SEARCH_MOBILE.mobileInputClass
 
 
 type Props = {
@@ -146,7 +145,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
       <FacultyAccent department={department}>
         <div
           role="presentation"
-          className="bg-black/90"
+          className="bg-bg-app/90"
           style={backdropMerged}
           onPointerDown={(e) => {
             if (e.target === e.currentTarget) handleClose()
@@ -160,14 +159,14 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
             style={panelMerged}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 -mx-6 mb-4 flex shrink-0 items-center justify-between border-b border-black/10 bg-white/65 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#02040e]/65">
-              <h2 id="profile-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">
+            <div className="sticky top-0 z-10 -mx-6 mb-4 flex shrink-0 items-center justify-between border-b border-border-app bg-bg-app/80 px-6 py-4 backdrop-blur-xl dark:border-white/10">
+              <h2 id="profile-modal-title" className="text-lg font-extrabold text-fg-primary">
                 Edytuj profil
               </h2>
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded-full p-2 text-slate-600 shadow-none ring-0 transition-colors hover:bg-slate-100/70 dark:text-white dark:hover:bg-white/10"
+                className="rounded-full p-2 text-fg-secondary shadow-none ring-0 transition-colors hover:bg-bg-app/70 hover:text-fg-primary dark:hover:bg-white/10"
                 aria-label="Zamknij"
               >
                 <X className="h-5 w-5" strokeWidth={2} />
@@ -184,32 +183,32 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                     className="h-24 w-24 rounded-full border-4 border-brand-gold/35 object-cover shadow-none"
                   />
                 ) : (
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-slate-200 bg-slate-100 shadow-none ring-0 dark:border-[#1c2b4e] dark:bg-[#01020a]">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-border-app bg-bg-app/70 shadow-none ring-0 dark:border-white/10 dark:bg-bg-app">
                     <span className="text-2xl font-bold text-accent-interactive">
                       {(name || session.user.email || 'U').charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
                 {isUploadingAvatar && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 shadow-none ring-0">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent shadow-none" />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-bg-app/60 shadow-none ring-0">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-fg-primary border-t-transparent shadow-none" />
                   </div>
                 )}
                 <button
                   type="button"
                   disabled={isUploadingAvatar}
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 rounded-full bg-brand-gold p-1.5 text-black shadow-none ring-0 transition-transform hover:scale-110 hover:bg-brand-gold/85 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="absolute -bottom-1 -right-1 rounded-full bg-brand-gold p-1.5 text-bg-app shadow-none ring-0 transition-transform hover:scale-110 hover:bg-brand-gold/85 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <ImagePlus className="h-3.5 w-3.5" />
                 </button>
               </div>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-              <p className="text-xs text-slate-500 dark:text-neutral-400">Kliknij ikonę, aby zmienić zdjęcie</p>
+              <p className="text-xs text-fg-secondary">Kliknij ikonę, aby zmienić zdjęcie</p>
             </div>
 
             <div>
-              <label htmlFor="profile-name" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
+              <label htmlFor="profile-name" className="mb-1.5 block font-medium text-fg-primary">
                 Imię / Nazwa
               </label>
               <input
@@ -224,7 +223,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
             </div>
 
             <div>
-              <label htmlFor="profile-bio" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
+              <label htmlFor="profile-bio" className="mb-1.5 block font-medium text-fg-primary">
                 O mnie
               </label>
               <textarea
@@ -236,11 +235,11 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                 maxLength={300}
                 className={`${fieldInputCls} resize-none`}
               />
-              <p className="mt-1 text-right text-[11px] text-slate-500 dark:text-neutral-500">{bio.length}/300</p>
+              <p className="mt-1 text-right text-[11px] text-fg-secondary">{bio.length}/300</p>
             </div>
 
             <div>
-              <label htmlFor="profile-location" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
+              <label htmlFor="profile-location" className="mb-1.5 block font-medium text-fg-primary">
                 Lokalizacja
               </label>
               <input
@@ -261,11 +260,11 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
             )}
           </div>
 
-            <div className="sticky bottom-0 -mx-6 mt-4 flex shrink-0 justify-end gap-3 border-t border-black/10 bg-white/65 px-6 pt-4 pb-1 backdrop-blur-xl shadow-none ring-0 dark:border-white/10 dark:bg-[#02040e]/65">
+            <div className="sticky bottom-0 -mx-6 mt-4 flex shrink-0 justify-end gap-3 border-t border-border-app bg-bg-app/80 px-6 pt-4 pb-1 backdrop-blur-xl shadow-none ring-0 dark:border-white/10">
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 shadow-none ring-0 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-fg-secondary shadow-none ring-0 transition-colors hover:text-fg-primary dark:hover:text-fg-primary"
               >
                 Anuluj
               </button>
@@ -273,7 +272,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-xl bg-[var(--profile-accent)] px-6 py-2.5 text-sm font-bold text-white shadow-[var(--profile-glow)] ring-0 outline-none transition-opacity hover:opacity-90 disabled:opacity-70"
+                className="rounded-xl bg-[var(--profile-accent)] px-6 py-2.5 text-sm font-bold text-bg-app shadow-[var(--profile-glow)] ring-0 outline-none transition-opacity hover:opacity-90 disabled:opacity-70"
               >
                 {saving ? 'Zapisuję…' : 'Zapisz'}
               </button>
