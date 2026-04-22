@@ -313,7 +313,7 @@ export default function Header({
             <ChevronDown
               size={24}
               strokeWidth={2}
-              className={`hidden md:block shrink-0 ml-1 text-[#1e293b] dark:text-gray-500 transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
+              className={`hidden md:block shrink-0 ml-1 text-fg-primary dark:text-brand-gold-bright transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -325,9 +325,9 @@ export default function Header({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-[#0f172a]/10 bg-white/85 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl backdrop-saturate-150 origin-top-right dark:border-white/5 dark:bg-black/55 dark:shadow-2xl dark:shadow-black/50"
+                className="absolute right-0 top-full z-[120] mt-2 w-72 overflow-hidden rounded-2xl border border-[#0f172a]/10 bg-white/95 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl backdrop-saturate-150 origin-top-right dark:border-white/10 dark:bg-[#01020a]/90 dark:shadow-2xl dark:shadow-black/50"
               >
-                <div className="flex items-center gap-3 border-b border-[#0f172a]/10 px-4 py-3.5 dark:border-white/5">
+                <div className="flex items-center gap-3 border-b border-[#0f172a]/10 px-4 py-3.5 dark:border-white/10">
                   <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9 shrink-0" textSize="text-sm" />
                   <div className="flex min-h-9 min-w-0 flex-1 items-center">
                     <p className="w-full text-sm font-semibold leading-tight text-[#1e293b] dark:text-white truncate">
@@ -363,7 +363,7 @@ export default function Header({
                   </button>
                 </div>
 
-                <div className="border-t border-[#0f172a]/10 px-2 py-2 dark:border-white/5">
+                <div className="border-t border-[#0f172a]/10 px-2 py-2 dark:border-white/10">
                   <button
                     role="menuitem"
                     onClick={() => void supabase.auth.signOut()}
