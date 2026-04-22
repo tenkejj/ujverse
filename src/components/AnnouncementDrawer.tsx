@@ -5,26 +5,13 @@ import {
   ACADEMIC_ISI_BADGE_TITLE,
   showAcademicIsiBadge,
 } from '../lib/announcementBranding'
-import type { AnnouncementMeta, AnnouncementStatus, UnifiedContent } from '../types/content'
+import {
+  ANNOUNCEMENT_STATUS_BADGE,
+  ANNOUNCEMENT_STATUS_DOT,
+  ANNOUNCEMENT_STATUS_LABEL,
+} from '../lib/announcementStatusStyles'
+import type { AnnouncementMeta, UnifiedContent } from '../types/content'
 import UserAvatar from './UserAvatar'
-
-const STATUS_DOT: Record<AnnouncementStatus, string> = {
-  cancelled: 'bg-red-500',
-  remote: 'bg-blue-500',
-  duty: 'bg-emerald-500',
-}
-
-const STATUS_LABEL: Record<AnnouncementStatus, string> = {
-  cancelled: 'Odwołane',
-  remote: 'Zdalne',
-  duty: 'Dyżur',
-}
-
-const BADGE: Record<AnnouncementStatus, string> = {
-  cancelled: 'bg-red-500/20 text-red-300 border-red-500/30',
-  remote: 'bg-blue-500/20 text-blue-200 border-blue-500/30',
-  duty: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
-}
 
 function formatAnnDate(iso: string): string {
   const d = new Date(iso)
@@ -105,13 +92,13 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                 )}
                 <div className="mt-2 flex items-center gap-2">
                   <span
-                    className={`inline-block size-2 shrink-0 rounded-full ${STATUS_DOT[announcement.metadata.status]}`}
+                    className={`inline-block size-2 shrink-0 rounded-full ${ANNOUNCEMENT_STATUS_DOT[announcement.metadata.status]}`}
                     aria-hidden
                   />
                   <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${BADGE[announcement.metadata.status]}`}
+                    className={`inline-flex rounded-full border bg-transparent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${ANNOUNCEMENT_STATUS_BADGE[announcement.metadata.status]}`}
                   >
-                    {STATUS_LABEL[announcement.metadata.status]}
+                    {ANNOUNCEMENT_STATUS_LABEL[announcement.metadata.status]}
                   </span>
                 </div>
               </div>

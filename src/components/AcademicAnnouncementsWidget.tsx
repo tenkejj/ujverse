@@ -7,33 +7,17 @@ import {
   showAcademicIsiBadge,
 } from '../lib/announcementBranding'
 import {
+  ANNOUNCEMENT_STATUS_BADGE,
+  ANNOUNCEMENT_STATUS_DOT,
+  ANNOUNCEMENT_STATUS_LABEL,
+} from '../lib/announcementStatusStyles'
+import {
   sectionTitleCls,
   sideMutedCls,
   widgetGoldCls,
 } from '../lib/sidePanelStyles'
 import BaseCard from './ui/BaseCard'
-import type { AnnouncementMeta, AnnouncementStatus, UnifiedContent } from '../types/content'
-
-const STATUS_META: Record<
-  AnnouncementStatus,
-  { label: string; dot: string; badge: string }
-> = {
-  cancelled: {
-    label: 'Odwołane',
-    dot: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]',
-    badge: 'bg-[#1e293b]/10 text-[#1e293b] dark:text-red-400 border-[#1e293b]',
-  },
-  remote: {
-    label: 'Zdalne',
-    dot: 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.45)]',
-    badge: 'bg-[#1e293b]/10 text-[#1e293b] dark:text-blue-300 border-[#1e293b]',
-  },
-  duty: {
-    label: 'Dyżur',
-    dot: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.45)]',
-    badge: 'bg-[#1e293b]/10 text-[#1e293b] dark:text-emerald-300 border-[#1e293b]',
-  },
-}
+import type { AnnouncementMeta, UnifiedContent } from '../types/content'
 
 function formatAnnDate(iso: string): string {
   const d = new Date(iso)
@@ -178,7 +162,6 @@ export default function AcademicAnnouncementsWidget({
           <div className="h-auto space-y-4">
             <AnimatePresence mode="sync">
               {visible.map((ann, idx) => {
-                const meta = STATUS_META[ann.metadata.status]
                 const expanded = Boolean(expandedById[ann.id])
                 return (
                   <motion.article
@@ -216,13 +199,13 @@ export default function AcademicAnnouncementsWidget({
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <span
-                          className={`inline-block size-2 rounded-full shrink-0 ${meta.dot}`}
+                          className={`inline-block size-2 rounded-full shrink-0 ${ANNOUNCEMENT_STATUS_DOT[ann.metadata.status]}`}
                           aria-hidden
                         />
                         <span
-                          className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${meta.badge}`}
+                          className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border bg-transparent ${ANNOUNCEMENT_STATUS_BADGE[ann.metadata.status]}`}
                         >
-                          {meta.label}
+                          {ANNOUNCEMENT_STATUS_LABEL[ann.metadata.status]}
                         </span>
                       </div>
                       <AnnouncementBodyClamp
