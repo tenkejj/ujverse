@@ -7,7 +7,7 @@ import ImageCropperModal from './ImageCropperModal'
 import FacultyAccent from './profile/FacultyAccent'
 import { PROFILE_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
 
-const fieldInputCls = SEARCH_MOBILE.mobileInputClass
+const fieldInputCls = `${SEARCH_MOBILE.mobileInputClass} h-auto px-3 py-3 pl-3 leading-tight placeholder:text-fg-secondary/50 dark:placeholder:text-fg-secondary/50`
 
 
 type Props = {
@@ -198,7 +198,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                   type="button"
                   disabled={isUploadingAvatar}
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 rounded-full bg-brand-gold p-1.5 text-bg-app shadow-none ring-0 transition-transform hover:scale-110 hover:bg-brand-gold/85 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="absolute -bottom-1 -right-1 rounded-full bg-[var(--profile-accent)] p-1.5 text-white shadow-[var(--profile-glow)] ring-0 transition-transform hover:scale-110 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <ImagePlus className="h-3.5 w-3.5" />
                 </button>
@@ -233,7 +233,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                 placeholder="Napisz coś o sobie…"
                 rows={3}
                 maxLength={300}
-                className={`${fieldInputCls} resize-none`}
+                className={`${fieldInputCls} resize-none align-top`}
               />
               <p className="mt-1 text-right text-[11px] text-fg-secondary">{bio.length}/300</p>
             </div>
