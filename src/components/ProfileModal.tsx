@@ -9,6 +9,15 @@ import { PROFILE_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
 import { UJ_DEPARTMENTS, canonicalDepartment } from '../lib/departments'
 
 const fieldInputCls = `${SEARCH_MOBILE.mobileInputClass} h-auto px-3 py-3 pl-3 leading-tight placeholder:text-fg-secondary/50 dark:placeholder:text-fg-secondary/50`
+const DEPARTMENT_PLACEHOLDER = 'Wybierz wydział'
+
+function sanitizeDepartment(raw: string | null | undefined): string | null {
+  const normalized = canonicalDepartment(raw)
+  if (!normalized) return null
+  const trimmed = normalized.trim()
+  if (!trimmed || trimmed === DEPARTMENT_PLACEHOLDER) return null
+  return UJ_DEPARTMENTS.includes(trimmed as (typeof UJ_DEPARTMENTS)[number]) ? trimmed : null
+}
 
 
 type Props = {
@@ -23,7 +32,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
   const [isClosing, setIsClosing] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [bio, setBio] = useState(profile?.bio ?? '')
-  const [department, setDepartment] = useState(canonicalDepartment(profile?.department) ?? '')
+  const [department, setDepartment] = useState(sanitizeDepartment(profile?.department) ?? '')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
   const [currentBannerUrl] = useState<string | null>(profile?.banner_url ?? null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null)
@@ -73,6 +82,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
   const handleSave = async () => {
     setSaving(true)
     setError(null)
+    const sanitizedDepartment = sanitizeDepartment(department)
 
     const { data, error: updateError } = await supabase
       .from('profiles')
@@ -82,7 +92,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
         avatar_url: currentAvatarUrl,
         banner_url: currentBannerUrl,
         bio: bio.trim() || null,
-        department: department.trim() || null,
+        department: sanitizedDepartment,
         updated_at: new Date().toISOString(),
       })
       .select()
@@ -143,7 +153,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
         />
       )}
 
-      <FacultyAccent department={department}>
+      <FacultyAccent department={sanitizeDepartment(department)}>
         <div
           role="presentation"
           className="bg-bg-app/90"
@@ -249,7 +259,9 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                 onChange={(e) => setDepartment(e.target.value)}
                 className={fieldInputCls}
               >
-                <option value="">Wybierz wydział</option>
+                <option value="" disabled hidden>
+                  {DEPARTMENT_PLACEHOLDER}
+                </option>
                 {UJ_DEPARTMENTS.map((dept) => (
                   <option key={dept} value={dept}>
                     {dept}
