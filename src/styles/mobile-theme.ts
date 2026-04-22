@@ -54,6 +54,9 @@ export const SEARCH_MOBILE = {
   mobilePillIndicatorClass: 'absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[#1e293b] dark:bg-brand-gold-bright',
   mobileInputClass:
     'ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[16px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-[#1e293b] dark:caret-brand-gold-bright',
+  mobileResultsScrollClass: 'flex-1 overflow-y-auto overscroll-contain min-h-0 -mx-1',
+  mobileHistorySectionClass: 'mx-auto w-full max-w-5xl px-1 pb-6',
+  mobileResultsWrapperClass: 'px-1 pb-6',
   mobileResults: {
     searchingClass: 'flex items-center gap-2.5 px-4 py-4 text-[13px]',
     shortHintClass: 'px-4 py-3 text-[12px]',
