@@ -74,3 +74,44 @@ export function canonicalDepartment(stored: string | null | undefined): string |
 export function getDeptAbbreviation(deptName: string): string {
   return DEPT_SHORT[deptName] ?? deptName
 }
+
+/**
+ * Paleta akcentów wydziałowych — `hex` używany dla linii/indikatora/akcji,
+ * `glowRgba` dla miękkich poświat (shadow, ring). Fallback (brak wydziału)
+ * wraca do `brand-gold-bright`, który działa w obu motywach.
+ *
+ * Kolory dobrane jako dystynktywne i czytelne w light + dark mode.
+ */
+export type DeptAccent = { hex: string; glowRgba: string }
+
+export const DEPT_ACCENT: Record<string, DeptAccent> = {
+  'Wydział Lekarski':                                { hex: '#c42a3d', glowRgba: 'rgba(196,42,61,0.45)' },
+  'Wydział Lekarsko-Stomatologiczny':                { hex: '#e07a5f', glowRgba: 'rgba(224,122,95,0.45)' },
+  'Wydział Filozoficzny':                            { hex: '#7c3aed', glowRgba: 'rgba(124,58,237,0.45)' },
+  'Wydział Nauk o Zdrowiu':                          { hex: '#0ea5a4', glowRgba: 'rgba(14,165,164,0.45)' },
+  'Wydział Prawa i Administracji':                   { hex: '#1e3a8a', glowRgba: 'rgba(30,58,138,0.45)' },
+  'Wydział Farmaceutyczny':                          { hex: '#16a34a', glowRgba: 'rgba(22,163,74,0.45)' },
+  'Wydział Historyczny':                             { hex: '#92400e', glowRgba: 'rgba(146,64,14,0.45)' },
+  'Wydział Filologiczny':                            { hex: '#be185d', glowRgba: 'rgba(190,24,93,0.45)' },
+  'Wydział Studiów Międzynarodowych i Politycznych': { hex: '#0369a1', glowRgba: 'rgba(3,105,161,0.45)' },
+  'Wydział Zarządzania i Komunikacji Społecznej':    { hex: '#f59e0b', glowRgba: 'rgba(245,158,11,0.45)' },
+  'Wydział Polonistyki':                             { hex: '#a16207', glowRgba: 'rgba(161,98,7,0.45)' },
+  'Wydział Fizyki, Astronomii i Informatyki Stosowanej': { hex: '#0284c7', glowRgba: 'rgba(2,132,199,0.45)' },
+  'Wydział Matematyki i Informatyki':                { hex: '#4f46e5', glowRgba: 'rgba(79,70,229,0.45)' },
+  'Wydział Chemii':                                  { hex: '#059669', glowRgba: 'rgba(5,150,105,0.45)' },
+  'Wydział Biologii':                                { hex: '#65a30d', glowRgba: 'rgba(101,163,13,0.45)' },
+  'Wydział Geografii i Geologii':                    { hex: '#b45309', glowRgba: 'rgba(180,83,9,0.45)' },
+  'Wydział Biochemii, Biofizyki i Biotechnologii':   { hex: '#db2777', glowRgba: 'rgba(219,39,119,0.45)' },
+}
+
+export const DEFAULT_DEPT_ACCENT: DeptAccent = {
+  hex: '#e8c84a',
+  glowRgba: 'rgba(232,200,74,0.4)',
+}
+
+/** Zwraca akcent wydziału (kanonizuje nazwę) lub fallback brand-gold-bright. */
+export function getDeptAccent(deptName: string | null | undefined): DeptAccent {
+  const canon = canonicalDepartment(deptName)
+  if (canon && DEPT_ACCENT[canon]) return DEPT_ACCENT[canon]
+  return DEFAULT_DEPT_ACCENT
+}

@@ -74,6 +74,95 @@ export const SEARCH_MOBILE = {
   },
 } as const
 
+/**
+ * PROFILE_MOBILE — jedyne źródło wymiarów/animacji dla strony profilu.
+ *
+ * Centralizuje: wymiary cover / awatara / marginesów, klasy szklanej karty,
+ * tokeny tabbara z animowanym indikatorem, pozycję Floating Action Button
+ * oraz warianty Framer Motion dla sekwencyjnego wejścia hero.
+ *
+ * Symetria "pixel-perfect" opiera się na CSS variable `--profile-avatar-size`
+ * wstrzykiwanym w root hero — breakpoint switching realizowany przez
+ * `<style>` injection w ProfileHero (zero re-renderów na resize).
+ */
+export const PROFILE_MOBILE = {
+  cover: {
+    heightClass: 'h-44 sm:h-52 lg:h-64',
+    radiusClass: 'rounded-t-3xl',
+    gradientOverlayClass:
+      'pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/45 dark:to-black/60',
+  },
+  avatar: {
+    sizePx: { base: 104, sm: 120, lg: 144 } as const,
+    ringClass:
+      'ring-4 ring-[var(--bg-app)] dark:ring-[#01020a] shadow-[0_0_60px_-8px_var(--profile-accent-soft)]',
+    radiusClass: 'rounded-full',
+  },
+  card: {
+    glassClass:
+      'relative overflow-hidden rounded-3xl border border-[#0f172a]/10 bg-white/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
+    paddingXClass: 'px-4 sm:px-6 lg:px-8',
+  },
+  tabs: {
+    rowClass:
+      'relative flex gap-1 border-b border-[#0f172a]/10 dark:border-white/10',
+    tabBaseClass:
+      'relative flex-1 px-2 py-3 text-[13px] sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--profile-accent)]/40 rounded-t-md',
+    tabActiveClass: 'text-[var(--profile-accent)] dark:text-white',
+    tabInactiveClass:
+      'text-slate-500 hover:text-[#0f172a] dark:text-slate-400 dark:hover:text-white',
+    indicatorClass:
+      'absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-[var(--profile-accent)]',
+    indicatorLayoutId: 'profile-tab-indicator',
+  },
+  fab: {
+    wrapperClass:
+      'fixed right-4 z-40 md:hidden bottom-[calc(4.75rem+env(safe-area-inset-bottom))]',
+    buttonClass:
+      'flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-[var(--profile-accent)] text-white shadow-[0_14px_40px_-10px_var(--profile-accent-soft)] backdrop-blur-xl transition-transform active:scale-95',
+    layoutId: 'profile-edit-action',
+    scrollActivateAt: 280,
+  },
+  badgeDock: {
+    wrapperDesktopClass:
+      'hidden sm:flex absolute right-4 sm:right-6 z-30 gap-2',
+    wrapperMobileClass: 'sm:hidden flex flex-wrap gap-1.5',
+    itemClass:
+      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none backdrop-blur-xl transition-colors',
+    itemLightClass:
+      'border-white/50 bg-white/70 text-[#0f172a] shadow-[0_8px_24px_-16px_rgba(15,23,42,0.45)]',
+    itemDarkClass:
+      'dark:border-white/15 dark:bg-white/8 dark:text-white dark:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.8)]',
+  },
+  actionButton: {
+    inlineClass:
+      'inline-flex items-center justify-center gap-2 rounded-full border border-[#0f172a]/12 bg-white/95 px-4 py-2 text-sm font-semibold text-fg-primary shadow-sm transition-colors hover:border-[var(--profile-accent)]/50 dark:border-white/20 dark:bg-[#01020a]/95 dark:text-white dark:hover:border-[var(--profile-accent)]/45',
+  },
+  motion: {
+    staggerContainer: {
+      hidden: {},
+      show: {
+        transition: { staggerChildren: 0.06, delayChildren: 0.08 },
+      },
+    },
+    fadeUp: {
+      hidden: { opacity: 0, y: 12 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const },
+      },
+    },
+    indicatorSpring: { type: 'spring' as const, stiffness: 420, damping: 38 },
+    tabPanel: {
+      initial: { opacity: 0, y: 6 },
+      animate: { opacity: 1, y: 0 },
+      exit: { opacity: 0, y: -4 },
+      transition: { duration: 0.2, ease: 'easeOut' as const },
+    },
+  },
+} as const
+
 export const BOTTOM_NAV_MOBILE = {
   scrollThreshold: 10,
   navBaseClass: 'md:hidden fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 border-t',
