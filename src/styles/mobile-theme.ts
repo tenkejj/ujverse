@@ -102,6 +102,10 @@ export const PROFILE_MOBILE = {
     radiusClass: 'rounded-full',
   },
   card: {
+    glassLight:
+      'border border-[#0f172a]/10 bg-white/75 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)]',
+    glassDark:
+      'dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
     glassClass:
       'relative overflow-hidden rounded-3xl border border-[#0f172a]/10 bg-white/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
     paddingXClass: 'px-4 sm:px-6 lg:px-8',

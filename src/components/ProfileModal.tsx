@@ -3,11 +3,12 @@ import type { Session } from '@supabase/supabase-js'
 import { ImagePlus, X } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
-import { UJ_DEPARTMENTS } from '../lib/departments'
 import ImageCropperModal from './ImageCropperModal'
+import FacultyAccent from './profile/FacultyAccent'
+import { PROFILE_MOBILE } from '../styles/mobile-theme'
 
 const fieldInputCls =
-  'w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-none ring-0 outline-none transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-0 focus:shadow-none focus:border-brand-gold dark:border-[#1c2b4e] dark:bg-[#01020a] dark:text-white dark:placeholder:text-neutral-500'
+  'w-full rounded-xl border border-black/10 bg-black/[0.05] p-3 text-slate-900 shadow-none ring-0 outline-none transition-colors placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:shadow-none focus:border-[var(--profile-accent)] dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-neutral-500'
 
 
 type Props = {
@@ -131,17 +132,6 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
 
   return (
     <>
-      <style>{`
-        .profile-modal-panel {
-          background-color: var(--modal-bg) !important;
-          border: 1px solid var(--modal-border) !important;
-          box-shadow: none !important;
-        }
-        .profile-modal-save {
-          background-color: var(--brand-gold) !important;
-          color: #000000 !important;
-        }
-      `}</style>
       {cropSrc && (
         <ImageCropperModal
           imageSrc={cropSrc}
@@ -153,37 +143,38 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
         />
       )}
 
-      <div
-        role="presentation"
-        className="bg-black/90"
-        style={backdropMerged}
-        onPointerDown={(e) => {
-          if (e.target === e.currentTarget) handleClose()
-        }}
-      >
+      <FacultyAccent department={department}>
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="profile-modal-title"
-          className="profile-modal-panel shadow-none ring-0 outline-none"
-          style={panelMerged}
-          onPointerDown={(e) => e.stopPropagation()}
+          role="presentation"
+          className="bg-black/90"
+          style={backdropMerged}
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) handleClose()
+          }}
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 pb-4 dark:border-[#1c2b4e]">
-            <h2 id="profile-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">
-              Edytuj profil
-            </h2>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="rounded-full p-2 text-slate-600 shadow-none ring-0 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
-              aria-label="Zamknij"
-            >
-              <X className="h-5 w-5" strokeWidth={2} />
-            </button>
-          </div>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-modal-title"
+            className={`rounded-3xl bg-transparent backdrop-blur-2xl backdrop-saturate-150 ring-0 outline-none ${PROFILE_MOBILE.card.glassLight} ${PROFILE_MOBILE.card.glassDark}`}
+            style={panelMerged}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 -mx-6 mb-4 flex shrink-0 items-center justify-between border-b border-black/10 bg-white/65 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-[#02040e]/65">
+              <h2 id="profile-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">
+                Edytuj profil
+              </h2>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="rounded-full p-2 text-slate-600 shadow-none ring-0 transition-colors hover:bg-slate-100/70 dark:text-white dark:hover:bg-white/10"
+                aria-label="Zamknij"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
             <div className="flex flex-col items-center gap-2 pb-2">
               <div className="relative">
                 {avatarPreview ? (
@@ -249,22 +240,18 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
             </div>
 
             <div>
-              <label htmlFor="profile-dept" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
-                Wydział
+              <label htmlFor="profile-location" className="mb-1.5 block font-medium text-slate-900 dark:text-white">
+                Lokalizacja
               </label>
-              <select
-                id="profile-dept"
+              <input
+                id="profile-location"
+                type="text"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className={`${fieldInputCls} cursor-pointer`}
-              >
-                <option value="">— Wybierz wydział —</option>
-                {UJ_DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
+                placeholder="np. Kraków, Collegium Novum"
+                maxLength={120}
+                className={fieldInputCls}
+              />
             </div>
 
             {error && (
@@ -274,25 +261,26 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
             )}
           </div>
 
-          <div className="mt-4 flex shrink-0 justify-end gap-3 border-t border-slate-200 pt-4 shadow-none ring-0 dark:border-[#1c2b4e]">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 shadow-none ring-0 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
-            >
-              Anuluj
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="profile-modal-save rounded-xl px-6 py-2.5 text-sm font-bold text-black shadow-none ring-0 outline-none transition-opacity hover:opacity-90 disabled:opacity-70"
-            >
-              {saving ? 'Zapisuję…' : 'Zapisz profil'}
-            </button>
+            <div className="sticky bottom-0 -mx-6 mt-4 flex shrink-0 justify-end gap-3 border-t border-black/10 bg-white/65 px-6 pt-4 pb-1 backdrop-blur-xl shadow-none ring-0 dark:border-white/10 dark:bg-[#02040e]/65">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 shadow-none ring-0 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded-xl bg-[var(--profile-accent)] px-6 py-2.5 text-sm font-bold text-white shadow-[var(--profile-glow)] ring-0 outline-none transition-opacity hover:opacity-90 disabled:opacity-70"
+              >
+                {saving ? 'Zapisuję…' : 'Zapisz'}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </FacultyAccent>
     </>
   )
 }
