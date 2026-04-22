@@ -6,6 +6,7 @@ import type { Profile } from '../types'
 import ImageCropperModal from './ImageCropperModal'
 import FacultyAccent from './profile/FacultyAccent'
 import { PROFILE_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
+import { UJ_DEPARTMENTS, canonicalDepartment } from '../lib/departments'
 
 const fieldInputCls = `${SEARCH_MOBILE.mobileInputClass} h-auto px-3 py-3 pl-3 leading-tight placeholder:text-fg-secondary/50 dark:placeholder:text-fg-secondary/50`
 
@@ -22,7 +23,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
   const [isClosing, setIsClosing] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')
   const [bio, setBio] = useState(profile?.bio ?? '')
-  const [department, setDepartment] = useState(profile?.department ?? '')
+  const [department, setDepartment] = useState(canonicalDepartment(profile?.department) ?? '')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
   const [currentBannerUrl] = useState<string | null>(profile?.banner_url ?? null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null)
@@ -239,18 +240,22 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
             </div>
 
             <div>
-              <label htmlFor="profile-location" className="mb-1.5 block font-medium text-fg-primary">
-                Lokalizacja
+              <label htmlFor="profile-department" className="mb-1.5 block font-medium text-fg-primary">
+                Wydział
               </label>
-              <input
-                id="profile-location"
-                type="text"
+              <select
+                id="profile-department"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                placeholder="np. Kraków, Collegium Novum"
-                maxLength={120}
                 className={fieldInputCls}
-              />
+              >
+                <option value="">Wybierz wydział</option>
+                {UJ_DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {error && (
