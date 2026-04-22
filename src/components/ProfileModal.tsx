@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ImagePlus, X } from 'lucide-react'
+import { ChevronDown, ImagePlus, X } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import ImageCropperModal from './ImageCropperModal'
@@ -8,7 +8,8 @@ import FacultyAccent from './profile/FacultyAccent'
 import { PROFILE_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
 import { UJ_DEPARTMENTS, canonicalDepartment } from '../lib/departments'
 
-const fieldInputCls = `${SEARCH_MOBILE.mobileInputClass} h-auto px-3 py-3 pl-3 leading-tight placeholder:text-fg-secondary/50 dark:placeholder:text-fg-secondary/50`
+const fieldInputCls = `${SEARCH_MOBILE.mobileInputClass} h-11 px-3 py-2 leading-tight placeholder:text-fg-secondary/50 dark:placeholder:text-fg-secondary/50`
+const textareaInputCls = `${fieldInputCls} h-auto resize-none align-top py-3`
 const DEPARTMENT_PLACEHOLDER = 'Wybierz wydział'
 
 function sanitizeDepartment(raw: string | null | undefined): string | null {
@@ -209,9 +210,9 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                   type="button"
                   disabled={isUploadingAvatar}
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 rounded-full bg-[var(--profile-accent)] p-1.5 text-white shadow-[var(--profile-glow)] ring-0 transition-transform hover:scale-110 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="absolute -bottom-0.5 -right-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-bg-app bg-[var(--profile-accent)] text-white shadow-[var(--profile-glow)] ring-0 transition-transform hover:scale-110 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <ImagePlus className="h-3.5 w-3.5" />
+                  <ImagePlus className="h-4 w-4" />
                 </button>
               </div>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
@@ -244,7 +245,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                 placeholder="Napisz coś o sobie…"
                 rows={3}
                 maxLength={300}
-                className={`${fieldInputCls} resize-none align-top`}
+                className={textareaInputCls}
               />
               <p className="mt-1 text-right text-[11px] text-fg-secondary">{bio.length}/300</p>
             </div>
@@ -253,21 +254,27 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
               <label htmlFor="profile-department" className="mb-1.5 block font-medium text-fg-primary">
                 Wydział
               </label>
-              <select
-                id="profile-department"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className={fieldInputCls}
-              >
-                <option value="" disabled hidden>
-                  {DEPARTMENT_PLACEHOLDER}
-                </option>
-                {UJ_DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
+              <div className="relative">
+                <select
+                  id="profile-department"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className={`${fieldInputCls} appearance-none pr-10`}
+                >
+                  <option value="" disabled hidden>
+                    {DEPARTMENT_PLACEHOLDER}
                   </option>
-                ))}
-              </select>
+                  {UJ_DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-secondary"
+                  aria-hidden
+                />
+              </div>
             </div>
 
             {error && (
