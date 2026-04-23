@@ -5,11 +5,9 @@ import type { Comment, Post, Profile as ProfileT } from '../types'
 import { supabase } from '../supabaseClient'
 import { useEvents } from '../hooks/useEvents'
 import { toast } from '../lib/appToast'
-import FollowListsModal, { type FollowModalTab } from '../components/FollowListsModal'
 import FacultyAccent from '../components/profile/FacultyAccent'
 import ProfileHero from '../components/profile/ProfileHero'
 import ProfileIdentity from '../components/profile/ProfileIdentity'
-import ProfileStats from '../components/profile/ProfileStats'
 import ProfileTabs from '../components/profile/ProfileTabs'
 import type { ProfileTab } from '../components/profile/profileTabs.types'
 import ProfileTabPanel from '../components/profile/ProfileTabPanel'
@@ -133,14 +131,9 @@ export default function Profile({
   const [otherNotFound, setOtherNotFound] = useState(false)
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts')
-  const [followersCount, setFollowersCount] = useState(0)
-  const [followingCount, setFollowingCount] = useState(0)
-  const [followStatsLoading, setFollowStatsLoading] = useState(true)
   const [isFollowing, setIsFollowing] = useState(false)
   const [followActionLoading, setFollowActionLoading] = useState(false)
   const [followingBtnHovered, setFollowingBtnHovered] = useState(false)
-  const [followModalOpen, setFollowModalOpen] = useState(false)
-  const [followModalInitialTab, setFollowModalInitialTab] = useState<FollowModalTab>('followers')
 
   const [userReplies, setUserReplies] = useState<ReplyRow[]>([])
   const [repliesLoading, setRepliesLoading] = useState(false)
@@ -197,37 +190,6 @@ export default function Profile({
   const showPostsLoading = isOwn ? postsLoading : otherLoading
 
   const followToggleInFlight = useRef(false)
-
-  const loadFollowStats = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      if (!displayedUserId) return
-      const silent = opts?.silent ?? false
-      if (!silent) setFollowStatsLoading(true)
-      const [folRes, wingRes] = await Promise.all([
-        supabase
-          .from('follows')
-          .select('*', { count: 'exact', head: true })
-          .eq('following_id', displayedUserId),
-        supabase
-          .from('follows')
-          .select('*', { count: 'exact', head: true })
-          .eq('follower_id', displayedUserId),
-      ])
-      if (!silent) setFollowStatsLoading(false)
-      if (folRes.error || wingRes.error) {
-        setFollowersCount(0)
-        setFollowingCount(0)
-        return
-      }
-      setFollowersCount(folRes.count ?? 0)
-      setFollowingCount(wingRes.count ?? 0)
-    },
-    [displayedUserId],
-  )
-
-  useEffect(() => {
-    void loadFollowStats()
-  }, [loadFollowStats])
 
   useEffect(() => {
     if (isOwn || !viewedUserId) {
@@ -290,7 +252,6 @@ export default function Profile({
           .eq('following_id', viewedUserId)
         if (error) throw error
         setIsFollowing(false)
-        setFollowersCount((c) => Math.max(0, c - 1))
       } else {
         const { error } = await supabase.from('follows').insert({
           follower_id: currentUserId,
@@ -298,7 +259,6 @@ export default function Profile({
         })
         if (error) throw error
         setIsFollowing(true)
-        setFollowersCount((c) => c + 1)
       }
     } catch (e) {
       console.error(e)
@@ -392,26 +352,8 @@ export default function Profile({
     )
   }
 
-  const postDates = userPosts
-    .map((p) => p.created_at)
-    .filter((d): d is string => typeof d === 'string')
-  const mediaDates = mediaPosts
-    .map((p) => p.created_at)
-    .filter((d): d is string => typeof d === 'string')
-
   return (
     <FacultyAccent department={profileForDisplay?.department}>
-      {displayedUserId ? (
-        <FollowListsModal
-          open={followModalOpen}
-          onClose={() => setFollowModalOpen(false)}
-          profileUserId={displayedUserId}
-          currentUserId={currentUserId}
-          initialTab={followModalInitialTab}
-          onCountsChange={loadFollowStats}
-        />
-      ) : null}
-
       <div className="space-y-6">
         {onBack && (
           <button
@@ -450,21 +392,7 @@ export default function Profile({
             joinedLabel={joinedLabel}
           />
 
-          <ProfileStats
-            postsCount={userPosts.length}
-            mediaCount={mediaPosts.length}
-            followersCount={followersCount}
-            followingCount={followingCount}
-            followStatsLoading={followStatsLoading}
-            postDates={postDates}
-            mediaDates={mediaDates}
-            onOpenFollowModal={(tab) => {
-              setFollowModalInitialTab(tab)
-              setFollowModalOpen(true)
-            }}
-          />
-
-          <div className="pb-4 sm:pb-6">
+          <div className="mt-4 pb-4 sm:pb-6">
             <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
           </div>
         </motion.section>
