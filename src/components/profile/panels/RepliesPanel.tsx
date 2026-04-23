@@ -1,4 +1,5 @@
 import { MessageCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import EmptyState from '../../EmptyState'
 
 export type ReplyRow = {
@@ -6,27 +7,47 @@ export type ReplyRow = {
   content: string
   created_at: string
   post_id: string
-  posts:
+  post:
     | { id: string; content: string | null; user_id: string }
     | { id: string; content: string | null; user_id: string }[]
     | null
 }
 
 function normalizePostJoin(
-  posts: ReplyRow['posts'],
+  post: ReplyRow['post'],
 ): { id: string; content: string | null; user_id: string } | null {
-  if (!posts) return null
-  return Array.isArray(posts) ? (posts[0] ?? null) : posts
+  if (!post) return null
+  return Array.isArray(post) ? (post[0] ?? null) : post
 }
 
 type Props = {
   replies: ReplyRow[]
   loading: boolean
   isOwn: boolean
+  replyAuthorHandle?: string | null
   onNavigateToPost?: (postId: string) => void
 }
 
-export default function RepliesPanel({ replies, loading, isOwn, onNavigateToPost }: Props) {
+export default function RepliesPanel({
+  replies,
+  loading,
+  isOwn,
+  replyAuthorHandle = null,
+  onNavigateToPost,
+}: Props) {
+  const navigate = useNavigate()
+
+  const navigateToPost = (postId: string) => {
+    if (onNavigateToPost) {
+      onNavigateToPost(postId)
+      return
+    }
+    navigate(`/post/${postId}`)
+  }
+
+  const normalizedHandle = replyAuthorHandle?.trim()
+  const handleLabel = normalizedHandle ? `@${normalizedHandle}` : 'użytkownika'
+
   if (loading) {
     return (
       <div className="flex justify-center py-10">
@@ -52,29 +73,51 @@ export default function RepliesPanel({ replies, loading, isOwn, onNavigateToPost
   return (
     <ul className="space-y-3">
       {replies.map((row) => {
-        const post = normalizePostJoin(row.posts)
+        const post = normalizePostJoin(row.post)
         const preview = post?.content?.trim() || '(wpis usunięty lub niedostępny)'
+        const postAuthor = post?.user_id ? `@${post.user_id.slice(0, 8)}` : 'nieznany autor'
+        const canOpenPost = Boolean(post?.id)
         return (
           <li
             key={row.id}
-            className="rounded-2xl border border-[#0f172a]/10 bg-card p-4 dark:border-white/10"
+            className="rounded-2xl border border-[#0f172a]/10 bg-card/80 p-4 backdrop-blur-md dark:border-white/10"
           >
-            <p className="whitespace-pre-line text-[15px] leading-relaxed text-fg-primary dark:text-white">
-              {row.content}
-            </p>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#0f172a]/08 pt-3 text-xs text-slate-500 dark:border-white/10 dark:text-slate-500">
-              <span>
-                Na: <span className="text-fg-secondary line-clamp-2">{preview}</span>
-              </span>
-              {onNavigateToPost && post?.id && (
+            <div className="space-y-3 border-l-2 border-border-app pl-4">
+              <p className="text-xs font-medium tracking-wide text-fg-secondary/90 dark:text-slate-400">
+                Odpowiedź użytkownika {handleLabel}
+              </p>
+              <button
+                type="button"
+                disabled={!canOpenPost}
+                onClick={() => post?.id && navigateToPost(String(post.id))}
+                className="w-full text-left disabled:cursor-default"
+              >
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-fg-primary transition-opacity hover:opacity-90 dark:text-white">
+                  {row.content}
+                </p>
+              </button>
+              <button
+                type="button"
+                disabled={!canOpenPost}
+                onClick={() => post?.id && navigateToPost(String(post.id))}
+                className="w-full rounded-xl border border-border-app/70 bg-muted/40 p-3 text-left backdrop-blur-sm transition-colors hover:bg-muted/55 disabled:cursor-default dark:bg-white/5 dark:hover:bg-white/10"
+              >
+                <p className="text-xs font-semibold text-fg-secondary dark:text-slate-300">
+                  Oryginalny wpis - {postAuthor}
+                </p>
+                <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-fg-secondary dark:text-slate-300">
+                  {preview}
+                </p>
+              </button>
+              {canOpenPost ? (
                 <button
                   type="button"
-                  onClick={() => onNavigateToPost(String(post.id))}
-                  className="shrink-0 font-semibold text-[var(--profile-accent)] hover:opacity-85"
+                  onClick={() => post?.id && navigateToPost(String(post.id))}
+                  className="text-xs font-semibold text-[var(--profile-accent)] hover:opacity-85"
                 >
                   Zobacz wpis
                 </button>
-              )}
+              ) : null}
             </div>
           </li>
         )

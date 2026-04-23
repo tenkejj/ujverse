@@ -187,7 +187,7 @@ export default function Profile({
       setRepliesLoading(true)
       const { data, error } = await supabase
         .from('comments')
-        .select('id, content, created_at, post_id, posts(id, content, user_id)')
+        .select('*, post:posts(*)')
         .eq('user_id', displayedUserId)
         .order('created_at', { ascending: false })
       if (cancelled) return
@@ -403,6 +403,7 @@ export default function Profile({
               replies={userReplies}
               loading={repliesLoading}
               isOwn={isOwn}
+              replyAuthorHandle={profileForDisplay?.username ?? null}
               onNavigateToPost={onNavigateToPost}
             />
           )}
