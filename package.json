@@ -13,6 +13,7 @@
     "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.99.2",
     "@tailwindcss/vite": "^4.2.1",
+    "@vercel/analytics": "^2.0.1",
     "axios": "^1.15.0",
     "cheerio": "^1.2.0",
     "framer-motion": "^12.38.0",
