@@ -4,7 +4,8 @@ import EmptyState from '../../EmptyState'
 
 export type ReplyRow = {
   id: number
-  content: string
+  content?: string | null
+  body?: string | null
   created_at: string
   post_id: string
   post:
@@ -74,6 +75,7 @@ export default function RepliesPanel({
     <ul className="space-y-3">
       {replies.map((row) => {
         const post = normalizePostJoin(row.post)
+        const replyContent = row.content?.trim() || row.body?.trim() || '(brak treści komentarza)'
         const preview = post?.content?.trim() || '(wpis usunięty lub niedostępny)'
         const postAuthor = post?.user_id ? `@${post.user_id.slice(0, 8)}` : 'nieznany autor'
         const canOpenPost = Boolean(post?.id)
@@ -93,7 +95,7 @@ export default function RepliesPanel({
                 className="w-full text-left disabled:cursor-default"
               >
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-fg-primary transition-opacity hover:opacity-90 dark:text-white">
-                  {row.content}
+                  {replyContent}
                 </p>
               </button>
               <button

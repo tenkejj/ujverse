@@ -114,6 +114,79 @@ export default function Profile({
   const [userReplies, setUserReplies] = useState<ReplyRow[]>([])
   const [repliesLoading, setRepliesLoading] = useState(false)
 
+  const fetchRepliesWithPostContext = useCallback(async (profileId: string): Promise<ReplyRow[]> => {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*, post:posts(*)')
+      .eq('user_id', profileId)
+      .order('created_at', { ascending: false })
+
+    console.log('Replies data:', data)
+    console.log('Replies error:', error)
+
+    if (!error && data) {
+      return data as ReplyRow[]
+    }
+
+    // Fallback when PostgREST relation metadata/FK is unavailable for comments -> posts join.
+    const { data: commentsData, error: commentsError } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('user_id', profileId)
+      .order('created_at', { ascending: false })
+
+    console.log('Replies data:', commentsData)
+    console.log('Replies error:', commentsError)
+
+    if (commentsError || !commentsData?.length) {
+      return []
+    }
+
+    const postIds = Array.from(
+      new Set(
+        commentsData
+          .map((comment) => Number(comment.post_id))
+          .filter((postId) => Number.isFinite(postId) && postId > 0),
+      ),
+    )
+
+    let postsById = new Map<number, { id: string; content: string | null; user_id: string }>()
+    if (postIds.length) {
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select('*')
+        .in('id', postIds)
+
+      console.log('Replies posts data:', postsData)
+      console.log('Replies posts error:', postsError)
+
+      if (postsData?.length) {
+        postsById = new Map(
+          postsData.map((post) => [
+            Number(post.id),
+            {
+              id: String(post.id),
+              content: (post.content as string | null | undefined) ?? null,
+              user_id: String(post.user_id ?? ''),
+            },
+          ]),
+        )
+      }
+    }
+
+    return commentsData.map((comment) => ({
+      ...(comment as Record<string, unknown>),
+      id: Number(comment.id),
+      content:
+        (comment.content as string | null | undefined) ??
+        (comment.body as string | null | undefined) ??
+        '',
+      created_at: String(comment.created_at ?? ''),
+      post_id: String(comment.post_id ?? ''),
+      post: postsById.get(Number(comment.post_id)) ?? null,
+    })) as ReplyRow[]
+  }, [])
+
   const fetchOtherUser = useCallback(async (handle: string) => {
     setOtherLoading(true)
     setOtherNotFound(false)
@@ -185,23 +258,15 @@ export default function Profile({
     let cancelled = false
     ;(async () => {
       setRepliesLoading(true)
-      const { data, error } = await supabase
-        .from('comments')
-        .select('*, post:posts(*)')
-        .eq('user_id', displayedUserId)
-        .order('created_at', { ascending: false })
+      const data = await fetchRepliesWithPostContext(displayedUserId)
       if (cancelled) return
       setRepliesLoading(false)
-      if (error || !data) {
-        setUserReplies([])
-        return
-      }
-      setUserReplies(data as ReplyRow[])
+      setUserReplies(data)
     })()
     return () => {
       cancelled = true
     }
-  }, [displayedUserId])
+  }, [displayedUserId, fetchRepliesWithPostContext])
 
   const normalizedUsername = profileForDisplay?.username?.trim().toLowerCase() ?? ''
   const hasPublicUsername = normalizedUsername.length > 0
