@@ -13,7 +13,7 @@ export const ANNOUNCEMENT_STATUS_DOT: Record<AnnouncementStatus, string> = {
 }
 
 export const ANNOUNCEMENT_STATUS_BADGE: Record<AnnouncementStatus, string> = {
-  cancelled: 'text-red-400 border-current',
-  remote: 'text-blue-300 border-current',
-  duty: 'text-emerald-300 border-current',
+  cancelled: 'text-red-800 dark:text-red-400 border-current',
+  remote: 'text-blue-800 dark:text-blue-300 border-current',
+  duty: 'text-green-900 dark:text-emerald-300 border-current',
 }
