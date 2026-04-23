@@ -7,6 +7,7 @@ type Props = {
   profile: Profile | null
   titleName: string
   handleLabel: string
+  hasPublicUsername: boolean
   isOwn: boolean
   joinedLabel: string | null
 }
@@ -15,6 +16,7 @@ export default function ProfileIdentity({
   profile,
   titleName,
   handleLabel,
+  hasPublicUsername,
   isOwn,
   joinedLabel,
 }: Props) {
@@ -27,8 +29,17 @@ export default function ProfileIdentity({
         <h1 className="text-3xl font-bold tracking-tight text-fg-primary dark:text-white">
           {titleName}
         </h1>
-        <p className="mt-0.5 text-base text-slate-500 dark:text-slate-500">{handleLabel}</p>
+        {hasPublicUsername ? (
+          <p className="mt-0.5 text-base text-slate-500 dark:text-slate-500">{handleLabel}</p>
+        ) : null}
       </div>
+
+      {isOwn && !hasPublicUsername ? (
+        <p className="rounded-xl border border-amber-200/60 bg-amber-50/80 px-3 py-2 text-sm leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200">
+          Twój profil nie posiada jeszcze publicznej nazwy. Ustaw ją w edycji profilu, aby inni
+          mogli Cię znaleźć.
+        </p>
+      ) : null}
 
       {profile?.bio ? (
         <p className="max-w-prose whitespace-pre-line text-[15px] leading-relaxed text-fg-primary dark:text-white">

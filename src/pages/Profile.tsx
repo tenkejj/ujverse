@@ -29,16 +29,6 @@ function capitalizeFirst(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function handleFromDisplayName(name: string) {
-  const slug = name
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9ąćęłńóśźż_]/gi, '')
-    .replace(/_+/g, '_')
-  return slug ? `@${slug}` : '@użytkownik'
-}
-
 type Props = {
   myProfile: ProfileT | null
   displayName: string
@@ -132,7 +122,7 @@ export default function Profile({
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('username', handle)
+      .ilike('username', handle)
       .single()
 
     if (profileError || !profileData) {
@@ -229,10 +219,9 @@ export default function Profile({
     [mediaPosts],
   )
 
-  const handleLabel =
-    profileForDisplay?.username?.trim()
-      ? `@${profileForDisplay.username.trim().toLowerCase()}`
-      : handleFromDisplayName(titleName)
+  const normalizedUsername = profileForDisplay?.username?.trim().toLowerCase() ?? ''
+  const hasPublicUsername = normalizedUsername.length > 0
+  const handleLabel = hasPublicUsername ? `@${normalizedUsername}` : ''
 
   const joinedLabel = (() => {
     if (isOwn) {
@@ -356,6 +345,7 @@ export default function Profile({
             profile={profileForDisplay}
             titleName={titleName}
             handleLabel={handleLabel}
+            hasPublicUsername={hasPublicUsername}
             isOwn={isOwn}
             joinedLabel={joinedLabel}
           />

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ChevronDown, ImagePlus, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import ImageCropperModal from './ImageCropperModal'
@@ -30,8 +31,10 @@ type Props = {
 }
 
 export default function ProfileModal({ session, profile, onClose, onSaved, onAvatarUpdate }: Props) {
+  const navigate = useNavigate()
   const [isClosing, setIsClosing] = useState(false)
   const [name, setName] = useState(profile?.full_name ?? '')
+  const [username, setUsername] = useState(profile?.username ?? '')
   const [bio, setBio] = useState(profile?.bio ?? '')
   const [department, setDepartment] = useState(sanitizeDepartment(profile?.department) ?? '')
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
@@ -84,12 +87,46 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
     setSaving(true)
     setError(null)
     const sanitizedDepartment = sanitizeDepartment(department)
+    const normalizedUsername = username.trim().toLowerCase()
+
+    if (normalizedUsername) {
+      if (normalizedUsername.length < 3) {
+        setError('Nazwa użytkownika musi mieć co najmniej 3 znaki.')
+        setSaving(false)
+        return
+      }
+
+      if (/\s/.test(normalizedUsername)) {
+        setError('Nazwa użytkownika nie może zawierać spacji.')
+        setSaving(false)
+        return
+      }
+
+      const { data: usernameOwner, error: usernameCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('username', normalizedUsername)
+        .maybeSingle()
+
+      if (usernameCheckError) {
+        setError(usernameCheckError.message)
+        setSaving(false)
+        return
+      }
+
+      if (usernameOwner && usernameOwner.id !== session.user.id) {
+        setError('Ta nazwa użytkownika jest już zajęta.')
+        setSaving(false)
+        return
+      }
+    }
 
     const { data, error: updateError } = await supabase
       .from('profiles')
       .upsert({
         id: session.user.id,
         full_name: name.trim() || null,
+        username: normalizedUsername || null,
         avatar_url: currentAvatarUrl,
         banner_url: currentBannerUrl,
         bio: bio.trim() || null,
@@ -101,6 +138,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
 
     if (updateError) { setError(updateError.message); setSaving(false); return }
     onSaved(data as Profile)
+    if (normalizedUsername) navigate(`/profile/${encodeURIComponent(normalizedUsername)}`)
     setSaving(false)
     handleClose()
   }
@@ -232,6 +270,25 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                 maxLength={80}
                 className={fieldInputCls}
               />
+            </div>
+
+            <div>
+              <label htmlFor="profile-username" className="mb-1.5 block font-medium text-fg-primary">
+                Nazwa użytkownika (publiczny link)
+              </label>
+              <input
+                id="profile-username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="np. pcim67"
+                minLength={3}
+                maxLength={32}
+                className={fieldInputCls}
+              />
+              <p className="mt-1 text-[11px] text-fg-secondary">
+                Min. 3 znaki, bez spacji. Będzie użyta w adresie profilu.
+              </p>
             </div>
 
             <div>

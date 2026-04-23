@@ -48,11 +48,6 @@ export default function Auth() {
     const { error } = await supabase.auth.signUp({
       email: shadowEmail,
       password,
-      options: {
-        data: {
-          username: trimmedUsername,
-        },
-      },
     })
     if (error) toast.error(error.message)
     else toast.success('Sprawdź e-mail lub zaloguj się!')
