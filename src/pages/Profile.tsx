@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, UserX } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Post, Profile as ProfileT } from '../types'
@@ -14,7 +14,6 @@ import ProfileTabPanel from '../components/profile/ProfileTabPanel'
 import ProfileSkeleton from '../components/profile/ProfileSkeleton'
 import ProfileActionButton from '../components/profile/ProfileActionButton'
 import ProfileFab from '../components/profile/ProfileFab'
-import ProfileStats from '../components/profile/ProfileStats'
 import { useShowInlineAction } from '../components/profile/profileScroll'
 import { BadgeDockDesktop, BadgeDockMobile } from '../components/profile/BadgeDock'
 import FollowListsModal, { type FollowModalTab } from '../components/FollowListsModal'
@@ -204,21 +203,6 @@ export default function Profile({
     }
   }, [displayedUserId])
 
-  const postDates = useMemo(
-    () =>
-      userPosts
-        .map((p) => p.created_at)
-        .filter((v): v is string => typeof v === 'string' && v.length > 0),
-    [userPosts],
-  )
-  const mediaDates = useMemo(
-    () =>
-      mediaPosts
-        .map((p) => p.created_at)
-        .filter((v): v is string => typeof v === 'string' && v.length > 0),
-    [mediaPosts],
-  )
-
   const normalizedUsername = profileForDisplay?.username?.trim().toLowerCase() ?? ''
   const hasPublicUsername = normalizedUsername.length > 0
   const handleLabel = hasPublicUsername ? `@${normalizedUsername}` : ''
@@ -348,16 +332,9 @@ export default function Profile({
             hasPublicUsername={hasPublicUsername}
             isOwn={isOwn}
             joinedLabel={joinedLabel}
-          />
-
-          <ProfileStats
-            postsCount={userPosts.length}
-            mediaCount={mediaPosts.length}
             followersCount={followersCount}
             followingCount={followingCount}
             followStatsLoading={followStatsLoading}
-            postDates={postDates}
-            mediaDates={mediaDates}
             onOpenFollowModal={openFollowModal}
           />
 

@@ -10,6 +10,17 @@ type Props = {
   hasPublicUsername: boolean
   isOwn: boolean
   joinedLabel: string | null
+  followersCount: number
+  followingCount: number
+  followStatsLoading: boolean
+  onOpenFollowModal: (tab: 'followers' | 'following') => void
+}
+
+function formatCompactCount(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return '0'
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  return String(n)
 }
 
 export default function ProfileIdentity({
@@ -19,6 +30,10 @@ export default function ProfileIdentity({
   hasPublicUsername,
   isOwn,
   joinedLabel,
+  followersCount,
+  followingCount,
+  followStatsLoading,
+  onOpenFollowModal,
 }: Props) {
   return (
     <motion.div
@@ -76,6 +91,36 @@ export default function ProfileIdentity({
             Dołączył {joinedLabel}
           </span>
         ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+        <button
+          type="button"
+          onClick={() => onOpenFollowModal('followers')}
+          disabled={followStatsLoading}
+          className="group inline-flex items-baseline gap-1 transition-colors disabled:cursor-wait disabled:opacity-70"
+        >
+          <span className="font-semibold tabular-nums text-fg-primary">
+            {followStatsLoading ? '…' : formatCompactCount(followersCount)}
+          </span>
+          <span className="text-fg-secondary group-hover:text-[var(--profile-accent)]">
+            Obserwujących
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onOpenFollowModal('following')}
+          disabled={followStatsLoading}
+          className="group inline-flex items-baseline gap-1 transition-colors disabled:cursor-wait disabled:opacity-70"
+        >
+          <span className="font-semibold tabular-nums text-fg-primary">
+            {followStatsLoading ? '…' : formatCompactCount(followingCount)}
+          </span>
+          <span className="text-fg-secondary group-hover:text-[var(--profile-accent)]">
+            Obserwowanych
+          </span>
+        </button>
       </div>
     </motion.div>
   )
