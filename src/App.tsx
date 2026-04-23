@@ -25,6 +25,7 @@ import ComposeBox from './components/ComposeBox'
 import SettingsView from './components/SettingsView'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
+import { Analytics } from '@vercel/analytics/react'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -794,6 +795,7 @@ function App() {
           }}
         />
       </div>
+      <Analytics />
     </>
     </EventsProvider>
   )
