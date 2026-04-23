@@ -26,6 +26,7 @@ import ComposeBox from './components/ComposeBox'
 import SettingsView from './components/SettingsView'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
+import { Analytics } from '@vercel/analytics/react'
 
 function profileHandleFromPath(pathname: string): string | null {
   const m = pathname.match(/^\/profile\/([^/]+)\/?$/)
@@ -780,6 +781,7 @@ function App() {
   return (
     <EventsProvider>
     <>
+      <Analytics />
       {profileModalOpen && (
         <ProfileModal
           session={session}
