@@ -7,6 +7,7 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from './lib/appToast'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase } from './supabaseClient'
@@ -26,7 +27,14 @@ import SettingsView from './components/SettingsView'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
 
+function profileHandleFromPath(pathname: string): string | null {
+  const m = pathname.match(/^\/profile\/([^/]+)\/?$/)
+  return m ? decodeURIComponent(m[1]) : null
+}
+
 function App() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [session, setSession] = useState<Session | null>(null)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
@@ -39,7 +47,7 @@ function App() {
     'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile'
   >('feed')
   const [activePostId, setActivePostId] = useState<string | null>(null)
-  const [activeUserId, setActiveUserId] = useState<string | null>(null)
+  const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [isMobileComposeOpen, setIsMobileComposeOpen] = useState(false)
 
@@ -75,6 +83,7 @@ function App() {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({})
+  const [profileHandleByUserId, setProfileHandleByUserId] = useState<Record<string, string>>({})
 
   const expandedCommentsRef = useRef(expandedComments)
   // Set of postIds where the current user just submitted a comment (1.5 s cooldown window)
@@ -93,6 +102,35 @@ function App() {
     () => notifications.filter((n) => !n.is_read).length,
     [notifications],
   )
+  const routeProfileHandle = useMemo(() => {
+    const h = profileHandleFromPath(location.pathname)
+    return h ? h.toLowerCase() : null
+  }, [location.pathname])
+  const effectiveActiveView = location.pathname === '/profile'
+    ? 'profile'
+    : routeProfileHandle
+      ? 'userProfile'
+      : activeView
+
+  const fetchProfileHandleByUserId = useCallback(
+    async (userId: string): Promise<string | null> => {
+      const cached = profileHandleByUserId[userId]
+      if (cached) return cached
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', userId)
+        .maybeSingle()
+      if (error || !data?.username) return null
+      const nextHandle = String(data.username).trim().toLowerCase()
+      if (!nextHandle) return null
+      setProfileHandleByUserId((prev) =>
+        prev[userId] === nextHandle ? prev : { ...prev, [userId]: nextHandle },
+      )
+      return nextHandle
+    },
+    [profileHandleByUserId],
+  )
 
   // ── Image preview URL management ──────────────────────────────────────────
 
@@ -108,10 +146,20 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url, banner_url, bio, department')
+      .select('id, full_name, username, avatar_url, banner_url, bio, department')
       .eq('id', userId)
       .single()
-    if (data) setMyProfile(data as Profile)
+    if (data) {
+      setMyProfile(data as Profile)
+      if (data.username) {
+        const normalized = String(data.username).trim().toLowerCase()
+        if (normalized) {
+          setProfileHandleByUserId((prev) =>
+            prev[userId] === normalized ? prev : { ...prev, [userId]: normalized },
+          )
+        }
+      }
+    }
   }, [])
 
   const fetchLikesForPosts = useCallback(
@@ -142,7 +190,7 @@ function App() {
   const fetchCommentsForPost = useCallback(async (postId: string) => {
     const { data, error } = await supabase
       .from('comments')
-      .select('id, post_id, user_id, content, created_at, profiles(id, full_name, avatar_url)')
+      .select('id, post_id, user_id, content, created_at, profiles(id, full_name, username, avatar_url)')
       .eq('post_id', Number(postId))
       .order('created_at', { ascending: true })
 
@@ -184,11 +232,24 @@ function App() {
     if (!silent) setNotificationsLoading(true)
     const { data } = await supabase
       .from('notifications')
-      .select('*, actor:profiles!notifications_actor_id_fkey(id, full_name, avatar_url)')
+      .select('*, actor:profiles!notifications_actor_id_fkey(id, full_name, username, avatar_url)')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50)
-    setNotifications((data ?? []) as AppNotification[])
+    const next = (data ?? []) as AppNotification[]
+    setNotifications(next)
+    setProfileHandleByUserId((prev) => {
+      let changed = false
+      const merged = { ...prev }
+      for (const item of next) {
+        const actorId = item.actor?.id
+        const handle = item.actor?.username?.trim().toLowerCase()
+        if (!actorId || !handle || merged[actorId] === handle) continue
+        merged[actorId] = handle
+        changed = true
+      }
+      return changed ? merged : prev
+    })
     if (!silent) setNotificationsLoading(false)
   }, [session])
 
@@ -197,11 +258,23 @@ function App() {
     setPostsError(null)
     const { data, error } = await supabase
       .from('posts')
-      .select('*, user_id, profiles(id, full_name, avatar_url, department)')
+      .select('*, user_id, profiles(id, full_name, username, avatar_url, department)')
       .order('created_at', { ascending: false })
     if (error) { setPostsError(error.message); setPosts([]); setPostsLoading(false); return }
     const next = (data ?? []) as Post[]
     setPosts(next)
+    setProfileHandleByUserId((prev) => {
+      let changed = false
+      const merged = { ...prev }
+      for (const post of next) {
+        const userId = post.profiles?.id
+        const handle = post.profiles?.username?.trim().toLowerCase()
+        if (!userId || !handle || merged[userId] === handle) continue
+        merged[userId] = handle
+        changed = true
+      }
+      return changed ? merged : prev
+    })
     const ids = next.map((p) => p?.id).filter((id): id is string => id !== undefined)
     await Promise.all([fetchLikesForPosts(ids), fetchCommentsCount(ids)])
     setPostsLoading(false)
@@ -295,19 +368,60 @@ function App() {
   const navigateToPost = useCallback((postId: string) => {
     setActivePostId(postId)
     setActiveView('post')
-  }, [])
+    if (location.pathname !== '/') navigate('/')
+  }, [location.pathname, navigate])
 
-  const navigateToUser = useCallback((userId: string) => {
-    setActiveUserId(userId)
+  const navigateToMainView = useCallback((
+    view: 'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile' | 'settings',
+  ) => {
+    setActiveView(view)
+    if (view === 'profile') {
+      if (location.pathname !== '/profile') navigate('/profile')
+      return
+    }
+    const currentHandle = activeProfileHandle ?? routeProfileHandle
+    if (view === 'userProfile' && currentHandle) {
+      navigate(`/profile/${encodeURIComponent(currentHandle)}`)
+      return
+    }
+    if (location.pathname !== '/') navigate('/')
+  }, [activeProfileHandle, location.pathname, navigate, routeProfileHandle])
+
+  const navigateToUser = useCallback(async (userId: string) => {
+    const handle = await fetchProfileHandleByUserId(userId)
+    if (!handle) return
+    setActiveProfileHandle(handle)
     setActiveView('userProfile')
-  }, [])
+    navigate(`/profile/${encodeURIComponent(handle)}`)
+  }, [fetchProfileHandleByUserId, navigate])
+
+  const navigateToProfileByHandle = useCallback((handle: string) => {
+    const normalized = handle.trim().toLowerCase()
+    if (!normalized) return
+    setActiveProfileHandle(normalized)
+    setActiveView('userProfile')
+    navigate(`/profile/${encodeURIComponent(normalized)}`)
+  }, [navigate])
 
   const openSettings = useCallback(() => {
     if (activeView !== 'settings') {
       settingsReturnView.current = activeView
     }
     setActiveView('settings')
-  }, [activeView])
+    if (location.pathname !== '/') navigate('/')
+  }, [activeView, location.pathname, navigate])
+
+  const navigateToPostFromNotificationsPanel = useCallback((postId: string) => {
+    setNotificationsPanelOpen(false)
+    setActivePostId(postId)
+    setActiveView('post')
+    if (location.pathname !== '/') navigate('/')
+  }, [location.pathname, navigate])
+
+  const navigateToUserFromNotificationsPanel = useCallback(async (userId: string) => {
+    setNotificationsPanelOpen(false)
+    await navigateToUser(userId)
+  }, [navigateToUser])
 
   const markNotificationRead = useCallback(async (id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
@@ -336,7 +450,7 @@ function App() {
       toast.error('Nie udało się wyczyścić powiadomień.')
       void fetchNotifications()
     }
-  }, [session?.user?.id, fetchNotifications])
+  }, [session, fetchNotifications])
 
   const toggleNotificationsPanel = useCallback(() => {
     setNotificationsPanelOpen((prev) => {
@@ -350,17 +464,6 @@ function App() {
     setNotificationsPanelOpen(false)
   }, [])
 
-  const navigateToPostFromNotificationsPanel = useCallback((postId: string) => {
-    setNotificationsPanelOpen(false)
-    setActivePostId(postId)
-    setActiveView('post')
-  }, [])
-
-  const navigateToUserFromNotificationsPanel = useCallback((userId: string) => {
-    setNotificationsPanelOpen(false)
-    setActiveUserId(userId)
-    setActiveView('userProfile')
-  }, [])
 
   // ── Likes ─────────────────────────────────────────────────────────────────
 
@@ -535,13 +638,14 @@ function App() {
   if (!session) return <Auth />
 
   const displayName = myProfile?.full_name || session.user.email?.split('@')[0] || 'Użytkownik'
+  const viewedHandle = routeProfileHandle ?? activeProfileHandle
 
   const navActiveView =
-    activeView === 'post' || activeView === 'userProfile'
+    effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
       ? 'feed'
-      : activeView === 'settings'
+      : effectiveActiveView === 'settings'
         ? 'profile'
-        : activeView
+        : effectiveActiveView
 
   const sharedPostProps = {
     myProfile,
@@ -565,7 +669,7 @@ function App() {
   }
 
   const mainViewContent: ReactNode = (() => {
-    switch (activeView) {
+    switch (effectiveActiveView) {
       case 'feed':
         return (
           <FeedView
@@ -596,7 +700,7 @@ function App() {
             onCreatePost={handleCreatePost}
             onNavigateToPost={navigateToPost}
             onNavigateToUser={navigateToUser}
-            onNavigateToEvents={() => setActiveView('events')}
+            onNavigateToEvents={() => navigateToMainView('events')}
             onMobileComposeTap={() => {
               setCreateError(null)
               setIsMobileComposeOpen(true)
@@ -607,7 +711,7 @@ function App() {
         return <EventsView />
       case 'profile':
       case 'userProfile':
-        if (activeView === 'userProfile' && !activeUserId) {
+        if (effectiveActiveView === 'userProfile' && !viewedHandle) {
           return null
         }
         return (
@@ -615,8 +719,8 @@ function App() {
             {...sharedPostProps}
             posts={posts}
             postsLoading={postsLoading}
-            viewedUserId={activeView === 'userProfile' ? activeUserId! : null}
-            onBack={activeView === 'userProfile' ? () => setActiveView('feed') : undefined}
+            viewedHandle={effectiveActiveView === 'userProfile' ? viewedHandle! : null}
+            onBack={effectiveActiveView === 'userProfile' ? () => navigateToMainView('feed') : undefined}
             onNavigateToPost={navigateToPost}
             joinedAtLabel={
               session.user.created_at
@@ -628,7 +732,8 @@ function App() {
             }
             onOpenProfileModal={() => setProfileModalOpen(true)}
             onNavigateToUser={navigateToUser}
-            onNavigateToEvents={() => setActiveView('events')}
+            onNavigateToProfileHandle={navigateToProfileByHandle}
+            onNavigateToEvents={() => navigateToMainView('events')}
             onAvatarUpdate={(url) =>
               setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
             }
@@ -654,16 +759,16 @@ function App() {
           <SinglePostView
             postId={activePostId}
             {...sharedPostProps}
-            onBack={() => setActiveView('feed')}
+            onBack={() => navigateToMainView('feed')}
             onNavigateToUser={navigateToUser}
           />
         )
       case 'settings':
         return (
-          <ViewErrorBoundary onRecover={() => setActiveView('feed')}>
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
             <SettingsView
               email={session.user?.email ?? undefined}
-              onBack={() => setActiveView(settingsReturnView.current)}
+              onBack={() => navigateToMainView(settingsReturnView.current)}
             />
           </ViewErrorBoundary>
         )
@@ -752,9 +857,9 @@ function App() {
           onNavigateToUserFromNotificationsPanel={navigateToUserFromNotificationsPanel}
           onNavigateToUser={navigateToUser}
           onNavigateToPost={navigateToPost}
-          onNavigateToFeed={() => setActiveView('feed')}
-          onNavigateToProfile={() => setActiveView('profile')}
-          onNavigateToEvents={() => setActiveView('events')}
+          onNavigateToFeed={() => navigateToMainView('feed')}
+          onNavigateToProfile={() => navigateToMainView('profile')}
+          onNavigateToEvents={() => navigateToMainView('events')}
           onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}
           onRefreshPosts={() => void fetchPosts()}
@@ -762,16 +867,16 @@ function App() {
 
         <main
           className={`mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
-            activeView === 'feed' || activeView === 'events' || activeView === 'profile' || activeView === 'userProfile'
+            effectiveActiveView === 'feed' || effectiveActiveView === 'events' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
               ? 'max-w-7xl px-4 lg:px-6'
-              : activeView === 'settings'
+              : effectiveActiveView === 'settings'
                 ? 'max-w-2xl px-4 space-y-0'
                 : 'max-w-2xl space-y-3 px-4'
-          } ${activeView === 'profile' || activeView === 'userProfile' ? 'space-y-4' : ''}`}
+          } ${effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile' ? 'space-y-4' : ''}`}
         >
           <AnimatePresence mode="wait">
             <motion.div
-              key={activeView}
+              key={`${effectiveActiveView}:${viewedHandle ?? ''}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -784,7 +889,7 @@ function App() {
 
         <BottomNav
           activeView={navActiveView}
-          setActiveView={(v) => setActiveView(v)}
+          setActiveView={(v) => navigateToMainView(v)}
           unreadCount={unreadCount}
           onOpenCompose={() => {
             setCreateError(null)

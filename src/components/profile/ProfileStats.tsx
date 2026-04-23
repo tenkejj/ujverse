@@ -142,13 +142,13 @@ export default function ProfileStats({
               className={`group relative flex flex-col items-start gap-0.5 rounded-2xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--profile-accent)]/45 ${
                 isActive
                   ? 'border-[var(--profile-accent)]/50 bg-[var(--profile-accent)]/8 dark:bg-[var(--profile-accent)]/12'
-                  : 'border-[#0f172a]/10 bg-white/60 hover:border-[var(--profile-accent)]/35 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-[var(--profile-accent)]/30'
+                  : 'border-border-app/80 bg-bg-card/60 hover:border-[var(--profile-accent)]/35'
               }`}
             >
-              <span className="text-xl font-bold tabular-nums text-fg-primary dark:text-white">
+              <span className="text-xl font-bold tabular-nums text-fg-primary">
                 {c.value}
               </span>
-              <span className="text-[11px] font-medium uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] font-medium uppercase tracking-widest text-fg-secondary">
                 {c.label}
               </span>
             </motion.button>
@@ -167,12 +167,12 @@ export default function ProfileStats({
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-[#0f172a]/08 bg-white/60 px-4 py-3 dark:border-white/8 dark:bg-white/[0.03]">
+            <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-border-app/70 bg-bg-card/60 px-4 py-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-fg-secondary">
                   Ostatnie 7 tygodni
                 </p>
-                <p className="mt-1 text-sm font-semibold text-fg-primary dark:text-white">
+                <p className="mt-1 text-sm font-semibold text-fg-primary">
                   {expanded === 'posts' ? 'Wpisy tygodniowo' : 'Multimedia tygodniowo'}
                 </p>
               </div>

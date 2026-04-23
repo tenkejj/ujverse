@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, UserX } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Post, Profile as ProfileT } from '../types'
 import { supabase } from '../supabaseClient'
 import { useEvents } from '../hooks/useEvents'
-import { toast } from '../lib/appToast'
+import { useProfileSocialData } from '../hooks/useProfileSocialData'
 import FacultyAccent from '../components/profile/FacultyAccent'
 import ProfileHero from '../components/profile/ProfileHero'
 import ProfileIdentity from '../components/profile/ProfileIdentity'
@@ -14,32 +14,15 @@ import ProfileTabPanel from '../components/profile/ProfileTabPanel'
 import ProfileSkeleton from '../components/profile/ProfileSkeleton'
 import ProfileActionButton from '../components/profile/ProfileActionButton'
 import ProfileFab from '../components/profile/ProfileFab'
+import ProfileStats from '../components/profile/ProfileStats'
 import { useShowInlineAction } from '../components/profile/profileScroll'
 import { BadgeDockDesktop, BadgeDockMobile } from '../components/profile/BadgeDock'
+import FollowListsModal, { type FollowModalTab } from '../components/FollowListsModal'
 import PostsPanel from '../components/profile/panels/PostsPanel'
 import MediaPanel from '../components/profile/panels/MediaPanel'
 import RepliesPanel, { type ReplyRow } from '../components/profile/panels/RepliesPanel'
 import EventsPanel from '../components/profile/panels/EventsPanel'
 import { PROFILE_MOBILE } from '../styles/mobile-theme'
-
-function followActionErrorMessage(err: unknown): string {
-  const code =
-    err && typeof err === 'object' && 'code' in err ? String((err as { code: unknown }).code) : ''
-  const msg =
-    err && typeof err === 'object' && 'message' in err
-      ? String((err as { message: unknown }).message)
-      : ''
-  const t = `${code} ${msg}`.toLowerCase()
-  if (
-    code === '42P01' ||
-    (t.includes('follows') && t.includes('does not exist')) ||
-    t.includes('schema cache') ||
-    t.includes('could not find the table')
-  ) {
-    return 'Brak tabeli obserwacji w bazie. Wklej migrację SQL w panelu Supabase (SQL Editor).'
-  }
-  return 'Nie udało się zaktualizować obserwacji. Spróbuj ponownie.'
-}
 
 function capitalizeFirst(s: string) {
   if (!s) return s
@@ -60,12 +43,13 @@ type Props = {
   myProfile: ProfileT | null
   displayName: string
   currentUserId: string
-  viewedUserId?: string | null
+  viewedHandle?: string | null
   onBack?: () => void
   onNavigateToPost?: (postId: string) => void
   joinedAtLabel?: string | null
   onOpenProfileModal: () => void
   onNavigateToUser?: (userId: string) => void
+  onNavigateToProfileHandle?: (handle: string) => void
   /** Klik w kartę wydarzenia na profilu → zakładka Wydarzenia w aplikacji. */
   onNavigateToEvents?: () => void
   onAvatarUpdate?: (url: string) => void
@@ -96,12 +80,13 @@ export default function Profile({
   myProfile,
   displayName,
   currentUserId,
-  viewedUserId = null,
+  viewedHandle = null,
   onBack,
   onNavigateToPost,
   joinedAtLabel,
   onOpenProfileModal,
   onNavigateToUser,
+  onNavigateToProfileHandle,
   onNavigateToEvents,
   onAvatarUpdate,
   onBannerUpdate,
@@ -123,7 +108,9 @@ export default function Profile({
   onDeleteComment,
 }: Props) {
   const { allEvents } = useEvents()
-  const isOwn = !viewedUserId || viewedUserId === currentUserId
+  const normalizedViewedHandle = viewedHandle?.trim().toLowerCase() ?? null
+  const myHandle = myProfile?.username?.trim().toLowerCase() ?? null
+  const isOwn = !normalizedViewedHandle || (myHandle !== null && normalizedViewedHandle === myHandle)
 
   const [otherProfile, setOtherProfile] = useState<ProfileT | null>(null)
   const [otherPosts, setOtherPosts] = useState<Post[]>([])
@@ -131,21 +118,21 @@ export default function Profile({
   const [otherNotFound, setOtherNotFound] = useState(false)
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts')
-  const [isFollowing, setIsFollowing] = useState(false)
-  const [followActionLoading, setFollowActionLoading] = useState(false)
   const [followingBtnHovered, setFollowingBtnHovered] = useState(false)
+  const [followModalOpen, setFollowModalOpen] = useState(false)
+  const [followModalTab, setFollowModalTab] = useState<FollowModalTab>('followers')
 
   const [userReplies, setUserReplies] = useState<ReplyRow[]>([])
   const [repliesLoading, setRepliesLoading] = useState(false)
 
-  const fetchOtherUser = useCallback(async (userId: string) => {
+  const fetchOtherUser = useCallback(async (handle: string) => {
     setOtherLoading(true)
     setOtherNotFound(false)
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('username', handle)
       .single()
 
     if (profileError || !profileData) {
@@ -160,8 +147,8 @@ export default function Profile({
 
     const { data: postsData } = await supabase
       .from('posts')
-      .select('*, profiles(id, full_name, avatar_url, department)')
-      .eq('user_id', userId)
+      .select('*, user_id, profiles(id, full_name, username, avatar_url, department)')
+      .eq('user_id', profileData.id)
       .order('created_at', { ascending: false })
 
     setOtherPosts((postsData ?? []) as Post[])
@@ -169,19 +156,19 @@ export default function Profile({
   }, [])
 
   useEffect(() => {
-    if (!isOwn && viewedUserId) void fetchOtherUser(viewedUserId)
-  }, [isOwn, viewedUserId, fetchOtherUser])
+    if (!isOwn && normalizedViewedHandle) void fetchOtherUser(normalizedViewedHandle)
+  }, [isOwn, normalizedViewedHandle, fetchOtherUser])
 
   useEffect(() => {
     setActiveTab('posts')
-  }, [viewedUserId, isOwn])
+  }, [normalizedViewedHandle, isOwn])
 
   const profileForDisplay: ProfileT | null = isOwn ? myProfile : otherProfile
   const titleName = isOwn
     ? myProfile?.full_name || displayName
     : otherProfile?.full_name || 'Użytkownik'
 
-  const displayedUserId = isOwn ? currentUserId : (viewedUserId ?? '')
+  const displayedUserId = isOwn ? currentUserId : (otherProfile?.id ?? '')
 
   const userPosts = isOwn ? posts.filter((p) => p.user_id === currentUserId) : otherPosts
   const mediaPosts = userPosts.filter((p) => Boolean(p.image_url?.trim()))
@@ -189,32 +176,20 @@ export default function Profile({
 
   const showPostsLoading = isOwn ? postsLoading : otherLoading
 
-  const followToggleInFlight = useRef(false)
-
-  useEffect(() => {
-    if (isOwn || !viewedUserId) {
-      setIsFollowing(false)
-      return
-    }
-    let cancelled = false
-    ;(async () => {
-      const { data, error } = await supabase
-        .from('follows')
-        .select('follower_id')
-        .eq('follower_id', currentUserId)
-        .eq('following_id', viewedUserId)
-        .maybeSingle()
-      if (cancelled) return
-      if (error) {
-        setIsFollowing(false)
-        return
-      }
-      setIsFollowing(Boolean(data))
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [isOwn, viewedUserId, currentUserId])
+  const socialTargetUserId = isOwn ? currentUserId : (otherProfile?.id ?? null)
+  const {
+    isFollowing,
+    followActionLoading,
+    followersCount,
+    followingCount,
+    followStatsLoading,
+    toggleFollow,
+    refreshFollowStats,
+  } = useProfileSocialData({
+    currentUserId,
+    viewedUserId: socialTargetUserId,
+    isOwn,
+  })
 
   useEffect(() => {
     if (!displayedUserId) return
@@ -239,37 +214,25 @@ export default function Profile({
     }
   }, [displayedUserId])
 
-  const handleFollowToggle = async () => {
-    if (!viewedUserId || isOwn || followToggleInFlight.current) return
-    followToggleInFlight.current = true
-    setFollowActionLoading(true)
-    try {
-      if (isFollowing) {
-        const { error } = await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', currentUserId)
-          .eq('following_id', viewedUserId)
-        if (error) throw error
-        setIsFollowing(false)
-      } else {
-        const { error } = await supabase.from('follows').insert({
-          follower_id: currentUserId,
-          following_id: viewedUserId,
-        })
-        if (error) throw error
-        setIsFollowing(true)
-      }
-    } catch (e) {
-      console.error(e)
-      toast.error(followActionErrorMessage(e), { id: 'profile-follow-action' })
-    } finally {
-      followToggleInFlight.current = false
-      setFollowActionLoading(false)
-    }
-  }
+  const postDates = useMemo(
+    () =>
+      userPosts
+        .map((p) => p.created_at)
+        .filter((v): v is string => typeof v === 'string' && v.length > 0),
+    [userPosts],
+  )
+  const mediaDates = useMemo(
+    () =>
+      mediaPosts
+        .map((p) => p.created_at)
+        .filter((v): v is string => typeof v === 'string' && v.length > 0),
+    [mediaPosts],
+  )
 
-  const handleLabel = handleFromDisplayName(titleName)
+  const handleLabel =
+    profileForDisplay?.username?.trim()
+      ? `@${profileForDisplay.username.trim().toLowerCase()}`
+      : handleFromDisplayName(titleName)
 
   const joinedLabel = (() => {
     if (isOwn) {
@@ -289,7 +252,12 @@ export default function Profile({
 
   const handleActionClick = () => {
     if (isOwn) onOpenProfileModal()
-    else void handleFollowToggle()
+    else void toggleFollow()
+  }
+
+  const openFollowModal = (tab: FollowModalTab) => {
+    setFollowModalTab(tab)
+    setFollowModalOpen(true)
   }
 
   const inlineAction = showInline ? (
@@ -392,6 +360,17 @@ export default function Profile({
             joinedLabel={joinedLabel}
           />
 
+          <ProfileStats
+            postsCount={userPosts.length}
+            mediaCount={mediaPosts.length}
+            followersCount={followersCount}
+            followingCount={followingCount}
+            followStatsLoading={followStatsLoading}
+            postDates={postDates}
+            mediaDates={mediaDates}
+            onOpenFollowModal={openFollowModal}
+          />
+
           <div className="mt-4 pb-4 sm:pb-6">
             <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
           </div>
@@ -476,6 +455,17 @@ export default function Profile({
         onClick={handleActionClick}
         loading={isOwn ? false : followActionLoading}
       />
+      {followModalOpen && socialTargetUserId ? (
+        <FollowListsModal
+          open={followModalOpen}
+          onClose={() => setFollowModalOpen(false)}
+          profileUserId={socialTargetUserId}
+          currentUserId={currentUserId}
+          initialTab={followModalTab}
+          onCountsChange={refreshFollowStats}
+          onNavigateToProfileHandle={onNavigateToProfileHandle}
+        />
+      ) : null}
     </FacultyAccent>
   )
 }

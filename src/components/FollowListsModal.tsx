@@ -6,6 +6,7 @@ import { toast } from '../lib/appToast'
 import type { Profile } from '../types'
 import { supabase } from '../supabaseClient'
 import UserAvatar from './UserAvatar'
+import { PROFILE_MOBILE } from '../styles/mobile-theme'
 
 export type FollowModalTab = 'followers' | 'following'
 
@@ -16,6 +17,7 @@ type Props = {
   currentUserId: string
   initialTab: FollowModalTab
   onCountsChange?: (opts?: { silent?: boolean }) => void
+  onNavigateToProfileHandle?: (handle: string) => void
 }
 
 function followActionErrorMessage(err: unknown): string {
@@ -52,7 +54,7 @@ function normalizeJoined(rows: unknown, key: 'follower' | 'following'): Profile[
 async function fetchFollowersProfiles(uid: string): Promise<Profile[]> {
   const q1 = await supabase
     .from('follows')
-    .select('follower:profiles!follows_follower_id_fkey(id, full_name, avatar_url)')
+    .select('follower:profiles!follows_follower_id_fkey(id, full_name, username, avatar_url)')
     .eq('following_id', uid)
   if (!q1.error && q1.data) return normalizeJoined(q1.data, 'follower')
   const q2 = await supabase.from('follows').select('follower_id').eq('following_id', uid)
@@ -60,7 +62,7 @@ async function fetchFollowersProfiles(uid: string): Promise<Profile[]> {
   const ids = [...new Set(q2.data.map((r) => r.follower_id).filter(Boolean))] as string[]
   const { data: profs, error } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url')
+    .select('id, full_name, username, avatar_url')
     .in('id', ids)
   if (error || !profs) return []
   const order = new Map(ids.map((id, i) => [id, i]))
@@ -70,7 +72,7 @@ async function fetchFollowersProfiles(uid: string): Promise<Profile[]> {
 async function fetchFollowingProfiles(uid: string): Promise<Profile[]> {
   const q1 = await supabase
     .from('follows')
-    .select('following:profiles!follows_following_id_fkey(id, full_name, avatar_url)')
+    .select('following:profiles!follows_following_id_fkey(id, full_name, username, avatar_url)')
     .eq('follower_id', uid)
   if (!q1.error && q1.data) return normalizeJoined(q1.data, 'following')
   const q2 = await supabase.from('follows').select('following_id').eq('follower_id', uid)
@@ -78,7 +80,7 @@ async function fetchFollowingProfiles(uid: string): Promise<Profile[]> {
   const ids = [...new Set(q2.data.map((r) => r.following_id).filter(Boolean))] as string[]
   const { data: profs, error } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url')
+    .select('id, full_name, username, avatar_url')
     .in('id', ids)
   if (error || !profs) return []
   const order = new Map(ids.map((id, i) => [id, i]))
@@ -104,6 +106,7 @@ export default function FollowListsModal({
   currentUserId,
   initialTab,
   onCountsChange,
+  onNavigateToProfileHandle,
 }: Props) {
   const [isClosing, setIsClosing] = useState(false)
   const [activeTab, setActiveTab] = useState<FollowModalTab>(initialTab)
@@ -192,16 +195,42 @@ export default function FollowListsModal({
     }
   }
 
+  const handleUserRowClick = (profile: Profile) => {
+    const handle = profile.username?.trim().toLowerCase()
+    if (!handle || !onNavigateToProfileHandle) return
+    handleClose()
+    onNavigateToProfileHandle(handle)
+  }
+
   const list = activeTab === 'followers' ? followers : following
+  const listMotion = {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: 0.04,
+        delayChildren: 0.02,
+      },
+    },
+  } as const
+  const rowMotion = {
+    hidden: { opacity: 0, y: 12, scale: 0.985 },
+    show: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { type: 'spring' as const, stiffness: 380, damping: 30, mass: 0.7 },
+    },
+    exit: { opacity: 0, y: 8, scale: 0.99, transition: { duration: 0.16 } },
+  } as const
 
   if (!open) return null
 
   return createPortal(
     <motion.div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xl"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-bg-app/70 p-4 backdrop-blur-xl"
       initial={{ opacity: 0 }}
       animate={{ opacity: isClosing ? 0 : 1 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) handleClose()
       }}
@@ -210,31 +239,33 @@ export default function FollowListsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="follow-lists-title"
-        className="flex max-h-[min(85vh,32rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/5 bg-zinc-950/55 shadow-2xl shadow-black/40 dark:bg-black/45"
-        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        className={`flex max-h-[min(85vh,32rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl ${PROFILE_MOBILE.card.glassLight} ${PROFILE_MOBILE.card.glassDark} backdrop-blur-2xl`}
+        initial={{ opacity: 0, y: 28, scale: 0.96, rotateX: 8 }}
         animate={{
           opacity: isClosing ? 0 : 1,
-          y: isClosing ? 10 : 0,
-          scale: isClosing ? 0.98 : 1,
+          y: isClosing ? 18 : 0,
+          scale: isClosing ? 0.975 : 1,
+          rotateX: isClosing ? 5 : 0,
         }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ type: 'spring', stiffness: 280, damping: 24, mass: 0.85 }}
         onClick={(e) => e.stopPropagation()}
+        style={{ transformOrigin: 'center top' }}
       >
-        <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
-          <h2 id="follow-lists-title" className="text-base font-bold text-white">
+        <div className="flex items-center justify-between border-b border-border-app/70 px-4 py-3">
+          <h2 id="follow-lists-title" className="text-base font-bold text-fg-primary">
             {activeTab === 'followers' ? 'Obserwujący' : 'Obserwowani'}
           </h2>
           <button
             type="button"
             onClick={handleClose}
             aria-label="Zamknij"
-            className="rounded-full p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded-full p-2 text-fg-secondary transition-colors hover:bg-bg-app/35 hover:text-fg-primary"
           >
             <X size={20} strokeWidth={2} />
           </button>
         </div>
 
-        <div className="flex border-b border-white/5 px-2 pt-1">
+        <div className="flex border-b border-border-app/70 px-2 pt-1">
           {(
             [
               { id: 'followers' as const, label: 'Obserwujący' },
@@ -250,15 +281,15 @@ export default function FollowListsModal({
                 aria-selected={isActive}
                 onClick={() => setActiveTab(t.id)}
                 className={`relative flex-1 px-3 py-2.5 text-center text-sm font-semibold transition-colors ${
-                  isActive ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                  isActive ? 'text-fg-primary' : 'text-fg-secondary hover:text-fg-primary'
                 }`}
               >
                 {t.label}
                 {isActive ? (
                   <motion.span
                     layoutId="followModalTab"
-                    className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-brand-gold"
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[var(--profile-accent)]"
+                    transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                   />
                 ) : null}
               </button>
@@ -269,41 +300,65 @@ export default function FollowListsModal({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
           {loading ? (
             <div className="flex justify-center py-14">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-gold border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--profile-accent)] border-t-transparent" />
             </div>
           ) : list.length === 0 ? (
-            <p className="py-10 text-center text-sm text-slate-500">
+            <p className="py-10 text-center text-sm text-fg-secondary">
               {activeTab === 'followers' ? 'Brak obserwujących.' : 'Nikt nie jest obserwowany.'}
             </p>
           ) : (
-            <ul className="space-y-1">
+            <motion.ul
+              key={activeTab}
+              variants={listMotion}
+              initial="hidden"
+              animate="show"
+              className="space-y-1"
+            >
               {list.map((p) => {
                 const name = p.full_name?.trim() || 'Użytkownik'
                 const isSelf = p.id === currentUserId
                 const amFollowing = iFollow.has(p.id)
                 const busy = Boolean(rowLoading[p.id])
                 return (
-                  <li
+                  <motion.li
                     key={p.id}
-                    className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-white/[0.04]"
+                    variants={rowMotion}
+                    whileHover={{ y: -1, scale: 1.004 }}
+                    whileTap={{ scale: 0.992 }}
+                    className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-bg-app/25"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleUserRowClick(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleUserRowClick(p)
+                      }
+                    }}
                   >
                     <UserAvatar profile={p} name={name} className="h-10 w-10" textSize="text-sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">{name}</p>
+                      <p className="truncate text-sm font-semibold text-fg-primary">{name}</p>
+                      {p.username ? (
+                        <p className="truncate text-xs text-fg-secondary">@{p.username}</p>
+                      ) : null}
                     </div>
                     {isSelf ? (
-                      <span className="shrink-0 rounded-full border border-white/10 px-3 py-1 text-xs font-medium text-slate-400">
+                      <span className="shrink-0 rounded-full border border-border-app/70 px-3 py-1 text-xs font-medium text-fg-secondary">
                         Ty
                       </span>
                     ) : (
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => void handleRowFollowToggle(p.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleRowFollowToggle(p.id)
+                        }}
                         className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-60 ${
                           amFollowing
-                            ? 'border-white/25 text-white hover:border-red-400/50 hover:text-red-400/90'
-                            : 'border-brand-gold/50 bg-brand-gold/15 text-brand-gold hover:bg-brand-gold/25'
+                            ? 'border-border-app text-fg-primary hover:border-[var(--profile-accent)]/55'
+                            : 'border-[var(--profile-accent)]/50 bg-[var(--profile-accent)]/12 text-[var(--profile-accent)] hover:bg-[var(--profile-accent)]/18'
                         }`}
                       >
                         {busy ? (
@@ -315,10 +370,10 @@ export default function FollowListsModal({
                         )}
                       </button>
                     )}
-                  </li>
+                  </motion.li>
                 )
               })}
-            </ul>
+            </motion.ul>
           )}
         </div>
       </motion.div>
