@@ -33,6 +33,11 @@ function profileHandleFromPath(pathname: string): string | null {
   return m ? decodeURIComponent(m[1]) : null
 }
 
+function threadPostIdFromPath(pathname: string): string | null {
+  const m = pathname.match(/^\/thread\/([^/]+)\/?$/)
+  return m ? decodeURIComponent(m[1]) : null
+}
+
 function App() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -107,8 +112,11 @@ function App() {
     const h = profileHandleFromPath(location.pathname)
     return h ? h.toLowerCase() : null
   }, [location.pathname])
+  const routeThreadPostId = useMemo(() => threadPostIdFromPath(location.pathname), [location.pathname])
   const effectiveActiveView = location.pathname === '/profile'
     ? 'profile'
+    : routeThreadPostId
+      ? 'post'
     : routeProfileHandle
       ? 'userProfile'
       : activeView
@@ -755,10 +763,10 @@ function App() {
           />
         )
       case 'post':
-        if (!activePostId) return null
+        if (!routeThreadPostId && !activePostId) return null
         return (
           <SinglePostView
-            postId={activePostId}
+            postId={routeThreadPostId ?? activePostId!}
             {...sharedPostProps}
             onBack={() => navigateToMainView('feed')}
             onNavigateToUser={navigateToUser}

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import type { Comment, Post, Profile as ProfileT } from '../types'
 import { supabase } from '../supabaseClient'
 import { useEvents } from '../hooks/useEvents'
+import { useProfileData } from '../hooks/useProfileData'
 import { useProfileSocialData } from '../hooks/useProfileSocialData'
 import FacultyAccent from '../components/profile/FacultyAccent'
 import ProfileHero from '../components/profile/ProfileHero'
@@ -19,7 +20,7 @@ import { BadgeDockDesktop, BadgeDockMobile } from '../components/profile/BadgeDo
 import FollowListsModal, { type FollowModalTab } from '../components/FollowListsModal'
 import PostsPanel from '../components/profile/panels/PostsPanel'
 import MediaPanel from '../components/profile/panels/MediaPanel'
-import RepliesPanel, { type ReplyRow } from '../components/profile/panels/RepliesPanel'
+import RepliesPanel, { type ReplyThread } from '../components/profile/panels/RepliesPanel'
 import EventsPanel from '../components/profile/panels/EventsPanel'
 import { PROFILE_MOBILE } from '../styles/mobile-theme'
 
@@ -111,21 +112,213 @@ export default function Profile({
   const [followModalOpen, setFollowModalOpen] = useState(false)
   const [followModalTab, setFollowModalTab] = useState<FollowModalTab>('followers')
 
-  const [userReplies, setUserReplies] = useState<ReplyRow[]>([])
+  const [userReplies, setUserReplies] = useState<ReplyThread[]>([])
   const [repliesLoading, setRepliesLoading] = useState(false)
 
-  const fetchRepliesWithPostContext = useCallback(async (profileId: string): Promise<ReplyRow[]> => {
+  const fetchRepliesWithPostContext = useCallback(async (profileId: string): Promise<ReplyThread[]> => {
+    const toCountMap = (rows: Array<Record<string, unknown>> | null | undefined, key: string) => {
+      const counts: Record<string, number> = {}
+      for (const row of rows ?? []) {
+        const id = String(row[key] ?? '')
+        if (!id) continue
+        counts[id] = (counts[id] ?? 0) + 1
+      }
+      return counts
+    }
+
+    const toBoolMap = (rows: Array<Record<string, unknown>> | null | undefined, key: string) => {
+      const flags: Record<string, boolean> = {}
+      for (const row of rows ?? []) {
+        const id = String(row[key] ?? '')
+        if (!id) continue
+        flags[id] = true
+      }
+      return flags
+    }
+
+    const asCount = (value: unknown) => {
+      const num = typeof value === 'number' ? value : Number(value)
+      return Number.isFinite(num) ? Math.max(0, num) : 0
+    }
+
+    const fetchRows = async (table: string, key: string, ids: number[]) => {
+      if (!ids.length) return []
+      const { data, error } = await supabase.from(table).select(key).in(key, ids)
+      if (error) return null
+      return ((data ?? []) as unknown) as Array<Record<string, unknown>>
+    }
+
     const { data, error } = await supabase
       .from('comments')
-      .select('*, post:posts(*)')
+      .select(
+        'id, post_id, user_id, content, body, created_at, image_url, media_urls, attachments, profiles(id, full_name, username, avatar_url), post:posts(id, user_id, content, created_at, image_url, media_urls, attachments, profiles(id, full_name, username, avatar_url))',
+      )
       .eq('user_id', profileId)
       .order('created_at', { ascending: false })
 
-    console.log('Replies data:', data)
-    console.log('Replies error:', error)
+    if (!error && data?.length) {
+      const postIds = Array.from(
+        new Set(
+          data
+            .map((comment) => Number(comment.post_id))
+            .filter((postId) => Number.isFinite(postId) && postId > 0),
+        ),
+      )
+      const replyIds = Array.from(
+        new Set(
+          data
+            .map((comment) => Number(comment.id))
+            .filter((commentId) => Number.isFinite(commentId) && commentId > 0),
+        ),
+      )
 
-    if (!error && data) {
-      return data as ReplyRow[]
+      const [
+        likesRows,
+        commentsRows,
+        repostRows,
+        viewsRows,
+        myLikesRows,
+        myRepostsRows,
+        replyLikesRows,
+        replyCommentsRows,
+        replyRepostsRows,
+        replyViewsRows,
+        myReplyLikesRows,
+        myReplyRepostsRows,
+      ] =
+        await Promise.all([
+          fetchRows('likes', 'post_id', postIds),
+          fetchRows('comments', 'post_id', postIds),
+          fetchRows('reposts', 'post_id', postIds),
+          fetchRows('views', 'post_id', postIds),
+          supabase
+            .from('likes')
+            .select('post_id')
+            .eq('user_id', currentUserId)
+            .in('post_id', postIds)
+            .then(({ data: rows, error: queryError }) =>
+              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
+            ),
+          supabase
+            .from('reposts')
+            .select('post_id')
+            .eq('user_id', currentUserId)
+            .in('post_id', postIds)
+            .then(({ data: rows, error: queryError }) =>
+              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
+            ),
+          fetchRows('comment_likes', 'comment_id', replyIds),
+          fetchRows('comment_replies', 'parent_comment_id', replyIds),
+          fetchRows('comment_reposts', 'comment_id', replyIds),
+          fetchRows('comment_views', 'comment_id', replyIds),
+          supabase
+            .from('comment_likes')
+            .select('comment_id')
+            .eq('user_id', currentUserId)
+            .in('comment_id', replyIds)
+            .then(({ data: rows, error: queryError }) =>
+              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
+            ),
+          supabase
+            .from('comment_reposts')
+            .select('comment_id')
+            .eq('user_id', currentUserId)
+            .in('comment_id', replyIds)
+            .then(({ data: rows, error: queryError }) =>
+              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
+            ),
+        ])
+
+      const likesByPost = toCountMap(likesRows, 'post_id')
+      const commentsByPost = toCountMap(commentsRows, 'post_id')
+      const repostsByPost = toCountMap(repostRows, 'post_id')
+      const viewsByPost = toCountMap(viewsRows, 'post_id')
+      const likedByPost = toBoolMap(myLikesRows, 'post_id')
+      const repostedByPost = toBoolMap(myRepostsRows, 'post_id')
+      const likesByReply = toCountMap(replyLikesRows, 'comment_id')
+      const commentsByReply = toCountMap(replyCommentsRows, 'parent_comment_id')
+      const repostsByReply = toCountMap(replyRepostsRows, 'comment_id')
+      const viewsByReply = toCountMap(replyViewsRows, 'comment_id')
+      const likedByReply = toBoolMap(myReplyLikesRows, 'comment_id')
+      const repostedByReply = toBoolMap(myReplyRepostsRows, 'comment_id')
+
+      return data.map((comment) => {
+        const postJoin = Array.isArray(comment.post) ? (comment.post[0] ?? null) : comment.post
+        const postId = String(comment.post_id ?? '')
+        const postAuthor = Array.isArray(postJoin?.profiles)
+          ? (postJoin?.profiles?.[0] ?? null)
+          : (postJoin?.profiles ?? null)
+        const replyAuthor = Array.isArray(comment.profiles)
+          ? (comment.profiles[0] ?? null)
+          : (comment.profiles ?? null)
+        const replyId = String(comment.id ?? '')
+
+        return {
+          id: Number(comment.id),
+          post_id: postId,
+          post: {
+            id: String(postJoin?.id ?? postId),
+            created_at: String(postJoin?.created_at ?? comment.created_at ?? ''),
+            content: (postJoin?.content as string | null | undefined) ?? null,
+            media_url: (postJoin?.image_url as string | null | undefined) ?? null,
+            media_urls: (postJoin?.media_urls as string[] | null | undefined) ?? null,
+            attachments: (postJoin?.attachments as unknown[] | null | undefined) ?? null,
+            author: {
+              display_name:
+                postAuthor?.full_name?.trim() ||
+                postAuthor?.username?.trim() ||
+                (postJoin?.user_id ? String(postJoin.user_id).slice(0, 8) : 'nieznany autor'),
+              handle: postAuthor?.username?.trim() || null,
+              avatar_url: postAuthor?.avatar_url ?? null,
+            },
+            stats: {
+              likes_count: likesByPost[postId] ?? 0,
+              comments_count: commentsByPost[postId] ?? 0,
+              views_count: viewsByPost[postId] ?? 0,
+              reposts_count: repostsByPost[postId] ?? 0,
+            },
+            user_interactions: {
+              has_liked: Boolean(likedByPost[postId]),
+              has_reposted: Boolean(repostedByPost[postId]),
+            },
+          },
+          reply: {
+            id: replyId,
+            created_at: String(comment.created_at ?? ''),
+            content:
+              (comment.content as string | null | undefined) ??
+              (comment.body as string | null | undefined) ??
+              null,
+            media_url: (comment.image_url as string | null | undefined) ?? null,
+            media_urls: (comment.media_urls as string[] | null | undefined) ?? null,
+            attachments: (comment.attachments as unknown[] | null | undefined) ?? null,
+            author: {
+              display_name:
+                replyAuthor?.full_name?.trim() ||
+                replyAuthor?.username?.trim() ||
+                'użytkownika',
+              handle: replyAuthor?.username?.trim() || null,
+              avatar_url: replyAuthor?.avatar_url ?? null,
+            },
+            stats: {
+              likes_count: likesByReply[replyId] ?? asCount((comment as Record<string, unknown>).likes_count),
+              comments_count:
+                commentsByReply[replyId] ?? asCount((comment as Record<string, unknown>).comments_count),
+              views_count: viewsByReply[replyId] ?? asCount((comment as Record<string, unknown>).views_count),
+              reposts_count:
+                repostsByReply[replyId] ?? asCount((comment as Record<string, unknown>).reposts_count),
+            },
+            user_interactions: {
+              has_liked:
+                Boolean(likedByReply[replyId]) ||
+                Boolean((comment as Record<string, unknown>).has_liked),
+              has_reposted:
+                Boolean(repostedByReply[replyId]) ||
+                Boolean((comment as Record<string, unknown>).has_reposted),
+            },
+          },
+        }
+      }) as ReplyThread[]
     }
 
     // Fallback when PostgREST relation metadata/FK is unavailable for comments -> posts join.
@@ -150,11 +343,27 @@ export default function Profile({
       ),
     )
 
-    let postsById = new Map<number, { id: string; content: string | null; user_id: string }>()
+    let postsById = new Map<
+      number,
+      {
+        id: string
+        content: string | null
+        user_id: string
+        image_url?: string | null
+        media_urls?: string[] | null
+        attachments?: unknown[] | null
+        profiles: {
+          id?: string | null
+          full_name?: string | null
+          username?: string | null
+          avatar_url?: string | null
+        } | null
+      }
+    >()
     if (postIds.length) {
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select('*')
+        .select('*, profiles(id, full_name, username, avatar_url)')
         .in('id', postIds)
 
       console.log('Replies posts data:', postsData)
@@ -168,24 +377,87 @@ export default function Profile({
               id: String(post.id),
               content: (post.content as string | null | undefined) ?? null,
               user_id: String(post.user_id ?? ''),
+              image_url: (post.image_url as string | null | undefined) ?? null,
+              media_urls: (post.media_urls as string[] | null | undefined) ?? null,
+              attachments: (post.attachments as unknown[] | null | undefined) ?? null,
+              profiles:
+                (post.profiles as
+                  | {
+                      id?: string | null
+                      full_name?: string | null
+                      username?: string | null
+                      avatar_url?: string | null
+                    }
+                  | null
+                  | undefined) ?? null,
             },
           ]),
         )
       }
     }
 
-    return commentsData.map((comment) => ({
-      ...(comment as Record<string, unknown>),
-      id: Number(comment.id),
-      content:
-        (comment.content as string | null | undefined) ??
-        (comment.body as string | null | undefined) ??
-        '',
-      created_at: String(comment.created_at ?? ''),
-      post_id: String(comment.post_id ?? ''),
-      post: postsById.get(Number(comment.post_id)) ?? null,
-    })) as ReplyRow[]
-  }, [])
+    return commentsData.map((comment) => {
+      const postId = String(comment.post_id ?? '')
+      const post = postsById.get(Number(comment.post_id)) ?? null
+      const postAuthor = post?.profiles ?? null
+      return {
+        id: Number(comment.id),
+        post_id: postId,
+        post: {
+          id: String(post?.id ?? postId),
+          created_at: String(comment.created_at ?? ''),
+          content: post?.content ?? null,
+          media_url: post?.image_url ?? null,
+          media_urls: post?.media_urls ?? null,
+          attachments: post?.attachments ?? null,
+          author: {
+            display_name:
+              postAuthor?.full_name?.trim() ||
+              postAuthor?.username?.trim() ||
+              (post?.user_id ? String(post.user_id).slice(0, 8) : 'nieznany autor'),
+            handle: postAuthor?.username?.trim() || null,
+            avatar_url: postAuthor?.avatar_url ?? null,
+          },
+          stats: {
+            likes_count: asCount((post as unknown as Record<string, unknown>)?.likes_count),
+            comments_count: asCount((post as unknown as Record<string, unknown>)?.comments_count),
+            views_count: asCount((post as unknown as Record<string, unknown>)?.views_count),
+            reposts_count: asCount((post as unknown as Record<string, unknown>)?.reposts_count),
+          },
+          user_interactions: {
+            has_liked: Boolean((post as unknown as Record<string, unknown>)?.has_liked),
+            has_reposted: Boolean((post as unknown as Record<string, unknown>)?.has_reposted),
+          },
+        },
+        reply: {
+          id: String(comment.id ?? ''),
+          created_at: String(comment.created_at ?? ''),
+          content:
+            (comment.content as string | null | undefined) ??
+            (comment.body as string | null | undefined) ??
+            '',
+          media_url: (comment.image_url as string | null | undefined) ?? null,
+          media_urls: (comment.media_urls as string[] | null | undefined) ?? null,
+          attachments: (comment.attachments as unknown[] | null | undefined) ?? null,
+          author: {
+            display_name: 'użytkownika',
+            handle: null,
+            avatar_url: null,
+          },
+          stats: {
+            likes_count: asCount((comment as Record<string, unknown>).likes_count),
+            comments_count: asCount((comment as Record<string, unknown>).comments_count),
+            views_count: asCount((comment as Record<string, unknown>).views_count),
+            reposts_count: asCount((comment as Record<string, unknown>).reposts_count),
+          },
+          user_interactions: {
+            has_liked: Boolean((comment as Record<string, unknown>).has_liked),
+            has_reposted: Boolean((comment as Record<string, unknown>).has_reposted),
+          },
+        },
+      }
+    }) as ReplyThread[]
+  }, [currentUserId])
 
   const fetchOtherUser = useCallback(async (handle: string) => {
     setOtherLoading(true)
@@ -226,6 +498,10 @@ export default function Profile({
   }, [normalizedViewedHandle, isOwn])
 
   const profileForDisplay: ProfileT | null = isOwn ? myProfile : otherProfile
+  const { profile: currentUserProfile } = useProfileData({
+    userId: currentUserId,
+    initialProfile: myProfile,
+  })
   const titleName = isOwn
     ? myProfile?.full_name || displayName
     : otherProfile?.full_name || 'Użytkownik'
@@ -468,7 +744,8 @@ export default function Profile({
               replies={userReplies}
               loading={repliesLoading}
               isOwn={isOwn}
-              replyAuthorHandle={profileForDisplay?.username ?? null}
+              currentUserId={currentUserId}
+              currentUserProfile={currentUserProfile}
               onNavigateToPost={onNavigateToPost}
             />
           )}
