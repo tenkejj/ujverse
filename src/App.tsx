@@ -190,48 +190,67 @@ function App() {
 
   const fetchCommentsCount = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return
-    const { data } = await supabase.from('comments').select('post_id').in('post_id', ids.map(Number))
+    const [commentsQ, repliesQ] = await Promise.all([
+      supabase.from('comments').select('post_id').in('post_id', ids.map(Number)),
+      supabase.from('comment_replies').select('post_id').in('post_id', ids),
+    ])
     const counts: Record<string, number> = {}
-    for (const c of data ?? []) { const k = String(c.post_id); counts[k] = (counts[k] ?? 0) + 1 }
+    for (const c of commentsQ.data ?? []) {
+      const k = String(c.post_id)
+      counts[k] = (counts[k] ?? 0) + 1
+    }
+    for (const r of repliesQ.data ?? []) {
+      const k = String(r.post_id ?? '')
+      if (!k) continue
+      counts[k] = (counts[k] ?? 0) + 1
+    }
     setCommentsCountByPost(counts)
   }, [])
 
   const fetchCommentsForPost = useCallback(async (postId: string) => {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('id, post_id, user_id, content, created_at, profiles(id, full_name, username, avatar_url)')
-      .eq('post_id', Number(postId))
-      .order('created_at', { ascending: true })
-
-    if (error) {
-      console.error('[fetchCommentsForPost] Błąd zapytania (z jointem profiles):', error)
-      const { data: plain, error: plainErr } = await supabase
+    const [commentsQ, repliesQ] = await Promise.all([
+      supabase
         .from('comments')
-        .select('id, post_id, user_id, content, created_at')
+        .select('id, post_id, user_id, content, created_at, profiles(id, full_name, username, avatar_url)')
         .eq('post_id', Number(postId))
-        .order('created_at', { ascending: true })
-      if (plainErr) {
-        console.error('[fetchCommentsForPost] Fallback też się nie powiódł:', plainErr)
-        return
-      }
-      setCommentsByPost((prev) => ({ ...prev, [postId]: (plain ?? []) as unknown as Comment[] }))
-      return
-    }
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('comment_replies')
+        .select('id, post_id, user_id, content, created_at, profiles:user_id(id, full_name, username, avatar_url)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true }),
+    ])
 
-    if (data === null) {
-      console.warn('[fetchCommentsForPost] data === null dla posta', postId)
-      return
+    if (commentsQ.error) {
+      console.error('[fetchCommentsForPost] comments query error:', commentsQ.error)
     }
+    if (repliesQ.error) {
+      console.error('[fetchCommentsForPost] comment_replies query error:', repliesQ.error)
+    }
+    if (commentsQ.error && repliesQ.error) return
 
-    const normalized: Comment[] = data
+    const commentsNormalized: Comment[] = ((commentsQ.data ?? []) as unknown as Comment[])
       .map((c) => ({
         ...c,
         profiles: Array.isArray(c.profiles)
           ? (c.profiles[0] ?? null)
           : (c.profiles ?? null),
       }))
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) as Comment[]
 
+    const repliesNormalized: Comment[] = (repliesQ.data ?? []).map((r) => ({
+      id: -Number(r.id),
+      post_id: String(r.post_id ?? postId),
+      user_id: String(r.user_id ?? ''),
+      content: String(r.content ?? ''),
+      created_at: String(r.created_at ?? new Date().toISOString()),
+      profiles: Array.isArray(r.profiles)
+        ? ((r.profiles[0] ?? null) as Profile | null)
+        : ((r.profiles ?? null) as Profile | null),
+    }))
+
+    const normalized = [...commentsNormalized, ...repliesNormalized].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
     setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
   }, [])
 
@@ -585,7 +604,10 @@ function App() {
   }, [])
 
   const handleDeleteComment = useCallback(async (commentId: number, postId: string) => {
-    const { error } = await supabase.from('comments').delete().eq('id', commentId)
+    const isReplyComment = commentId < 0
+    const table = isReplyComment ? 'comment_replies' : 'comments'
+    const idToDelete = isReplyComment ? Math.abs(commentId) : commentId
+    const { error } = await supabase.from(table).delete().eq('id', idToDelete)
     if (error) { console.error('[handleDeleteComment]', error); return }
     setCommentsByPost((prev) => ({
       ...prev,
@@ -630,6 +652,19 @@ function App() {
         const existing = commentsByPostRef.current[pid] ?? []
         if (incomingId !== undefined && existing.some((c) => String(c.id) === String(incomingId))) {
           console.log('[Realtime] duplicate comment, skipping', incomingId)
+          return
+        }
+
+        setCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
+        if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid)
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comment_replies' }, (payload) => {
+        const pid = String(payload.new?.post_id ?? '')
+        const incomingId = payload.new?.id
+        if (!pid || !postIds.includes(pid)) return
+
+        const existing = commentsByPostRef.current[pid] ?? []
+        if (incomingId !== undefined && existing.some((c) => c.id === -Number(incomingId))) {
           return
         }
 

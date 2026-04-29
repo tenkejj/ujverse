@@ -116,6 +116,29 @@ export default function Profile({
   const [repliesLoading, setRepliesLoading] = useState(false)
 
   const fetchRepliesWithPostContext = useCallback(async (profileId: string): Promise<ReplyThread[]> => {
+    type JoinedProfile = {
+      id?: string | null
+      full_name?: string | null
+      username?: string | null
+      avatar_url?: string | null
+    }
+
+    const normalizeJoinedProfile = (value: unknown): JoinedProfile | null => {
+      if (!value) return null
+      if (Array.isArray(value)) return (value[0] as JoinedProfile | undefined) ?? null
+      return value as JoinedProfile
+    }
+
+    const buildAuthor = (profile: JoinedProfile | null, userId: unknown) => {
+      const rawUserId = typeof userId === 'string' ? userId.trim() : String(userId ?? '').trim()
+      const normalizedHandle = profile?.username?.trim().replace(/^@+/, '') || null
+      return {
+        display_name: profile?.full_name?.trim() || normalizedHandle || rawUserId.slice(0, 8),
+        handle: normalizedHandle,
+        avatar_url: profile?.avatar_url ?? null,
+      }
+    }
+
     const toCountMap = (rows: Array<Record<string, unknown>> | null | undefined, key: string) => {
       const counts: Record<string, number> = {}
       for (const row of rows ?? []) {
@@ -151,7 +174,7 @@ export default function Profile({
     const { data, error } = await supabase
       .from('comments')
       .select(
-        'id, post_id, user_id, content, body, created_at, image_url, media_urls, attachments, profiles(id, full_name, username, avatar_url), post:posts(id, user_id, content, created_at, image_url, media_urls, attachments, profiles(id, full_name, username, avatar_url))',
+        'id, post_id, user_id, content, body, created_at, image_url, media_urls, attachments, profiles:user_id(id, full_name, username, avatar_url), post:posts(id, user_id, content, created_at, image_url, media_urls, attachments, profiles:user_id(id, full_name, username, avatar_url))',
       )
       .eq('user_id', profileId)
       .order('created_at', { ascending: false })
@@ -245,12 +268,8 @@ export default function Profile({
       return data.map((comment) => {
         const postJoin = Array.isArray(comment.post) ? (comment.post[0] ?? null) : comment.post
         const postId = String(comment.post_id ?? '')
-        const postAuthor = Array.isArray(postJoin?.profiles)
-          ? (postJoin?.profiles?.[0] ?? null)
-          : (postJoin?.profiles ?? null)
-        const replyAuthor = Array.isArray(comment.profiles)
-          ? (comment.profiles[0] ?? null)
-          : (comment.profiles ?? null)
+        const postAuthor = normalizeJoinedProfile(postJoin?.profiles)
+        const replyAuthor = normalizeJoinedProfile(comment.profiles)
         const replyId = String(comment.id ?? '')
 
         return {
@@ -263,14 +282,7 @@ export default function Profile({
             media_url: (postJoin?.image_url as string | null | undefined) ?? null,
             media_urls: (postJoin?.media_urls as string[] | null | undefined) ?? null,
             attachments: (postJoin?.attachments as unknown[] | null | undefined) ?? null,
-            author: {
-              display_name:
-                postAuthor?.full_name?.trim() ||
-                postAuthor?.username?.trim() ||
-                (postJoin?.user_id ? String(postJoin.user_id).slice(0, 8) : 'nieznany autor'),
-              handle: postAuthor?.username?.trim() || null,
-              avatar_url: postAuthor?.avatar_url ?? null,
-            },
+            author: buildAuthor(postAuthor, postJoin?.user_id),
             stats: {
               likes_count: likesByPost[postId] ?? 0,
               comments_count: commentsByPost[postId] ?? 0,
@@ -292,14 +304,7 @@ export default function Profile({
             media_url: (comment.image_url as string | null | undefined) ?? null,
             media_urls: (comment.media_urls as string[] | null | undefined) ?? null,
             attachments: (comment.attachments as unknown[] | null | undefined) ?? null,
-            author: {
-              display_name:
-                replyAuthor?.full_name?.trim() ||
-                replyAuthor?.username?.trim() ||
-                'użytkownika',
-              handle: replyAuthor?.username?.trim() || null,
-              avatar_url: replyAuthor?.avatar_url ?? null,
-            },
+            author: buildAuthor(replyAuthor, comment.user_id),
             stats: {
               likes_count: likesByReply[replyId] ?? asCount((comment as Record<string, unknown>).likes_count),
               comments_count:
@@ -324,7 +329,7 @@ export default function Profile({
     // Fallback when PostgREST relation metadata/FK is unavailable for comments -> posts join.
     const { data: commentsData, error: commentsError } = await supabase
       .from('comments')
-      .select('*')
+      .select('*, profiles:user_id(id, full_name, username, avatar_url)')
       .eq('user_id', profileId)
       .order('created_at', { ascending: false })
 
@@ -363,7 +368,7 @@ export default function Profile({
     if (postIds.length) {
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select('*, profiles(id, full_name, username, avatar_url)')
+        .select('*, profiles:user_id(id, full_name, username, avatar_url)')
         .in('id', postIds)
 
       console.log('Replies posts data:', postsData)
@@ -380,16 +385,7 @@ export default function Profile({
               image_url: (post.image_url as string | null | undefined) ?? null,
               media_urls: (post.media_urls as string[] | null | undefined) ?? null,
               attachments: (post.attachments as unknown[] | null | undefined) ?? null,
-              profiles:
-                (post.profiles as
-                  | {
-                      id?: string | null
-                      full_name?: string | null
-                      username?: string | null
-                      avatar_url?: string | null
-                    }
-                  | null
-                  | undefined) ?? null,
+              profiles: normalizeJoinedProfile(post.profiles),
             },
           ]),
         )
@@ -400,6 +396,7 @@ export default function Profile({
       const postId = String(comment.post_id ?? '')
       const post = postsById.get(Number(comment.post_id)) ?? null
       const postAuthor = post?.profiles ?? null
+      const replyAuthor = normalizeJoinedProfile(comment.profiles)
       return {
         id: Number(comment.id),
         post_id: postId,
@@ -410,14 +407,7 @@ export default function Profile({
           media_url: post?.image_url ?? null,
           media_urls: post?.media_urls ?? null,
           attachments: post?.attachments ?? null,
-          author: {
-            display_name:
-              postAuthor?.full_name?.trim() ||
-              postAuthor?.username?.trim() ||
-              (post?.user_id ? String(post.user_id).slice(0, 8) : 'nieznany autor'),
-            handle: postAuthor?.username?.trim() || null,
-            avatar_url: postAuthor?.avatar_url ?? null,
-          },
+          author: buildAuthor(postAuthor, post?.user_id),
           stats: {
             likes_count: asCount((post as unknown as Record<string, unknown>)?.likes_count),
             comments_count: asCount((post as unknown as Record<string, unknown>)?.comments_count),
@@ -439,11 +429,7 @@ export default function Profile({
           media_url: (comment.image_url as string | null | undefined) ?? null,
           media_urls: (comment.media_urls as string[] | null | undefined) ?? null,
           attachments: (comment.attachments as unknown[] | null | undefined) ?? null,
-          author: {
-            display_name: 'użytkownika',
-            handle: null,
-            avatar_url: null,
-          },
+          author: buildAuthor(replyAuthor, comment.user_id),
           stats: {
             likes_count: asCount((comment as Record<string, unknown>).likes_count),
             comments_count: asCount((comment as Record<string, unknown>).comments_count),

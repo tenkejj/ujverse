@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Heart, Image as ImageIcon, MessageCircle, MoreHorizontal, X } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { formatXNumber } from '../../../lib/formatXNumber'
 import { supabase } from '../../../supabaseClient'
@@ -68,11 +69,20 @@ type NestedReply = {
   media_url?: string | null
   created_at: string
   user_id: string
+  author: ThreadAuthor
+}
+
+type NestedReplyRow = {
+  id: number
+  content: string | null
+  media_url?: string | null
+  created_at: string
+  user_id: string
   profiles?: {
     full_name?: string | null
     username?: string | null
     avatar_url?: string | null
-  } | null
+  } | { full_name?: string | null; username?: string | null; avatar_url?: string | null }[] | null
 }
 
 type PostLikeInsert = TablesInsert<'likes'>
@@ -99,6 +109,23 @@ type LikeTarget =
       fallbackCount: number
     }
 
+type ActiveReplyTarget = {
+  threadRowId: number
+  threadCommentId: string
+  targetType: 'post' | 'reply' | 'nested'
+  targetId: string
+  targetHandle: string | null
+  targetKey: string
+}
+
+type ThreadRenderItem =
+  | { kind: 'post'; id: string }
+  | { kind: 'reply'; id: string }
+  | { kind: 'nested'; id: string; nested: NestedReply }
+  | { kind: 'composer'; id: string; threadCommentId: string; draftKey: string }
+
+const REPLY_DRAFTS_STORAGE_KEY = 'ujverse.repliesPanel.draftsByTarget.v1'
+
 export default function RepliesPanel({
   replies,
   loading,
@@ -112,13 +139,24 @@ export default function RepliesPanel({
   const [replyPatch, setReplyPatch] = useState<Record<string, EngPatch>>({})
   const [postLikePending, setPostLikePending] = useState<Record<string, boolean>>({})
   const [replyLikePending, setReplyLikePending] = useState<Record<string, boolean>>({})
-  const [replyInputByComment, setReplyInputByComment] = useState<Record<string, string>>({})
+  const [draftsByTarget, setDraftsByTarget] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = window.localStorage.getItem(REPLY_DRAFTS_STORAGE_KEY)
+      if (!raw) return {}
+      const parsed = JSON.parse(raw) as unknown
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {}
+    } catch {
+      return {}
+    }
+  })
   const [selectedMediaByComment, setSelectedMediaByComment] = useState<
     Record<string, SelectedReplyMedia | null>
   >({})
   const [replySubmittingByComment, setReplySubmittingByComment] = useState<Record<string, boolean>>({})
-  const [replyComposerOpenByComment, setReplyComposerOpenByComment] = useState<Record<string, boolean>>({})
+  const [activeReplyTarget, setActiveReplyTarget] = useState<ActiveReplyTarget | null>(null)
   const [threadRepliesByComment, setThreadRepliesByComment] = useState<Record<string, NestedReply[]>>({})
+  const activeThreadCommentIdRef = useRef<string | null>(null)
 
   const postIdSetRef = useRef<Set<string>>(new Set())
   const commentIdSetRef = useRef<Set<string>>(new Set())
@@ -136,9 +174,61 @@ export default function RepliesPanel({
   const composerDisplayName = composerProfile?.full_name?.trim() || (composerHandle ? `@${composerHandle}` : 'Ty')
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(REPLY_DRAFTS_STORAGE_KEY, JSON.stringify(draftsByTarget))
+    } catch {
+      /* noop */
+    }
+  }, [draftsByTarget])
+
+  const deleteDraftEntry = useCallback((draftKey: string) => {
+    setDraftsByTarget((prev) => {
+      if (!(draftKey in prev)) return prev
+      const next = { ...prev }
+      delete next[draftKey]
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(REPLY_DRAFTS_STORAGE_KEY, JSON.stringify(next))
+        } catch {
+          /* noop */
+        }
+      }
+      return next
+    })
+  }, [])
+
+  const focusComposerInput = useCallback((threadCommentId: string) => {
+    const focusNow = () => {
+      const el = composerTextareaByCommentRef.current[threadCommentId]
+      if (!el) return false
+      el.focus({ preventScroll: true })
+      return true
+    }
+    if (focusNow()) return
+    window.setTimeout(() => {
+      if (focusNow()) return
+      window.setTimeout(() => {
+        focusNow()
+      }, 120)
+    }, 0)
+  }, [])
+
+  useEffect(() => {
     postIdSetRef.current = new Set(replies.map((r) => r.post_id))
     commentIdSetRef.current = new Set(replies.map((r) => String(r.reply.id)))
   }, [replies])
+
+  useEffect(() => {
+    const activeThreadCommentId = activeReplyTarget?.threadCommentId ?? null
+    activeThreadCommentIdRef.current = activeThreadCommentId
+    setThreadRepliesByComment((prev) => {
+      if (!activeThreadCommentId) return {}
+      if (!(activeThreadCommentId in prev)) return {}
+      const activeReplies = prev[activeThreadCommentId] ?? []
+      return { [activeThreadCommentId]: activeReplies }
+    })
+  }, [activeReplyTarget?.threadCommentId])
 
   const navigateToPost = (postId: string) => {
     if (onNavigateToPost) {
@@ -149,7 +239,7 @@ export default function RepliesPanel({
   }
 
   const avatarBase =
-    'rounded-full shrink-0 relative border border-white/10 bg-zinc-900 object-cover object-center'
+    'rounded-full shrink-0 relative border border-zinc-200 bg-zinc-100 object-cover object-center dark:border-white/10 dark:bg-zinc-900'
 
   const renderAvatar = (
     avatarUrl: string | null | undefined,
@@ -240,14 +330,45 @@ export default function RepliesPanel({
     return '1m'
   }
 
+  const normalizeProfileHandle = useCallback(
+    (value: string | null | undefined) => value?.trim().replace(/^@+/, '') || null,
+    [],
+  )
+
+  const toThreadAuthor = useCallback(
+    (
+      profile: { full_name?: string | null; username?: string | null; avatar_url?: string | null } | null | undefined,
+      userId: string | null | undefined,
+    ): ThreadAuthor => {
+      const handle = normalizeProfileHandle(profile?.username)
+      const displayName = profile?.full_name?.trim() || handle || (userId?.trim().slice(0, 8) ?? '')
+      return {
+        display_name: displayName,
+        handle,
+        avatar_url: profile?.avatar_url ?? null,
+      }
+    },
+    [normalizeProfileHandle],
+  )
+
+  const sortNestedReplies = useCallback((items: NestedReply[]) => {
+    return [...items].sort((a, b) => {
+      const aMs = new Date(a.created_at).getTime()
+      const bMs = new Date(b.created_at).getTime()
+      if (!Number.isFinite(aMs) || !Number.isFinite(bMs)) return 0
+      return aMs - bMs
+    })
+  }, [])
+
   const fetchThreadReplies = useCallback(async (commentId: string) => {
     const commentNum = Number(commentId)
     if (!Number.isFinite(commentNum)) return
+    const shouldStoreForThread = () => activeThreadCommentIdRef.current === commentId
 
     const { data, error } = await supabase
       .from('comment_replies')
       .select(
-        'id, parent_comment_id, post_id, user_id, content, media_url, created_at, profiles(id, full_name, username, avatar_url)',
+        'id, parent_comment_id, post_id, user_id, content, media_url, created_at, profiles:user_id(id, full_name, username, avatar_url)',
       )
       .eq('parent_comment_id', commentNum)
       .order('created_at', { ascending: true })
@@ -259,16 +380,55 @@ export default function RepliesPanel({
         .eq('parent_comment_id', commentNum)
         .order('created_at', { ascending: true })
       if (fallbackError) return
-      setThreadRepliesByComment((prev) => ({ ...prev, [commentId]: (fallback ?? []) as NestedReply[] }))
+      const fallbackRows = ((fallback ?? []) as unknown as NestedReplyRow[]).filter((item) => Boolean(item.user_id))
+      const profileIds = Array.from(new Set(fallbackRows.map((item) => item.user_id).filter(Boolean)))
+      let profilesById: Record<string, { full_name?: string | null; username?: string | null; avatar_url?: string | null }> =
+        {}
+
+      if (profileIds.length) {
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, full_name, username, avatar_url')
+          .in('id', profileIds)
+        profilesById = Object.fromEntries(
+          (profileRows ?? []).map((profile) => [
+            String(profile.id),
+            {
+              full_name: profile.full_name,
+              username: profile.username,
+              avatar_url: profile.avatar_url,
+            },
+          ]),
+        )
+      }
+
+      const normalizedFallback = sortNestedReplies(fallbackRows.map((item) => ({
+        id: item.id,
+        content: item.content,
+        media_url: item.media_url ?? null,
+        created_at: item.created_at,
+        user_id: item.user_id,
+        author: toThreadAuthor(profilesById[item.user_id] ?? null, item.user_id),
+      })))
+      if (!shouldStoreForThread()) return
+      setThreadRepliesByComment((prev) => ({ ...prev, [commentId]: normalizedFallback }))
       return
     }
 
-    const normalized = ((data ?? []) as unknown as NestedReply[]).map((item) => ({
-      ...item,
-      profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+    const normalized = sortNestedReplies(((data ?? []) as unknown as NestedReplyRow[]).map((item) => {
+      const joined = Array.isArray(item.profiles) ? (item.profiles[0] ?? null) : (item.profiles ?? null)
+      return {
+        id: item.id,
+        content: item.content,
+        media_url: item.media_url ?? null,
+        created_at: item.created_at,
+        user_id: item.user_id,
+        author: toThreadAuthor(joined, item.user_id),
+      }
     }))
+    if (!shouldStoreForThread()) return
     setThreadRepliesByComment((prev) => ({ ...prev, [commentId]: normalized }))
-  }, [])
+  }, [sortNestedReplies, toThreadAuthor])
 
   const handleToggleLike = useCallback(
     async (target: LikeTarget, userId: string) => {
@@ -554,39 +714,64 @@ export default function RepliesPanel({
         )
         if (!cid || !commentIdSetRef.current.has(cid)) return
         scheduleCommentRefresh(cid)
+        void fetchThreadReplies(cid)
       })
       .subscribe()
+    const refreshDebounceSnapshot = refreshDebounce.current
 
     return () => {
-      for (const k of Object.keys(refreshDebounce.current)) {
-        if (refreshDebounce.current[k]) clearTimeout(refreshDebounce.current[k])
+      for (const k of Object.keys(refreshDebounceSnapshot)) {
+        if (refreshDebounceSnapshot[k]) clearTimeout(refreshDebounceSnapshot[k])
       }
       void supabase.removeChannel(ch)
     }
-  }, [replies.length, postIdsKey, commentIdsKey, schedulePostRefresh, scheduleCommentRefresh])
+  }, [replies.length, postIdsKey, commentIdsKey, schedulePostRefresh, scheduleCommentRefresh, fetchThreadReplies])
 
-  const onOpenCommentUi = (e: React.MouseEvent, row: ReplyThread) => {
+  const onOpenCommentUi = (
+    e: React.MouseEvent,
+    row: ReplyThread,
+    target: Omit<ActiveReplyTarget, 'threadCommentId' | 'threadRowId'>,
+  ) => {
     e.stopPropagation()
     const commentId = String(row.reply.id)
-    setReplyComposerOpenByComment((prev) => ({ ...prev, [commentId]: true }))
-    window.setTimeout(() => {
-      composerTextareaByCommentRef.current[commentId]?.focus()
-    }, 0)
-    if (!threadRepliesByComment[commentId]) {
-      void fetchThreadReplies(commentId)
+    const isSameTarget =
+      activeReplyTarget?.threadRowId === row.id &&
+      activeReplyTarget?.threadCommentId === commentId &&
+      activeReplyTarget.targetKey === target.targetKey
+    if (isSameTarget) {
+      activeThreadCommentIdRef.current = null
+      setActiveReplyTarget(null)
+      return
     }
+    activeThreadCommentIdRef.current = commentId
+    setActiveReplyTarget({
+      threadRowId: row.id,
+      threadCommentId: commentId,
+      targetType: target.targetType,
+      targetId: target.targetId,
+      targetHandle: target.targetHandle,
+      targetKey: target.targetKey,
+    })
+    focusComposerInput(commentId)
+    void fetchThreadReplies(commentId)
   }
 
   const handleCreateNestedReply = useCallback(
-    async (row: ReplyThread) => {
+    async (row: ReplyThread, threadCommentId: string, draftKey: string) => {
       if (!composerUserId || !composerProfile) {
         toast.error('Zaloguj się, aby dodać odpowiedź.')
         return
       }
-      const commentId = String(row.reply.id)
+      const commentId = threadCommentId
       const postId = String(row.post_id ?? '').trim()
-      const parentCommentId = Number(row.reply.id)
-      const content = (replyInputByComment[commentId] ?? '').trim()
+      const activeParentId =
+        activeReplyTarget?.threadRowId === row.id &&
+        activeReplyTarget.threadCommentId === threadCommentId
+          ? Number(activeReplyTarget.targetId)
+          : Number(commentId)
+      const parentCommentId = Number.isFinite(activeParentId) ? activeParentId : Number(commentId)
+      const rawDraft = draftsByTarget[draftKey] ?? ''
+      const content = rawDraft.trim()
       const selectedMedia = selectedMediaByComment[commentId] ?? null
 
       if (replySubmittingByComment[commentId]) return
@@ -601,16 +786,21 @@ export default function RepliesPanel({
         media_url: optimisticPreview,
         created_at: new Date().toISOString(),
         user_id: composerUserId,
-        profiles: {
-          full_name: composerProfile?.full_name ?? currentUserProfile?.full_name ?? null,
-          username: composerProfile?.username ?? currentUserProfile?.username ?? null,
+        author: {
+          display_name:
+            composerProfile?.full_name?.trim() ||
+            composerProfile?.username?.trim() ||
+            currentUserProfile?.full_name?.trim() ||
+            currentUserProfile?.username?.trim() ||
+            composerUserId.slice(0, 8),
+          handle: normalizeProfileHandle(composerProfile?.username ?? currentUserProfile?.username ?? null),
           avatar_url: composerAvatar,
         },
       }
 
       setThreadRepliesByComment((prev) => ({
         ...prev,
-        [commentId]: [...(prev[commentId] ?? []), optimisticReply],
+        [commentId]: sortNestedReplies([...(prev[commentId] ?? []), optimisticReply]),
       }))
       setReplyPatch((prev) => ({
         ...prev,
@@ -619,7 +809,6 @@ export default function RepliesPanel({
           comments_count: Math.max(0, (prev[commentId]?.comments_count ?? row.reply.stats.comments_count) + 1),
         },
       }))
-      setReplyInputByComment((prev) => ({ ...prev, [commentId]: '' }))
       setSelectedMediaByComment((prev) => ({ ...prev, [commentId]: null }))
       setReplySubmittingByComment((prev) => ({ ...prev, [commentId]: true }))
 
@@ -635,7 +824,7 @@ export default function RepliesPanel({
             comments_count: Math.max(0, (prev[commentId]?.comments_count ?? row.reply.stats.comments_count) - 1),
           },
         }))
-        setReplyInputByComment((prev) => ({ ...prev, [commentId]: content }))
+        setDraftsByTarget((prev) => ({ ...prev, [draftKey]: rawDraft }))
         if (selectedMedia) {
           setSelectedMediaByComment((prev) => ({ ...prev, [commentId]: selectedMedia }))
         }
@@ -681,12 +870,15 @@ export default function RepliesPanel({
         rollback()
         toast.error('Nie udało się dodać odpowiedzi.')
       } else if (data?.id != null) {
+        deleteDraftEntry(draftKey)
         setThreadRepliesByComment((prev) => ({
           ...prev,
-          [commentId]: (prev[commentId] ?? []).map((item) =>
-            item.id === optimisticId
-              ? { ...item, id: Number(data.id), media_url: uploadedMediaUrl ?? item.media_url }
-              : item,
+          [commentId]: sortNestedReplies(
+            (prev[commentId] ?? []).map((item) =>
+              item.id === optimisticId
+                ? { ...item, id: Number(data.id), media_url: uploadedMediaUrl ?? item.media_url }
+                : item,
+            ),
           ),
         }))
         if (optimisticPreview) {
@@ -705,9 +897,13 @@ export default function RepliesPanel({
       composerProfile,
       composerAvatar,
       currentUserProfile,
-      replyInputByComment,
+      activeReplyTarget,
+      normalizeProfileHandle,
+      draftsByTarget,
+      deleteDraftEntry,
       replySubmittingByComment,
       selectedMediaByComment,
+      sortNestedReplies,
     ],
   )
 
@@ -805,7 +1001,7 @@ export default function RepliesPanel({
     if (!media.length) return null
     if (media.length === 1) {
       return (
-        <div className="rounded-2xl border border-white/10 overflow-hidden mt-3">
+        <div className="rounded-2xl border border-zinc-200 dark:border-white/10 overflow-hidden mt-3">
           <img
             src={media[0]}
             alt=""
@@ -821,7 +1017,7 @@ export default function RepliesPanel({
         {media.slice(0, 4).map((url, index) => (
           <div
             key={`${url}-${index}`}
-            className="rounded-2xl border border-white/10 overflow-hidden"
+            className="rounded-2xl border border-zinc-200 dark:border-white/10 overflow-hidden"
           >
             <img
               src={url}
@@ -837,7 +1033,7 @@ export default function RepliesPanel({
 
   type CommentItemProps = {
     showActions?: boolean
-    replyToLabel?: string | null
+    replyToLabel?: React.ReactNode
     commentsActive?: boolean
     authorDisplay: string
     handleLabel: string | null
@@ -854,6 +1050,7 @@ export default function RepliesPanel({
     onCommentClick: (e: React.MouseEvent) => void
     onLikeClick: (e: React.MouseEvent) => void
     trailing?: React.ReactNode
+    railBottom?: boolean
   }
 
   const CommentItem = ({
@@ -875,20 +1072,24 @@ export default function RepliesPanel({
     trailing,
     replyToLabel,
     commentsActive = false,
+    railBottom = false,
   }: CommentItemProps) => {
     return (
       <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
-        <div className="flex items-start justify-center">
+        <div className="relative flex items-start justify-center">
+          {railBottom ? (
+            <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-zinc-200 dark:bg-zinc-800" />
+          ) : null}
           {profileHref ? (
             <Link
               to={profileHref}
-              className="inline-flex w-10 h-10 rounded-full shrink-0"
+              className="relative z-10 inline-flex w-10 h-10 rounded-full shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
               {renderAvatar(avatarUrl, avatarFallback, 'w-10 h-10')}
             </Link>
           ) : (
-            renderAvatar(avatarUrl, avatarFallback, 'w-10 h-10')
+            <div className="relative z-10">{renderAvatar(avatarUrl, avatarFallback, 'w-10 h-10')}</div>
           )}
         </div>
         <div className="min-w-0 flex flex-col space-y-1.5">
@@ -897,36 +1098,46 @@ export default function RepliesPanel({
               {profileHref ? (
                 <Link
                   to={profileHref}
-                  className="font-bold text-white hover:underline truncate"
+                  className="font-bold text-zinc-900 dark:text-zinc-100 hover:underline truncate"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {authorDisplay}
                 </Link>
               ) : (
-                <p className="font-bold text-white truncate">{authorDisplay}</p>
+                <p className="font-bold text-zinc-900 dark:text-zinc-100 truncate">{authorDisplay}</p>
               )}
-              {handleLabel ? <span className="text-zinc-400 ml-1 truncate">{handleLabel}</span> : null}
-              <span className="text-zinc-400 ml-1">·</span>
-              <span className="text-zinc-400 ml-1">{timestamp}</span>
+              {handleLabel ? (
+                <span className="text-zinc-500 dark:text-zinc-400 ml-1 truncate">{handleLabel}</span>
+              ) : null}
+              <span className="text-zinc-500 dark:text-zinc-400 ml-1">·</span>
+              <span className="text-zinc-500 dark:text-zinc-400 ml-1">{timestamp}</span>
             </div>
             <button
               type="button"
-              className="text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
               onClick={(e) => e.stopPropagation()}
               aria-label="Więcej opcji"
             >
               <MoreHorizontal size={18} />
             </button>
           </div>
-          {replyToLabel ? <p className="text-xs text-zinc-400">{replyToLabel}</p> : null}
-          {content ? <p className="whitespace-pre-line text-[15px] text-zinc-100 leading-normal">{content}</p> : null}
+          {replyToLabel ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{replyToLabel}</p>
+          ) : null}
+          {content ? (
+            <p className="whitespace-pre-line text-[15px] text-zinc-900 dark:text-zinc-100 leading-normal">
+              {content}
+            </p>
+          ) : null}
           {renderMedia(media)}
           {showActions ? (
-            <div className="flex items-center gap-x-10 mt-3 text-zinc-500 text-[13px]">
+            <div className="flex items-center gap-x-10 mt-3 text-zinc-500 dark:text-zinc-400 text-[13px]">
               <button
                 type="button"
                 className={`inline-flex items-center gap-1.5 transition-colors ${
-                  commentsActive ? 'text-brand-gold-bright' : 'text-zinc-500 hover:text-brand-gold-bright/90'
+                  commentsActive
+                    ? 'text-brand-gold-bright'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-brand-gold-bright/90'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -942,7 +1153,9 @@ export default function RepliesPanel({
               <button
                 type="button"
                 className={`inline-flex items-center gap-1.5 transition-colors ${
-                  isLiked ? 'text-brand-gold-bright' : 'text-zinc-500 hover:text-brand-gold-bright/90'
+                  isLiked
+                    ? 'text-brand-gold-bright'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-brand-gold-bright/90'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -987,7 +1200,7 @@ export default function RepliesPanel({
   }
 
   return (
-    <ul className="bg-black">
+    <ul className="space-y-3">
       {replies.map((row) => {
         const replyContent = row.reply.content?.trim() || '(brak treści komentarza)'
         const preview = row.post.content?.trim() || '(wpis usunięty lub niedostępny)'
@@ -1011,9 +1224,9 @@ export default function RepliesPanel({
         const replyCommentsCount = replyEng?.comments_count ?? row.reply.stats.comments_count
         const replyLikesCount = replyEng?.likes_count ?? row.reply.stats.likes_count
         const replyIsLiked = replyEng?.has_liked ?? row.reply.user_interactions.has_liked
-        const postAuthorDisplay = row.post.author.display_name || 'nieznany autor'
+        const postAuthorDisplay = row.post.author.display_name
         const postHandleLabel = displayHandle(row.post.author.handle)
-        const replyAuthorDisplay = row.reply.author.display_name || 'użytkownika'
+        const replyAuthorDisplay = row.reply.author.display_name
         const replyHandleLabel = displayHandle(row.reply.author.handle)
         const postTimestamp = formatRelativeTimestamp(row.post.created_at)
         const replyTimestamp = formatRelativeTimestamp(row.reply.created_at)
@@ -1022,222 +1235,316 @@ export default function RepliesPanel({
         const replyHandleForUrl = row.reply.author.handle?.trim().replace(/^@+/, '') ?? ''
         const originalProfileHref = postHandleForUrl ? `/profile/${postHandleForUrl}` : null
         const replyProfileHref = replyHandleForUrl ? `/profile/${replyHandleForUrl}` : null
-        const replyToParent = postHandleLabel ? `W odpowiedzi do @${postHandleLabel}` : null
-        const replyToReply = replyHandleLabel
-          ? `W odpowiedzi do @${replyHandleLabel}`
-          : replyToParent
-        const isComposerOpen = Boolean(replyComposerOpenByComment[replyIdKey])
-        const nestedReplies = threadRepliesByComment[replyIdKey] ?? []
+        const renderReplyToLabel = (targetHandle: string | null) => {
+          if (!targetHandle) return null
+          return (
+            <>
+              W odpowiedzi do{' '}
+              <Link
+                to={`/profile/${targetHandle}`}
+                className="text-sm text-zinc-500 dark:text-zinc-400 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                @{targetHandle}
+              </Link>
+            </>
+          )
+        }
+        const replyToParent = renderReplyToLabel(postHandleLabel)
+        const replyToReply = renderReplyToLabel(replyHandleLabel) ?? replyToParent
+        const isThreadActive =
+          activeReplyTarget?.threadRowId === row.id &&
+          activeReplyTarget?.threadCommentId === replyIdKey
+        const nestedReplies = isThreadActive
+          ? sortNestedReplies(threadRepliesByComment[replyIdKey] ?? [])
+          : []
         const selectedMedia = selectedMediaByComment[replyIdKey] ?? null
-        const inputValue = replyInputByComment[replyIdKey] ?? ''
         const isSubmitting = Boolean(replySubmittingByComment[replyIdKey])
-        const sendDisabled = isSubmitting || (!inputValue.trim() && !selectedMedia)
         const handleCardClick = () => {
           if (!threadPostId) return
           navigateToPost(String(threadPostId))
         }
-        const rowClass =
-          'px-4 py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors cursor-pointer'
+        const rowClass = 'px-4 py-3 hover:bg-zinc-100/80 dark:hover:bg-white/[0.02] transition-colors cursor-pointer'
+        const composerClass = 'px-4 py-3'
+
+        const baseItems: ThreadRenderItem[] = [
+          { kind: 'post', id: `t-${replyIdKey}-post` },
+          { kind: 'reply', id: `t-${replyIdKey}-reply` },
+          ...nestedReplies.map((nested) => ({
+            kind: 'nested' as const,
+            id: `t-${replyIdKey}-nested-${nested.id}`,
+            nested,
+          })),
+        ]
+        const activeDraftKey =
+          isThreadActive && activeReplyTarget ? `${replyIdKey}:${activeReplyTarget.targetKey}` : null
+        const visibleItems: ThreadRenderItem[] = isThreadActive
+          ? [
+              ...baseItems,
+              {
+                kind: 'composer',
+                id: `t-${replyIdKey}-composer`,
+                threadCommentId: replyIdKey,
+                draftKey: activeDraftKey ?? `${replyIdKey}:t-${replyIdKey}-reply`,
+              },
+            ]
+          : baseItems
+        const hasNextItem = (index: number) => index < visibleItems.length - 1
 
         return (
-          <li key={row.id}>
-            <div className={rowClass} onClick={handleCardClick}>
-              <CommentItem
-                authorDisplay={postAuthorDisplay}
-                handleLabel={postHandleLabel ? `@${postHandleLabel}` : null}
-                timestamp={postTimestamp}
-                profileHref={originalProfileHref}
-                avatarUrl={row.post.author.avatar_url}
-                avatarFallback={row.post.author.handle || postAuthorDisplay}
-                content={preview}
-                media={originalMedia}
-                commentsCount={postCommentsCount}
-                likesCount={postLikesCount}
-                isLiked={postIsLiked}
-                commentsActive={isComposerOpen}
-                likeDisabled={postLikePending[postIdKey]}
-                onCommentClick={(e) => onOpenCommentUi(e, row)}
-                onLikeClick={(e) => onTogglePostLike(e, row)}
-              />
-            </div>
-
-            <div className={rowClass} onClick={handleCardClick}>
-              <CommentItem
-                authorDisplay={replyAuthorDisplay}
-                handleLabel={replyHandleLabel ? `@${replyHandleLabel}` : null}
-                replyToLabel={replyToParent}
-                timestamp={replyTimestamp}
-                profileHref={replyProfileHref}
-                avatarUrl={row.reply.author.avatar_url}
-                avatarFallback={row.reply.author.handle || row.reply.author.display_name}
-                content={replyContent}
-                media={replyMedia}
-                commentsCount={replyCommentsCount}
-                likesCount={replyLikesCount}
-                isLiked={replyIsLiked}
-                commentsActive={isComposerOpen}
-                likeDisabled={replyLikePending[replyIdKey]}
-                onCommentClick={(e) => onOpenCommentUi(e, row)}
-                onLikeClick={(e) => onToggleReplyLike(e, row)}
-              />
-            </div>
-
-            {isComposerOpen
-              ? nestedReplies.map((nested) => {
-                  const nestedAuthor =
-                    nested.profiles?.full_name?.trim() ||
-                    nested.profiles?.username?.trim() ||
-                    'użytkownik'
-                  const nestedHandle = displayHandle(nested.profiles?.username ?? null)
-                  const nestedProfileHref = nestedHandle ? `/profile/${nestedHandle}` : null
-                  const nestedMedia = nested.media_url ? [nested.media_url] : []
-                  return (
-                    <div key={nested.id} className={rowClass} onClick={handleCardClick}>
-                      <CommentItem
-                        authorDisplay={nestedAuthor}
-                        handleLabel={nestedHandle ? `@${nestedHandle}` : null}
-                        replyToLabel={replyToReply}
-                        timestamp={formatRelativeTimestamp(nested.created_at)}
-                        profileHref={nestedProfileHref}
-                        avatarUrl={nested.profiles?.avatar_url ?? null}
-                        avatarFallback={nested.profiles?.username || nestedAuthor}
-                        content={nested.content}
-                        media={nestedMedia}
-                        commentsCount={0}
-                        likesCount={0}
-                        isLiked={false}
-                        commentsActive={false}
-                        showActions={false}
-                        onCommentClick={(e) => e.stopPropagation()}
-                        onLikeClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                  )
-                })
-              : null}
-
-            {isComposerOpen ? (
-              <div
-                className="px-4 py-3 border-b border-white/5"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
-                  <div className="flex items-start justify-center">
-                    {composerProfileLoading ? (
-                      <div
-                        className="h-10 w-10 rounded-full bg-white/10 animate-pulse"
-                        aria-hidden
-                      />
-                    ) : composerHandle ? (
-                      <Link
-                        to={`/profile/${composerHandle}`}
-                        className="inline-flex w-10 h-10 rounded-full shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {renderAvatar(composerAvatar, composerHandle, 'w-10 h-10')}
-                      </Link>
-                    ) : (
-                      renderAvatar(composerAvatar, composerDisplayName, 'w-10 h-10')
-                    )}
-                  </div>
-                  <div className="min-w-0 flex flex-col">
-                    <textarea
-                      ref={(node) => {
-                        composerTextareaByCommentRef.current[replyIdKey] = node
-                      }}
-                      value={inputValue}
-                      onChange={(e) => {
-                        setReplyInputByComment((prev) => ({
-                          ...prev,
-                          [replyIdKey]: e.target.value,
-                        }))
-                      }}
-                      onInput={(e) => {
-                        const el = e.currentTarget
-                        el.style.height = 'auto'
-                        el.style.height = `${Math.min(el.scrollHeight, 144)}px`
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => {
-                        e.stopPropagation()
-                        if (
-                          e.key === 'Enter' &&
-                          !e.shiftKey &&
-                          !e.nativeEvent.isComposing
-                        ) {
-                          e.preventDefault()
-                          void handleCreateNestedReply(row)
-                        }
-                      }}
-                      rows={1}
-                      placeholder="Opublikuj swoją odpowiedź"
-                      className="w-full resize-none overflow-hidden bg-transparent text-[15px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+          <motion.li
+            key={`t-${replyIdKey}-thread`}
+            className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.02] overflow-hidden"
+            layout
+            transition={{ layout: { duration: 0.22, ease: 'easeOut' } }}
+          >
+            <AnimatePresence initial={false} mode="popLayout">
+              {visibleItems.map((item, index) => {
+              if (item.kind === 'post') {
+                const commentsActive = isThreadActive && activeReplyTarget?.targetKey === item.id
+                return (
+                  <div key={item.id} className={rowClass} onClick={handleCardClick}>
+                    <CommentItem
+                      authorDisplay={postAuthorDisplay}
+                      handleLabel={postHandleLabel ? `@${postHandleLabel}` : null}
+                      timestamp={postTimestamp}
+                      profileHref={originalProfileHref}
+                      avatarUrl={row.post.author.avatar_url}
+                      avatarFallback={row.post.author.handle || postAuthorDisplay}
+                      content={preview}
+                      media={originalMedia}
+                      commentsCount={postCommentsCount}
+                      likesCount={postLikesCount}
+                      isLiked={postIsLiked}
+                      commentsActive={commentsActive}
+                      likeDisabled={postLikePending[postIdKey]}
+                      onCommentClick={(e) =>
+                        onOpenCommentUi(e, row, {
+                          targetType: 'post',
+                          targetKey: item.id,
+                          targetId: replyIdKey,
+                          targetHandle: postHandleLabel,
+                        })
+                      }
+                      onLikeClick={(e) => onTogglePostLike(e, row)}
+                      railBottom={hasNextItem(index)}
                     />
+                  </div>
+                )
+              }
 
-                    {selectedMedia ? (
-                      <div className="mt-2 relative w-[72px] h-[72px] rounded-lg border border-white/10 overflow-hidden">
-                        <img
-                          src={selectedMedia.previewUrl}
-                          alt={selectedMedia.fileName || 'Załączony obraz'}
-                          className="h-full w-full object-cover"
+              if (item.kind === 'reply') {
+                const commentsActive = isThreadActive && activeReplyTarget?.targetKey === item.id
+                return (
+                  <div key={item.id} className={rowClass} onClick={handleCardClick}>
+                    <CommentItem
+                      authorDisplay={replyAuthorDisplay}
+                      handleLabel={replyHandleLabel ? `@${replyHandleLabel}` : null}
+                      replyToLabel={replyToParent}
+                      timestamp={replyTimestamp}
+                      profileHref={replyProfileHref}
+                      avatarUrl={row.reply.author.avatar_url}
+                      avatarFallback={row.reply.author.handle || row.reply.author.display_name}
+                      content={replyContent}
+                      media={replyMedia}
+                      commentsCount={replyCommentsCount}
+                      likesCount={replyLikesCount}
+                      isLiked={replyIsLiked}
+                      commentsActive={commentsActive}
+                      likeDisabled={replyLikePending[replyIdKey]}
+                      onCommentClick={(e) =>
+                        onOpenCommentUi(e, row, {
+                          targetType: 'reply',
+                          targetKey: item.id,
+                          targetId: replyIdKey,
+                          targetHandle: replyHandleLabel,
+                        })
+                      }
+                      onLikeClick={(e) => onToggleReplyLike(e, row)}
+                      railBottom={hasNextItem(index)}
+                    />
+                  </div>
+                )
+              }
+
+              if (item.kind === 'nested') {
+                const nested = item.nested
+                const nestedAuthor = nested.author.display_name
+                const nestedHandle = displayHandle(nested.author.handle)
+                const nestedProfileHref = nestedHandle ? `/profile/${nestedHandle}` : null
+                const nestedMedia = nested.media_url ? [nested.media_url] : []
+                const commentsActive = isThreadActive && activeReplyTarget?.targetKey === item.id
+                return (
+                  <div key={item.id} className={rowClass} onClick={handleCardClick}>
+                    <CommentItem
+                      authorDisplay={nestedAuthor}
+                      handleLabel={nestedHandle ? `@${nestedHandle}` : null}
+                      replyToLabel={replyToReply}
+                      timestamp={formatRelativeTimestamp(nested.created_at)}
+                      profileHref={nestedProfileHref}
+                      avatarUrl={nested.author.avatar_url}
+                      avatarFallback={nested.author.handle || nestedAuthor}
+                      content={nested.content}
+                      media={nestedMedia}
+                      commentsCount={0}
+                      likesCount={0}
+                      isLiked={false}
+                      commentsActive={commentsActive}
+                      onCommentClick={(e) =>
+                        onOpenCommentUi(e, row, {
+                          targetType: 'nested',
+                          targetKey: item.id,
+                          targetId: String(nested.id),
+                          targetHandle: nestedHandle,
+                        })
+                      }
+                      onLikeClick={(e) => e.stopPropagation()}
+                      railBottom={hasNextItem(index)}
+                    />
+                  </div>
+                )
+              }
+
+                const inputValue = draftsByTarget[item.draftKey] ?? ''
+                const sendDisabled = isSubmitting || (!inputValue.trim() && !selectedMedia)
+                return (
+                <motion.div
+                  key={item.id}
+                  className={composerClass}
+                  onClick={(e) => e.stopPropagation()}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                >
+                  <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
+                    <div className="relative flex items-start justify-center">
+                      {hasNextItem(index) ? (
+                        <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-zinc-200 dark:bg-zinc-800" />
+                      ) : null}
+                      {composerProfileLoading ? (
+                        <div
+                          className="h-10 w-10 rounded-full bg-zinc-200 dark:bg-white/10 animate-pulse"
+                          aria-hidden
+                        />
+                      ) : composerHandle ? (
+                        <Link
+                          to={`/profile/${composerHandle}`}
+                          className="inline-flex w-10 h-10 rounded-full shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {renderAvatar(composerAvatar, composerHandle, 'w-10 h-10')}
+                        </Link>
+                      ) : (
+                        renderAvatar(composerAvatar, composerDisplayName, 'w-10 h-10')
+                      )}
+                    </div>
+                    <div className="min-w-0 flex flex-col">
+                      {isThreadActive && activeReplyTarget?.targetHandle ? (
+                        <p className="mb-1 text-sm text-zinc-500 dark:text-zinc-400">
+                          W odpowiedzi do @{activeReplyTarget.targetHandle}
+                        </p>
+                      ) : null}
+                      <textarea
+                        ref={(node) => {
+                          composerTextareaByCommentRef.current[item.threadCommentId] = node
+                        }}
+                        value={inputValue}
+                        onChange={(e) => {
+                          setDraftsByTarget((prev) => ({
+                            ...prev,
+                            [item.draftKey]: e.target.value,
+                          }))
+                        }}
+                        onInput={(e) => {
+                          const el = e.currentTarget
+                          el.style.height = 'auto'
+                          el.style.height = `${Math.min(el.scrollHeight, 144)}px`
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          e.stopPropagation()
+                          if (
+                            e.key === 'Enter' &&
+                            !e.shiftKey &&
+                            !e.nativeEvent.isComposing
+                          ) {
+                            e.preventDefault()
+                            void handleCreateNestedReply(row, item.threadCommentId, item.draftKey)
+                          }
+                        }}
+                        rows={1}
+                        placeholder="Opublikuj swoją odpowiedź"
+                        className="w-full resize-none overflow-hidden bg-transparent text-[15px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none"
+                      />
+
+                      {selectedMedia ? (
+                        <div className="mt-2 relative w-[72px] h-[72px] rounded-lg border border-zinc-200 dark:border-white/10 overflow-hidden">
+                          <img
+                            src={selectedMedia.previewUrl}
+                            alt={selectedMedia.fileName || 'Załączony obraz'}
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              clearSelectedMedia(item.threadCommentId)
+                            }}
+                            className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900/70 dark:bg-black/70 text-zinc-100 dark:text-white hover:bg-zinc-900/90 dark:hover:bg-black/90"
+                            aria-label="Usuń obraz"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : null}
+
+                      <div className="mt-2 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            mediaInputByCommentRef.current[item.threadCommentId]?.click()
+                          }}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-gold-bright transition-colors hover:bg-brand-gold-bright/10"
+                          aria-label="Dodaj obraz"
+                        >
+                          <ImageIcon size={18} />
+                        </button>
+                        <input
+                          ref={(node) => {
+                            mediaInputByCommentRef.current[item.threadCommentId] = node
+                          }}
+                          type="file"
+                          accept="image/*"
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            selectReplyMedia(item.threadCommentId, e.target.files?.[0] ?? null)
+                            e.currentTarget.value = ''
+                          }}
+                          className="hidden"
                         />
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            clearSelectedMedia(replyIdKey)
+                            void handleCreateNestedReply(row, item.threadCommentId, item.draftKey)
                           }}
-                          className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90"
-                          aria-label="Usuń obraz"
+                          disabled={sendDisabled}
+                          className="inline-flex h-9 items-center justify-center rounded-full bg-brand-gold-bright px-4 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
                         >
-                          <X size={12} />
+                          Odpowiedz
                         </button>
                       </div>
-                    ) : null}
-
-                    <div className="mt-2 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          mediaInputByCommentRef.current[replyIdKey]?.click()
-                        }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-gold-bright transition-colors hover:bg-brand-gold-bright/10"
-                        aria-label="Dodaj obraz"
-                      >
-                        <ImageIcon size={18} />
-                      </button>
-                      <input
-                        ref={(node) => {
-                          mediaInputByCommentRef.current[replyIdKey] = node
-                        }}
-                        type="file"
-                        accept="image/*"
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          selectReplyMedia(replyIdKey, e.target.files?.[0] ?? null)
-                          e.currentTarget.value = ''
-                        }}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void handleCreateNestedReply(row)
-                        }}
-                        disabled={sendDisabled}
-                        className="inline-flex h-9 items-center justify-center rounded-full bg-brand-gold-bright px-4 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
-                      >
-                        Odpowiedz
-                      </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            ) : null}
-          </li>
+                </motion.div>
+              )
+            })}
+            </AnimatePresence>
+          </motion.li>
         )
       })}
     </ul>
