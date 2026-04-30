@@ -49,6 +49,8 @@ type Props = {
   isPop: boolean
   isCommentsOpen: boolean
   comments: Comment[]
+  /** Initial fetch for this thread (realtime refetches do not set this). */
+  commentsLoading?: boolean
   commentInputValue: string
   isCommentSubmitting: boolean
   onToggleLike: () => void
@@ -72,6 +74,7 @@ export default function PostCard({
   isPop,
   isCommentsOpen,
   comments,
+  commentsLoading = false,
   commentInputValue,
   isCommentSubmitting,
   onToggleLike,
@@ -188,29 +191,27 @@ export default function PostCard({
               />
             )}
 
-            <div className="flex items-center mt-3 -mx-1.5 gap-0.5">
-              <button
+            <div className="flex items-center mt-3 -mx-1 gap-1.5">
+              <motion.button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleComments()
                 }}
-                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: 'spring', stiffness: 520, damping: 30 }}
+                className={`group inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-colors ${
                   isCommentsOpen
                     ? 'text-[#1e293b] bg-[#1e293b]/10 dark:text-accent-interactive dark:bg-accent-interactive/15'
-                    : 'text-fg-primary/50 dark:text-slate-400 hover:text-[#1e293b] hover:bg-[#1e293b]/5 dark:hover:text-accent-interactive dark:hover:bg-accent-interactive/10 [&_svg]:group-hover:text-[#1e293b] dark:[&_svg]:group-hover:text-accent-interactive'
+                    : 'text-fg-primary/60 dark:text-slate-400 hover:text-[#1e293b] hover:bg-[#1e293b]/10 dark:hover:text-accent-interactive dark:hover:bg-white/5 [&_svg]:group-hover:text-[#1e293b] dark:[&_svg]:group-hover:text-accent-interactive'
                 }`}
                 aria-label="Komentarze"
               >
-                <MessageCircle
-                  size={15}
-                  strokeWidth={isCommentsOpen ? 2.5 : 1.75}
-                  className="transition-all"
-                />
-                {commentCount > 0 && (
-                  <span className="tabular-nums leading-none">{commentCount}</span>
+                <MessageCircle size={16} strokeWidth={isCommentsOpen ? 2.25 : 1.75} className="shrink-0" />
+                {typeof commentCount === 'number' && commentCount >= 0 && (
+                  <span className="text-fg-secondary text-sm leading-none tabular-nums">{commentCount}</span>
                 )}
-              </button>
+              </motion.button>
 
               <motion.button
                 type="button"
@@ -219,10 +220,10 @@ export default function PostCard({
                   onToggleLike()
                 }}
                 disabled={!content.id}
-                className={`group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] font-medium transition-colors disabled:opacity-50 ${
+                className={`group relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-colors disabled:opacity-50 ${
                   isLiked
                     ? 'text-[#1e293b] bg-[#1e293b]/15 dark:text-accent-interactive'
-                    : 'text-fg-primary/50 dark:text-slate-400 hover:text-[#1e293b] hover:bg-[#1e293b]/10 [&_svg]:group-hover:text-[#1e293b] dark:hover:text-accent-interactive dark:[&_svg]:group-hover:text-accent-interactive'
+                    : 'text-fg-primary/60 dark:text-slate-400 hover:text-[#1e293b] hover:bg-[#1e293b]/10 [&_svg]:group-hover:text-[#1e293b] dark:hover:text-accent-interactive dark:hover:bg-white/5 dark:[&_svg]:group-hover:text-accent-interactive'
                 }`}
                 aria-label={isLiked ? 'Usuń polubienie' : 'Polub'}
               >
@@ -235,19 +236,17 @@ export default function PostCard({
                   className="flex"
                 >
                   <Heart
-                    size={15}
+                    size={16}
                     strokeWidth={1.75}
-                    className={`transition-colors ${isLiked ? 'fill-[#1e293b] stroke-[#1e293b] dark:fill-accent-interactive dark:stroke-accent-interactive' : ''}`}
+                    className={`transition-colors shrink-0 ${isLiked ? 'fill-[#1e293b] stroke-[#1e293b] dark:fill-accent-interactive dark:stroke-accent-interactive' : ''}`}
                   />
                 </motion.span>
-                {likeCount > 0 && (
-                  <span className="tabular-nums leading-none text-[#1e293b] dark:text-accent-interactive">
-                    {likeCount}
-                  </span>
+                {typeof likeCount === 'number' && likeCount >= 0 && (
+                  <span className="text-fg-secondary text-sm leading-none tabular-nums">{likeCount}</span>
                 )}
               </motion.button>
 
-              <button
+              <motion.button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -261,11 +260,13 @@ export default function PostCard({
                       toast.error('Nie udało się skopiować linku.')
                     })
                 }}
-                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-fg-primary/45 dark:text-slate-500 hover:text-[#1e293b] dark:hover:text-accent-interactive hover:bg-[#1e293b]/10 dark:hover:bg-white/5 text-[13px] transition-colors"
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: 'spring', stiffness: 520, damping: 30 }}
+                className="ml-auto inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-2 text-fg-primary/60 dark:text-slate-400 hover:text-[#1e293b] dark:hover:text-accent-interactive hover:bg-[#1e293b]/10 dark:hover:bg-white/5 transition-colors"
                 aria-label="Udostępnij"
               >
-                <Share2 size={14} strokeWidth={1.75} />
-              </button>
+                <Share2 size={16} strokeWidth={1.75} className="shrink-0" />
+              </motion.button>
             </div>
           </div>
         </div>
@@ -282,6 +283,7 @@ export default function PostCard({
           <CommentThread
             postId={postId}
             comments={comments}
+            isCommentsLoading={commentsLoading}
             currentUserId={currentUserId}
             myProfile={myProfile}
             displayName={displayName}

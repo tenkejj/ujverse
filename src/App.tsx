@@ -89,6 +89,8 @@ function App() {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({})
+  /** true while initial/user-triggered fetch runs; realtime refetches use silent mode (no flag). */
+  const [commentsLoadingByPost, setCommentsLoadingByPost] = useState<Record<string, boolean>>({})
   const [profileHandleByUserId, setProfileHandleByUserId] = useState<Record<string, string>>({})
 
   const expandedCommentsRef = useRef(expandedComments)
@@ -207,51 +209,57 @@ function App() {
     setCommentsCountByPost(counts)
   }, [])
 
-  const fetchCommentsForPost = useCallback(async (postId: string) => {
-    const [commentsQ, repliesQ] = await Promise.all([
-      supabase
-        .from('comments')
-        .select('id, post_id, user_id, content, created_at, profiles(id, full_name, username, avatar_url)')
-        .eq('post_id', Number(postId))
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('comment_replies')
-        .select('id, post_id, user_id, content, created_at, profiles:user_id(id, full_name, username, avatar_url)')
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true }),
-    ])
+  const fetchCommentsForPost = useCallback(async (postId: string, opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false
+    if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: true }))
+    try {
+      const [commentsQ, repliesQ] = await Promise.all([
+        supabase
+          .from('comments')
+          .select('id, post_id, user_id, content, created_at, profiles(id, full_name, avatar_url)')
+          .eq('post_id', Number(postId))
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('comment_replies')
+          .select('id, post_id, user_id, content, created_at, profiles:user_id(id, full_name, avatar_url)')
+          .eq('post_id', postId)
+          .order('created_at', { ascending: true }),
+      ])
 
-    if (commentsQ.error) {
-      console.error('[fetchCommentsForPost] comments query error:', commentsQ.error)
-    }
-    if (repliesQ.error) {
-      console.error('[fetchCommentsForPost] comment_replies query error:', repliesQ.error)
-    }
-    if (commentsQ.error && repliesQ.error) return
+      if (commentsQ.error) {
+        console.error('[fetchCommentsForPost] comments query error:', commentsQ.error)
+      }
+      if (repliesQ.error) {
+        console.error('[fetchCommentsForPost] comment_replies query error:', repliesQ.error)
+      }
+      if (commentsQ.error && repliesQ.error) return
 
-    const commentsNormalized: Comment[] = ((commentsQ.data ?? []) as unknown as Comment[])
-      .map((c) => ({
-        ...c,
-        profiles: Array.isArray(c.profiles)
-          ? (c.profiles[0] ?? null)
-          : (c.profiles ?? null),
+      const commentsNormalized: Comment[] = ((commentsQ.data ?? []) as unknown as Comment[])
+        .map((c) => ({
+          ...c,
+          profiles: Array.isArray(c.profiles)
+            ? (c.profiles[0] ?? null)
+            : (c.profiles ?? null),
+        }))
+
+      const repliesNormalized: Comment[] = (repliesQ.data ?? []).map((r) => ({
+        id: -Number(r.id),
+        post_id: String(r.post_id ?? postId),
+        user_id: String(r.user_id ?? ''),
+        content: String(r.content ?? ''),
+        created_at: String(r.created_at ?? new Date().toISOString()),
+        profiles: Array.isArray(r.profiles)
+          ? ((r.profiles[0] ?? null) as Profile | null)
+          : ((r.profiles ?? null) as Profile | null),
       }))
 
-    const repliesNormalized: Comment[] = (repliesQ.data ?? []).map((r) => ({
-      id: -Number(r.id),
-      post_id: String(r.post_id ?? postId),
-      user_id: String(r.user_id ?? ''),
-      content: String(r.content ?? ''),
-      created_at: String(r.created_at ?? new Date().toISOString()),
-      profiles: Array.isArray(r.profiles)
-        ? ((r.profiles[0] ?? null) as Profile | null)
-        : ((r.profiles ?? null) as Profile | null),
-    }))
-
-    const normalized = [...commentsNormalized, ...repliesNormalized].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-    )
-    setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
+      const normalized = [...commentsNormalized, ...repliesNormalized].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+      setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
+    } finally {
+      if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: false }))
+    }
   }, [])
 
   const fetchNotifications = useCallback(async (opts?: { silent?: boolean }) => {
@@ -521,17 +529,20 @@ function App() {
   // ── Comments ──────────────────────────────────────────────────────────────
 
   const toggleComments = useCallback(
-    async (postId: string) => {
-      const next = new Set(expandedComments)
-      if (next.has(postId)) {
-        next.delete(postId)
-      } else {
-        next.add(postId)
-        await fetchCommentsForPost(postId)
+    (postId: string) => {
+      const shouldOpen = !expandedCommentsRef.current.has(postId)
+      setExpandedComments((prev) => {
+        const next = new Set(prev)
+        if (next.has(postId)) next.delete(postId)
+        else next.add(postId)
+        return next
+      })
+      if (shouldOpen) {
+        // Fire-and-forget fetch: panel opens immediately, data hydrates in background.
+        void fetchCommentsForPost(postId)
       }
-      setExpandedComments(next)
     },
-    [expandedComments, fetchCommentsForPost],
+    [fetchCommentsForPost],
   )
 
   const submitComment = useCallback(
@@ -656,7 +667,7 @@ function App() {
         }
 
         setCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
-        if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid)
+        if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid, { silent: true })
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comment_replies' }, (payload) => {
         const pid = String(payload.new?.post_id ?? '')
@@ -669,7 +680,7 @@ function App() {
         }
 
         setCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
-        if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid)
+        if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid, { silent: true })
       })
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
@@ -700,6 +711,7 @@ function App() {
     heartPopPostId,
     commentsCountByPost,
     commentsByPost,
+    commentsLoadingByPost,
     expandedComments,
     commentInput,
     commentSubmitting,

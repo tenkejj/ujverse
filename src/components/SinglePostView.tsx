@@ -18,6 +18,7 @@ type Props = {
   heartPopPostId: string | null
   commentsCountByPost: Record<string, number>
   commentsByPost: Record<string, Comment[]>
+  commentsLoadingByPost: Record<string, boolean>
   expandedComments: Set<string>
   commentInput: Record<string, string>
   commentSubmitting: Record<string, boolean>
@@ -41,6 +42,7 @@ export default function SinglePostView({
   heartPopPostId,
   commentsCountByPost,
   commentsByPost,
+  commentsLoadingByPost,
   expandedComments,
   commentInput,
   commentSubmitting,
@@ -142,6 +144,7 @@ export default function SinglePostView({
           isPop={heartPopPostId === postId}
           isCommentsOpen={expandedComments.has(postId)}
           comments={commentsByPost[postId] ?? []}
+          commentsLoading={Boolean(commentsLoadingByPost[postId])}
           commentInputValue={commentInput[postId] ?? ''}
           isCommentSubmitting={Boolean(commentSubmitting[postId])}
           onToggleLike={() => onToggleLike(postId)}

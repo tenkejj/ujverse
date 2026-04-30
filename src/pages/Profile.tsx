@@ -54,6 +54,7 @@ type Props = {
 
   commentsCountByPost: Record<string, number>
   commentsByPost: Record<string, Comment[]>
+  commentsLoadingByPost: Record<string, boolean>
   expandedComments: Set<string>
   commentInput: Record<string, string>
   commentSubmitting: Record<string, boolean>
@@ -87,6 +88,7 @@ export default function Profile({
   heartPopPostId,
   commentsCountByPost,
   commentsByPost,
+  commentsLoadingByPost,
   expandedComments,
   commentInput,
   commentSubmitting,
@@ -684,6 +686,7 @@ export default function Profile({
               heartPopPostId={heartPopPostId}
               commentsCountByPost={commentsCountByPost}
               commentsByPost={commentsByPost}
+              commentsLoadingByPost={commentsLoadingByPost}
               expandedComments={expandedComments}
               commentInput={commentInput}
               commentSubmitting={commentSubmitting}
@@ -711,6 +714,7 @@ export default function Profile({
               heartPopPostId={heartPopPostId}
               commentsCountByPost={commentsCountByPost}
               commentsByPost={commentsByPost}
+              commentsLoadingByPost={commentsLoadingByPost}
               expandedComments={expandedComments}
               commentInput={commentInput}
               commentSubmitting={commentSubmitting}

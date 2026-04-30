@@ -248,11 +248,14 @@ export default function RepliesPanel({
   ) => {
     const first = fallback.trim().charAt(0).toUpperCase() || '?'
     return avatarUrl ? (
-      <img src={avatarUrl} alt={fallback} className={`${avatarBase} ${sizeClass}`} loading="lazy" />
+      <img
+        src={avatarUrl}
+        alt={fallback}
+        className={`${avatarBase} ${sizeClass}`}
+        loading="lazy"
+      />
     ) : (
-      <div
-        className={`${avatarBase} ${sizeClass} flex items-center justify-center text-sm font-bold text-(--profile-accent)`}
-      >
+      <div className={`${avatarBase} ${sizeClass} flex items-center justify-center text-sm font-bold text-(--profile-accent)`}>
         {first}
       </div>
     )
@@ -1076,9 +1079,9 @@ export default function RepliesPanel({
   }: CommentItemProps) => {
     return (
       <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
-        <div className="relative flex items-start justify-center">
+        <div className="relative mx-auto flex w-10 items-start justify-center">
           {railBottom ? (
-            <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-zinc-200 dark:bg-zinc-800" />
+            <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-(--profile-accent-soft)" />
           ) : null}
           {profileHref ? (
             <Link
@@ -1131,10 +1134,10 @@ export default function RepliesPanel({
           ) : null}
           {renderMedia(media)}
           {showActions ? (
-            <div className="flex items-center gap-x-10 mt-3 text-zinc-500 dark:text-zinc-400 text-[13px]">
+            <div className="mt-3 flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-[13px]">
               <button
                 type="button"
-                className={`inline-flex items-center gap-1.5 transition-colors ${
+                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
                   commentsActive
                     ? 'text-brand-gold-bright'
                     : 'text-zinc-500 dark:text-zinc-400 hover:text-brand-gold-bright/90'
@@ -1152,7 +1155,7 @@ export default function RepliesPanel({
               </button>
               <button
                 type="button"
-                className={`inline-flex items-center gap-1.5 transition-colors ${
+                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
                   isLiked
                     ? 'text-brand-gold-bright'
                     : 'text-zinc-500 dark:text-zinc-400 hover:text-brand-gold-bright/90'
@@ -1235,23 +1238,6 @@ export default function RepliesPanel({
         const replyHandleForUrl = row.reply.author.handle?.trim().replace(/^@+/, '') ?? ''
         const originalProfileHref = postHandleForUrl ? `/profile/${postHandleForUrl}` : null
         const replyProfileHref = replyHandleForUrl ? `/profile/${replyHandleForUrl}` : null
-        const renderReplyToLabel = (targetHandle: string | null) => {
-          if (!targetHandle) return null
-          return (
-            <>
-              W odpowiedzi do{' '}
-              <Link
-                to={`/profile/${targetHandle}`}
-                className="text-sm text-zinc-500 dark:text-zinc-400 hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                @{targetHandle}
-              </Link>
-            </>
-          )
-        }
-        const replyToParent = renderReplyToLabel(postHandleLabel)
-        const replyToReply = renderReplyToLabel(replyHandleLabel) ?? replyToParent
         const isThreadActive =
           activeReplyTarget?.threadRowId === row.id &&
           activeReplyTarget?.threadCommentId === replyIdKey
@@ -1280,13 +1266,14 @@ export default function RepliesPanel({
           isThreadActive && activeReplyTarget ? `${replyIdKey}:${activeReplyTarget.targetKey}` : null
         const visibleItems: ThreadRenderItem[] = isThreadActive
           ? [
-              ...baseItems,
+              baseItems[0],
               {
                 kind: 'composer',
                 id: `t-${replyIdKey}-composer`,
                 threadCommentId: replyIdKey,
                 draftKey: activeDraftKey ?? `${replyIdKey}:t-${replyIdKey}-reply`,
               },
+              ...baseItems.slice(1),
             ]
           : baseItems
         const hasNextItem = (index: number) => index < visibleItems.length - 1
@@ -1294,7 +1281,7 @@ export default function RepliesPanel({
         return (
           <motion.li
             key={`t-${replyIdKey}-thread`}
-            className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.02] overflow-hidden"
+            className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50/85 backdrop-blur-sm dark:bg-white/3"
             layout
             transition={{ layout: { duration: 0.22, ease: 'easeOut' } }}
           >
@@ -1340,7 +1327,6 @@ export default function RepliesPanel({
                     <CommentItem
                       authorDisplay={replyAuthorDisplay}
                       handleLabel={replyHandleLabel ? `@${replyHandleLabel}` : null}
-                      replyToLabel={replyToParent}
                       timestamp={replyTimestamp}
                       profileHref={replyProfileHref}
                       avatarUrl={row.reply.author.avatar_url}
@@ -1379,7 +1365,6 @@ export default function RepliesPanel({
                     <CommentItem
                       authorDisplay={nestedAuthor}
                       handleLabel={nestedHandle ? `@${nestedHandle}` : null}
-                      replyToLabel={replyToReply}
                       timestamp={formatRelativeTimestamp(nested.created_at)}
                       profileHref={nestedProfileHref}
                       avatarUrl={nested.author.avatar_url}
@@ -1419,9 +1404,9 @@ export default function RepliesPanel({
                   transition={{ duration: 0.2, ease: 'easeOut' }}
                 >
                   <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
-                    <div className="relative flex items-start justify-center">
+                    <div className="relative mx-auto flex w-10 items-start justify-center">
                       {hasNextItem(index) ? (
-                        <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-zinc-200 dark:bg-zinc-800" />
+                        <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-(--profile-accent-soft)" />
                       ) : null}
                       {composerProfileLoading ? (
                         <div
@@ -1441,11 +1426,6 @@ export default function RepliesPanel({
                       )}
                     </div>
                     <div className="min-w-0 flex flex-col">
-                      {isThreadActive && activeReplyTarget?.targetHandle ? (
-                        <p className="mb-1 text-sm text-zinc-500 dark:text-zinc-400">
-                          W odpowiedzi do @{activeReplyTarget.targetHandle}
-                        </p>
-                      ) : null}
                       <textarea
                         ref={(node) => {
                           composerTextareaByCommentRef.current[item.threadCommentId] = node
@@ -1480,7 +1460,9 @@ export default function RepliesPanel({
                       />
 
                       {selectedMedia ? (
-                        <div className="mt-2 relative w-[72px] h-[72px] rounded-lg border border-zinc-200 dark:border-white/10 overflow-hidden">
+                        <div
+                          className="mt-2 relative w-[72px] h-[72px] rounded-2xl border border-zinc-200 dark:border-white/10 overflow-hidden"
+                        >
                           <img
                             src={selectedMedia.previewUrl}
                             alt={selectedMedia.fileName || 'Załączony obraz'}
