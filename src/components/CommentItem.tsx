@@ -166,8 +166,10 @@ export default function CommentItem({
                   {onNavigateToUser ? (
                     <button
                       type="button"
-                      onClick={() => onNavigateToUser(parentComment.user_id)}
-                    className="inline cursor-pointer font-medium text-blue-500 transition-colors hover:text-blue-400 hover:underline dark:text-brand-gold-bright dark:hover:text-brand-gold-bright"
+                      onClick={() => {
+                        if (parentComment) onNavigateToUser(parentComment.user_id)
+                      }}
+                      className="inline cursor-pointer font-medium text-blue-500 transition-colors hover:text-blue-400 hover:underline dark:text-brand-gold-bright dark:hover:text-brand-gold-bright"
                     >
                       {parentMention}
                     </button>
