@@ -47,7 +47,7 @@ export default function ConfirmModal({
       onPointerDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
       <motion.div
-        className="w-full max-w-sm bg-card rounded-2xl shadow-uj-soft dark:shadow-none border border-slate-100 dark:border-border-app overflow-hidden"
+        className="w-full max-w-sm bg-zinc-950 rounded-2xl shadow-uj-soft dark:shadow-none border border-zinc-800 overflow-hidden"
         initial={{ opacity: 0, y: 12, scale: 0.97 }}
         animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 8 : 0, scale: isClosing ? 0.97 : 1 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}

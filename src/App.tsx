@@ -89,6 +89,12 @@ function App() {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({})
+  const [commentReplyTargetByPost, setCommentReplyTargetByPost] = useState<
+    Record<string, { commentId: number; username: string } | null>
+  >({})
+  const [commentLikeLoadingByPost, setCommentLikeLoadingByPost] = useState<
+    Record<string, Record<number, boolean>>
+  >({})
   /** true while initial/user-triggered fetch runs; realtime refetches use silent mode (no flag). */
   const [commentsLoadingByPost, setCommentsLoadingByPost] = useState<Record<string, boolean>>({})
   const [profileHandleByUserId, setProfileHandleByUserId] = useState<Record<string, string>>({})
@@ -100,6 +106,35 @@ function App() {
   const commentsByPostRef = useRef(commentsByPost)
   useEffect(() => { expandedCommentsRef.current = expandedComments }, [expandedComments])
   useEffect(() => { commentsByPostRef.current = commentsByPost }, [commentsByPost])
+
+  const sortCommentsForThread = useCallback((items: Comment[]): Comment[] => {
+    const withStableOrder = [...items].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
+    const children = new Map<number, Comment[]>()
+    const roots: Comment[] = []
+    for (const item of withStableOrder) {
+      const parentId = item.parent_id
+      if (!parentId) {
+        roots.push(item)
+      } else {
+        const bucket = children.get(parentId) ?? []
+        bucket.push(item)
+        children.set(parentId, bucket)
+      }
+    }
+    const ordered: Comment[] = []
+    const walk = (root: Comment) => {
+      ordered.push(root)
+      for (const child of children.get(root.id) ?? []) walk(child)
+    }
+    for (const root of roots) walk(root)
+    // Keep orphaned comments visible if parent was deleted client-side.
+    for (const item of withStableOrder) {
+      if (!ordered.some((entry) => entry.id === item.id)) ordered.push(item)
+    }
+    return ordered
+  }, [])
 
   const postIds = useMemo(
     () => posts.map((p) => p?.id).filter((id): id is string => id !== undefined && id !== null),
@@ -192,18 +227,10 @@ function App() {
 
   const fetchCommentsCount = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return
-    const [commentsQ, repliesQ] = await Promise.all([
-      supabase.from('comments').select('post_id').in('post_id', ids.map(Number)),
-      supabase.from('comment_replies').select('post_id').in('post_id', ids),
-    ])
+    const { data } = await supabase.from('comments').select('post_id').in('post_id', ids.map(Number))
     const counts: Record<string, number> = {}
-    for (const c of commentsQ.data ?? []) {
+    for (const c of data ?? []) {
       const k = String(c.post_id)
-      counts[k] = (counts[k] ?? 0) + 1
-    }
-    for (const r of repliesQ.data ?? []) {
-      const k = String(r.post_id ?? '')
-      if (!k) continue
       counts[k] = (counts[k] ?? 0) + 1
     }
     setCommentsCountByPost(counts)
@@ -213,54 +240,65 @@ function App() {
     const silent = opts?.silent ?? false
     if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: true }))
     try {
-      const [commentsQ, repliesQ] = await Promise.all([
-        supabase
-          .from('comments')
-          .select('id, post_id, user_id, content, created_at, profiles(id, full_name, avatar_url)')
-          .eq('post_id', Number(postId))
-          .order('created_at', { ascending: true }),
-        supabase
-          .from('comment_replies')
-          .select('id, post_id, user_id, content, created_at, profiles:user_id(id, full_name, avatar_url)')
-          .eq('post_id', postId)
-          .order('created_at', { ascending: true }),
-      ])
+      const commentsQ = await supabase
+        .from('comments')
+        .select('id, post_id, user_id, content, created_at, parent_id, profiles(id, full_name, username, avatar_url, department)')
+        .eq('post_id', Number(postId))
+        .order('created_at', { ascending: true })
 
       if (commentsQ.error) {
         console.error('[fetchCommentsForPost] comments query error:', commentsQ.error)
       }
-      if (repliesQ.error) {
-        console.error('[fetchCommentsForPost] comment_replies query error:', repliesQ.error)
-      }
-      if (commentsQ.error && repliesQ.error) return
+      if (commentsQ.error) return
 
-      const commentsNormalized: Comment[] = ((commentsQ.data ?? []) as unknown as Comment[])
-        .map((c) => ({
-          ...c,
-          profiles: Array.isArray(c.profiles)
-            ? (c.profiles[0] ?? null)
-            : (c.profiles ?? null),
-        }))
-
-      const repliesNormalized: Comment[] = (repliesQ.data ?? []).map((r) => ({
-        id: -Number(r.id),
-        post_id: String(r.post_id ?? postId),
-        user_id: String(r.user_id ?? ''),
-        content: String(r.content ?? ''),
-        created_at: String(r.created_at ?? new Date().toISOString()),
-        profiles: Array.isArray(r.profiles)
-          ? ((r.profiles[0] ?? null) as Profile | null)
-          : ((r.profiles ?? null) as Profile | null),
+      const commentsNormalized: Comment[] = (commentsQ.data ?? []).map((c) => ({
+        id: Number(c.id),
+        post_id: String(c.post_id ?? postId),
+        user_id: String(c.user_id ?? ''),
+        content: String(c.content ?? ''),
+        created_at: String(c.created_at ?? new Date().toISOString()),
+        parent_id: Number(c.parent_id ?? 0) || null,
+        is_reply: Boolean(c.parent_id),
+        can_like: true,
+        profiles: Array.isArray(c.profiles)
+          ? ((c.profiles[0] ?? null) as Profile | null)
+          : ((c.profiles ?? null) as Profile | null),
       }))
 
-      const normalized = [...commentsNormalized, ...repliesNormalized].sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      )
+      const commentIds = commentsNormalized
+        .map((comment) => Number(comment.id))
+        .filter((commentId) => Number.isFinite(commentId) && commentId > 0)
+
+      const { data: likesRows } = commentIds.length
+        ? await supabase
+            .from('comment_likes')
+            .select('comment_id, user_id')
+            .in('comment_id', commentIds)
+        : { data: [] as Array<{ comment_id: number; user_id: string | null }> }
+
+      const likesCountByComment: Record<number, number> = {}
+      const likedByMe: Record<number, boolean> = {}
+      for (const row of likesRows ?? []) {
+        const commentId = Number(row.comment_id)
+        if (!Number.isFinite(commentId) || commentId <= 0) continue
+        likesCountByComment[commentId] = (likesCountByComment[commentId] ?? 0) + 1
+        if (row.user_id === session?.user?.id) {
+          likedByMe[commentId] = true
+        }
+      }
+
+      const commentsWithLikes: Comment[] = commentsNormalized.map((comment) => ({
+        ...comment,
+        likes_count: likesCountByComment[comment.id] ?? 0,
+        is_liked: Boolean(likedByMe[comment.id]),
+      }))
+
+      const normalized = sortCommentsForThread(commentsWithLikes)
       setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
     } finally {
       if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: false }))
     }
-  }, [])
+  }, [session?.user?.id, sortCommentsForThread])
 
   const fetchNotifications = useCallback(async (opts?: { silent?: boolean }) => {
     if (!session?.user?.id) return
@@ -545,17 +583,94 @@ function App() {
     [fetchCommentsForPost],
   )
 
+  const toggleCommentLike = useCallback(
+    async (postId: string, comment: Comment) => {
+      if (!session?.user?.id || !comment.can_like || comment.id <= 0) return
+
+      const commentId = Number(comment.id)
+      const currentlyLiked = Boolean(comment.is_liked)
+      const likeDelta = currentlyLiked ? -1 : 1
+
+      setCommentLikeLoadingByPost((prev) => ({
+        ...prev,
+        [postId]: { ...(prev[postId] ?? {}), [commentId]: true },
+      }))
+
+      setCommentsByPost((prev) => ({
+        ...prev,
+        [postId]: (prev[postId] ?? []).map((item) =>
+          item.id !== comment.id
+            ? item
+            : {
+                ...item,
+                is_liked: !currentlyLiked,
+                likes_count: Math.max(0, Number(item.likes_count ?? 0) + likeDelta),
+              },
+        ),
+      }))
+
+      const query = supabase.from('comment_likes')
+      const { error } = currentlyLiked
+        ? await query.delete().eq('comment_id', commentId).eq('user_id', session.user.id)
+        : await query.insert({ comment_id: commentId, user_id: session.user.id })
+
+      if (error) {
+        setCommentsByPost((prev) => ({
+          ...prev,
+          [postId]: (prev[postId] ?? []).map((item) =>
+            item.id !== comment.id
+              ? item
+              : {
+                  ...item,
+                  is_liked: currentlyLiked,
+                  likes_count: Math.max(0, Number(item.likes_count ?? 0) - likeDelta),
+                },
+          ),
+        }))
+      }
+
+      setCommentLikeLoadingByPost((prev) => ({
+        ...prev,
+        [postId]: { ...(prev[postId] ?? {}), [commentId]: false },
+      }))
+    },
+    [session?.user?.id],
+  )
+
+  const setReplyTarget = useCallback((postId: string, comment: Comment) => {
+    const targetId = comment.id
+    if (!targetId) return
+    const usernameRaw = comment.profiles?.username || comment.profiles?.full_name || 'uzytkownik'
+    const username = usernameRaw.trim().replace(/^@+/, '') || 'uzytkownik'
+    setCommentReplyTargetByPost((prev) => ({
+      ...prev,
+      [postId]: { commentId: targetId, username },
+    }))
+  }, [])
+
+  const clearReplyTarget = useCallback((postId: string) => {
+    setCommentReplyTargetByPost((prev) => ({ ...prev, [postId]: null }))
+  }, [])
+
   const submitComment = useCallback(
     async (postId: string) => {
       const content = (commentInput[postId] ?? '').trim()
       if (!content || !session?.user?.id || commentSubmitting[postId]) return
+      const replyTarget = commentReplyTargetByPost[postId]
+      const isReply = Boolean(replyTarget?.commentId)
+      const optimisticId = Date.now()
 
       const optimisticComment: Comment = {
-        id: Date.now(),
+        id: optimisticId,
         post_id: postId,
         user_id: session.user.id,
         content,
         created_at: new Date().toISOString(),
+        parent_id: replyTarget?.commentId ?? null,
+        is_reply: isReply,
+        can_like: true,
+        likes_count: 0,
+        is_liked: false,
         profiles: myProfile,
       }
       console.log('[submitComment] Local comment added', optimisticComment)
@@ -566,27 +681,36 @@ function App() {
 
       setCommentsByPost((p) => ({
         ...p,
-        [postId]: [...(p[postId] ?? []), optimisticComment].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        ),
+        [postId]: sortCommentsForThread([...(p[postId] ?? []), optimisticComment]),
       }))
       setCommentsCountByPost((p) => ({ ...p, [postId]: (p[postId] ?? 0) + 1 }))
       setExpandedComments((prev) => new Set([...prev, postId]))
       setCommentInput((p) => ({ ...p, [postId]: '' }))
+      setCommentReplyTargetByPost((prev) => ({ ...prev, [postId]: null }))
 
       setCommentSubmitting((p) => ({ ...p, [postId]: true }))
-      const { data: inserted, error: insertError } = await supabase
+      const insertResult = await supabase
         .from('comments')
-        .insert([{ post_id: Number(postId), user_id: session.user.id, content }])
+        .insert([
+          {
+            post_id: Number(postId),
+            user_id: session.user.id,
+            content,
+            parent_id: replyTarget?.commentId ?? null,
+          },
+        ])
         .select('id')
         .single()
 
+      const { data: inserted, error: insertError } = insertResult
+
       if (!insertError && inserted) {
         // Swap temp key → real DB id (keep everything else, avoid any re-fetch)
+        const nextId = Number(inserted.id)
         setCommentsByPost((p) => ({
           ...p,
           [postId]: (p[postId] ?? []).map((c) =>
-            c.id === optimisticComment.id ? { ...c, id: inserted.id as number } : c
+            c.id === optimisticComment.id ? { ...c, id: nextId } : c
           ),
         }))
       } else if (insertError) {
@@ -596,10 +720,11 @@ function App() {
           [postId]: (p[postId] ?? []).filter((c) => c.id !== optimisticComment.id),
         }))
         setCommentsCountByPost((p) => ({ ...p, [postId]: Math.max(0, (p[postId] ?? 1) - 1) }))
+        setCommentReplyTargetByPost((prev) => ({ ...prev, [postId]: replyTarget ?? null }))
       }
       setCommentSubmitting((p) => ({ ...p, [postId]: false }))
     },
-    [commentInput, commentSubmitting, session, myProfile],
+    [commentInput, commentReplyTargetByPost, commentSubmitting, session, myProfile, sortCommentsForThread],
   )
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -612,22 +737,48 @@ function App() {
     setLikedPostIds((prev) => { const next = { ...prev }; delete next[postId]; return next })
     setCommentsCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
     setCommentsByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+    setCommentReplyTargetByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+    setCommentLikeLoadingByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
   }, [])
 
   const handleDeleteComment = useCallback(async (commentId: number, postId: string) => {
-    const isReplyComment = commentId < 0
-    const table = isReplyComment ? 'comment_replies' : 'comments'
-    const idToDelete = isReplyComment ? Math.abs(commentId) : commentId
-    const { error } = await supabase.from(table).delete().eq('id', idToDelete)
+    const { error } = await supabase.from('comments').delete().eq('id', commentId)
     if (error) { console.error('[handleDeleteComment]', error); return }
-    setCommentsByPost((prev) => ({
-      ...prev,
-      [postId]: (prev[postId] ?? []).filter((c) => c.id !== commentId),
-    }))
+    const currentComments = commentsByPostRef.current[postId] ?? []
+    const childrenMap = new Map<number, number[]>()
+    for (const item of currentComments) {
+      if (!item.parent_id) continue
+      const bucket = childrenMap.get(item.parent_id) ?? []
+      bucket.push(item.id)
+      childrenMap.set(item.parent_id, bucket)
+    }
+    const cascadeIds = new Set<number>()
+    const queue: number[] = [commentId]
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current || cascadeIds.has(current)) continue
+      cascadeIds.add(current)
+      for (const childId of childrenMap.get(current) ?? []) queue.push(childId)
+    }
+    const removedCount = currentComments.filter((c) => cascadeIds.has(c.id)).length || 1
+    setCommentsByPost((prev) => {
+      const before = prev[postId] ?? []
+      const filtered = before.filter((c) => !cascadeIds.has(c.id))
+      return {
+        ...prev,
+        [postId]: filtered,
+      }
+    })
     setCommentsCountByPost((prev) => ({
       ...prev,
-      [postId]: Math.max(0, (prev[postId] ?? 1) - 1),
+      [postId]: Math.max(0, (prev[postId] ?? 1) - removedCount),
     }))
+    setCommentReplyTargetByPost((prev) => {
+      const target = prev[postId]
+      if (!target) return prev
+      if (!cascadeIds.has(target.commentId)) return prev
+      return { ...prev, [postId]: null }
+    })
   }, [])
 
   // ── Realtime ──────────────────────────────────────────────────────────────
@@ -638,6 +789,33 @@ function App() {
       .channel('ujverse-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => {
         void fetchLikesForPosts(postIds)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comment_likes' }, (payload) => {
+        const row = payload.eventType === 'DELETE' ? payload.old : payload.new
+        const changedCommentId = Number(row?.comment_id ?? 0)
+        const actorId = String(row?.user_id ?? '')
+        if (!Number.isFinite(changedCommentId) || changedCommentId <= 0) return
+        if (actorId === session?.user?.id) return
+        for (const pid of Object.keys(commentsByPostRef.current)) {
+          const comments = commentsByPostRef.current[pid] ?? []
+          if (!comments.some((comment) => comment.id === changedCommentId)) continue
+          setCommentsByPost((prev) => ({
+            ...prev,
+            [pid]: (prev[pid] ?? []).map((comment) => {
+              if (comment.id !== changedCommentId) return comment
+              const isInsert = payload.eventType === 'INSERT'
+              const nextLikes = Math.max(
+                0,
+                Number(comment.likes_count ?? 0) + (isInsert ? 1 : -1),
+              )
+              return {
+                ...comment,
+                likes_count: nextLikes,
+                is_liked: comment.is_liked,
+              }
+            }),
+          }))
+        }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
         const pid = String(payload.new?.post_id)
@@ -663,19 +841,6 @@ function App() {
         const existing = commentsByPostRef.current[pid] ?? []
         if (incomingId !== undefined && existing.some((c) => String(c.id) === String(incomingId))) {
           console.log('[Realtime] duplicate comment, skipping', incomingId)
-          return
-        }
-
-        setCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
-        if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid, { silent: true })
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comment_replies' }, (payload) => {
-        const pid = String(payload.new?.post_id ?? '')
-        const incomingId = payload.new?.id
-        if (!pid || !postIds.includes(pid)) return
-
-        const existing = commentsByPostRef.current[pid] ?? []
-        if (incomingId !== undefined && existing.some((c) => c.id === -Number(incomingId))) {
           return
         }
 
@@ -715,9 +880,14 @@ function App() {
     expandedComments,
     commentInput,
     commentSubmitting,
+    commentReplyTargetByPost,
+    commentLikeLoadingByPost,
     onToggleLike: toggleLike,
     onToggleComments: toggleComments,
     onSubmitComment: submitComment,
+    onToggleCommentLike: toggleCommentLike,
+    onReplyToComment: setReplyTarget,
+    onCancelReply: clearReplyTarget,
     onCommentInputChange: (postId: string, value: string) =>
       setCommentInput((p) => ({ ...p, [postId]: value })),
     onDeletePost: handleDeletePost,

@@ -20,6 +20,11 @@ type Props = {
   onToggleComments: (postId: string) => void
   onSubmitComment: (postId: string) => void
   onCommentInputChange: (postId: string, value: string) => void
+  onToggleCommentLike: (postId: string, comment: Comment) => void
+  onReplyToComment: (postId: string, comment: Comment) => void
+  onCancelReply: (postId: string) => void
+  commentReplyTargetByPost: Record<string, { commentId: number; username: string } | null>
+  commentLikeLoadingByPost: Record<string, Record<number, boolean>>
   onDeletePost: (postId: string) => void
   onDeleteComment: (commentId: number, postId: string) => void
   onNavigateToPost?: (postId: string) => void
@@ -44,6 +49,11 @@ export default function PostList({
   onToggleComments,
   onSubmitComment,
   onCommentInputChange,
+  onToggleCommentLike,
+  onReplyToComment,
+  onCancelReply,
+  commentReplyTargetByPost,
+  commentLikeLoadingByPost,
   onDeletePost,
   onDeleteComment,
   onNavigateToPost,
@@ -56,33 +66,39 @@ export default function PostList({
     commentsCountByPost,
   })
   return (
-    <div className="divide-y divide-[#0f172a]/10 overflow-hidden rounded-2xl border border-[#0f172a]/10 bg-card dark:divide-white/10 dark:border-white/10">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
       {unifiedList.map((uc, idx) => {
         const postId = uc.id
         return (
-          <PostCard
-            key={postId}
-            variant="stacked"
-            content={uc}
-            index={idx}
-            currentUserId={currentUserId}
-            myProfile={myProfile}
-            displayName={displayName}
-            isPop={heartPopPostId === postId}
-            isCommentsOpen={expandedComments.has(postId)}
-            comments={commentsByPost[postId] ?? []}
-            commentsLoading={Boolean(commentsLoadingByPost[postId])}
-            commentInputValue={commentInput[postId] ?? ''}
-            isCommentSubmitting={Boolean(commentSubmitting[postId])}
-            onToggleLike={() => onToggleLike(postId)}
-            onToggleComments={() => onToggleComments(postId)}
-            onSubmitComment={() => onSubmitComment(postId)}
-            onCommentInputChange={(v) => onCommentInputChange(postId, v)}
-            onDeletePost={() => onDeletePost(postId)}
-            onDeleteComment={(cId) => onDeleteComment(cId, postId)}
-            onNavigateToPost={onNavigateToPost ? () => onNavigateToPost(postId) : undefined}
-            onNavigateToUser={onNavigateToUser}
-          />
+          <div key={postId} className="border-b border-white/10 last:border-b-0">
+            <PostCard
+              variant="stacked"
+              content={uc}
+              index={idx}
+              currentUserId={currentUserId}
+              myProfile={myProfile}
+              displayName={displayName}
+              isPop={heartPopPostId === postId}
+              isCommentsOpen={expandedComments.has(postId)}
+              comments={commentsByPost[postId] ?? []}
+              commentsLoading={Boolean(commentsLoadingByPost[postId])}
+              commentInputValue={commentInput[postId] ?? ''}
+              isCommentSubmitting={Boolean(commentSubmitting[postId])}
+              onToggleLike={() => onToggleLike(postId)}
+              onToggleComments={() => onToggleComments(postId)}
+              onSubmitComment={() => onSubmitComment(postId)}
+              onCommentInputChange={(v) => onCommentInputChange(postId, v)}
+              onToggleCommentLike={(comment) => onToggleCommentLike(postId, comment)}
+              onReplyToComment={(comment) => onReplyToComment(postId, comment)}
+              onCancelReply={() => onCancelReply(postId)}
+              replyTarget={commentReplyTargetByPost[postId] ?? null}
+              commentLikeLoadingById={commentLikeLoadingByPost[postId] ?? {}}
+              onDeletePost={() => onDeletePost(postId)}
+              onDeleteComment={(cId) => onDeleteComment(cId, postId)}
+              onNavigateToPost={onNavigateToPost ? () => onNavigateToPost(postId) : undefined}
+              onNavigateToUser={onNavigateToUser}
+            />
+          </div>
         )
       })}
     </div>

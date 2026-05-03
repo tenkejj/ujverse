@@ -255,7 +255,7 @@ export default function RepliesPanel({
         loading="lazy"
       />
     ) : (
-      <div className={`${avatarBase} ${sizeClass} flex items-center justify-center text-sm font-bold text-(--profile-accent)`}>
+      <div className={`${avatarBase} ${sizeClass} flex items-center justify-center text-sm font-bold text-[#1e293b] dark:text-brand-gold-bright`}>
         {first}
       </div>
     )
@@ -1081,7 +1081,7 @@ export default function RepliesPanel({
       <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
         <div className="relative mx-auto flex w-10 items-start justify-center">
           {railBottom ? (
-            <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-(--profile-accent-soft)" />
+            <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-[#1e293b]/30 dark:bg-brand-gold-bright/35" />
           ) : null}
           {profileHref ? (
             <Link
@@ -1134,7 +1134,7 @@ export default function RepliesPanel({
           ) : null}
           {renderMedia(media)}
           {showActions ? (
-            <div className="mt-3 flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-[13px]">
+            <div className="mt-2 flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-[13px]">
               <button
                 type="button"
                 className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
@@ -1183,7 +1183,7 @@ export default function RepliesPanel({
   if (loading) {
     return (
       <div className="flex justify-center py-10">
-        <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-(--profile-accent) border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#1e293b] border-t-transparent dark:border-brand-gold-bright" />
       </div>
     )
   }
@@ -1203,7 +1203,7 @@ export default function RepliesPanel({
   }
 
   return (
-    <ul className="space-y-3">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-card divide-y divide-white/10">
       {replies.map((row) => {
         const replyContent = row.reply.content?.trim() || '(brak treści komentarza)'
         const preview = row.post.content?.trim() || '(wpis usunięty lub niedostępny)'
@@ -1250,7 +1250,7 @@ export default function RepliesPanel({
           if (!threadPostId) return
           navigateToPost(String(threadPostId))
         }
-        const rowClass = 'px-4 py-3 hover:bg-zinc-100/80 dark:hover:bg-white/[0.02] transition-colors cursor-pointer'
+        const rowClass = 'px-4 pt-3 pb-1 hover:bg-zinc-100/80 dark:hover:bg-white/[0.02] transition-colors cursor-pointer'
         const composerClass = 'px-4 py-3'
 
         const baseItems: ThreadRenderItem[] = [
@@ -1279,9 +1279,9 @@ export default function RepliesPanel({
         const hasNextItem = (index: number) => index < visibleItems.length - 1
 
         return (
-          <motion.li
+          <motion.div
             key={`t-${replyIdKey}-thread`}
-            className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50/85 backdrop-blur-sm dark:bg-white/3"
+            className="overflow-hidden"
             layout
             transition={{ layout: { duration: 0.22, ease: 'easeOut' } }}
           >
@@ -1406,7 +1406,7 @@ export default function RepliesPanel({
                   <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
                     <div className="relative mx-auto flex w-10 items-start justify-center">
                       {hasNextItem(index) ? (
-                        <span className="pointer-events-none absolute left-1/2 top-10 -bottom-3 w-[2px] -translate-x-1/2 bg-(--profile-accent-soft)" />
+                        <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-[#1e293b]/30 dark:bg-brand-gold-bright/35" />
                       ) : null}
                       {composerProfileLoading ? (
                         <div
@@ -1526,9 +1526,9 @@ export default function RepliesPanel({
               )
             })}
             </AnimatePresence>
-          </motion.li>
+          </motion.div>
         )
       })}
-    </ul>
+    </div>
   )
 }

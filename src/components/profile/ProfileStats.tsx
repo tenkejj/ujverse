@@ -49,7 +49,7 @@ function Sparkline({ data }: { data: number[] }) {
       viewBox={`0 0 ${W} ${H}`}
       width={W}
       height={H}
-      className="overflow-visible"
+      className="overflow-visible text-[#1e293b] dark:text-brand-gold-bright"
       role="img"
       aria-label="Aktywność z ostatnich 7 tygodni"
     >
@@ -65,7 +65,7 @@ function Sparkline({ data }: { data: number[] }) {
             width={barW}
             height={h}
             rx={2}
-            fill="var(--profile-accent)"
+            fill="currentColor"
             opacity={v === 0 ? 0.2 : 0.85}
           />
         )
@@ -139,10 +139,10 @@ export default function ProfileStats({
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.97 }}
               aria-pressed={isActive}
-              className={`group relative flex flex-col items-start gap-0.5 rounded-2xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--profile-accent)]/45 ${
+              className={`group relative flex flex-col items-start gap-0.5 rounded-2xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/45 dark:focus-visible:ring-brand-gold-bright/45 ${
                 isActive
-                  ? 'border-[var(--profile-accent)]/50 bg-[var(--profile-accent)]/8 dark:bg-[var(--profile-accent)]/12'
-                  : 'border-border-app/80 bg-bg-card/60 hover:border-[var(--profile-accent)]/35'
+                  ? 'border-[#1e293b]/50 bg-[#1e293b]/8 dark:border-brand-gold-bright/50 dark:bg-brand-gold-bright/12'
+                  : 'border-border-app/80 bg-bg-card/60 hover:border-[#1e293b]/35 dark:hover:border-brand-gold-bright/35'
               }`}
             >
               <span className="text-xl font-bold tabular-nums text-fg-primary">

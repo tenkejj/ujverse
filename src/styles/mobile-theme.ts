@@ -98,7 +98,7 @@ export const PROFILE_MOBILE = {
   avatar: {
     sizePx: { base: 104, sm: 120, lg: 144 } as const,
     ringClass:
-      'ring-4 ring-[var(--bg-app)] dark:ring-[#01020a] shadow-[0_0_60px_-8px_var(--profile-accent-soft)]',
+      'ring-4 ring-[var(--bg-app)] dark:ring-[#01020a] shadow-[0_0_60px_-8px_rgba(30,41,59,0.35)] dark:shadow-[0_0_60px_-8px_rgba(232,200,74,0.28)]',
     radiusClass: 'rounded-full',
   },
   card: {
@@ -114,19 +114,19 @@ export const PROFILE_MOBILE = {
     rowClass:
       'relative flex gap-1 border-b border-[#0f172a]/10 dark:border-white/10',
     tabBaseClass:
-      'relative flex-1 px-2 py-3 text-[13px] sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--profile-accent)]/40 rounded-t-md',
-    tabActiveClass: 'text-[var(--profile-accent)] dark:text-white',
+      'relative flex-1 px-2 py-3 text-[13px] sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/25 dark:focus-visible:ring-white/25 rounded-t-md',
+    tabActiveClass: 'text-[#0f172a] dark:text-white',
     tabInactiveClass:
       'text-slate-500 hover:text-[#0f172a] dark:text-slate-400 dark:hover:text-white',
     indicatorClass:
-      'absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-[var(--profile-accent)]',
+      'absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-[#1e293b] dark:bg-brand-gold-bright',
     indicatorLayoutId: 'profile-tab-indicator',
   },
   fab: {
     wrapperClass:
       'fixed right-4 z-40 md:hidden bottom-[calc(4.75rem+env(safe-area-inset-bottom))]',
     buttonClass:
-      'flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-[var(--profile-accent)] text-white shadow-[0_14px_40px_-10px_var(--profile-accent-soft)] backdrop-blur-xl transition-transform active:scale-95',
+      'flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-logo-navy text-white shadow-[0_14px_40px_-10px_rgba(30,41,59,0.35)] backdrop-blur-xl transition-transform active:scale-95 dark:bg-brand-gold-bright dark:text-slate-900 dark:shadow-[0_14px_40px_-10px_rgba(232,200,74,0.45)]',
     layoutId: 'profile-edit-action',
     scrollActivateAt: 280,
   },
@@ -143,7 +143,7 @@ export const PROFILE_MOBILE = {
   },
   actionButton: {
     inlineClass:
-      'inline-flex items-center justify-center gap-2 rounded-full border border-[#0f172a]/12 bg-white/95 px-4 py-2 text-sm font-semibold text-fg-primary shadow-sm transition-colors hover:border-[var(--profile-accent)]/50 dark:border-white/20 dark:bg-[#01020a]/95 dark:text-white dark:hover:border-[var(--profile-accent)]/45',
+      'inline-flex items-center justify-center gap-2 rounded-full border border-[#0f172a]/12 bg-white/95 px-4 py-2 text-sm font-semibold text-fg-primary shadow-sm transition-colors hover:border-[#1e293b]/50 dark:border-white/20 dark:bg-[#01020a]/95 dark:text-white dark:hover:border-brand-gold-bright/45',
   },
   motion: {
     staggerContainer: {

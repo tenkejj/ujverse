@@ -12,7 +12,7 @@ export default function PostsPanel({ loading, isOwn, ...rest }: Props) {
   if (loading) {
     return (
       <div className="flex justify-center py-10">
-        <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[var(--profile-accent)] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-[#1e293b] dark:border-brand-gold-bright border-t-transparent" />
       </div>
     )
   }

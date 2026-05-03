@@ -41,11 +41,11 @@ export default function ProfileIdentity({
       className={`mt-4 space-y-3 ${PROFILE_MOBILE.card.paddingXClass}`}
     >
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-fg-primary dark:text-white">
+        <h1 className="text-3xl font-bold tracking-tight text-[#0f172a] dark:text-white">
           {titleName}
         </h1>
         {hasPublicUsername ? (
-          <p className="mt-0.5 text-base text-slate-500 dark:text-slate-500">{handleLabel}</p>
+          <p className="mt-0.5 text-base text-gray-400">{handleLabel}</p>
         ) : null}
       </div>
 
@@ -57,35 +57,35 @@ export default function ProfileIdentity({
       ) : null}
 
       {profile?.bio ? (
-        <p className="max-w-prose whitespace-pre-line text-[15px] leading-relaxed text-fg-primary dark:text-white">
+        <p className="max-w-prose whitespace-pre-line text-[15px] leading-relaxed text-[#0f172a] dark:text-white">
           {profile.bio}
         </p>
       ) : (
-        <p className="max-w-prose text-sm italic leading-relaxed text-fg-secondary">
+        <p className="max-w-prose text-sm italic leading-relaxed text-gray-400">
           {isOwn
             ? 'Brak opisu — kliknij „Edytuj profil”, aby dodać bio.'
             : 'Brak opisu.'}
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-slate-500 dark:text-slate-500">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-gray-400">
         <span className="inline-flex items-center gap-1.5">
-          <span className="shrink-0 text-[var(--profile-accent)]" aria-hidden>
+          <span className="shrink-0 text-gray-400" aria-hidden>
             <MapPinIcon className="h-5 w-5" />
           </span>
           Kraków, Polska
         </span>
         {profile?.department ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="shrink-0 text-[var(--profile-accent)]" aria-hidden>
+            <span className="shrink-0 text-gray-400" aria-hidden>
               <AcademicCapIcon className="h-5 w-5" />
             </span>
-            {profile.department}
+            <span>{profile.department}</span>
           </span>
         ) : null}
         {joinedLabel ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="shrink-0 text-[var(--profile-accent)]" aria-hidden>
+            <span className="shrink-0 text-gray-400" aria-hidden>
               <CalendarDaysIcon className="h-5 w-5" />
             </span>
             Dołączył {joinedLabel}
@@ -100,10 +100,10 @@ export default function ProfileIdentity({
           disabled={followStatsLoading}
           className="group inline-flex items-baseline gap-1 transition-colors disabled:cursor-wait disabled:opacity-70"
         >
-          <span className="font-semibold tabular-nums text-fg-primary">
+          <span className="font-semibold tabular-nums text-[#0f172a] dark:text-white">
             {followStatsLoading ? '…' : formatCompactCount(followersCount)}
           </span>
-          <span className="text-fg-secondary group-hover:text-[var(--profile-accent)]">
+          <span className="text-gray-400 group-hover:text-gray-300 dark:group-hover:text-gray-300">
             Obserwujących
           </span>
         </button>
@@ -114,10 +114,10 @@ export default function ProfileIdentity({
           disabled={followStatsLoading}
           className="group inline-flex items-baseline gap-1 transition-colors disabled:cursor-wait disabled:opacity-70"
         >
-          <span className="font-semibold tabular-nums text-fg-primary">
+          <span className="font-semibold tabular-nums text-[#0f172a] dark:text-white">
             {followStatsLoading ? '…' : formatCompactCount(followingCount)}
           </span>
-          <span className="text-fg-secondary group-hover:text-[var(--profile-accent)]">
+          <span className="text-gray-400 group-hover:text-gray-300 dark:group-hover:text-gray-300">
             Obserwowanych
           </span>
         </button>

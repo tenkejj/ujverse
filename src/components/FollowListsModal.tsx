@@ -288,7 +288,7 @@ export default function FollowListsModal({
                 {isActive ? (
                   <motion.span
                     layoutId="followModalTab"
-                    className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[var(--profile-accent)]"
+                    className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[#1e293b] dark:bg-brand-gold-bright"
                     transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                   />
                 ) : null}
@@ -300,7 +300,7 @@ export default function FollowListsModal({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
           {loading ? (
             <div className="flex justify-center py-14">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--profile-accent)] border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1e293b] border-t-transparent dark:border-brand-gold-bright" />
             </div>
           ) : list.length === 0 ? (
             <p className="py-10 text-center text-sm text-fg-secondary">
@@ -357,8 +357,8 @@ export default function FollowListsModal({
                         }}
                         className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-60 ${
                           amFollowing
-                            ? 'border-border-app text-fg-primary hover:border-[var(--profile-accent)]/55'
-                            : 'border-[var(--profile-accent)]/50 bg-[var(--profile-accent)]/12 text-[var(--profile-accent)] hover:bg-[var(--profile-accent)]/18'
+                            ? 'border-border-app text-fg-primary hover:border-[#1e293b]/55 dark:hover:border-brand-gold-bright/55'
+                            : 'border-[#1e293b]/50 bg-[#1e293b]/12 text-[#1e293b] hover:bg-[#1e293b]/18 dark:border-brand-gold-bright/50 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/18'
                         }`}
                       >
                         {busy ? (

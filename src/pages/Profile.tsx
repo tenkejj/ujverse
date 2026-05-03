@@ -6,7 +6,6 @@ import { supabase } from '../supabaseClient'
 import { useEvents } from '../hooks/useEvents'
 import { useProfileData } from '../hooks/useProfileData'
 import { useProfileSocialData } from '../hooks/useProfileSocialData'
-import FacultyAccent from '../components/profile/FacultyAccent'
 import ProfileHero from '../components/profile/ProfileHero'
 import ProfileIdentity from '../components/profile/ProfileIdentity'
 import ProfileTabs from '../components/profile/ProfileTabs'
@@ -63,6 +62,11 @@ type Props = {
   onToggleComments: (postId: string) => void
   onSubmitComment: (postId: string) => void
   onCommentInputChange: (postId: string, value: string) => void
+  onToggleCommentLike: (postId: string, comment: Comment) => void
+  onReplyToComment: (postId: string, comment: Comment) => void
+  onCancelReply: (postId: string) => void
+  commentReplyTargetByPost: Record<string, { commentId: number; username: string } | null>
+  commentLikeLoadingByPost: Record<string, Record<number, boolean>>
   onDeletePost: (postId: string) => void
   onDeleteComment: (commentId: number, postId: string) => void
 }
@@ -96,6 +100,11 @@ export default function Profile({
   onToggleComments,
   onSubmitComment,
   onCommentInputChange,
+  onToggleCommentLike,
+  onReplyToComment,
+  onCancelReply,
+  commentReplyTargetByPost,
+  commentLikeLoadingByPost,
   onDeletePost,
   onDeleteComment,
 }: Props) {
@@ -623,7 +632,7 @@ export default function Profile({
   }
 
   return (
-    <FacultyAccent department={profileForDisplay?.department}>
+    <>
       <div className="space-y-6">
         {onBack && (
           <button
@@ -694,6 +703,11 @@ export default function Profile({
               onToggleComments={onToggleComments}
               onSubmitComment={onSubmitComment}
               onCommentInputChange={onCommentInputChange}
+              onToggleCommentLike={onToggleCommentLike}
+              onReplyToComment={onReplyToComment}
+              onCancelReply={onCancelReply}
+              commentReplyTargetByPost={commentReplyTargetByPost}
+              commentLikeLoadingByPost={commentLikeLoadingByPost}
               onDeletePost={onDeletePost}
               onDeleteComment={onDeleteComment}
               onNavigateToPost={onNavigateToPost}
@@ -722,6 +736,11 @@ export default function Profile({
               onToggleComments={onToggleComments}
               onSubmitComment={onSubmitComment}
               onCommentInputChange={onCommentInputChange}
+              onToggleCommentLike={onToggleCommentLike}
+              onReplyToComment={onReplyToComment}
+              onCancelReply={onCancelReply}
+              commentReplyTargetByPost={commentReplyTargetByPost}
+              commentLikeLoadingByPost={commentLikeLoadingByPost}
               onDeletePost={onDeletePost}
               onDeleteComment={onDeleteComment}
               onNavigateToPost={onNavigateToPost}
@@ -766,6 +785,6 @@ export default function Profile({
           onNavigateToProfileHandle={onNavigateToProfileHandle}
         />
       ) : null}
-    </FacultyAccent>
+    </>
   )
 }

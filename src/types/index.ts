@@ -25,6 +25,11 @@ export type Comment = {
   user_id: string
   content: string
   created_at: string
+  parent_id?: number | null
+  is_reply?: boolean
+  likes_count?: number
+  is_liked?: boolean
+  can_like?: boolean
   profiles?: Profile | null
 }
 

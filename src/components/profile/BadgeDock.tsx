@@ -79,18 +79,14 @@ function buildBadges({
 }
 
 function BadgeItem({ badge }: { badge: Badge }) {
-  const accentStyle = badge.accent
-    ? {
-        borderColor: 'var(--profile-accent)',
-        color: 'var(--profile-accent)',
-      }
-    : undefined
+  const accentClass = badge.accent
+    ? 'border-[#1e293b] text-[#1e293b] dark:border-brand-gold-bright/50 dark:text-brand-gold-bright'
+    : ''
 
   return (
     <span
       title={badge.title ?? badge.label}
-      className={`${PROFILE_MOBILE.badgeDock.itemClass} ${PROFILE_MOBILE.badgeDock.itemLightClass} ${PROFILE_MOBILE.badgeDock.itemDarkClass}`}
-      style={accentStyle}
+      className={`${PROFILE_MOBILE.badgeDock.itemClass} ${PROFILE_MOBILE.badgeDock.itemLightClass} ${PROFILE_MOBILE.badgeDock.itemDarkClass} ${accentClass}`}
     >
       <span className="inline-flex items-center" aria-hidden>
         {badge.icon}

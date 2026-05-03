@@ -1,8 +1,7 @@
 import { useState, type MouseEvent } from 'react'
 import ReactDOM from 'react-dom'
-import { Heart, MessageCircle, Share2, Trash2, X } from 'lucide-react'
+import { Heart, MessageCircle, Trash2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from '../lib/appToast'
 import type { Comment, Profile } from '../types'
 import type { PostMeta, UnifiedContent } from '../types/content'
 import { relativeTime } from '../lib/utils'
@@ -11,6 +10,14 @@ import UserAvatar from './UserAvatar'
 import CommentThread from './CommentThread'
 import ConfirmModal from './ConfirmModal'
 import BaseCard from './ui/BaseCard'
+import {
+  INTERACTION_BAR_ROW,
+  DEPT_BADGE_SPAN_CLASS,
+  interactionMotionTap,
+  secondaryInteractionButtonClass,
+  likeActionButtonClass,
+  heartLikedIconClass,
+} from '../lib/interactionBar'
 
 function LightboxPortal({ src, onClose }: { src: string; onClose: () => void }) {
   const portal = document.getElementById('lightbox-portal')
@@ -57,6 +64,11 @@ type Props = {
   onToggleComments: () => void
   onSubmitComment: () => void
   onCommentInputChange: (value: string) => void
+  onToggleCommentLike: (comment: Comment) => void
+  onReplyToComment: (comment: Comment) => void
+  onCancelReply: () => void
+  replyTarget: { commentId: number; username: string } | null
+  commentLikeLoadingById?: Record<number, boolean>
   onDeletePost: () => void
   onDeleteComment: (commentId: number) => void
   onNavigateToPost?: () => void
@@ -81,6 +93,11 @@ export default function PostCard({
   onToggleComments,
   onSubmitComment,
   onCommentInputChange,
+  onToggleCommentLike,
+  onReplyToComment,
+  onCancelReply,
+  replyTarget,
+  commentLikeLoadingById,
   onDeletePost,
   onDeleteComment,
   onNavigateToPost,
@@ -117,7 +134,7 @@ export default function PostCard({
   const innerBody = (
     <>
       <div
-        className={`p-6 ${onNavigateToPost ? 'cursor-pointer' : ''}`}
+        className={`px-6 pt-6 pb-4 ${onNavigateToPost ? 'cursor-pointer' : ''}`}
         onClick={handleArticleClick}
       >
         <div className="flex gap-3">
@@ -140,7 +157,7 @@ export default function PostCard({
 
           <div className="flex-1 min-w-0">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className={`relative flex items-center gap-2 flex-wrap ${isOwn ? 'pr-8' : ''}`}>
                 <span
                   className={`font-bold text-fg-primary text-base leading-tight ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
                   onClick={(e) => {
@@ -151,12 +168,10 @@ export default function PostCard({
                   {authorName}
                 </span>
                 {department && (
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#1e293b] bg-[#1e293b]/[0.08] px-1.5 py-0.5 rounded-full border border-[#1e293b] leading-none dark:text-accent-interactive dark:bg-accent-interactive/10 dark:border-accent-interactive/25">
-                    {getDeptAbbreviation(department)}
-                  </span>
+                  <span className={DEPT_BADGE_SPAN_CLASS}>{getDeptAbbreviation(department)}</span>
                 )}
                 {createdAt && (
-                  <span className="text-xs text-fg-secondary ml-auto">{relativeTime(createdAt)}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{relativeTime(createdAt)}</span>
                 )}
                 {isOwn && (
                   <button
@@ -165,10 +180,10 @@ export default function PostCard({
                       e.stopPropagation()
                       setConfirmDeleteOpen(true)
                     }}
-                    className="p-1 rounded-full text-slate-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 transition-colors shrink-0 absolute -right-2 top-1/2 -translate-y-1/2"
                     aria-label="Usuń post"
                   >
-                    <Trash2 size={13} strokeWidth={1.75} />
+                    <Trash2 className="w-4 h-4" strokeWidth={1.5} />
                   </button>
                 )}
               </div>
@@ -191,28 +206,7 @@ export default function PostCard({
               />
             )}
 
-            <div className="flex items-center mt-3 -mx-1 gap-1.5">
-              <motion.button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggleComments()
-                }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ type: 'spring', stiffness: 520, damping: 30 }}
-                className={`group inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-colors ${
-                  isCommentsOpen
-                    ? 'text-[#1e293b] bg-[#1e293b]/10 dark:text-accent-interactive dark:bg-accent-interactive/15'
-                    : 'text-fg-primary/60 dark:text-slate-400 hover:text-[#1e293b] hover:bg-[#1e293b]/10 dark:hover:text-accent-interactive dark:hover:bg-white/5 [&_svg]:group-hover:text-[#1e293b] dark:[&_svg]:group-hover:text-accent-interactive'
-                }`}
-                aria-label="Komentarze"
-              >
-                <MessageCircle size={16} strokeWidth={isCommentsOpen ? 2.25 : 1.75} className="shrink-0" />
-                {typeof commentCount === 'number' && commentCount >= 0 && (
-                  <span className="text-fg-secondary text-sm leading-none tabular-nums">{commentCount}</span>
-                )}
-              </motion.button>
-
+            <div className={`${INTERACTION_BAR_ROW} mt-2.5 -mx-1 pr-2`}>
               <motion.button
                 type="button"
                 onClick={(e) => {
@@ -220,15 +214,12 @@ export default function PostCard({
                   onToggleLike()
                 }}
                 disabled={!content.id}
-                className={`group relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-colors disabled:opacity-50 ${
-                  isLiked
-                    ? 'text-[#1e293b] bg-[#1e293b]/15 dark:text-accent-interactive'
-                    : 'text-fg-primary/60 dark:text-slate-400 hover:text-[#1e293b] hover:bg-[#1e293b]/10 [&_svg]:group-hover:text-[#1e293b] dark:hover:text-accent-interactive dark:hover:bg-white/5 dark:[&_svg]:group-hover:text-accent-interactive'
-                }`}
+                {...interactionMotionTap}
+                className={likeActionButtonClass(isLiked)}
                 aria-label={isLiked ? 'Usuń polubienie' : 'Polub'}
               >
                 {isPop && (
-                  <span className="absolute inset-0 rounded-full bg-[#1e293b]/35 dark:bg-accent-interactive/35 animate-like-ripple pointer-events-none" />
+                  <span className="absolute inset-0 rounded-full bg-[#1e293b]/35 dark:bg-brand-gold-bright/25 animate-like-ripple pointer-events-none" />
                 )}
                 <motion.span
                   animate={isPop ? { scale: [1, 1.4, 1] } : { scale: 1 }}
@@ -238,11 +229,11 @@ export default function PostCard({
                   <Heart
                     size={16}
                     strokeWidth={1.75}
-                    className={`transition-colors shrink-0 ${isLiked ? 'fill-[#1e293b] stroke-[#1e293b] dark:fill-accent-interactive dark:stroke-accent-interactive' : ''}`}
+                    className={isLiked ? heartLikedIconClass : 'transition-colors shrink-0'}
                   />
                 </motion.span>
                 {typeof likeCount === 'number' && likeCount >= 0 && (
-                  <span className="text-fg-secondary text-sm leading-none tabular-nums">{likeCount}</span>
+                  <span className="text-gray-400 text-sm leading-none tabular-nums">{likeCount}</span>
                 )}
               </motion.button>
 
@@ -250,23 +241,22 @@ export default function PostCard({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  const url = `${window.location.origin}?post=${postId}`
-                  navigator.clipboard
-                    .writeText(url)
-                    .then(() => {
-                      toast.success('Link skopiowany!')
-                    })
-                    .catch(() => {
-                      toast.error('Nie udało się skopiować linku.')
-                    })
+                  onToggleComments()
                 }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ type: 'spring', stiffness: 520, damping: 30 }}
-                className="ml-auto inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-2 text-fg-primary/60 dark:text-slate-400 hover:text-[#1e293b] dark:hover:text-accent-interactive hover:bg-[#1e293b]/10 dark:hover:bg-white/5 transition-colors"
-                aria-label="Udostępnij"
+                {...interactionMotionTap}
+                className={secondaryInteractionButtonClass(isCommentsOpen)}
+                aria-label="Komentarze"
               >
-                <Share2 size={16} strokeWidth={1.75} className="shrink-0" />
+                <MessageCircle
+                  size={16}
+                  strokeWidth={isCommentsOpen ? 2.25 : 1.75}
+                  className="shrink-0"
+                />
+                {typeof commentCount === 'number' && commentCount >= 0 && (
+                  <span className="text-gray-400 text-sm leading-none tabular-nums">{commentCount}</span>
+                )}
               </motion.button>
+
             </div>
           </div>
         </div>
@@ -292,6 +282,11 @@ export default function PostCard({
             onInputChange={onCommentInputChange}
             onSubmit={onSubmitComment}
             onDeleteComment={onDeleteComment}
+            onToggleCommentLike={onToggleCommentLike}
+            onReplyToComment={onReplyToComment}
+            onCancelReply={onCancelReply}
+            replyTarget={replyTarget}
+            commentLikeLoadingById={commentLikeLoadingById}
             onNavigateToUser={onNavigateToUser}
           />
         </div>

@@ -1,17 +1,24 @@
-import { useState } from 'react'
-import { Send, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Send, X } from 'lucide-react'
 import type { Comment, Profile } from '../types'
-import { relativeTime } from '../lib/utils'
+import CommentItem from './CommentItem'
 import UserAvatar from './UserAvatar'
 import ConfirmModal from './ConfirmModal'
 import { Skeleton } from './ui/Skeleton'
 
+const THREAD_GRID_BASE = 'grid w-full grid-cols-[36px_minmax(0,1fr)] gap-x-2'
+
+/** Comment rows: stretch so reply spines / multi-line cards align cleanly. */
+const THREAD_ROW_GRID = `${THREAD_GRID_BASE} items-stretch`
+
+const COMPOSER_ROW_GRID = `${THREAD_GRID_BASE} items-start`
+
 function CommentRowSkeleton() {
   return (
-    <div className="flex gap-2.5">
-      <Skeleton className="mt-0.5 h-7 w-7 shrink-0 rounded-full" />
-      <div className="min-w-0 flex-1 space-y-2 pt-0.5">
-        <Skeleton className="h-[52px] w-full rounded-2xl" />
+    <div className={`${THREAD_ROW_GRID}`}>
+      <Skeleton className="size-9 shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1">
+        <Skeleton className="h-[56px] w-full rounded-2xl" />
       </div>
     </div>
   )
@@ -30,6 +37,11 @@ type Props = {
   onInputChange: (value: string) => void
   onSubmit: () => void
   onDeleteComment: (commentId: number) => void
+  onToggleCommentLike: (comment: Comment) => void
+  onReplyToComment: (comment: Comment) => void
+  onCancelReply: () => void
+  replyTarget: { commentId: number; username: string } | null
+  commentLikeLoadingById?: Record<number, boolean>
   onNavigateToUser?: (userId: string) => void
 }
 
@@ -45,102 +57,127 @@ export default function CommentThread({
   onInputChange,
   onSubmit,
   onDeleteComment,
+  onToggleCommentLike,
+  onReplyToComment,
+  onCancelReply,
+  replyTarget,
+  commentLikeLoadingById = {},
   onNavigateToUser,
 }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
+  const glassCardClass =
+    'rounded-2xl border border-gray-200 bg-gray-50 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950'
+  const threadRowClass = THREAD_ROW_GRID
 
   const showCommentSkeleton = Boolean(isCommentsLoading && comments.length === 0)
+  const commentsById = useMemo(() => {
+    const m = new Map<number, Comment>()
+    for (const c of comments) m.set(c.id, c)
+    return m
+  }, [comments])
+
+  const commentsByParent = useMemo(() => {
+    const grouped = new Map<number | null, Comment[]>()
+    for (const c of comments) {
+      const parent = c.parent_id ?? null
+      const bucket = grouped.get(parent)
+      if (bucket) bucket.push(c)
+      else grouped.set(parent, [c])
+    }
+    for (const bucket of grouped.values()) {
+      bucket.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    }
+    return grouped
+  }, [comments])
+
+  const rootComments = commentsByParent.get(null) ?? []
 
   return (
-    <div className="px-4 pb-4 pt-3 space-y-3">
-      {/* Composer first — stable position; list loads below without pushing the form down */}
-      <div className="flex gap-2.5 items-center">
-        <UserAvatar profile={myProfile} name={displayName} className="h-8 w-8 shrink-0" textSize="text-xs" />
-        <div className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-100/90 py-1.5 pl-4 pr-1.5 transition-colors focus-within:border-[#1e293b]/45 dark:border-white/12 dark:bg-white/3 dark:backdrop-blur-sm">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                onSubmit()
-              }
-            }}
-            placeholder="Dodaj komentarz…"
-            maxLength={500}
-            className="flex-1 bg-transparent py-2 text-[13px] text-fg-primary placeholder:text-fg-secondary focus:outline-none dark:text-white dark:placeholder:text-slate-400"
-            aria-label={`Komentarz do posta ${postId}`}
-          />
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={!inputValue.trim() || isSubmitting}
-            className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-all text-[#1e293b] hover:bg-[#1e293b]/10 dark:text-accent-interactive dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
-            aria-label="Wyślij komentarz"
+    <div className="px-4 pb-3 pt-2.5">
+      <div className="mx-auto w-full space-y-2">
+        <div className={COMPOSER_ROW_GRID}>
+          <UserAvatar profile={myProfile} name={displayName} className="size-9 shrink-0" textSize="text-xs" />
+          <div
+            className={`${glassCardClass} flex min-h-10 items-center gap-2 py-1 px-3 transition-colors focus-within:border-[#0f172a]/25 dark:focus-within:border-white/15`}
           >
-            <Send size={18} strokeWidth={2} className="shrink-0" />
-          </button>
+            {replyTarget && (
+              <div className="flex items-center gap-2 rounded-full bg-[#1e293b]/10 px-2 py-1 text-[11px] text-gray-900 dark:text-zinc-100 dark:bg-white/10">
+                <span className="truncate">Odpowiadasz @{replyTarget.username}</span>
+                <button
+                  type="button"
+                  onClick={onCancelReply}
+                  className="text-gray-400 dark:text-zinc-500 transition-colors hover:text-gray-600 dark:hover:text-zinc-200"
+                  aria-label="Anuluj odpowiedź"
+                >
+                  <X size={12} strokeWidth={1.75} />
+                </button>
+              </div>
+            )}
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  onSubmit()
+                }
+              }}
+              placeholder={replyTarget ? `Odpowiedz @${replyTarget.username}…` : 'Dodaj komentarz…'}
+              maxLength={500}
+              className="flex-1 bg-transparent py-1.5 text-[13px] text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:outline-none"
+              aria-label={`Komentarz do posta ${postId}`}
+            />
+            <div className="mr-4 flex shrink-0 items-center">
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={!inputValue.trim() || isSubmitting}
+                className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors shrink-0 disabled:cursor-not-allowed disabled:opacity-30"
+                aria-label="Wyślij komentarz"
+              >
+                <Send className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className={`space-y-1 ${showCommentSkeleton ? 'min-h-[200px]' : ''}`}>
+          {showCommentSkeleton && (
+            <div className="space-y-2" aria-busy aria-live="polite">
+              <CommentRowSkeleton />
+              <CommentRowSkeleton />
+              <CommentRowSkeleton />
+            </div>
+          )}
+
+          {!showCommentSkeleton &&
+            rootComments.map((comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                depth={0}
+                replyTarget={replyTarget}
+                commentLikeLoadingById={commentLikeLoadingById}
+                currentUserId={currentUserId}
+                commentsById={commentsById}
+                commentsByParent={commentsByParent}
+                onNavigateToUser={onNavigateToUser}
+                onDeleteRequest={(id) => setPendingDeleteId(id)}
+                onToggleCommentLike={onToggleCommentLike}
+                onReplyToComment={onReplyToComment}
+                glassCardClass={glassCardClass}
+                threadRowClass={threadRowClass}
+              />
+            ))}
+
+          {!showCommentSkeleton && comments.length === 0 && (
+            <p className="py-2 text-center text-xs text-gray-500 dark:text-zinc-400">
+              Bądź pierwszą osobą, która skomentuje!
+            </p>
+          )}
         </div>
       </div>
-
-      {/* List region: reserved min-height while skeleton shows to reduce CLS */}
-      <div className={`space-y-3 ${showCommentSkeleton ? 'min-h-[240px]' : ''}`}>
-        {showCommentSkeleton && (
-          <div className="space-y-3" aria-busy aria-live="polite">
-            <CommentRowSkeleton />
-            <CommentRowSkeleton />
-            <CommentRowSkeleton />
-          </div>
-        )}
-
-        {!showCommentSkeleton &&
-          comments.map((c) => {
-            const cName = c.profiles?.full_name || 'Użytkownik'
-            const isOwnComment = c.user_id === currentUserId
-            return (
-              <div key={c.id} className="flex animate-comment-in gap-2.5">
-                <div
-                  className={onNavigateToUser ? 'mt-0.5 shrink-0 cursor-pointer' : 'mt-0.5 shrink-0'}
-                  onClick={onNavigateToUser ? () => onNavigateToUser(c.user_id) : undefined}
-                >
-                  <UserAvatar profile={c.profiles} name={cName} className="h-7 w-7" textSize="text-xs" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3 py-2 backdrop-blur-sm dark:border-white/12 dark:bg-white/3">
-                    <div className="mb-0.5 flex items-baseline gap-2">
-                      <span
-                        className={`text-xs font-bold text-fg-primary dark:text-white ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
-                        onClick={onNavigateToUser ? () => onNavigateToUser(c.user_id) : undefined}
-                      >
-                        {cName}
-                      </span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                        {relativeTime(c.created_at)}
-                      </span>
-                      {isOwnComment && (
-                        <button
-                          type="button"
-                          onClick={() => setPendingDeleteId(c.id)}
-                          className="ml-auto inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-600 transition-all hover:bg-slate-200/80 hover:text-red-500 dark:hover:bg-white/10"
-                          aria-label="Usuń komentarz"
-                        >
-                          <Trash2 size={16} strokeWidth={1.75} />
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-[13px] leading-relaxed text-fg-primary dark:text-slate-200">{c.content}</p>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-
-        {!showCommentSkeleton && comments.length === 0 && (
-          <p className="py-2 text-center text-xs text-slate-400">Bądź pierwszą osobą, która skomentuje!</p>
-        )}
-      </div>
-
       {pendingDeleteId !== null && (
         <ConfirmModal
           title="Usuń komentarz"

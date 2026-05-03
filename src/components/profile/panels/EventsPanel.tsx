@@ -51,10 +51,10 @@ export default function EventsPanel({ events, isOwn, onNavigateToEvents }: Props
             <button
               type="button"
               onClick={() => onNavigateToEvents?.()}
-              className="flex w-full cursor-pointer gap-4 rounded-xl border border-[#0f172a]/10 bg-card p-4 text-left shadow-sm transition-colors hover:border-[var(--profile-accent)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--profile-accent)]/40 dark:border-white/5 dark:shadow-none dark:hover:border-[var(--profile-accent)]/35"
+              className="flex w-full cursor-pointer gap-4 rounded-xl border border-[#0f172a]/10 bg-card p-4 text-left shadow-sm transition-colors hover:border-[#1e293b]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:border-white/5 dark:shadow-none dark:hover:border-brand-gold-bright/35 dark:focus-visible:ring-brand-gold-bright/40"
             >
               <div className="pointer-events-none flex w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-lg border border-[#0f172a]/10 py-3 dark:border-white/5 dark:bg-white/[0.04]">
-                <span className="text-2xl font-bold leading-none text-[var(--profile-accent)]">
+                <span className="text-2xl font-bold leading-none text-[#1e293b] dark:text-brand-gold-bright">
                   {day}
                 </span>
                 <span className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-500">
@@ -63,7 +63,7 @@ export default function EventsPanel({ events, isOwn, onNavigateToEvents }: Props
               </div>
               <div className="min-w-0 flex-1">
                 {e.category ? (
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--profile-accent)]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#1e293b] dark:text-brand-gold-bright">
                     {e.category}
                   </p>
                 ) : null}
@@ -78,7 +78,7 @@ export default function EventsPanel({ events, isOwn, onNavigateToEvents }: Props
                 ) : null}
                 {e.location ? (
                   <p className="mt-2 flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <span className="mt-0.5 shrink-0 text-[var(--profile-accent)]" aria-hidden>
+                    <span className="mt-0.5 shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden>
                       <MapPin className="h-4 w-4" strokeWidth={2} />
                     </span>
                     <span>{e.location}</span>
