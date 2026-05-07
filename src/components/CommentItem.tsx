@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Heart, MessageCircle, Trash2 } from 'lucide-react'
 import type { Comment } from '../types'
@@ -18,6 +18,21 @@ import UserAvatar from './UserAvatar'
 const FLAT_REPLY_INDENT = 'ml-10'
 
 const REPLIES_SPRING = { type: 'spring' as const, stiffness: 320, damping: 34 }
+
+/** Single box model for every comment row (no per-author / reply branching). */
+function CommentCardFrame({
+  glassCardClass,
+  children,
+}: {
+  glassCardClass: string
+  children: ReactNode
+}) {
+  return (
+    <div className={`min-w-0 w-full self-stretch box-border ${glassCardClass}`}>
+      <div className="min-w-0 w-full box-border p-2.5">{children}</div>
+    </div>
+  )
+}
 
 function parentReplyTag(parent: Comment) {
   const raw = parent.profiles?.username || parent.profiles?.full_name || 'użytkownik'
@@ -48,7 +63,7 @@ function renderInlineMentions(
           key={`mention-${index}`}
           type="button"
           onClick={() => onNavigateToUser?.(parentUserId as string)}
-          className="inline cursor-pointer font-medium text-blue-500 transition-colors hover:text-blue-400 hover:underline dark:text-brand-gold-bright dark:hover:text-brand-gold-bright"
+          className="inline cursor-pointer font-medium text-blue-500 hover:text-blue-400 hover:underline dark:text-brand-gold-bright dark:hover:text-brand-gold-bright"
         >
           {part}
         </button>
@@ -134,114 +149,114 @@ export default function CommentItem({
           </div>
         </div>
 
-        <div className={`${glassCardClass} min-w-0 self-stretch px-3 pt-1.5 pb-1`}>
-          <div className="flex items-center gap-2 pr-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span
-                className={`truncate text-xs font-bold leading-none text-gray-900 dark:text-zinc-100 ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
-                onClick={onNavigateToUser ? () => onNavigateToUser(comment.user_id) : undefined}
-              >
-                {cName}
-              </span>
-              {deptAbbrev ? <span className={DEPT_BADGE_SPAN_CLASS}>{deptAbbrev}</span> : null}
-              <span className="text-[10px] leading-none text-gray-500 dark:text-zinc-400">
-                {relativeTime(comment.created_at)}
-              </span>
-            </div>
-            {isOwnComment ? (
-              <button
-                type="button"
-                onClick={() => onDeleteRequest(comment.id)}
-                className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors shrink-0"
-                aria-label="Usuń komentarz"
-              >
-                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-              </button>
-            ) : null}
-          </div>
-          <div className="mt-0.5 text-[13px] leading-snug text-gray-900 dark:text-zinc-100">
-            <span>
-              {shouldPrefixParentMention ? (
-                <span className="mr-1 inline-flex items-baseline align-baseline">
-                  {onNavigateToUser ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (parentComment) onNavigateToUser(parentComment.user_id)
-                      }}
-                      className="inline cursor-pointer font-medium text-blue-500 transition-colors hover:text-blue-400 hover:underline dark:text-brand-gold-bright dark:hover:text-brand-gold-bright"
-                    >
-                      {parentMention}
-                    </button>
-                  ) : (
-                    <span className="inline font-medium text-blue-500 dark:text-brand-gold-bright">
-                      {parentMention}
-                    </span>
-                  )}
+        <CommentCardFrame glassCardClass={glassCardClass}>
+            <div className="flex items-center gap-2 pr-4">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span
+                  className={`truncate text-xs font-bold leading-none text-gray-900 dark:text-zinc-100 ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
+                  onClick={onNavigateToUser ? () => onNavigateToUser(comment.user_id) : undefined}
+                >
+                  {cName}
                 </span>
+                {deptAbbrev ? <span className={DEPT_BADGE_SPAN_CLASS}>{deptAbbrev}</span> : null}
+                <span className="text-[10px] leading-none text-gray-500 dark:text-zinc-400">
+                  {relativeTime(comment.created_at)}
+                </span>
+              </div>
+              {isOwnComment ? (
+                <button
+                  type="button"
+                  onClick={() => onDeleteRequest(comment.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 shrink-0"
+                  aria-label="Usuń komentarz"
+                >
+                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                </button>
               ) : null}
-              {renderInlineMentions(
-                comment.content,
-                parentMention,
-                parentComment?.user_id ?? null,
-                onNavigateToUser,
-              )}
-            </span>
-          </div>
-          <div className={`${INTERACTION_BAR_ROW} mt-0.5 -mx-1 flex flex-row items-center flex-nowrap gap-1`}>
-            <div className="flex min-w-0 items-center gap-1">
-              <motion.button
-                type="button"
-                disabled={!canLikeComment || isCommentLikeLoading}
-                onClick={() => onToggleCommentLike(comment)}
-                {...interactionMotionTap}
-                className={`${likeActionButtonClass(Boolean(comment.is_liked))} disabled:cursor-not-allowed disabled:opacity-45`}
-                aria-label={comment.is_liked ? 'Usuń polubienie komentarza' : 'Polub komentarz'}
-              >
-                <Heart
-                  size={16}
-                  strokeWidth={1.75}
-                  className={
-                    comment.is_liked
-                      ? heartLikedIconClass
-                      : 'transition-colors shrink-0 text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-200'
-                  }
-                />
-                <span className="text-gray-500 dark:text-zinc-400 text-sm leading-none tabular-nums">
-                  {commentLikes}
-                </span>
-              </motion.button>
-              <motion.button
-                type="button"
-                onClick={() => onReplyToComment(comment)}
-                {...interactionMotionTap}
-                className={secondaryInteractionButtonClass(replyTarget?.commentId === comment.id)}
-                aria-label="Odpowiedz na komentarz"
-              >
-                <MessageCircle
-                  size={16}
-                  strokeWidth={replyTarget?.commentId === comment.id ? 2.25 : 1.75}
-                  className={
-                    replyTarget?.commentId === comment.id
-                      ? 'shrink-0 text-gray-600 dark:text-zinc-200'
-                      : 'shrink-0 text-gray-400 dark:text-zinc-500 transition-colors group-hover:text-gray-600 dark:group-hover:text-zinc-200'
-                  }
-                />
-              </motion.button>
             </div>
+            <div className="mt-0.5 text-[13px] leading-snug text-gray-900 dark:text-zinc-100">
+              <span>
+                {shouldPrefixParentMention ? (
+                  <span className="mr-1 inline-flex items-baseline align-baseline">
+                    {onNavigateToUser ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (parentComment) onNavigateToUser(parentComment.user_id)
+                        }}
+                        className="inline cursor-pointer font-medium text-blue-500 hover:text-blue-400 hover:underline dark:text-brand-gold-bright dark:hover:text-brand-gold-bright"
+                      >
+                        {parentMention}
+                      </button>
+                    ) : (
+                      <span className="inline font-medium text-blue-500 dark:text-brand-gold-bright">
+                        {parentMention}
+                      </span>
+                    )}
+                  </span>
+                ) : null}
+                {renderInlineMentions(
+                  comment.content,
+                  parentMention,
+                  parentComment?.user_id ?? null,
+                  onNavigateToUser,
+                )}
+              </span>
+            </div>
+            <div className={`${INTERACTION_BAR_ROW} mt-0.5 flex flex-row items-center flex-nowrap gap-1`}>
+              <div className="flex min-w-0 items-center gap-1">
+                <motion.button
+                  type="button"
+                  disabled={!canLikeComment || isCommentLikeLoading}
+                  onClick={() => onToggleCommentLike(comment)}
+                  {...interactionMotionTap}
+                  className={`${likeActionButtonClass(Boolean(comment.is_liked))} disabled:cursor-not-allowed disabled:opacity-45`}
+                  aria-label={comment.is_liked ? 'Usuń polubienie komentarza' : 'Polub komentarz'}
+                >
+                  <Heart
+                    size={16}
+                    strokeWidth={1.75}
+                    className={
+                      comment.is_liked
+                        ? heartLikedIconClass
+                        : 'shrink-0 text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-200'
+                    }
+                  />
+                  <span className="text-gray-500 dark:text-zinc-400 text-sm leading-none tabular-nums">
+                    {commentLikes}
+                  </span>
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={() => onReplyToComment(comment)}
+                  {...interactionMotionTap}
+                  className={secondaryInteractionButtonClass(replyTarget?.commentId === comment.id)}
+                  aria-label="Odpowiedz na komentarz"
+                >
+                  <MessageCircle
+                    size={16}
+                    strokeWidth={replyTarget?.commentId === comment.id ? 2.25 : 1.75}
+                    className={
+                      replyTarget?.commentId === comment.id
+                        ? 'shrink-0 text-gray-600 dark:text-zinc-200'
+                        : 'shrink-0 text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-200'
+                    }
+                  />
+                </motion.button>
+              </div>
 
-            {hasChildren ? (
-              <button
-                type="button"
-                onClick={() => setIsExpanded((v) => !v)}
-                aria-expanded={isExpanded}
-                className="ml-auto inline-flex min-w-0 items-center truncate text-right text-xs font-medium leading-none text-gray-500 dark:text-zinc-400 transition-colors duration-200 hover:text-gray-600 dark:hover:text-zinc-200 hover:underline"
-              >
-                {isExpanded ? 'Ukryj odpowiedzi' : `Pokaż odpowiedzi (${directReplyCount})`}
-              </button>
-            ) : null}
-          </div>
-        </div>
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded((v) => !v)}
+                  aria-expanded={isExpanded}
+                  className="ml-auto inline-flex min-w-0 items-center truncate text-right text-xs font-medium leading-none text-gray-500 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 hover:underline"
+                >
+                  {isExpanded ? 'Ukryj odpowiedzi' : `Pokaż odpowiedzi (${directReplyCount})`}
+                </button>
+              ) : null}
+            </div>
+        </CommentCardFrame>
       </div>
 
       <AnimatePresence initial={false}>

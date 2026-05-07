@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 
 type Theme = 'light' | 'dark'
 
@@ -30,7 +31,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('uj-theme', theme)
   }, [theme])
 
-  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))
+  const toggleTheme = () => {
+    console.log('Theme toggle clicked');
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+
+    const updateDomAndState = () => {
+      setTheme(newTheme);
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    if (!document.startViewTransition) {
+      updateDomAndState();
+      return;
+    }
+
+    document.startViewTransition(() => {
+      flushSync(() => {
+        updateDomAndState();
+      });
+    });
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>

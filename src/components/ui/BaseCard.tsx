@@ -103,9 +103,10 @@ function BaseCardInner(
   const Component = (as ?? 'div') as ElementType
   const variantCls = variantClasses(variant)
   const interactiveCls = interactive ? interactiveClasses(variant) : ''
+  const synchronizedThemeTransitionCls = theme.transition.base
   // Domyślnie karta nie narzuca paddingu — spacing kontrolują komponenty domenowe.
   const paddingCls = 'p-0'
-  const composed = `${variantCls} ${paddingCls} ${interactiveCls} ${className}`.replace(/\s+/g, ' ').trim()
+  const composed = `${variantCls} ${paddingCls} ${synchronizedThemeTransitionCls} ${interactiveCls} ${className}`.replace(/\s+/g, ' ').trim()
 
   return (
     <Component ref={ref} className={composed} {...rest}>

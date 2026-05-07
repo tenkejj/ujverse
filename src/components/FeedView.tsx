@@ -259,7 +259,7 @@ export default function FeedView({
             <button
               type="button"
               onClick={() => onMobileComposeTap?.()}
-              className="m-0 w-full rounded-2xl border border-zinc-200/90 bg-white py-7 md:py-3 pl-4 pr-3 text-left shadow-lg transition-[background-color,border-color,box-shadow] hover:bg-zinc-50 active:bg-zinc-100 focus-visible:outline-none focus-visible:border-[#1e293b]/55 focus-visible:ring-2 focus-visible:ring-[#1e293b]/20 dark:border-white/5 dark:bg-zinc-900/40 dark:shadow-none dark:backdrop-blur-md dark:hover:bg-zinc-900/55 dark:active:bg-zinc-900/65 dark:focus-visible:border-brand-gold/50 dark:focus-visible:ring-brand-gold/25"
+              className="m-0 w-full rounded-2xl border border-zinc-200/90 bg-white py-7 md:py-3 pl-4 pr-3 text-left shadow-lg hover:bg-zinc-50 active:bg-zinc-100 focus-visible:outline-none focus-visible:border-[#1e293b]/55 focus-visible:ring-2 focus-visible:ring-[#1e293b]/20 dark:border-white/5 dark:bg-zinc-900/40 dark:shadow-none dark:backdrop-blur-md dark:hover:bg-zinc-900/55 dark:active:bg-zinc-900/65 dark:focus-visible:border-brand-gold/50 dark:focus-visible:ring-brand-gold/25"
             >
               <span className="text-[15px] font-medium text-zinc-900 dark:text-zinc-400">
                 Co słychać na uczelni?
@@ -344,7 +344,7 @@ export default function FeedView({
                 <div className="shrink-0 flex w-12 items-center justify-center min-h-[36px]">
                   <Icon
                     size={18}
-                    className="text-[#1e293b] dark:text-brand-gold-bright shrink-0 transition-colors group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright"
+                    className="text-[#1e293b] dark:text-brand-gold-bright shrink-0 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright"
                     strokeWidth={2}
                   />
                 </div>
@@ -367,7 +367,7 @@ export default function FeedView({
             <button
               type="button"
               onClick={onNavigateToEvents}
-              className={`shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors ${sideHeaderLinkCls} ${sidePanelHoverFocus}`}
+              className={`shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium ${sideHeaderLinkCls} ${sidePanelHoverFocus}`}
               aria-label="Przejdź do wszystkich wydarzeń"
             >
               Zobacz wszystkie →

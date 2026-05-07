@@ -43,8 +43,8 @@ export const theme = {
     premium: 'shadow-[0_0_36px_-14px_rgba(201,162,39,0.25)]',
   },
   transition: {
-    base: 'transition-all duration-200',
-    colors: 'transition-colors duration-200',
+    base: '',
+    colors: '',
   },
   text: {
     primary: 'text-zinc-900 dark:text-zinc-100',

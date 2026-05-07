@@ -129,7 +129,7 @@ export default function Header({
   return (
     <>
     <header
-      className={`${HEADER_MOBILE.containerClass} w-full flex items-center justify-between sticky top-0 z-50 overflow-visible transition-all duration-300 border-t-0 outline-none ring-0 shadow-none ${
+      className={`${HEADER_MOBILE.containerClass} w-full flex items-center justify-between sticky top-0 z-50 overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'border-b border-slate-200/90 bg-white/85 backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/55 dark:backdrop-blur-md'
           : 'border-b border-transparent bg-bg-app/90 backdrop-blur-md dark:border-transparent dark:bg-black/25 dark:backdrop-blur-md'
@@ -167,7 +167,7 @@ export default function Header({
               maskPosition: 'center',
               WebkitMaskPosition: 'center',
             }}
-            className={`mx-auto ${HEADER_MOBILE.logoClass} transition-colors dark:bg-brand-gold-bright bg-logo-navy`}
+            className={`mx-auto ${HEADER_MOBILE.logoClass} transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright bg-logo-navy`}
           />
         </motion.button>
       </div>
@@ -204,7 +204,7 @@ export default function Header({
           <button
             type="button"
             onClick={onNavigateToEvents}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-gray-100 dark:hover:bg-white/10 ${
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
               activeView === 'events'
                 ? 'text-[#1e293b] dark:text-accent-interactive'
                 : 'text-[#1e293b] dark:text-gray-400'
@@ -224,7 +224,7 @@ export default function Header({
               aria-expanded={notificationsPanelOpen}
               aria-haspopup="dialog"
               aria-label="Powiadomienia"
-              className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all hover:bg-black/5 dark:hover:bg-white/10 ${
+              className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-black/5 dark:hover:bg-white/10 ${
                 bellActive
                   ? 'text-[#1e293b] dark:text-brand-gold-bright ring-2 ring-[#1e293b]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(30,41,59,0.35)]'
                   : 'text-[#1e293b] dark:text-gray-400'
@@ -262,7 +262,7 @@ export default function Header({
         <button
           type="button"
           onClick={toggleTheme}
-          className={`${HEADER_MOBILE.themeToggleButtonClass} text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors`}
+          className={`${HEADER_MOBILE.themeToggleButtonClass} relative z-20 pointer-events-auto text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors`}
           aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
         >
           {theme === 'dark' ? (
@@ -287,7 +287,7 @@ export default function Header({
               onCloseNotificationsPanel()
               setMenuOpen((v) => !v)
             }}
-            className={`${HEADER_MOBILE.userMenuButtonClass} hover:bg-[#1e293b]/10 transition-all duration-300`}
+            className={`${HEADER_MOBILE.userMenuButtonClass} hover:bg-[#1e293b]/10 transition-colors duration-150 ease-in-out`}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label="Menu użytkownika"
@@ -300,20 +300,20 @@ export default function Header({
             />
             {myProfile?.department && (
               <span
-                className={`hidden sm:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-[#1e293b] dark:text-brand-gold-bright border border-[#1e293b] dark:border-brand-gold-bright/40 rounded-full leading-none shrink-0 transition-colors duration-300`}
+                className={`hidden sm:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-[#1e293b] dark:text-brand-gold-bright border border-[#1e293b] dark:border-brand-gold-bright/40 rounded-full leading-none shrink-0 transition-colors duration-150 ease-in-out`}
               >
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
             <span
-              className={`hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium ${HEADER_MOBILE.userNameMaxWidthClass} truncate transition-colors duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright`}
+              className={`hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium ${HEADER_MOBILE.userNameMaxWidthClass} truncate transition-colors duration-150 ease-in-out group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright`}
             >
               {displayName}
             </span>
             <ChevronDown
               size={24}
               strokeWidth={2}
-              className={`hidden md:block shrink-0 ml-1 text-fg-primary dark:text-brand-gold-bright transition-all duration-300 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
+              className={`hidden md:block shrink-0 ml-1 text-fg-primary dark:text-brand-gold-bright transition-transform duration-150 ease-in-out group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 

@@ -98,7 +98,7 @@ export default function CommentThread({
         <div className={COMPOSER_ROW_GRID}>
           <UserAvatar profile={myProfile} name={displayName} className="size-9 shrink-0" textSize="text-xs" />
           <div
-            className={`${glassCardClass} flex min-h-10 items-center gap-2 py-1 px-3 transition-colors focus-within:border-[#0f172a]/25 dark:focus-within:border-white/15`}
+            className={`${glassCardClass} flex min-h-10 items-center gap-2 py-1 px-3 focus-within:border-[#0f172a]/25 dark:focus-within:border-white/15`}
           >
             {replyTarget && (
               <div className="flex items-center gap-2 rounded-full bg-[#1e293b]/10 px-2 py-1 text-[11px] text-gray-900 dark:text-zinc-100 dark:bg-white/10">
@@ -106,7 +106,7 @@ export default function CommentThread({
                 <button
                   type="button"
                   onClick={onCancelReply}
-                  className="text-gray-400 dark:text-zinc-500 transition-colors hover:text-gray-600 dark:hover:text-zinc-200"
+                  className="text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200"
                   aria-label="Anuluj odpowiedź"
                 >
                   <X size={12} strokeWidth={1.75} />
@@ -133,7 +133,7 @@ export default function CommentThread({
                 type="button"
                 onClick={onSubmit}
                 disabled={!inputValue.trim() || isSubmitting}
-                className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors shrink-0 disabled:cursor-not-allowed disabled:opacity-30"
+                className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 shrink-0 disabled:cursor-not-allowed disabled:opacity-30"
                 aria-label="Wyślij komentarz"
               >
                 <Send className="w-4 h-4" strokeWidth={1.5} />

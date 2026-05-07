@@ -180,7 +180,7 @@ export default function PostCard({
                       e.stopPropagation()
                       setConfirmDeleteOpen(true)
                     }}
-                    className="w-8 h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 transition-colors shrink-0 absolute -right-2 top-1/2 -translate-y-1/2"
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 shrink-0 absolute -right-2 top-1/2 -translate-y-1/2"
                     aria-label="Usuń post"
                   >
                     <Trash2 className="w-4 h-4" strokeWidth={1.5} />
@@ -229,7 +229,7 @@ export default function PostCard({
                   <Heart
                     size={16}
                     strokeWidth={1.75}
-                    className={isLiked ? heartLikedIconClass : 'transition-colors shrink-0'}
+                    className={isLiked ? heartLikedIconClass : 'shrink-0'}
                   />
                 </motion.span>
                 {typeof likeCount === 'number' && likeCount >= 0 && (
@@ -316,8 +316,8 @@ export default function PostCard({
         key={postId}
         className={
           isFlat
-            ? 'bg-transparent rounded-none border-0 shadow-none overflow-visible transition-colors'
-            : 'bg-transparent rounded-none border-0 shadow-none ring-0 ring-inset ring-transparent transition-[background-color,box-shadow] duration-150 hover:bg-[#0f172a]/[0.02] hover:shadow-[inset_0_0_0_1px_rgb(30_41_59/0.18)] dark:hover:bg-white/[0.04] dark:hover:shadow-[inset_0_0_0_1px_rgb(201_162_39/0.2)] overflow-hidden'
+            ? 'bg-transparent rounded-none border-0 shadow-none overflow-visible'
+            : 'bg-transparent rounded-none border-0 shadow-none ring-0 ring-inset ring-transparent hover:bg-[#0f172a]/[0.02] hover:shadow-[inset_0_0_0_1px_rgb(30_41_59/0.18)] dark:hover:bg-white/[0.04] dark:hover:shadow-[inset_0_0_0_1px_rgb(201_162_39/0.2)] overflow-hidden'
         }
       >
         {innerBody}
