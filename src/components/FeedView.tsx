@@ -239,7 +239,7 @@ export default function FeedView({
   )
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-4">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:items-start lg:gap-4">
 
       {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
       <aside
@@ -253,7 +253,7 @@ export default function FeedView({
       </aside>
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
-      <div className="lg:col-span-6 flex min-w-0 w-full max-w-full flex-col items-stretch gap-4 overflow-x-hidden">
+      <div className="lg:col-span-6 flex min-w-0 w-full max-w-full flex-col items-stretch gap-4">
         <div className="mx-auto w-full max-w-2xl space-y-0 px-0 pt-5 md:space-y-0 md:px-0 md:pt-0">
           <div className="md:hidden">
             <button
@@ -318,7 +318,7 @@ export default function FeedView({
 
       {/* ── RIGHT SIDEBAR (desktop only) ────────────────────────────── */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky top-16 self-start pt-0`}
+        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] h-fit flex-col ${unifiedCardGapCls} sticky top-20 self-start pt-0`}
       >
         {/* Niezbędnik UJ — szybkie linki (layout jak Wydarzenia UJ) */}
         <BaseCard variant="default" className="p-4 flex flex-col gap-4">
@@ -334,7 +334,6 @@ export default function FeedView({
                 key={label}
                 as="a"
                 variant="inner"
-                interactive
                 flush
                 href={href}
                 target="_blank"

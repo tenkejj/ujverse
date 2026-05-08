@@ -16,7 +16,6 @@ html {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   width: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
   touch-action: pan-y;
 }
 
@@ -126,14 +125,12 @@ body {
   @apply min-h-screen bg-bg-app text-fg-primary;
   width: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
   touch-action: pan-y;
 }
 
 #root {
   width: 100%;
   max-width: 100%;
-  overflow-x: clip;
 }
 
 /* Moduł wyszukiwania: ukryj natywny niebieski „X” przeglądarki w polach type=search */

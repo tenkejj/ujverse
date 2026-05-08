@@ -65,8 +65,7 @@ export default function CommentThread({
   onNavigateToUser,
 }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
-  const glassCardClass =
-    'rounded-2xl border border-gray-200 bg-gray-50 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950'
+  const glassCardClass = 'rounded-2xl border border-border-app bg-bg-card backdrop-blur-md'
   const threadRowClass = THREAD_ROW_GRID
 
   const showCommentSkeleton = Boolean(isCommentsLoading && comments.length === 0)

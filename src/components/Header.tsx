@@ -131,8 +131,8 @@ export default function Header({
     <header
       className={`${HEADER_MOBILE.containerClass} w-full flex items-center justify-between sticky top-0 z-50 overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
-          ? 'border-b border-slate-200/90 bg-white/85 backdrop-blur-md dark:border-white/10 dark:bg-zinc-950/55 dark:backdrop-blur-md'
-          : 'border-b border-transparent bg-bg-app/90 backdrop-blur-md dark:border-transparent dark:bg-black/25 dark:backdrop-blur-md'
+          ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
+          : 'bg-bg-app/80 backdrop-blur-md backdrop-saturate-150 dark:bg-black/20 dark:backdrop-blur-md dark:backdrop-saturate-150'
       }`}
     >
       <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
@@ -181,7 +181,7 @@ export default function Header({
               onCloseNotificationsPanel()
               setClubsModalOpen(true)
             }}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium text-[#1e293b] transition-colors hover:text-[#1e293b] hover:bg-black/5 dark:text-gray-300 dark:hover:text-brand-gold-bright dark:hover:bg-white/10"
+            className="hidden"
             aria-haspopup="dialog"
             aria-expanded={clubsModalOpen}
             aria-label="Koła naukowe"

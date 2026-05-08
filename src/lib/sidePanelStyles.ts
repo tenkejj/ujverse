@@ -27,7 +27,7 @@ export const sideCardCls = `rounded-2xl p-4 min-h-0 ${sideGlassLight}`
 export const sideInnerRowCls = `rounded-2xl p-3 min-h-0 ${sideGlassInnerLight}`
 
 export const sidePanelHoverFocus =
-  'hover:bg-[#1e293b]/[0.06] dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:focus-visible:ring-brand-gold/35'
+  'hover:bg-black/[0.04] dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:focus-visible:ring-brand-gold/35'
 
 export const sectionTitleCls =
   `font-bold text-[10px] uppercase tracking-[0.2em] ${theme.text.sectionHeader}`

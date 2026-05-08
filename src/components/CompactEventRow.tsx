@@ -16,7 +16,6 @@ export default function CompactEventRow({ event: ev, onSelect }: Props) {
       as="button"
       type="button"
       variant="inner"
-      interactive
       onClick={() => onSelect(ev)}
       className={`group m-0 p-3 w-full flex cursor-pointer items-start gap-3 text-left transition-colors ${sidePanelHoverFocus} ${
         official
@@ -25,9 +24,7 @@ export default function CompactEventRow({ event: ev, onSelect }: Props) {
       }`}
     >
       <div className="shrink-0 text-center w-12">
-        <span
-          className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
-        >
+        <span className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide`}>
           {monthLabel}
         </span>
         <span className="block text-[15px] font-extrabold text-[#1e293b] dark:text-white leading-tight">
@@ -42,7 +39,7 @@ export default function CompactEventRow({ event: ev, onSelect }: Props) {
           {official ? (
             <BadgeCheck
               size={14}
-              className={`${widgetGoldCls} shrink-0 mt-0.5 transition-colors group-hover:text-[#7a6b45] dark:group-hover:text-brand-gold-bright`}
+              className={`${widgetGoldCls} shrink-0 mt-0.5`}
               strokeWidth={2.5}
               aria-label="Oficjalne UJ"
             />
