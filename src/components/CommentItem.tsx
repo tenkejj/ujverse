@@ -150,7 +150,7 @@ export default function CommentItem({
         </div>
 
         <CommentCardFrame glassCardClass={glassCardClass}>
-            <div className="flex items-center gap-2 pr-4">
+            <div className="flex min-h-8 items-center gap-2 pr-4">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span
                   className={`truncate text-xs font-bold leading-none text-gray-900 dark:text-zinc-100 ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
