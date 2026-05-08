@@ -250,7 +250,7 @@ export default function CommentItem({
                   type="button"
                   onClick={() => setIsExpanded((v) => !v)}
                   aria-expanded={isExpanded}
-                  className="ml-auto inline-flex min-w-0 items-center truncate text-right text-xs font-medium leading-none text-gray-500 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 hover:underline"
+                  className="ml-auto inline-flex items-center whitespace-nowrap text-right text-xs font-medium leading-tight text-gray-500 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 hover:underline"
                 >
                   {isExpanded ? 'Ukryj odpowiedzi' : `Pokaż odpowiedzi (${directReplyCount})`}
                 </button>
