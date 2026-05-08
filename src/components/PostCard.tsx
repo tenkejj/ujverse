@@ -317,7 +317,7 @@ export default function PostCard({
         className={
           isFlat
             ? 'bg-transparent rounded-none border-0 shadow-none overflow-visible'
-            : 'bg-transparent rounded-none border-0 shadow-none ring-0 ring-inset ring-transparent hover:bg-[#0f172a]/[0.02] hover:shadow-[inset_0_0_0_1px_rgb(30_41_59/0.18)] dark:hover:bg-white/[0.04] dark:hover:shadow-[inset_0_0_0_1px_rgb(201_162_39/0.2)] overflow-hidden'
+            : 'bg-transparent rounded-none border-0 shadow-none ring-0 ring-inset ring-transparent hover:bg-black/1 dark:hover:bg-white/2 overflow-hidden'
         }
       >
         {innerBody}
