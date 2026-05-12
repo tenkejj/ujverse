@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Bell, CalendarDays, ChevronDown, Home, LogOut, Moon, Pencil, Settings, Sun, User, Users, X } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Settings, Sun, User, Users, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { AppNotification, Profile } from '../types'
@@ -12,7 +12,7 @@ import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
-import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
+import { HEADER_MOBILE } from '../styles/mobile-theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -191,18 +191,6 @@ export default function Header({
           </button>
           <button
             type="button"
-            onClick={onNavigateToFeed}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10 ${
-              activeView === 'feed'
-                ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
-            }`}
-            aria-label="Strona główna"
-          >
-            <Home size={20} strokeWidth={activeView === 'feed' ? 2.35 : 1.85} />
-          </button>
-          <button
-            type="button"
             onClick={onNavigateToEvents}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
               activeView === 'events'
@@ -211,7 +199,20 @@ export default function Header({
             }`}
             aria-label="Wydarzenia"
           >
-            <CalendarDays size={20} strokeWidth={activeView === 'events' ? 2.35 : 1.85} />
+            <CalendarDays size={20} strokeWidth={2} />
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out"
+            aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
+          >
+            {theme === 'dark' ? (
+              <Sun size={20} strokeWidth={2} className="shrink-0" />
+            ) : (
+              <Moon size={20} strokeWidth={2} className="shrink-0" />
+            )}
           </button>
 
           <div className="relative shrink-0">
@@ -239,7 +240,7 @@ export default function Header({
                 }
                 transition={{ duration: 0.48, ease: [0.36, 0.07, 0.19, 0.99] }}
               >
-                <Bell size={20} strokeWidth={bellActive ? 2.35 : 1.85} />
+                <Bell size={20} strokeWidth={2} />
               </motion.span>
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center pointer-events-none">
@@ -259,27 +260,6 @@ export default function Header({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={`${HEADER_MOBILE.themeToggleButtonClass} relative z-20 pointer-events-auto text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors`}
-          aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
-        >
-          {theme === 'dark' ? (
-            <Sun
-              size={ICONS_MOBILE.headerThemeToggleSize}
-              strokeWidth={ICONS_MOBILE.headerThemeToggleStrokeWidth}
-              className={`shrink-0 ${ICONS_MOBILE.strongStrokeClass}`}
-            />
-          ) : (
-            <Moon
-              size={ICONS_MOBILE.headerThemeToggleSize}
-              strokeWidth={ICONS_MOBILE.headerThemeToggleStrokeWidth}
-              className={`shrink-0 ${ICONS_MOBILE.strongStrokeClass}`}
-            />
-          )}
-        </button>
-
         <div className="relative shrink-0 min-w-0 block" ref={menuRef}>
           <button
             type="button"
@@ -287,7 +267,7 @@ export default function Header({
               onCloseNotificationsPanel()
               setMenuOpen((v) => !v)
             }}
-            className={`${HEADER_MOBILE.userMenuButtonClass} hover:bg-[#1e293b]/10 transition-colors duration-150 ease-in-out`}
+            className={`${HEADER_MOBILE.userMenuButtonClass} hover:bg-zinc-800/10 transition-colors duration-150 ease-in-out`}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label="Menu użytkownika"
@@ -300,20 +280,20 @@ export default function Header({
             />
             {myProfile?.department && (
               <span
-                className={`hidden sm:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-[#1e293b] dark:text-brand-gold-bright border border-[#1e293b] dark:border-brand-gold-bright/40 rounded-full leading-none shrink-0 transition-colors duration-150 ease-in-out`}
+                className={`hidden sm:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border border-zinc-700 dark:border-white/20 rounded-full leading-none shrink-0 transition-colors duration-150 ease-in-out`}
               >
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
             <span
-              className={`hidden sm:inline text-[#1e293b] dark:text-gray-200 text-sm font-medium ${HEADER_MOBILE.userNameMaxWidthClass} truncate transition-colors duration-150 ease-in-out group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright`}
+              className={`hidden sm:inline text-zinc-800 dark:text-zinc-400 text-sm font-medium ${HEADER_MOBILE.userNameMaxWidthClass} truncate transition-colors duration-150 ease-in-out group-hover:text-zinc-900 dark:group-hover:text-zinc-100`}
             >
               {displayName}
             </span>
             <ChevronDown
               size={24}
               strokeWidth={2}
-              className={`hidden md:block shrink-0 ml-1 text-fg-primary dark:text-brand-gold-bright transition-transform duration-150 ease-in-out group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright ${menuOpen ? 'rotate-180' : ''}`}
+              className={`hidden md:block shrink-0 ml-1 text-fg-primary dark:text-zinc-400 transition-transform duration-150 ease-in-out group-hover:text-zinc-900 dark:group-hover:text-zinc-100 ${menuOpen ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -325,12 +305,12 @@ export default function Header({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full z-[120] mt-2 w-72 overflow-hidden rounded-2xl border border-[#0f172a]/10 bg-white/95 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl backdrop-saturate-150 origin-top-right dark:border-white/10 dark:bg-[#01020a]/90 dark:shadow-2xl dark:shadow-black/50"
+                className="absolute right-0 top-full z-[120] mt-2 w-72 overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] backdrop-blur-md backdrop-saturate-150 origin-top-right dark:border-white/10 dark:bg-bg-card/95 dark:shadow-2xl dark:shadow-black/50"
               >
-                <div className="flex items-center gap-3 border-b border-[#0f172a]/10 px-4 py-3.5 dark:border-white/10">
+                <div className="flex items-center gap-3 border-b border-zinc-200 px-4 py-3.5 dark:border-white/10">
                   <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9 shrink-0" textSize="text-sm" />
                   <div className="flex min-h-9 min-w-0 flex-1 items-center">
-                    <p className="w-full text-sm font-semibold leading-tight text-[#1e293b] dark:text-white truncate">
+                    <p className="w-full text-sm font-semibold leading-tight text-zinc-800 dark:text-zinc-100 truncate">
                       {displayName}
                     </p>
                   </div>
@@ -340,30 +320,30 @@ export default function Header({
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToProfile() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/35 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-zinc-700 before:opacity-0 hover:before:opacity-100 dark:before:bg-zinc-100"
                   >
-                    <User size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
+                    <User size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" />
                     Mój profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onOpenProfileModal() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/35 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-zinc-700 before:opacity-0 hover:before:opacity-100 dark:before:bg-zinc-100"
                   >
-                    <Pencil size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
+                    <Pencil size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" />
                     Edytuj profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToSettings() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-[#1e293b] transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/35 dark:text-slate-200 dark:hover:bg-white/5 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/35 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-zinc-700 before:opacity-0 hover:before:opacity-100 dark:before:bg-zinc-100"
                   >
-                    <Settings size={15} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
+                    <Settings size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" />
                     Ustawienia
                   </button>
                 </div>
 
-                <div className="border-t border-[#0f172a]/10 px-2 py-2 dark:border-white/10">
+                <div className="border-t border-zinc-200 px-2 py-2 dark:border-white/10">
                   <button
                     role="menuitem"
                     onClick={() => void supabase.auth.signOut()}
@@ -416,7 +396,7 @@ export default function Header({
               <button
                 type="button"
                 onClick={onCloseNotificationsPanel}
-                className="absolute top-[max(1rem,env(safe-area-inset-top))] right-5 z-20 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-[#1e293b] dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
+                className="absolute top-[max(1rem,env(safe-area-inset-top))] right-5 z-20 flex h-10 w-10 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-200/80 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100"
                 aria-label="Zamknij powiadomienia"
               >
                 <X size={22} strokeWidth={2} />
@@ -424,14 +404,14 @@ export default function Header({
 
               <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col pt-20">
                 <div className="flex shrink-0 items-center justify-between gap-4 pr-12">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-600 dark:text-slate-400">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-600 dark:text-zinc-400">
                     Powiadomienia
                   </h2>
                   <button
                     type="button"
                     onClick={onClearAllNotifications}
                     disabled={!hasAnyNotifications || notificationsLoading}
-                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 transition-colors hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-500 dark:hover:text-brand-gold-bright"
+                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-35 dark:text-zinc-500 dark:hover:text-zinc-100"
                   >
                     Wyczyść
                   </button>

@@ -7,7 +7,7 @@ const tapTransition = { type: 'spring' as const, stiffness: 520, damping: 30 }
 
 export const interactionMotionTap = { whileTap: { scale: 0.97 }, transition: tapTransition }
 
-const iconMuted = 'text-fg-primary/60 dark:text-slate-400'
+const iconMuted = 'text-fg-primary/60 dark:text-zinc-400'
 const iconHover =
   'hover:text-[#1e293b] hover:bg-[#1e293b]/10 dark:hover:text-brand-gold-bright dark:hover:bg-brand-gold-bright/10'
 const svgHover =

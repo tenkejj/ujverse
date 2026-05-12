@@ -33,7 +33,7 @@ export default function ComposeBox({
   displayName,
   isComposing,
   body,
-  imageFile: _imageFile,
+  imageFile,
   imagePreview,
   isLoading,
   error,
@@ -55,10 +55,11 @@ export default function ComposeBox({
   const bodyLen = body.length
   const ringProgress = Math.min(bodyLen / BODY_MAX, 1)
   const ringDash = RING_CIRCUMFERENCE * ringProgress
+  const canSubmit = Boolean(body.trim() || imageFile)
 
   const rootCls = sheetMode || embeddedInCard
     ? 'overflow-hidden rounded-none border-0 bg-transparent shadow-none'
-    : `bg-card dark:bg-bg-app rounded-2xl border border-[#0f172a]/5 transition-[border-color,box-shadow] duration-200 overflow-hidden shadow-sm dark:border-white/10 ${
+    : `bg-card dark:bg-bg-card rounded-2xl border border-[#0f172a]/5 transition-[border-color,box-shadow] duration-200 overflow-hidden shadow-sm dark:border-white/10 ${
         isComposing
           ? 'border-[#0f172a]/12 shadow-[0_0_0_1px_rgb(164_137_85/0.12),0_2px_10px_-2px_rgb(15_23_42/0.06)] dark:border-white/10 dark:shadow-[inset_0_0_0_1px_rgb(201_162_39/0.15),0_8px_32px_-12px_rgb(0_0_0/0.45)]'
           : 'dark:shadow-lg dark:shadow-black/20'
@@ -102,8 +103,8 @@ export default function ComposeBox({
                   sheetMode
                     ? 'border border-zinc-200 bg-zinc-50 text-zinc-900 placeholder:text-zinc-500 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-300/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-600 dark:focus:ring-brand-gold/30'
                     : embeddedInCard
-                      ? 'border-0 ring-0 shadow-none bg-transparent text-fg-primary dark:text-slate-100 placeholder:text-fg-secondary dark:placeholder:text-slate-500'
-                      : 'border border-zinc-200 dark:border-white/10 text-fg-primary placeholder:text-fg-secondary ring-1 ring-inset ring-[#0f172a]/[0.05] focus:ring-2 focus:ring-[#0f172a]/[0.08] dark:ring-1 dark:ring-inset dark:ring-white/10 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-2 dark:focus:ring-brand-gold/25'
+                      ? 'border-0 ring-0 shadow-none bg-transparent text-fg-primary dark:text-zinc-100 placeholder:text-fg-secondary dark:placeholder:text-zinc-500'
+                      : 'border border-zinc-200 dark:border-white/10 text-fg-primary placeholder:text-fg-secondary ring-1 ring-inset ring-[#0f172a]/5 focus:ring-2 focus:ring-[#0f172a]/8 dark:ring-1 dark:ring-inset dark:ring-white/10 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-2 dark:focus:ring-brand-gold/25'
                 }`}
               />
 
@@ -190,7 +191,7 @@ export default function ComposeBox({
                       />
                     </svg>
                     {ringProgress > 0.8 && (
-                      <span className={`absolute inset-0 flex items-center justify-center text-[9px] font-bold ${ringProgress > 0.9 ? 'text-red-500' : 'text-slate-500'}`}>
+                      <span className={`absolute inset-0 flex items-center justify-center text-[9px] font-bold ${ringProgress > 0.9 ? 'text-red-500' : 'text-zinc-500'}`}>
                         {BODY_MAX - bodyLen}
                       </span>
                     )}
@@ -201,14 +202,14 @@ export default function ComposeBox({
                   <button
                     type="button"
                     onClick={onReset}
-                    className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#0f172a] transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                    className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#0f172a] transition-colors hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
                   >
                     Anuluj
                   </button>
                   <motion.button
                     type="button"
                     onClick={onSubmit}
-                    disabled={isLoading || !body.trim()}
+                    disabled={isLoading || !canSubmit}
                     whileTap={{ scale: 0.98 }}
                     className="whitespace-nowrap rounded-full bg-[#0f172a] px-4 py-2 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-900 dark:shadow-none"
                   >

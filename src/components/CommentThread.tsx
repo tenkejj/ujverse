@@ -65,8 +65,24 @@ export default function CommentThread({
   onNavigateToUser,
 }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
-  const glassCardClass = 'rounded-2xl border border-border-app bg-bg-card backdrop-blur-md'
+  const glassCardClass =
+    'rounded-2xl border bg-gray-100 border-gray-200 backdrop-blur-md dark:bg-bg-card dark:border-border-app'
   const threadRowClass = THREAD_ROW_GRID
+  const isAdmin = myProfile?.role === 'admin'
+
+  const handleDeleteRequest = (comment: Comment) => {
+    const isOtherAuthor = comment.user_id !== currentUserId
+    if (isAdmin && isOtherAuthor) {
+      if (
+        !window.confirm('Czy na pewno chcesz usunąć ten komentarz jako administrator?')
+      ) {
+        return
+      }
+      onDeleteComment(comment.id)
+      return
+    }
+    setPendingDeleteId(comment.id)
+  }
 
   const showCommentSkeleton = Boolean(isCommentsLoading && comments.length === 0)
   const commentsById = useMemo(() => {
@@ -97,10 +113,10 @@ export default function CommentThread({
         <div className={COMPOSER_ROW_GRID}>
           <UserAvatar profile={myProfile} name={displayName} className="size-9 shrink-0" textSize="text-xs" />
           <div
-            className={`${glassCardClass} flex min-h-10 items-center gap-2 py-1 px-3 focus-within:border-[#0f172a]/25 dark:focus-within:border-white/15`}
+            className={`${glassCardClass} flex min-h-10 items-center gap-2 py-1 px-3 focus-within:border-gray-300 dark:focus-within:border-white/15`}
           >
             {replyTarget && (
-              <div className="flex items-center gap-2 rounded-full bg-[#1e293b]/10 px-2 py-1 text-[11px] text-gray-900 dark:text-zinc-100 dark:bg-white/10">
+              <div className="flex items-center gap-2 rounded-full bg-zinc-900/10 px-2 py-1 text-[11px] text-gray-900 dark:text-zinc-100 dark:bg-white/10">
                 <span className="truncate">Odpowiadasz @{replyTarget.username}</span>
                 <button
                   type="button"
@@ -124,7 +140,7 @@ export default function CommentThread({
               }}
               placeholder={replyTarget ? `Odpowiedz @${replyTarget.username}…` : 'Dodaj komentarz…'}
               maxLength={500}
-              className="flex-1 bg-transparent py-1.5 text-[13px] text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:outline-none"
+              className="flex-1 bg-transparent py-1.5 text-[13px] text-gray-900 dark:text-zinc-100 placeholder:text-gray-500 dark:placeholder:text-zinc-500 focus:outline-none"
               aria-label={`Komentarz do posta ${postId}`}
             />
             <div className="mr-4 flex shrink-0 items-center">
@@ -159,10 +175,11 @@ export default function CommentThread({
                 replyTarget={replyTarget}
                 commentLikeLoadingById={commentLikeLoadingById}
                 currentUserId={currentUserId}
+                isAdmin={isAdmin}
                 commentsById={commentsById}
                 commentsByParent={commentsByParent}
                 onNavigateToUser={onNavigateToUser}
-                onDeleteRequest={(id) => setPendingDeleteId(id)}
+                onDeleteRequest={handleDeleteRequest}
                 onToggleCommentLike={onToggleCommentLike}
                 onReplyToComment={onReplyToComment}
                 glassCardClass={glassCardClass}

@@ -1,60 +1,7 @@
-import { useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
-import { toast } from './lib/appToast'
-import { supabase } from './supabaseClient.ts'
-
-const inputCls =
-  'w-full p-3 rounded-xl border border-white/10 bg-white/[0.03] text-white placeholder:text-white/40 outline-none ring-0 shadow-none transition-colors duration-200 focus:border-brand-gold-bright mb-4 caret-brand-gold-bright'
+import Login from './components/auth/Login.tsx'
 
 export default function Auth() {
-  const [loading, setLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    const trimmedUsername = username.trim()
-    if (!trimmedUsername) {
-      toast.error('Podaj nazwę użytkownika')
-      setLoading(false)
-      return
-    }
-
-    const shadowEmail = `${trimmedUsername.toLowerCase()}@ujverse.test`
-    const { error } = await supabase.auth.signInWithPassword({
-      email: shadowEmail,
-      password,
-    })
-    if (error) toast.error(error.message)
-
-    setLoading(false)
-  }
-
-  const handleSignUp = async (e: FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    const trimmedUsername = username.trim()
-    if (!trimmedUsername) {
-      toast.error('Podaj nazwę użytkownika')
-      setLoading(false)
-      return
-    }
-
-    const shadowEmail = `${trimmedUsername.toLowerCase()}@ujverse.test`
-    const { error } = await supabase.auth.signUp({
-      email: shadowEmail,
-      password,
-    })
-    if (error) toast.error(error.message)
-    else toast.success('Sprawdź e-mail lub zaloguj się!')
-
-    setLoading(false)
-  }
-
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
       <div
@@ -93,55 +40,7 @@ export default function Auth() {
         />
 
         <div className="w-full rounded-3xl border border-[#C5A059]/30 bg-white/5 p-8 text-center backdrop-blur-xl">
-          <h1 className="w-full text-center text-4xl font-extrabold tracking-tight text-white">
-            UJverse
-          </h1>
-          <p className="mt-2 text-center text-sm text-white/80">
-            {isSignUp ? 'Załóż konto' : 'Zaloguj się'}
-          </p>
-
-          <form
-            onSubmit={isSignUp ? handleSignUp : handleLogin}
-            className="mt-8 w-full text-left"
-          >
-            <input
-              type="text"
-              className={inputCls}
-              placeholder="Nazwa użytkownika"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoComplete="username"
-            />
-
-            <input
-              type="password"
-              className={inputCls}
-              placeholder="Hasło"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete={isSignUp ? 'new-password' : 'current-password'}
-            />
-
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={loading ? undefined : { y: -2 }}
-              whileTap={loading ? undefined : { scale: 0.98 }}
-              className="w-full rounded-xl bg-[#C5A059] py-4 font-bold text-neutral-950 shadow-none transition-colors duration-200 hover:bg-[#A6864A] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-[#C5A059]"
-            >
-              {loading ? 'Proszę czekać…' : isSignUp ? 'Zarejestruj się' : 'Zaloguj się'}
-            </motion.button>
-
-            <button
-              type="button"
-              onClick={() => setIsSignUp((v) => !v)}
-              className="mt-4 w-full text-center text-sm text-white/60 underline underline-offset-4 transition-colors hover:text-white/90"
-            >
-              {isSignUp ? 'Masz konto? Zaloguj się' : 'Nie masz konta? Zarejestruj się'}
-            </button>
-          </form>
+          <Login />
         </div>
       </motion.div>
     </div>

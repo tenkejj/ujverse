@@ -63,7 +63,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
   async fetchById(id: string): Promise<Post | null> {
     const { data, error } = await supabase
       .from('posts')
-      .select('*, profiles(id, full_name, avatar_url, department)')
+      .select('*, profiles(id, full_name, avatar_url, department, is_banned)')
       .eq('id', Number(id))
       .single()
 

@@ -162,7 +162,7 @@ export default function ProfileHero({
             className="h-full w-full"
             style={{
               backgroundImage:
-                'radial-gradient(ellipse at 20% 0%, rgba(232,200,74,0.16) 0%, transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(15,23,42,0.25) 0%, transparent 55%), linear-gradient(135deg, #0f172a 0%, #020617 100%)',
+                'radial-gradient(ellipse at 20% 0%, rgba(232,200,74,0.16) 0%, transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(24,24,27,0.32) 0%, transparent 55%), linear-gradient(135deg, #18181b 0%, #09090b 100%)',
             }}
             aria-hidden
           />

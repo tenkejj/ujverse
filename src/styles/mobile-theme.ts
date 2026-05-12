@@ -38,7 +38,7 @@ export const HEADER_MOBILE = {
 
 export const SEARCH_MOBILE = {
   triggerButtonClass:
-    'md:hidden min-w-[40px] min-h-[40px] w-9 h-9 flex items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors',
+    'md:hidden min-w-[40px] min-h-[40px] w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors',
   backButtonClass:
     'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#1e293b] transition-colors duration-200 hover:bg-black/[0.06] dark:text-brand-gold-bright dark:hover:bg-white/[0.06] [-webkit-tap-highlight-color:transparent]',
   mobileOverlayClass: 'fixed inset-0 z-[200] md:hidden flex flex-col bg-bg-app/95',
@@ -53,7 +53,7 @@ export const SEARCH_MOBILE = {
     'relative shrink-0 whitespace-nowrap px-3 py-2.5 text-[13px] font-medium transition-colors duration-200 border-b-2 border-transparent -mb-px [-webkit-tap-highlight-color:transparent]',
   mobilePillIndicatorClass: 'absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[#1e293b] dark:bg-brand-gold-bright',
   mobileInputClass:
-    'ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[16px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-150 ease-in-out placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-[#1e293b] dark:caret-brand-gold-bright',
+    'ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[16px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-150 ease-in-out placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-white/25 caret-[#1e293b] dark:caret-brand-gold-bright',
   mobileResultsScrollClass: 'flex-1 overflow-y-auto overscroll-contain min-h-0 -mx-1',
   mobileHistorySectionClass: 'mx-auto w-full max-w-5xl px-1 pb-6',
   mobileResultsWrapperClass: 'px-1 pb-6',
@@ -98,35 +98,35 @@ export const PROFILE_MOBILE = {
   avatar: {
     sizePx: { base: 104, sm: 120, lg: 144 } as const,
     ringClass:
-      'ring-4 ring-[var(--bg-app)] dark:ring-[#01020a] shadow-[0_0_60px_-8px_rgba(30,41,59,0.35)] dark:shadow-[0_0_60px_-8px_rgba(232,200,74,0.28)]',
+      'ring-4 ring-[var(--bg-app)] dark:ring-[#01020a] shadow-[0_0_60px_-8px_rgba(24,24,27,0.35)] dark:shadow-[0_0_60px_-8px_rgba(232,200,74,0.28)]',
     radiusClass: 'rounded-full',
   },
   card: {
     glassLight:
-      'border border-[#0f172a]/10 bg-white/75 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)]',
+      'border border-zinc-900/10 bg-white/75 shadow-[0_30px_80px_-40px_rgba(24,24,27,0.35)]',
     glassDark:
       'dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
     glassClass:
-      'relative overflow-hidden rounded-3xl border border-[#0f172a]/10 bg-white/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
+      'relative overflow-hidden rounded-3xl border border-zinc-900/10 bg-white/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_30px_80px_-40px_rgba(24,24,27,0.35)] dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
     paddingXClass: 'px-4 sm:px-6 lg:px-8',
   },
   tabs: {
     rowClass:
-      'relative flex gap-1 border-b border-[#0f172a]/10 dark:border-white/10',
+      'relative flex gap-1 border-b border-zinc-900/10 dark:border-white/10',
     tabBaseClass:
-      'relative flex-1 px-2 py-3 text-[13px] sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/25 dark:focus-visible:ring-white/25 rounded-t-md',
-    tabActiveClass: 'text-[#0f172a] dark:text-white',
+      'relative flex-1 px-2 py-3 text-[13px] sm:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700/25 dark:focus-visible:ring-white/25 rounded-t-md',
+    tabActiveClass: 'text-zinc-900 dark:text-white',
     tabInactiveClass:
-      'text-slate-500 hover:text-[#0f172a] dark:text-slate-400 dark:hover:text-white',
+      'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white',
     indicatorClass:
-      'absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-[#1e293b] dark:bg-brand-gold-bright',
+      'absolute -bottom-px left-2 right-2 h-[2px] rounded-full bg-zinc-800 dark:bg-brand-gold-bright',
     indicatorLayoutId: 'profile-tab-indicator',
   },
   fab: {
     wrapperClass:
       'fixed right-4 z-40 md:hidden bottom-[calc(4.75rem+env(safe-area-inset-bottom))]',
     buttonClass:
-      'flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-logo-navy text-white shadow-[0_14px_40px_-10px_rgba(30,41,59,0.35)] backdrop-blur-xl transition-transform active:scale-95 dark:bg-brand-gold-bright dark:text-slate-900 dark:shadow-[0_14px_40px_-10px_rgba(232,200,74,0.45)]',
+      'flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-zinc-900 text-white shadow-[0_14px_40px_-10px_rgba(24,24,27,0.35)] backdrop-blur-xl transition-transform active:scale-95 dark:bg-brand-gold-bright dark:text-zinc-900 dark:shadow-[0_14px_40px_-10px_rgba(232,200,74,0.45)]',
     layoutId: 'profile-edit-action',
     scrollActivateAt: 280,
   },
@@ -137,13 +137,13 @@ export const PROFILE_MOBILE = {
     itemClass:
       'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none backdrop-blur-xl transition-colors',
     itemLightClass:
-      'border-white/50 bg-white/70 text-[#0f172a] shadow-[0_8px_24px_-16px_rgba(15,23,42,0.45)]',
+      'border-white/50 bg-white/70 text-zinc-900 shadow-[0_8px_24px_-16px_rgba(24,24,27,0.45)]',
     itemDarkClass:
       'dark:border-white/15 dark:bg-white/8 dark:text-white dark:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.8)]',
   },
   actionButton: {
     inlineClass:
-      'inline-flex items-center justify-center gap-2 rounded-full border border-[#0f172a]/12 bg-white/95 px-4 py-2 text-sm font-semibold text-fg-primary shadow-sm transition-colors hover:border-[#1e293b]/50 dark:border-white/20 dark:bg-[#01020a]/95 dark:text-white dark:hover:border-brand-gold-bright/45',
+      'inline-flex items-center justify-center gap-2 rounded-full border border-zinc-900/12 bg-white/95 px-4 py-2 text-sm font-semibold text-fg-primary shadow-sm transition-colors hover:border-zinc-700/50 dark:border-white/20 dark:bg-[#01020a]/95 dark:text-white dark:hover:border-brand-gold-bright/45',
   },
   motion: {
     staggerContainer: {
@@ -173,7 +173,7 @@ export const PROFILE_MOBILE = {
 export const BOTTOM_NAV_MOBILE = {
   scrollThreshold: 10,
   navBaseClass: 'md:hidden fixed bottom-0 left-0 right-0 z-50 border-t',
-  navScrolledClass: 'bg-bg-app/80 backdrop-blur-lg border-slate-200 dark:border-white/5',
+  navScrolledClass: 'bg-bg-app/80 backdrop-blur-lg border-zinc-200 dark:border-white/5',
   navDefaultClass: 'bg-bg-app border-border-app',
   safeAreaBottomInset: 'env(safe-area-inset-bottom)',
   rowClass: 'flex items-center justify-center gap-1 px-2 py-1.5 max-w-lg mx-auto min-h-16',
@@ -182,7 +182,7 @@ export const BOTTOM_NAV_MOBILE = {
   iconButtonInactiveClass: 'text-[#1e293b] dark:text-gray-300 dark:hover:text-white/90',
   composeWrapperClass: 'flex items-center justify-center shrink-0 px-0.5 min-h-[52px]',
   composeButtonClass:
-    'h-14 w-14 rounded-full flex items-center justify-center border-0 outline-none shadow-lg bg-logo-navy text-white dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-slate-900 dark:shadow-lg dark:shadow-brand-gold/40 transition-transform duration-200 hover:brightness-[1.03] active:brightness-[0.97] dark:hover:brightness-105 dark:active:brightness-95',
+    'h-14 w-14 rounded-full flex items-center justify-center border-0 outline-none shadow-lg bg-zinc-900 text-white dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-zinc-900 dark:shadow-lg dark:shadow-brand-gold/40 transition-transform duration-200 hover:brightness-[1.03] active:brightness-[0.97] dark:hover:brightness-105 dark:active:brightness-95',
   bellIconClass: 'h-7 w-7 shrink-0 transition-colors',
   bellActiveClass: 'text-[#1e293b] dark:text-accent-interactive',
   bellInactiveClass: 'text-[#1e293b] dark:text-white dark:hover:text-white/80',

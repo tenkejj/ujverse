@@ -8,13 +8,34 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { mockEvents, type UJEvent } from '../data/mockEvents'
+import { type UJEvent } from '../data/mockEvents'
+import { supabase } from '../supabaseClient'
 import {
   hydrateOfficialEventsFromStorage,
   syncExternalEvents as runOfficialIngest,
 } from '../services/EventIngestor'
 
 const STORAGE_KEY = 'ujverse_events'
+
+type EventRow = {
+  id: string | number
+  user_id?: string | null
+  title?: string | null
+  date?: string | null
+  category?: string | null
+  location?: string | null
+  description?: string | null
+  attendees?: number | null
+  image_url?: string | null
+  map_url?: string | null
+  attendee_avatars?: string[] | null
+  external_id?: string | null
+  source_name?: string | null
+  is_official?: boolean | null
+  event_url?: string | null
+  faculty?: 'WZiKS' | 'Uniwersytet Jagielloński' | null
+  ingest_from_fallback?: boolean | null
+}
 
 /** Oficjalne na górze, potem rosnąco po dacie. */
 export function compareOfficialThenDate(a: UJEvent, b: UJEvent): number {
@@ -53,6 +74,7 @@ function reviveEvent(raw: unknown): UJEvent | null {
     attendees: typeof o.attendees === 'number' && Number.isFinite(o.attendees) ? o.attendees : 0,
     isAttending: Boolean(o.isAttending),
   }
+  if (typeof o.user_id === 'string' && o.user_id.length > 0) out.user_id = o.user_id
   if (typeof o.imageUrl === 'string' && o.imageUrl.length > 0) out.imageUrl = o.imageUrl
   if (typeof o.mapUrl === 'string' && o.mapUrl.length > 0) out.mapUrl = o.mapUrl
   if (attendeeAvatars) out.attendeeAvatars = attendeeAvatars
@@ -68,19 +90,92 @@ function reviveEvent(raw: unknown): UJEvent | null {
   return out
 }
 
+export function eventFromDbRow(raw: unknown): UJEvent | null {
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as EventRow
+  const src = raw as Record<string, unknown>
+  const id = row.id
+  if (typeof id !== 'string' && typeof id !== 'number') {
+    console.error('[useEvents] dropped event row: invalid id', raw)
+    return null
+  }
+  const title = typeof row.title === 'string' ? row.title : null
+  const dateRaw = typeof row.date === 'string' ? row.date : null
+  if (!title || title.trim().length === 0) {
+    console.error('[useEvents] dropped event row: missing title', raw)
+    return null
+  }
+  if (!dateRaw || dateRaw.trim().length === 0) {
+    console.error('[useEvents] dropped event row: missing date', raw)
+    return null
+  }
+  const date = new Date(dateRaw)
+  if (Number.isNaN(date.getTime())) {
+    console.error('[useEvents] dropped event row: invalid date', raw)
+    return null
+  }
+  const imageUrl =
+    typeof row.image_url === 'string'
+      ? row.image_url
+      : typeof src.imageUrl === 'string'
+        ? src.imageUrl
+        : ''
+  const mapUrl =
+    typeof row.map_url === 'string' ? row.map_url : typeof src.mapUrl === 'string' ? src.mapUrl : ''
+
+  return {
+    id: String(id),
+    user_id: typeof row.user_id === 'string' && row.user_id.length > 0 ? row.user_id : undefined,
+    title,
+    date,
+    category: typeof row.category === 'string' ? row.category : 'Wydarzenie',
+    location: typeof row.location === 'string' ? row.location : '',
+    description: typeof row.description === 'string' ? row.description : '',
+    attendees: typeof row.attendees === 'number' && Number.isFinite(row.attendees) ? row.attendees : 0,
+    isAttending: false,
+    imageUrl: imageUrl.length > 0 ? imageUrl : undefined,
+    mapUrl: mapUrl.length > 0 ? mapUrl : undefined,
+    attendeeAvatars: Array.isArray(row.attendee_avatars)
+      ? row.attendee_avatars.filter((u): u is string => typeof u === 'string')
+      : undefined,
+    external_id:
+      typeof row.external_id === 'string' && row.external_id.length > 0 ? row.external_id : undefined,
+    source_name:
+      typeof row.source_name === 'string' && row.source_name.length > 0 ? row.source_name : undefined,
+    is_official: typeof row.is_official === 'boolean' ? row.is_official : false,
+    event_url: typeof row.event_url === 'string' && row.event_url.length > 0 ? row.event_url : undefined,
+    faculty: row.faculty === 'WZiKS' || row.faculty === 'Uniwersytet Jagielloński' ? row.faculty : undefined,
+    ingest_from_fallback:
+      typeof row.ingest_from_fallback === 'boolean' ? row.ingest_from_fallback : undefined,
+  }
+}
+
+function eventDedupKey(event: UJEvent): string {
+  return `id:${event.id}`
+}
+
+function mergeEvents(sources: UJEvent[][]): UJEvent[] {
+  const map = new Map<string, UJEvent>()
+  for (const source of sources) {
+    for (const event of source) {
+      map.set(eventDedupKey(event), event)
+    }
+  }
+  return Array.from(map.values()).sort(compareOfficialThenDate)
+}
+
 /** Tylko wydarzenia użytkownika (bez zsynchronizowanych oficjalnych — te są z EventIngestor). */
 function loadUserEventsFromStorage(): UJEvent[] {
-  if (typeof window === 'undefined') return mockEvents
+  if (typeof window === 'undefined') return []
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return mockEvents
+    if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return mockEvents
+    if (!Array.isArray(parsed)) return []
     const revived = parsed.map(reviveEvent).filter((e): e is UJEvent => e !== null)
-    const userOnly = revived.filter((e) => !e.is_official)
-    return userOnly.length > 0 ? userOnly : mockEvents
+    return revived.filter((e) => !e.is_official && e.id.startsWith('local-'))
   } catch {
-    return mockEvents
+    return []
   }
 }
 
@@ -93,7 +188,7 @@ export type NewEventFormData = Omit<
 }
 
 type EventsContextValue = {
-  /** Wydarzenia od dzisiejszego dnia włącznie, posortowane rosnąco po dacie. */
+  /** Lista wydarzeń do widoku głównego (DB + ingest + lokalne fallbacki). */
   events: UJEvent[]
   /** Najbliższe nadchodzące wydarzenie z plakatem (do sekcji Hero). */
   featuredEvent: UJEvent | null
@@ -110,6 +205,8 @@ type EventsContextValue = {
   syncOfficialEvents: (force?: boolean) => Promise<void>
   /** Ostatnia synchronizacja użyła twardo zakodowanych danych (offline / awaria sieci). */
   ingestFromStaticFallback: boolean
+  /** Twarde odświeżenie listy wydarzeń z Supabase. */
+  refetchDbEvents: () => Promise<void>
 }
 
 const EventsContext = createContext<EventsContextValue | null>(null)
@@ -117,11 +214,12 @@ const EventsContext = createContext<EventsContextValue | null>(null)
 function mergeInitialEvents(): UJEvent[] {
   const users = loadUserEventsFromStorage()
   const official = hydrateOfficialEventsFromStorage()
-  return [...users, ...official].sort(compareOfficialThenDate)
+  return mergeEvents([users, official])
 }
 
 export function EventsProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<UJEvent[]>(mergeInitialEvents)
+  const [dbEvents, setDbEvents] = useState<UJEvent[]>([])
   const [externalEventsLoading, setExternalEventsLoading] = useState(false)
   const [ingestFromStaticFallback, setIngestFromStaticFallback] = useState(() =>
     mergeInitialEvents().some((e) => e.ingest_from_fallback),
@@ -133,8 +231,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       const { events: official, fromStaticFallback } = await runOfficialIngest(Boolean(force))
       setIngestFromStaticFallback(fromStaticFallback)
       setEvents((prev) => {
-        const userOnly = prev.filter((e) => !e.is_official)
-        return [...userOnly, ...official].sort(compareOfficialThenDate)
+        return mergeEvents([prev, official])
       })
     } catch {
       /* ingest już zdegradował po cichu; stan bez zmian */
@@ -143,13 +240,33 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const refetchDbEvents = useCallback(async () => {
+    const { data, error } = await supabase.from('events').select('*').order('date', { ascending: true })
+    if (error) {
+      console.error('[useEvents] events select error', error)
+      return
+    }
+    const nextDbEvents = (data ?? []).map(eventFromDbRow).filter((e): e is UJEvent => e !== null)
+    setDbEvents(nextDbEvents)
+  }, [])
+
   useEffect(() => {
     void syncOfficialEvents()
   }, [syncOfficialEvents])
 
   useEffect(() => {
+    void refetchDbEvents()
+  }, [refetchDbEvents])
+
+  useEffect(() => {
+    const official = hydrateOfficialEventsFromStorage()
+    const localDrafts = loadUserEventsFromStorage()
+    setEvents(mergeEvents([localDrafts, official, dbEvents]))
+  }, [dbEvents])
+
+  useEffect(() => {
     try {
-      const userOnly = events.filter((e) => !e.is_official)
+      const userOnly = events.filter((e) => !e.is_official && e.id.startsWith('local-'))
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userOnly))
     } catch {
       // quota / private mode — ignore
@@ -171,28 +288,56 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addEvent = useCallback((data: NewEventFormData) => {
-    const date = typeof data.date === 'string' ? new Date(data.date) : data.date
-    if (Number.isNaN(date.getTime())) return
+    const run = async () => {
+      const date = typeof data.date === 'string' ? new Date(data.date) : data.date
+      if (Number.isNaN(date.getTime())) return
+      const { data: authData } = await supabase.auth.getUser()
+      const currentUserId = authData.user?.id ?? null
 
-    const newEvent: UJEvent = {
-      id: Date.now().toString(),
-      title: data.title.trim(),
-      date,
-      category: data.category,
-      location: data.location.trim(),
-      description: data.description.trim(),
-      attendees: 0,
-      isAttending: false,
-      is_official: false,
-      attendeeAvatars: [],
+      const payload = {
+        user_id: currentUserId,
+        title: data.title.trim(),
+        date: date.toISOString(),
+        category: data.category,
+        location: data.location.trim(),
+        description: data.description.trim(),
+        attendees: 0,
+        is_official: false,
+        image_url: data.imageUrl?.trim() || null,
+        map_url: data.mapUrl?.trim() || null,
+      }
+
+      const { data: inserted, error } = await supabase.from('events').insert(payload).select('*').single()
+      if (error || !inserted) {
+        if (error) console.error('[useEvents] events insert error', error)
+        const fallbackEvent: UJEvent = {
+          id: `local-${Date.now().toString()}`,
+          user_id: currentUserId ?? undefined,
+          title: data.title.trim(),
+          date,
+          category: data.category,
+          location: data.location.trim(),
+          description: data.description.trim(),
+          attendees: 0,
+          isAttending: false,
+          is_official: false,
+          attendeeAvatars: [],
+          imageUrl: data.imageUrl?.trim() || undefined,
+          mapUrl: data.mapUrl?.trim() || undefined,
+        }
+        setEvents((prev) => mergeEvents([prev, [fallbackEvent]]))
+        return
+      }
+
+      const insertedEvent = eventFromDbRow(inserted)
+      if (insertedEvent) {
+        setDbEvents((prev) => mergeEvents([prev, [insertedEvent]]))
+        setEvents((prev) => mergeEvents([prev, [insertedEvent]]))
+      }
+      void refetchDbEvents()
     }
-    const img = data.imageUrl?.trim()
-    if (img) newEvent.imageUrl = img
-    const map = data.mapUrl?.trim()
-    if (map) newEvent.mapUrl = map
-
-    setEvents((prev) => [...prev, newEvent].sort(compareOfficialThenDate))
-  }, [])
+    void run()
+  }, [refetchDbEvents])
 
   const deleteEvent = useCallback((id: string) => {
     setEvents((prev) => {
@@ -221,23 +366,24 @@ export function EventsProvider({ children }: { children: ReactNode }) {
         })
         .sort(compareOfficialThenDate),
     )
-  }, [])
+    void refetchDbEvents()
+  }, [refetchDbEvents])
 
-  const activeEvents = useMemo(() => {
+  const upcomingEvents = useMemo(() => {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
     return events.filter((ev) => ev.date.getTime() >= now.getTime()).sort(compareOfficialThenDate)
   }, [events])
 
   const featuredEvent = useMemo(() => {
-    const withPoster = activeEvents.filter(
+    const withPoster = upcomingEvents.filter(
       (ev) => typeof ev.imageUrl === 'string' && ev.imageUrl.length > 0,
     )
     return withPoster[0] ?? null
-  }, [activeEvents])
+  }, [upcomingEvents])
 
   const value: EventsContextValue = {
-    events: activeEvents,
+    events,
     featuredEvent,
     allEvents: events,
     externalEventsLoading,
@@ -247,6 +393,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     updateEvent,
     syncOfficialEvents,
     ingestFromStaticFallback,
+    refetchDbEvents,
   }
 
   return createElement(EventsContext.Provider, { value }, children)

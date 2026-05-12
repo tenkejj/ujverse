@@ -19,6 +19,7 @@ import FeedView from './components/FeedView'
 import EventsView from './components/EventsView'
 import { EventsProvider } from './hooks/useEvents'
 import ProfilePage from './pages/Profile'
+import ResetPassword from './pages/ResetPassword'
 import BottomNav from './components/BottomNav'
 import NotificationsView from './components/NotificationsView'
 import SinglePostView from './components/SinglePostView'
@@ -36,6 +37,11 @@ function profileHandleFromPath(pathname: string): string | null {
 function threadPostIdFromPath(pathname: string): string | null {
   const m = pathname.match(/^\/thread\/([^/]+)\/?$/)
   return m ? decodeURIComponent(m[1]) : null
+}
+
+function isResetPasswordPath(pathname: string): boolean {
+  const normalized = pathname.replace(/\/+$/, '') || '/'
+  return normalized === '/reset-password'
 }
 
 function App() {
@@ -192,7 +198,7 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url, banner_url, bio, department')
+      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned')
       .eq('id', userId)
       .single()
     if (data) {
@@ -332,10 +338,10 @@ function App() {
     setPostsError(null)
     const { data, error } = await supabase
       .from('posts')
-      .select('*, user_id, profiles(id, full_name, username, avatar_url, department)')
+      .select('*, user_id, profiles(id, full_name, username, avatar_url, department, is_banned)')
       .order('created_at', { ascending: false })
     if (error) { setPostsError(error.message); setPosts([]); setPostsLoading(false); return }
-    const next = (data ?? []) as Post[]
+    const next = ((data ?? []) as Post[]).filter((p) => p.profiles?.is_banned !== true)
     setPosts(next)
     setProfileHandleByUserId((prev) => {
       let changed = false
@@ -358,9 +364,17 @@ function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => setSession(s))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') {
+        const p = (window.location.pathname || '/').replace(/\/+$/, '') || '/'
+        if (p !== '/reset-password') {
+          navigate('/reset-password', { replace: true })
+        }
+      }
+    })
     return () => subscription.unsubscribe()
-  }, [])
+  }, [navigate])
 
   useEffect(() => {
     if (!session) return
@@ -392,7 +406,11 @@ function App() {
     if (createLoading) return
     setCreateError(null)
     const content = createBody.trim()
-    if (!content) { setCreateError('Napisz coś zanim opublikujesz.'); return }
+    const hasMedia = Boolean(createImageFile)
+    if (!content && !hasMedia) {
+      setCreateError('Dodaj treść albo zdjęcie zanim opublikujesz.')
+      return
+    }
     const userId = session?.user?.id
     if (!userId) return
 
@@ -413,7 +431,10 @@ function App() {
       imageUrl = supabase.storage.from('media').getPublicUrl(uploadData.path).data.publicUrl
     }
 
-    const { error } = await supabase.from('posts').insert([{ content, image_url: imageUrl, user_id: userId }])
+    const postContent = content || ''
+    const { error } = await supabase
+      .from('posts')
+      .insert([{ content: postContent, image_url: imageUrl, user_id: userId }])
     if (error) {
       setCreateError(error.message)
       toast.error('Nie udało się opublikować wpisu.')
@@ -854,6 +875,10 @@ function App() {
   useEffect(() => () => { if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current) }, [])
 
   // ── Auth guard ────────────────────────────────────────────────────────────
+
+  if (isResetPasswordPath(location.pathname)) {
+    return <ResetPassword />
+  }
 
   if (!session) return <Auth />
 

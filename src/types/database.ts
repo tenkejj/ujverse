@@ -99,6 +99,22 @@ export type Database = {
         }
       }
     }
+    Functions: {
+      get_replies_engagement_snapshot: {
+        Args: {
+          p_post_ids: number[]
+          p_reply_ids: number[]
+          p_viewer_id?: string | null
+        }
+        Returns: {
+          entity_type: string
+          entity_id: number
+          likes_count: number
+          comments_count: number
+          has_liked: boolean
+        }[]
+      }
+    }
   }
 }
 

@@ -106,6 +106,7 @@ export type EventMeta = {
   mapUrl?: string | null
   attendeeAvatars?: string[]
   ingestFromFallback?: boolean
+  authorUserId?: string | null
 }
 
 /** Pomocniczy typ — lista jakiegokolwiek UnifiedContent. */

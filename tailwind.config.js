@@ -15,8 +15,8 @@ export default {
         'brand-gold': '#a48955',
         'brand-gold-bright': '#e8c84a',
         'app-bg':    '#000000',
-        'card-bg':   '#01020a',
-        'border-main': '#1c2b4e',
+        'card-bg':   '#09090b',
+        'border-main': '#27272a',
         'accent-gold': '#a48955',
       },
       borderRadius: {

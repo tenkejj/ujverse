@@ -324,7 +324,7 @@ export default function SearchBar({
         wantPosts
           ? supabase
               .from('posts')
-              .select('*, profiles(id, full_name, avatar_url)')
+              .select('*, profiles(id, full_name, avatar_url, is_banned)')
               .ilike('content', `%${query}%`)
               .order('created_at', { ascending: false })
               .limit(5)
@@ -334,9 +334,10 @@ export default function SearchBar({
 
       const places = wantPlaces ? pickPlaceHits(allEvents, query, 5) : []
 
+      const rawPosts = (postsRes.data ?? []) as Post[]
       setResults({
         users: (usersRes.data ?? []) as Profile[],
-        posts: (postsRes.data ?? []) as Post[],
+        posts: rawPosts.filter((p) => p.profiles?.is_banned !== true),
         places,
       })
       setIsSearching(false)

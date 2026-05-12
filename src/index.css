@@ -29,8 +29,8 @@ html {
   --color-brand-gold: var(--brand-gold);
   --color-brand-gold-bright: var(--brand-gold-bright);
   --color-app-bg:    #000000;
-  --color-card-bg:   #01020a;
-  --color-border-main: #1c2b4e;
+  --color-card-bg:   #09090b;
+  --color-border-main: #27272a;
 
   --color-bg-app: var(--bg-app);
   --color-bg-card: var(--bg-card);
@@ -99,17 +99,17 @@ html {
     --logo-navy: #0f172a;
     --uj-deep-gold: #a48955;
     --background: #000000;
-    --card: #01020a;
+    --card: #09090b;
     /* Szklane, neutralne krawędzie zamiast niebieskawego #1c2b4e */
     --border: rgb(255 255 255 / 0.08);
-    --modal-bg: #01020a;
+    --modal-bg: #09090b;
     --modal-border: rgb(255 255 255 / 0.1);
-    --border-main: rgb(30 41 59 / 0.45);
+    --border-main: rgb(39 39 42 / 0.45);
     --brand-gold: #c9a227;
     --brand-gold-bright: #e8c84a;
     --primary: var(--brand-gold-bright);
     --bg-app: #000000;
-    --bg-card: #01020a;
+    --bg-card: #09090b;
     --border-app: var(--border);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
@@ -156,10 +156,10 @@ input[type="search"].ujverse-search-input::-moz-search-clear-button {
 
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+  scrollbar-color: rgb(113 113 122 / 0.5) transparent;
 }
 .dark .custom-scrollbar {
-  scrollbar-color: rgb(100 116 139 / 0.45) transparent;
+  scrollbar-color: rgb(82 82 91 / 0.45) transparent;
 }
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -168,11 +168,11 @@ input[type="search"].ujverse-search-input::-moz-search-clear-button {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgb(148 163 184 / 0.45);
+  background-color: rgb(113 113 122 / 0.45);
   border-radius: 9999px;
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgb(100 116 139 / 0.5);
+  background-color: rgb(82 82 91 / 0.5);
 }
 
 @keyframes heart-pop {

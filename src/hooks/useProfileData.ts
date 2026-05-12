@@ -37,7 +37,7 @@ export function useProfileData({ userId, initialProfile = null }: UseProfileData
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('id, full_name, username, avatar_url, banner_url, bio, department, created_at')
+          .select('id, full_name, username, avatar_url, banner_url, bio, department, created_at, role, is_banned')
           .eq('id', userId)
           .maybeSingle()
 

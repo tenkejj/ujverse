@@ -18,7 +18,7 @@ export const theme = {
       /** Zewnętrzna karta — półprzezroczyste czarne szkło. */
       base: 'bg-white dark:bg-zinc-950/50',
       /** Wewnętrzne wiersze (np. pojedyncze ogłoszenie w widgecie). */
-      inner: 'bg-slate-50/50 dark:bg-black/40',
+      inner: 'bg-zinc-50/50 dark:bg-black/40',
       /** Karta-modal / hover (Kołą, klub). */
       card: 'bg-white dark:bg-black/70',
       glass: 'backdrop-blur-md',

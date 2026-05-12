@@ -1,5 +1,6 @@
 export interface UJEvent {
   id: string
+  user_id?: string
   title: string
   date: Date
   category: string

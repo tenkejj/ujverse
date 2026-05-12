@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { AcademicCapIcon, CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline'
 import type { Profile } from '../../types'
@@ -14,6 +15,8 @@ type Props = {
   followingCount: number
   followStatsLoading: boolean
   onOpenFollowModal: (tab: 'followers' | 'following') => void
+  /** Opcjonalny slot obok nagłówka (np. menu moderacji). */
+  headerTrailing?: ReactNode
 }
 
 function formatCompactCount(n: number): string {
@@ -34,19 +37,23 @@ export default function ProfileIdentity({
   followingCount,
   followStatsLoading,
   onOpenFollowModal,
+  headerTrailing,
 }: Props) {
   return (
     <motion.div
       variants={PROFILE_MOBILE.motion.fadeUp}
       className={`mt-4 space-y-3 ${PROFILE_MOBILE.card.paddingXClass}`}
     >
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#0f172a] dark:text-white">
-          {titleName}
-        </h1>
-        {hasPublicUsername ? (
-          <p className="mt-0.5 text-base text-gray-400">{handleLabel}</p>
-        ) : null}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-3xl font-bold tracking-tight text-[#0f172a] dark:text-white">
+            {titleName}
+          </h1>
+          {hasPublicUsername ? (
+            <p className="mt-0.5 text-base text-gray-400">{handleLabel}</p>
+          ) : null}
+        </div>
+        {headerTrailing ? <div className="shrink-0 pt-1">{headerTrailing}</div> : null}
       </div>
 
       {isOwn && !hasPublicUsername ? (

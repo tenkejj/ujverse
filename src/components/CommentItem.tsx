@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Heart, MessageCircle, Trash2 } from 'lucide-react'
+import { Flag, Heart, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react'
 import type { Comment } from '../types'
 import { getDeptAbbreviation } from '../lib/departments'
 import { relativeTime } from '../lib/utils'
+import { supabase } from '../supabaseClient'
+import { toast } from '../lib/appToast'
 import {
   INTERACTION_BAR_ROW,
   DEPT_BADGE_SPAN_CLASS,
@@ -13,6 +15,7 @@ import {
   heartLikedIconClass,
 } from '../lib/interactionBar'
 import UserAvatar from './UserAvatar'
+import ReportModal from './ReportModal'
 
 /** One fixed inset for all direct/indirect replies under a root comment (no staircase). */
 const FLAT_REPLY_INDENT = 'ml-10'
@@ -86,10 +89,11 @@ type Props = {
   replyTarget: { commentId: number; username: string } | null
   commentLikeLoadingById?: Record<number, boolean>
   currentUserId: string
+  isAdmin?: boolean
   commentsById: Map<number, Comment>
   commentsByParent: Map<number | null, Comment[]>
   onNavigateToUser?: (userId: string) => void
-  onDeleteRequest: (id: number) => void
+  onDeleteRequest: (comment: Comment) => void
   onToggleCommentLike: (comment: Comment) => void
   onReplyToComment: (comment: Comment) => void
   glassCardClass: string
@@ -102,6 +106,7 @@ export default function CommentItem({
   replyTarget,
   commentLikeLoadingById = {},
   currentUserId,
+  isAdmin = false,
   commentsById,
   commentsByParent,
   onNavigateToUser,
@@ -112,11 +117,18 @@ export default function CommentItem({
   threadRowClass,
 }: Props) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isReportSubmitting, setIsReportSubmitting] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   const cName = comment.profiles?.full_name || 'Użytkownik'
   const dept = comment.profiles?.department ?? null
   const deptAbbrev = dept ? getDeptAbbreviation(dept) : null
   const isOwnComment = comment.user_id === currentUserId
+  const canDeleteComment = isOwnComment || isAdmin
+  const canReportComment = !isOwnComment && Boolean(currentUserId)
+  const hasCommentMenu = canDeleteComment || canReportComment
   const commentLikes = Math.max(0, Number(comment.likes_count ?? 0))
   const canLikeComment = Boolean(comment.can_like ?? !comment.is_reply)
   const isCommentLikeLoading = Boolean(commentLikeLoadingById[comment.id])
@@ -132,10 +144,51 @@ export default function CommentItem({
   const shouldPrefixParentMention = Boolean(parentMention && parentComment && !hasAnyMention(comment.content))
 
   const avatarClass = 'size-9'
+  const commentCardLightClass = `${glassCardClass} bg-gray-100 border-gray-200 dark:bg-bg-card dark:border-border-app`
 
   const repliesListClassName = ['flex min-w-0 flex-col gap-y-1.5', depth === 0 ? FLAT_REPLY_INDENT : '']
     .filter(Boolean)
     .join(' ')
+
+  useEffect(() => {
+    if (!isMenuOpen) return
+    const handleOutsideClick = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsMenuOpen(false)
+      }
+    }
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMenuOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', handleOutsideClick)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('pointerdown', handleOutsideClick)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isMenuOpen])
+
+  const handleReportComment = async (reason: string) => {
+    if (!currentUserId) {
+      toast.error('Musisz być zalogowany, aby zgłosić komentarz')
+      return
+    }
+    setIsReportSubmitting(true)
+    const { error } = await supabase.from('reports').insert({
+      comment_id: comment.id,
+      reporter_id: currentUserId,
+      reason,
+    })
+    setIsReportSubmitting(false)
+    if (error) {
+      toast.error('Nie udało się wysłać zgłoszenia')
+      return
+    }
+    toast.success('Zgłoszenie wysłane')
+    setIsReportModalOpen(false)
+  }
 
   return (
     <div className="flex min-w-0 w-full flex-col gap-y-1.5">
@@ -149,7 +202,7 @@ export default function CommentItem({
           </div>
         </div>
 
-        <CommentCardFrame glassCardClass={glassCardClass}>
+        <CommentCardFrame glassCardClass={commentCardLightClass}>
             <div className="flex min-h-8 items-center gap-2 pr-4">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span
@@ -163,15 +216,47 @@ export default function CommentItem({
                   {relativeTime(comment.created_at)}
                 </span>
               </div>
-              {isOwnComment ? (
-                <button
-                  type="button"
-                  onClick={() => onDeleteRequest(comment.id)}
-                  className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 shrink-0"
-                  aria-label="Usuń komentarz"
-                >
-                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                </button>
+              {hasCommentMenu ? (
+                <div ref={menuRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsMenuOpen((current) => !current)}
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 shrink-0"
+                    aria-label="Więcej opcji komentarza"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                  {isMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border-app bg-bg-card shadow-uj-soft dark:shadow-none z-50 p-1 overflow-hidden">
+                      {canReportComment && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMenuOpen(false)
+                            setIsReportModalOpen(true)
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors"
+                        >
+                          <Flag size={16} />
+                          Zgłoś komentarz
+                        </button>
+                      )}
+                      {canDeleteComment && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMenuOpen(false)
+                            onDeleteRequest(comment)
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                          Usuń komentarz
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : null}
             </div>
             <div className="mt-0.5 text-[13px] leading-snug text-gray-900 dark:text-zinc-100">
@@ -203,8 +288,8 @@ export default function CommentItem({
                 )}
               </span>
             </div>
-            <div className={`${INTERACTION_BAR_ROW} mt-0.5 flex flex-row items-center flex-nowrap gap-1`}>
-              <div className="flex min-w-0 items-center gap-1">
+            <div className={`${INTERACTION_BAR_ROW} mt-0.5 flex flex-row items-center flex-nowrap`}>
+              <div className="flex min-w-0 items-center gap-x-4">
                 <motion.button
                   type="button"
                   disabled={!canLikeComment || isCommentLikeLoading}
@@ -278,6 +363,7 @@ export default function CommentItem({
                   replyTarget={replyTarget}
                   commentLikeLoadingById={commentLikeLoadingById}
                   currentUserId={currentUserId}
+                  isAdmin={isAdmin}
                   commentsById={commentsById}
                   commentsByParent={commentsByParent}
                   onNavigateToUser={onNavigateToUser}
@@ -292,6 +378,14 @@ export default function CommentItem({
           </motion.div>
         ) : null}
       </AnimatePresence>
+      <ReportModal
+        open={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onConfirm={handleReportComment}
+        title="Zgłoś komentarz"
+        confirmLabel="Zgłoś"
+        isSubmitting={isReportSubmitting}
+      />
     </div>
   )
 }

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, UserX } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowLeft, MoreVertical, UserX } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Post, Profile as ProfileT } from '../types'
+import type { UJEvent } from '../data/mockEvents'
+import { toast } from '../lib/appToast'
 import { supabase } from '../supabaseClient'
-import { useEvents } from '../hooks/useEvents'
+import { eventFromDbRow } from '../hooks/useEvents'
 import { useProfileData } from '../hooks/useProfileData'
 import { useProfileSocialData } from '../hooks/useProfileSocialData'
 import ProfileHero from '../components/profile/ProfileHero'
@@ -22,6 +24,7 @@ import MediaPanel from '../components/profile/panels/MediaPanel'
 import RepliesPanel, { type ReplyThread } from '../components/profile/panels/RepliesPanel'
 import EventsPanel from '../components/profile/panels/EventsPanel'
 import { PROFILE_MOBILE } from '../styles/mobile-theme'
+import type { Database } from '../types/database'
 
 function capitalizeFirst(s: string) {
   if (!s) return s
@@ -108,7 +111,6 @@ export default function Profile({
   onDeletePost,
   onDeleteComment,
 }: Props) {
-  const { allEvents } = useEvents()
   const normalizedViewedHandle = viewedHandle?.trim().toLowerCase() ?? null
   const myHandle = myProfile?.username?.trim().toLowerCase() ?? null
   const isOwn = !normalizedViewedHandle || (myHandle !== null && normalizedViewedHandle === myHandle)
@@ -125,6 +127,12 @@ export default function Profile({
 
   const [userReplies, setUserReplies] = useState<ReplyThread[]>([])
   const [repliesLoading, setRepliesLoading] = useState(false)
+  const [profileEvents, setProfileEvents] = useState<UJEvent[]>([])
+  const [profileEventsLoading, setProfileEventsLoading] = useState(false)
+
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false)
+  const [banActionLoading, setBanActionLoading] = useState(false)
+  const adminMenuRef = useRef<HTMLDivElement | null>(null)
 
   const fetchRepliesWithPostContext = useCallback(async (profileId: string): Promise<ReplyThread[]> => {
     type JoinedProfile = {
@@ -150,36 +158,56 @@ export default function Profile({
       }
     }
 
-    const toCountMap = (rows: Array<Record<string, unknown>> | null | undefined, key: string) => {
-      const counts: Record<string, number> = {}
-      for (const row of rows ?? []) {
-        const id = String(row[key] ?? '')
-        if (!id) continue
-        counts[id] = (counts[id] ?? 0) + 1
-      }
-      return counts
-    }
-
-    const toBoolMap = (rows: Array<Record<string, unknown>> | null | undefined, key: string) => {
-      const flags: Record<string, boolean> = {}
-      for (const row of rows ?? []) {
-        const id = String(row[key] ?? '')
-        if (!id) continue
-        flags[id] = true
-      }
-      return flags
-    }
-
     const asCount = (value: unknown) => {
       const num = typeof value === 'number' ? value : Number(value)
       return Number.isFinite(num) ? Math.max(0, num) : 0
     }
 
-    const fetchRows = async (table: string, key: string, ids: number[]) => {
-      if (!ids.length) return []
-      const { data, error } = await supabase.from(table).select(key).in(key, ids)
-      if (error) return null
-      return ((data ?? []) as unknown) as Array<Record<string, unknown>>
+    type SnapshotValue = {
+      likes_count: number
+      comments_count: number
+      has_liked: boolean
+    }
+    type EngagementSnapshotRow =
+      Database['public']['Functions']['get_replies_engagement_snapshot']['Returns'][number]
+
+    const loadEngagementSnapshot = async (postIds: number[], replyIds: number[]) => {
+      const postById: Record<string, SnapshotValue> = {}
+      const replyById: Record<string, SnapshotValue> = {}
+      const makeDefault = (): SnapshotValue => ({ likes_count: 0, comments_count: 0, has_liked: false })
+
+      for (const id of postIds) postById[String(id)] = makeDefault()
+      for (const id of replyIds) replyById[String(id)] = makeDefault()
+      if (!postIds.length && !replyIds.length) return { postById, replyById }
+
+      const { data, error } = await supabase.rpc('get_replies_engagement_snapshot', {
+        p_post_ids: postIds,
+        p_reply_ids: replyIds,
+        p_viewer_id: currentUserId || null,
+      })
+
+      if (error) {
+        console.error('[Profile] replies engagement snapshot', error)
+        return { postById, replyById }
+      }
+
+      for (const row of ((data ?? []) as EngagementSnapshotRow[])) {
+        const id = String(row.entity_id ?? '')
+        if (!id) continue
+        const normalized: SnapshotValue = {
+          likes_count: asCount(row.likes_count),
+          comments_count: asCount(row.comments_count),
+          has_liked: Boolean(row.has_liked),
+        }
+        const type = String(row.entity_type ?? '').toLowerCase()
+        if (type === 'post') {
+          postById[id] = normalized
+        } else if (type === 'reply') {
+          replyById[id] = normalized
+        }
+      }
+
+      return { postById, replyById }
     }
 
     const { data, error } = await supabase
@@ -205,76 +233,7 @@ export default function Profile({
             .filter((commentId) => Number.isFinite(commentId) && commentId > 0),
         ),
       )
-
-      const [
-        likesRows,
-        commentsRows,
-        repostRows,
-        viewsRows,
-        myLikesRows,
-        myRepostsRows,
-        replyLikesRows,
-        replyCommentsRows,
-        replyRepostsRows,
-        replyViewsRows,
-        myReplyLikesRows,
-        myReplyRepostsRows,
-      ] =
-        await Promise.all([
-          fetchRows('likes', 'post_id', postIds),
-          fetchRows('comments', 'post_id', postIds),
-          fetchRows('reposts', 'post_id', postIds),
-          fetchRows('views', 'post_id', postIds),
-          supabase
-            .from('likes')
-            .select('post_id')
-            .eq('user_id', currentUserId)
-            .in('post_id', postIds)
-            .then(({ data: rows, error: queryError }) =>
-              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
-            ),
-          supabase
-            .from('reposts')
-            .select('post_id')
-            .eq('user_id', currentUserId)
-            .in('post_id', postIds)
-            .then(({ data: rows, error: queryError }) =>
-              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
-            ),
-          fetchRows('comment_likes', 'comment_id', replyIds),
-          fetchRows('comment_replies', 'parent_comment_id', replyIds),
-          fetchRows('comment_reposts', 'comment_id', replyIds),
-          fetchRows('comment_views', 'comment_id', replyIds),
-          supabase
-            .from('comment_likes')
-            .select('comment_id')
-            .eq('user_id', currentUserId)
-            .in('comment_id', replyIds)
-            .then(({ data: rows, error: queryError }) =>
-              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
-            ),
-          supabase
-            .from('comment_reposts')
-            .select('comment_id')
-            .eq('user_id', currentUserId)
-            .in('comment_id', replyIds)
-            .then(({ data: rows, error: queryError }) =>
-              queryError ? null : ((rows ?? []) as Array<Record<string, unknown>>),
-            ),
-        ])
-
-      const likesByPost = toCountMap(likesRows, 'post_id')
-      const commentsByPost = toCountMap(commentsRows, 'post_id')
-      const repostsByPost = toCountMap(repostRows, 'post_id')
-      const viewsByPost = toCountMap(viewsRows, 'post_id')
-      const likedByPost = toBoolMap(myLikesRows, 'post_id')
-      const repostedByPost = toBoolMap(myRepostsRows, 'post_id')
-      const likesByReply = toCountMap(replyLikesRows, 'comment_id')
-      const commentsByReply = toCountMap(replyCommentsRows, 'parent_comment_id')
-      const repostsByReply = toCountMap(replyRepostsRows, 'comment_id')
-      const viewsByReply = toCountMap(replyViewsRows, 'comment_id')
-      const likedByReply = toBoolMap(myReplyLikesRows, 'comment_id')
-      const repostedByReply = toBoolMap(myReplyRepostsRows, 'comment_id')
+      const { postById, replyById } = await loadEngagementSnapshot(postIds, replyIds)
 
       return data.map((comment) => {
         const postJoin = Array.isArray(comment.post) ? (comment.post[0] ?? null) : comment.post
@@ -282,6 +241,8 @@ export default function Profile({
         const postAuthor = normalizeJoinedProfile(postJoin?.profiles)
         const replyAuthor = normalizeJoinedProfile(comment.profiles)
         const replyId = String(comment.id ?? '')
+        const postSnapshot = postById[postId] ?? { likes_count: 0, comments_count: 0, has_liked: false }
+        const replySnapshot = replyById[replyId] ?? { likes_count: 0, comments_count: 0, has_liked: false }
 
         return {
           id: Number(comment.id),
@@ -295,14 +256,14 @@ export default function Profile({
             attachments: (postJoin?.attachments as unknown[] | null | undefined) ?? null,
             author: buildAuthor(postAuthor, postJoin?.user_id),
             stats: {
-              likes_count: likesByPost[postId] ?? 0,
-              comments_count: commentsByPost[postId] ?? 0,
-              views_count: viewsByPost[postId] ?? 0,
-              reposts_count: repostsByPost[postId] ?? 0,
+              likes_count: postSnapshot.likes_count,
+              comments_count: postSnapshot.comments_count,
+              views_count: 0,
+              reposts_count: 0,
             },
             user_interactions: {
-              has_liked: Boolean(likedByPost[postId]),
-              has_reposted: Boolean(repostedByPost[postId]),
+              has_liked: postSnapshot.has_liked,
+              has_reposted: false,
             },
           },
           reply: {
@@ -317,20 +278,14 @@ export default function Profile({
             attachments: (comment.attachments as unknown[] | null | undefined) ?? null,
             author: buildAuthor(replyAuthor, comment.user_id),
             stats: {
-              likes_count: likesByReply[replyId] ?? asCount((comment as Record<string, unknown>).likes_count),
-              comments_count:
-                commentsByReply[replyId] ?? asCount((comment as Record<string, unknown>).comments_count),
-              views_count: viewsByReply[replyId] ?? asCount((comment as Record<string, unknown>).views_count),
-              reposts_count:
-                repostsByReply[replyId] ?? asCount((comment as Record<string, unknown>).reposts_count),
+              likes_count: replySnapshot.likes_count,
+              comments_count: replySnapshot.comments_count,
+              views_count: 0,
+              reposts_count: 0,
             },
             user_interactions: {
-              has_liked:
-                Boolean(likedByReply[replyId]) ||
-                Boolean((comment as Record<string, unknown>).has_liked),
-              has_reposted:
-                Boolean(repostedByReply[replyId]) ||
-                Boolean((comment as Record<string, unknown>).has_reposted),
+              has_liked: replySnapshot.has_liked,
+              has_reposted: false,
             },
           },
         }
@@ -344,9 +299,6 @@ export default function Profile({
       .eq('user_id', profileId)
       .order('created_at', { ascending: false })
 
-    console.log('Replies data:', commentsData)
-    console.log('Replies error:', commentsError)
-
     if (commentsError || !commentsData?.length) {
       return []
     }
@@ -358,11 +310,20 @@ export default function Profile({
           .filter((postId) => Number.isFinite(postId) && postId > 0),
       ),
     )
+    const replyIds = Array.from(
+      new Set(
+        commentsData
+          .map((comment) => Number(comment.id))
+          .filter((commentId) => Number.isFinite(commentId) && commentId > 0),
+      ),
+    )
+    const { postById, replyById } = await loadEngagementSnapshot(postIds, replyIds)
 
     let postsById = new Map<
       number,
       {
         id: string
+        created_at?: string
         content: string | null
         user_id: string
         image_url?: string | null
@@ -381,9 +342,9 @@ export default function Profile({
         .from('posts')
         .select('*, profiles:user_id(id, full_name, username, avatar_url)')
         .in('id', postIds)
-
-      console.log('Replies posts data:', postsData)
-      console.log('Replies posts error:', postsError)
+      if (postsError) {
+        console.error('[Profile] replies posts fallback', postsError)
+      }
 
       if (postsData?.length) {
         postsById = new Map(
@@ -391,6 +352,7 @@ export default function Profile({
             Number(post.id),
             {
               id: String(post.id),
+              created_at: String(post.created_at ?? ''),
               content: (post.content as string | null | undefined) ?? null,
               user_id: String(post.user_id ?? ''),
               image_url: (post.image_url as string | null | undefined) ?? null,
@@ -405,33 +367,36 @@ export default function Profile({
 
     return commentsData.map((comment) => {
       const postId = String(comment.post_id ?? '')
+      const replyId = String(comment.id ?? '')
       const post = postsById.get(Number(comment.post_id)) ?? null
       const postAuthor = post?.profiles ?? null
       const replyAuthor = normalizeJoinedProfile(comment.profiles)
+      const postSnapshot = postById[postId] ?? { likes_count: 0, comments_count: 0, has_liked: false }
+      const replySnapshot = replyById[replyId] ?? { likes_count: 0, comments_count: 0, has_liked: false }
       return {
         id: Number(comment.id),
         post_id: postId,
         post: {
           id: String(post?.id ?? postId),
-          created_at: String(comment.created_at ?? ''),
+          created_at: String(post?.created_at ?? comment.created_at ?? ''),
           content: post?.content ?? null,
           media_url: post?.image_url ?? null,
           media_urls: post?.media_urls ?? null,
           attachments: post?.attachments ?? null,
           author: buildAuthor(postAuthor, post?.user_id),
           stats: {
-            likes_count: asCount((post as unknown as Record<string, unknown>)?.likes_count),
-            comments_count: asCount((post as unknown as Record<string, unknown>)?.comments_count),
-            views_count: asCount((post as unknown as Record<string, unknown>)?.views_count),
-            reposts_count: asCount((post as unknown as Record<string, unknown>)?.reposts_count),
+            likes_count: postSnapshot.likes_count,
+            comments_count: postSnapshot.comments_count,
+            views_count: 0,
+            reposts_count: 0,
           },
           user_interactions: {
-            has_liked: Boolean((post as unknown as Record<string, unknown>)?.has_liked),
-            has_reposted: Boolean((post as unknown as Record<string, unknown>)?.has_reposted),
+            has_liked: postSnapshot.has_liked,
+            has_reposted: false,
           },
         },
         reply: {
-          id: String(comment.id ?? ''),
+          id: replyId,
           created_at: String(comment.created_at ?? ''),
           content:
             (comment.content as string | null | undefined) ??
@@ -442,14 +407,14 @@ export default function Profile({
           attachments: (comment.attachments as unknown[] | null | undefined) ?? null,
           author: buildAuthor(replyAuthor, comment.user_id),
           stats: {
-            likes_count: asCount((comment as Record<string, unknown>).likes_count),
-            comments_count: asCount((comment as Record<string, unknown>).comments_count),
-            views_count: asCount((comment as Record<string, unknown>).views_count),
-            reposts_count: asCount((comment as Record<string, unknown>).reposts_count),
+            likes_count: replySnapshot.likes_count,
+            comments_count: replySnapshot.comments_count,
+            views_count: 0,
+            reposts_count: 0,
           },
           user_interactions: {
-            has_liked: Boolean((comment as Record<string, unknown>).has_liked),
-            has_reposted: Boolean((comment as Record<string, unknown>).has_reposted),
+            has_liked: replySnapshot.has_liked,
+            has_reposted: false,
           },
         },
       }
@@ -474,7 +439,14 @@ export default function Profile({
       return
     }
 
-    setOtherProfile(profileData as ProfileT)
+    const asProfile = profileData as ProfileT
+    setOtherProfile(asProfile)
+
+    if (asProfile.is_banned === true) {
+      setOtherPosts([])
+      setOtherLoading(false)
+      return
+    }
 
     const { data: postsData } = await supabase
       .from('posts')
@@ -505,10 +477,50 @@ export default function Profile({
 
   const displayedUserId = isOwn ? currentUserId : (otherProfile?.id ?? '')
 
-  const userPosts = isOwn ? posts.filter((p) => p.user_id === currentUserId) : otherPosts
+  const userPostsRaw = isOwn ? posts.filter((p) => p.user_id === currentUserId) : otherPosts
+  const profileBanned = profileForDisplay?.is_banned === true
+  const userPosts = profileBanned ? [] : userPostsRaw
   const mediaPosts = userPosts.filter((p) => Boolean(p.image_url?.trim()))
-  const attendingEvents = allEvents.filter((e) => e.isAttending)
 
+  const isCurrentUserAdmin = myProfile?.role === 'admin'
+  const canShowAdminMenu = isCurrentUserAdmin && !isOwn && Boolean(otherProfile?.id)
+
+  useEffect(() => {
+    if (!adminMenuOpen) return
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = adminMenuRef.current
+      if (el && !el.contains(e.target as Node)) setAdminMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [adminMenuOpen])
+
+  const handleToggleBanViewedUser = useCallback(async () => {
+    if (!otherProfile?.id || banActionLoading) return
+    const nextBanned = !otherProfile.is_banned
+    setBanActionLoading(true)
+    const { error } = await supabase.from('profiles').update({ is_banned: nextBanned }).eq('id', otherProfile.id)
+    setBanActionLoading(false)
+    if (error) {
+      console.error('[Profile] ban toggle', error)
+      toast.error(error.message || 'Nie udało się zaktualizować statusu konta.')
+      return
+    }
+    const viewedId = otherProfile.id
+    setOtherProfile((prev) => (prev ? { ...prev, is_banned: nextBanned } : null))
+    if (nextBanned) {
+      setOtherPosts([])
+    } else {
+      const { data: postsData } = await supabase
+        .from('posts')
+        .select('*, user_id, profiles(id, full_name, username, avatar_url, department)')
+        .eq('user_id', viewedId)
+        .order('created_at', { ascending: false })
+      setOtherPosts((postsData ?? []) as Post[])
+    }
+    toast.success(nextBanned ? 'Użytkownik został zablokowany.' : 'Blokada konta została zniesiona.')
+    setAdminMenuOpen(false)
+  }, [otherProfile?.id, otherProfile?.is_banned, banActionLoading])
   const showPostsLoading = isOwn ? postsLoading : otherLoading
 
   const socialTargetUserId = isOwn ? currentUserId : (otherProfile?.id ?? null)
@@ -540,6 +552,32 @@ export default function Profile({
       cancelled = true
     }
   }, [displayedUserId, fetchRepliesWithPostContext])
+
+  useEffect(() => {
+    if (!displayedUserId) return
+    const profileId = displayedUserId
+    let cancelled = false
+    ;(async () => {
+      setProfileEventsLoading(true)
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('user_id', profileId)
+        .order('date', { ascending: true })
+      if (cancelled) return
+      setProfileEventsLoading(false)
+      if (error) {
+        console.error('[Profile] events by user', error)
+        setProfileEvents([])
+        return
+      }
+      const rows = (data ?? []).map(eventFromDbRow).filter((e): e is UJEvent => e !== null)
+      setProfileEvents(rows)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [displayedUserId])
 
   const normalizedUsername = profileForDisplay?.username?.trim().toLowerCase() ?? ''
   const hasPublicUsername = normalizedUsername.length > 0
@@ -586,7 +624,7 @@ export default function Profile({
     department: profileForDisplay?.department,
     joinedAt: profileForDisplay?.created_at,
     repliesCount: userReplies.length,
-    attendingEventsCount: attendingEvents.length,
+    attendingEventsCount: profileEvents.length,
     isOwn,
   }
 
@@ -621,9 +659,9 @@ export default function Profile({
             Wróć
           </button>
         )}
-        <div className="flex flex-col items-center gap-3 py-20 text-slate-400">
-          <UserX size={48} strokeWidth={1.5} className="text-slate-300 dark:text-white/20" />
-          <p className="text-[15px] font-semibold text-slate-500 dark:text-gray-400">
+        <div className="flex flex-col items-center gap-3 py-20 text-zinc-400">
+          <UserX size={48} strokeWidth={1.5} className="text-zinc-300 dark:text-white/20" />
+          <p className="text-[15px] font-semibold text-zinc-500 dark:text-gray-400">
             Nie znaleziono użytkownika
           </p>
         </div>
@@ -674,7 +712,47 @@ export default function Profile({
             followingCount={followingCount}
             followStatsLoading={followStatsLoading}
             onOpenFollowModal={openFollowModal}
+            headerTrailing={
+              canShowAdminMenu ? (
+                <div className="relative" ref={adminMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAdminMenuOpen((open) => !open)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-black/5 hover:text-zinc-800 dark:hover:bg-white/10 dark:hover:text-zinc-200"
+                    aria-expanded={adminMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label="Menu moderacji"
+                  >
+                    <MoreVertical className="h-5 w-5" strokeWidth={1.75} />
+                  </button>
+                  {adminMenuOpen ? (
+                    <div
+                      className="absolute right-0 top-full z-30 mt-1 min-w-[11rem] rounded-xl border border-border-app bg-bg-card py-1 shadow-lg backdrop-blur-md"
+                      role="menu"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={banActionLoading}
+                        onClick={() => void handleToggleBanViewedUser()}
+                        className="block w-full px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] disabled:cursor-wait disabled:opacity-50 dark:hover:bg-white/[0.06]"
+                      >
+                        {otherProfile?.is_banned === true ? 'Odbanuj' : 'Zbanuj użytkownika'}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null
+            }
           />
+
+          {profileBanned ? (
+            <div
+              className={`mt-2 rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-100 ${PROFILE_MOBILE.card.paddingXClass}`}
+            >
+              <p className="font-medium">To konto zostało zablokowane przez administrację</p>
+            </div>
+          ) : null}
 
           <div className="mt-4 pb-4 sm:pb-6">
             <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -761,7 +839,8 @@ export default function Profile({
 
           {activeTab === 'events' && (
             <EventsPanel
-              events={attendingEvents}
+              events={profileEvents}
+              loading={profileEventsLoading}
               isOwn={isOwn}
               onNavigateToEvents={onNavigateToEvents}
             />

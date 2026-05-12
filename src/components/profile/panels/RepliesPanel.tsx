@@ -8,7 +8,7 @@ import { supabase } from '../../../supabaseClient'
 import { toast } from '../../../lib/appToast'
 import EmptyState from '../../EmptyState'
 import type { Profile } from '../../../types'
-import type { TablesInsert } from '../../../types/database'
+import type { Database, TablesInsert } from '../../../types/database'
 import { useProfileData } from '../../../hooks/useProfileData'
 
 type ThreadAuthor = {
@@ -88,6 +88,8 @@ type NestedReplyRow = {
 type PostLikeInsert = TablesInsert<'likes'>
 type CommentLikeInsert = TablesInsert<'comment_likes'>
 type CommentReplyInsert = TablesInsert<'comment_replies'>
+type EngagementSnapshotRow =
+  Database['public']['Functions']['get_replies_engagement_snapshot']['Returns'][number]
 
 type SelectedReplyMedia = {
   file: File
@@ -593,30 +595,30 @@ export default function RepliesPanel({
       const n = Number(postId)
       if (!Number.isFinite(n)) return
 
-      const [likesQ, commentsQ, myLikeQ] = await Promise.all([
-        supabase.from('likes').select('*', { count: 'exact', head: true }).eq('post_id', n),
-        supabase.from('comments').select('*', { count: 'exact', head: true }).eq('post_id', n),
-        supabase
-          .from('likes')
-          .select('post_id')
-          .eq('post_id', n)
-          .eq('user_id', currentUserId)
-          .maybeSingle(),
-      ])
+      const { data, error } = await supabase.rpc('get_replies_engagement_snapshot', {
+        p_post_ids: [n],
+        p_reply_ids: [],
+        p_viewer_id: currentUserId || null,
+      })
 
-      if (likesQ.error || commentsQ.error) {
-        if (likesQ.error) console.error('[RepliesPanel] refreshPost likes', likesQ.error)
-        if (commentsQ.error) console.error('[RepliesPanel] refreshPost comments', commentsQ.error)
+      if (error) {
+        console.error('[RepliesPanel] refreshPost stats', error)
         return
       }
+
+      const postSnapshot = ((data ?? []) as EngagementSnapshotRow[]).find(
+        (row) =>
+          String(row.entity_type ?? '').toLowerCase() === 'post' &&
+          Number(row.entity_id) === n,
+      )
 
       setPostPatch((prev) => ({
         ...prev,
         [postId]: {
           ...prev[postId],
-          likes_count: likesQ.count ?? 0,
-          comments_count: commentsQ.count ?? 0,
-          has_liked: Boolean(myLikeQ.data),
+          likes_count: Math.max(0, Number(postSnapshot?.likes_count ?? 0)),
+          comments_count: Math.max(0, Number(postSnapshot?.comments_count ?? 0)),
+          has_liked: Boolean(postSnapshot?.has_liked),
         },
       }))
     },
@@ -628,33 +630,33 @@ export default function RepliesPanel({
       const n = Number(commentId)
       if (!Number.isFinite(n)) return
 
-      const [likesQ, myLikeQ] = await Promise.all([
-        supabase
-          .from('comment_likes')
-          .select('*', { count: 'exact', head: true })
-          .eq('comment_id', n),
-        supabase
-          .from('comment_likes')
-          .select('comment_id')
-          .eq('comment_id', n)
-          .eq('user_id', currentUserId)
-          .maybeSingle(),
-      ])
+      const { data, error } = await supabase.rpc('get_replies_engagement_snapshot', {
+        p_post_ids: [],
+        p_reply_ids: [n],
+        p_viewer_id: currentUserId || null,
+      })
 
-      if (likesQ.error) {
-        if (String(likesQ.error.message).includes('relation') || String(likesQ.error.code) === '42P01') {
+      if (error) {
+        if (String(error.message).includes('relation') || String(error.code) === '42P01') {
           return
         }
-        console.error('[RepliesPanel] refreshComment', likesQ.error)
+        console.error('[RepliesPanel] refreshComment', error)
         return
       }
+
+      const replySnapshot = ((data ?? []) as EngagementSnapshotRow[]).find(
+        (row) =>
+          String(row.entity_type ?? '').toLowerCase() === 'reply' &&
+          Number(row.entity_id) === n,
+      )
 
       setReplyPatch((prev) => ({
         ...prev,
         [commentId]: {
           ...prev[commentId],
-          likes_count: likesQ.count ?? 0,
-          has_liked: Boolean(myLikeQ.data),
+          likes_count: Math.max(0, Number(replySnapshot?.likes_count ?? 0)),
+          comments_count: Math.max(0, Number(replySnapshot?.comments_count ?? prev[commentId]?.comments_count ?? 0)),
+          has_liked: Boolean(replySnapshot?.has_liked),
         },
       }))
     },
@@ -695,20 +697,6 @@ export default function RepliesPanel({
       .join(','),
     [replies],
   )
-
-  useEffect(() => {
-    if (!postIdsKey) return
-    for (const pid of postIdsKey.split(',')) {
-      if (pid) void refreshPostEngagement(pid)
-    }
-  }, [postIdsKey, refreshPostEngagement])
-
-  useEffect(() => {
-    if (!commentIdsKey) return
-    for (const cid of commentIdsKey.split(',')) {
-      if (cid) void refreshCommentEngagement(cid)
-    }
-  }, [commentIdsKey, refreshCommentEngagement])
 
   useEffect(() => {
     if (!replies.length) return
@@ -1167,25 +1155,7 @@ export default function RepliesPanel({
           ) : null}
           {renderMedia(media)}
           {showActions ? (
-            <div className="mt-2 flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-[13px]">
-              <button
-                type="button"
-                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
-                  commentsActive
-                    ? 'text-brand-gold-bright'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-brand-gold-bright/90'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCommentClick(e)
-                }}
-                aria-label="Komentarze"
-              >
-                <MessageCircle size={18} />
-                <span className={commentsActive ? 'text-brand-gold-bright' : undefined}>
-                  {formatXNumber(commentsCount)}
-                </span>
-              </button>
+            <div className="mt-2 flex items-center gap-x-4 text-zinc-500 dark:text-zinc-400 text-[13px]">
               <button
                 type="button"
                 className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
@@ -1203,6 +1173,24 @@ export default function RepliesPanel({
                 <Heart size={18} className={isLiked ? 'fill-current' : undefined} />
                 <span className={isLiked ? 'text-brand-gold-bright' : undefined}>
                   {formatXNumber(likesCount)}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
+                  commentsActive
+                    ? 'text-brand-gold-bright'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-brand-gold-bright/90'
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCommentClick(e)
+                }}
+                aria-label="Komentarze"
+              >
+                <MessageCircle size={18} />
+                <span className={commentsActive ? 'text-brand-gold-bright' : undefined}>
+                  {formatXNumber(commentsCount)}
                 </span>
               </button>
             </div>

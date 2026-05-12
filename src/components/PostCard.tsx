@@ -1,14 +1,17 @@
-import { useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import ReactDOM from 'react-dom'
-import { Heart, MessageCircle, Trash2, X } from 'lucide-react'
+import { Flag, Heart, MessageCircle, MoreHorizontal, Trash2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Profile } from '../types'
 import type { PostMeta, UnifiedContent } from '../types/content'
 import { relativeTime } from '../lib/utils'
 import { getDeptAbbreviation } from '../lib/departments'
+import { supabase } from '../supabaseClient'
+import { toast } from '../lib/appToast'
 import UserAvatar from './UserAvatar'
 import CommentThread from './CommentThread'
 import ConfirmModal from './ConfirmModal'
+import ReportModal from './ReportModal'
 import BaseCard from './ui/BaseCard'
 import {
   INTERACTION_BAR_ROW,
@@ -106,16 +109,26 @@ export default function PostCard({
 }: Props) {
   const isFlat = variant === 'flat'
   const isStacked = variant === 'stacked'
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  /** null — zamknięty; owner — własny wpis; admin — usuwanie cudzego wpisu przez administratora */
+  const [deleteModalIntent, setDeleteModalIntent] = useState<'owner' | 'admin' | null>(null)
   const [isImageOpen, setIsImageOpen] = useState(false)
+  const [isPostMenuOpen, setIsPostMenuOpen] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isReportSubmitting, setIsReportSubmitting] = useState(false)
+  const postMenuRef = useRef<HTMLDivElement | null>(null)
 
   const postId = content.id || `fallback-${index}`
   const body = content.body
+  const hasBody = Boolean(body.trim())
   const { imageUrl, likeCount, commentCount, isLiked, authorUserId, department } = content.metadata
   const createdAt = content.timestamp
   const authorName = content.author.displayName
   const authorId = authorUserId
   const isOwn = authorUserId === currentUserId
+  const isAdmin = myProfile?.role === 'admin'
+  const canDeletePost = isOwn || isAdmin
+  const canReportPost = !isOwn && Boolean(currentUserId)
+  const hasHeaderMenu = canDeletePost || canReportPost
   const authorProfile: Profile = {
     id: content.author.id,
     full_name: content.author.displayName,
@@ -129,6 +142,50 @@ export default function PostCard({
     if (t.closest('button, a, textarea, input')) return
     if (t.closest('img')) return
     onNavigateToPost()
+  }
+
+  useEffect(() => {
+    if (!isPostMenuOpen) return
+    const handleOutsideClick = (event: PointerEvent) => {
+      if (!postMenuRef.current?.contains(event.target as Node)) {
+        setIsPostMenuOpen(false)
+      }
+    }
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsPostMenuOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', handleOutsideClick)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('pointerdown', handleOutsideClick)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isPostMenuOpen])
+
+  const handleReportPost = async (reason: string) => {
+    if (!content.id) {
+      toast.error('Nie udało się zgłosić posta')
+      return
+    }
+    if (!currentUserId) {
+      toast.error('Musisz być zalogowany, aby zgłosić post')
+      return
+    }
+    setIsReportSubmitting(true)
+    const { error } = await supabase.from('reports').insert({
+      post_id: content.id,
+      reporter_id: currentUserId,
+      reason,
+    })
+    setIsReportSubmitting(false)
+    if (error) {
+      toast.error('Nie udało się wysłać zgłoszenia')
+      return
+    }
+    toast.success('Zgłoszenie wysłane')
+    setIsReportModalOpen(false)
   }
 
   const innerBody = (
@@ -157,7 +214,7 @@ export default function PostCard({
 
           <div className="flex-1 min-w-0">
             <div>
-              <div className={`relative flex items-center gap-2 flex-wrap ${isOwn ? 'pr-8' : ''}`}>
+              <div className={`relative flex items-center gap-2 flex-wrap ${hasHeaderMenu ? 'pr-8' : ''}`}>
                 <span
                   className={`font-bold text-fg-primary text-base leading-tight ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`}
                   onClick={(e) => {
@@ -173,31 +230,66 @@ export default function PostCard({
                 {createdAt && (
                   <span className="text-xs text-gray-400 ml-auto">{relativeTime(createdAt)}</span>
                 )}
-                {isOwn && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setConfirmDeleteOpen(true)
-                    }}
-                    className="w-8 h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 shrink-0 absolute -right-2 top-1/2 -translate-y-1/2"
-                    aria-label="Usuń post"
+                {hasHeaderMenu && (
+                  <div
+                    ref={postMenuRef}
+                    className="absolute -right-2 top-1/2 -translate-y-1/2"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPostMenuOpen((current) => !current)}
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 shrink-0"
+                      aria-label="Więcej opcji"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {isPostMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border-app bg-bg-card shadow-uj-soft dark:shadow-none z-50 p-1 overflow-hidden">
+                        {canReportPost && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPostMenuOpen(false)
+                              setIsReportModalOpen(true)
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors"
+                          >
+                            <Flag size={16} />
+                            Zgłoś post
+                          </button>
+                        )}
+                        {canDeletePost && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPostMenuOpen(false)
+                              setDeleteModalIntent(isAdmin && !isOwn ? 'admin' : 'owner')
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                            Usuń post
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
-              <p className="mt-1.5 text-[15px] font-normal text-fg-primary dark:text-slate-200 leading-relaxed whitespace-pre-line">
-                {body}
-              </p>
+              {hasBody && (
+                <p className="mt-1.5 text-[15px] font-normal text-fg-primary dark:text-zinc-100 leading-relaxed whitespace-pre-line">
+                  {body}
+                </p>
+              )}
             </div>
 
             {imageUrl && (
               <img
                 src={imageUrl}
                 alt=""
-                className="mt-3 w-full h-auto max-h-[500px] object-contain cursor-pointer"
+                className={`${hasBody ? 'mt-3' : 'mt-1.5'} w-full h-auto max-h-[500px] object-contain cursor-pointer`}
                 loading="lazy"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -267,7 +359,7 @@ export default function PostCard({
           className={
             isFlat
               ? 'border-t border-white/10'
-              : 'border-t border-[#0f172a]/10 dark:border-white/10'
+              : 'border-t border-black/10 dark:border-white/10'
           }
         >
           <CommentThread
@@ -292,15 +384,28 @@ export default function PostCard({
         </div>
       )}
 
-      {confirmDeleteOpen && (
+      {deleteModalIntent !== null && (
         <ConfirmModal
           title="Usuń wpis"
-          message="Tej operacji nie można cofnąć. Wpis zostanie trwale usunięty."
+          message={
+            deleteModalIntent === 'admin'
+              ? 'Czy na pewno chcesz usunąć ten post jako administrator? Tej operacji nie można cofnąć.'
+              : 'Tej operacji nie można cofnąć. Wpis zostanie trwale usunięty.'
+          }
           confirmLabel="Usuń wpis"
           onConfirm={onDeletePost}
-          onClose={() => setConfirmDeleteOpen(false)}
+          onClose={() => setDeleteModalIntent(null)}
         />
       )}
+
+      <ReportModal
+        open={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onConfirm={handleReportPost}
+        title="Zgłoś post"
+        confirmLabel="Zgłoś"
+        isSubmitting={isReportSubmitting}
+      />
 
       {isImageOpen && imageUrl && (
         <LightboxPortal src={imageUrl} onClose={() => setIsImageOpen(false)} />

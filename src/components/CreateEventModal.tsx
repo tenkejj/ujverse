@@ -28,12 +28,12 @@ type Props = {
 }
 
 const inputCls =
-  'w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 p-3 text-slate-900 placeholder:text-slate-500 focus:border-accent-interactive outline-none dark:text-white dark:placeholder:text-slate-500'
+  'w-full rounded-xl border border-gray-200 bg-gray-100 p-3 text-gray-900 outline-none placeholder:text-gray-500 focus:border-gray-300 dark:border-border-app dark:bg-bg-card dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-white/15'
 
 const CATEGORIES = ['Wydarzenie', 'Wydział', 'Ogłoszenie'] as const
 
 const fileInputCls =
-  'block w-full cursor-pointer rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-900 hover:file:bg-slate-300 focus:border-accent-interactive focus:outline-none dark:bg-slate-800/50 dark:text-slate-200 dark:file:bg-slate-700 dark:file:text-white dark:hover:file:bg-slate-600'
+  'block w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-100 px-3 py-2.5 text-sm text-gray-900 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-gray-200 file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-900 hover:file:bg-gray-300 focus:border-gray-300 focus:outline-none dark:border-border-app dark:bg-bg-card dark:text-zinc-100 dark:file:bg-white/10 dark:file:text-zinc-100 dark:hover:file:bg-white/15 dark:focus:border-white/15'
 
 export default function CreateEventModal({
   isOpen,
@@ -190,7 +190,7 @@ export default function CreateEventModal({
       <motion.div
         role="presentation"
         aria-hidden
-        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: isClosing ? 0 : 1 }}
         transition={{ duration: 0.18 }}
@@ -202,7 +202,7 @@ export default function CreateEventModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-event-title"
-        className="fixed left-1/2 top-1/2 z-[110] w-[95%] max-w-lg max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-none dark:border-slate-700 dark:bg-slate-900"
+        className="fixed left-1/2 top-1/2 z-110 max-h-[90vh] w-[95%] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border-app bg-bg-card p-6 shadow-uj-soft dark:shadow-none"
         initial={{ opacity: 0, y: 12, scale: 0.97 }}
         animate={{
           opacity: isClosing ? 0 : 1,
@@ -289,7 +289,7 @@ export default function CreateEventModal({
                 <button
                   type="button"
                   onClick={() => setLocationPickerOpen(true)}
-                  className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg border border-brand-gold px-3 py-2.5 text-sm font-semibold text-accent-interactive hover:bg-brand-gold/10 transition-colors"
+                  className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl border border-uj-gold px-3 py-2.5 text-sm font-semibold text-uj-gold transition-colors hover:bg-uj-gold/10 dark:text-brand-gold-bright dark:border-brand-gold-bright"
                 >
                   <Map size={18} strokeWidth={2} aria-hidden />
                   Wybierz na mapie
@@ -314,7 +314,7 @@ export default function CreateEventModal({
                   <button
                     type="button"
                     onClick={clearPoster}
-                    className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 border border-slate-200 dark:border-[#1c2b4e] transition-colors dark:bg-black/65"
+                    className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-border-app bg-black/50 text-white transition-colors hover:bg-black/70 dark:bg-black/65"
                     aria-label="Usuń plakat"
                   >
                     <X size={16} strokeWidth={2} />
@@ -322,7 +322,7 @@ export default function CreateEventModal({
                   <img
                     src={imagePreview}
                     alt=""
-                    className="h-24 w-full object-cover rounded-lg border border-slate-200 dark:border-[#1c2b4e]"
+                    className="h-24 w-full rounded-xl border border-border-app object-cover"
                   />
                 </div>
               ) : null}
@@ -345,13 +345,13 @@ export default function CreateEventModal({
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-3 rounded-xl text-slate-600 hover:text-fg-primary bg-transparent transition-colors font-medium dark:text-slate-400 dark:hover:text-slate-200"
+                className="min-h-[44px] rounded-xl px-4 text-sm font-medium text-gray-500 transition-colors hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5"
               >
                 Anuluj
               </button>
               <button
                 type="submit"
-                className="flex-1 min-w-[160px] py-3 rounded-xl bg-brand-gold text-black font-bold hover:bg-brand-gold/85 transition-colors"
+                className="min-h-[44px] min-w-[160px] flex-1 rounded-xl bg-uj-gold px-4 text-sm font-semibold text-black transition-colors hover:bg-uj-gold/90 dark:bg-brand-gold dark:hover:bg-brand-gold/85"
               >
                 {isEdit ? 'Zapisz zmiany' : 'Utwórz wydarzenie'}
               </button>

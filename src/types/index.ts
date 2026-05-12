@@ -8,6 +8,10 @@ export type Profile = {
   department?: string | null
   /** Jeśli kolumna istnieje w Supabase — data utworzenia profilu. */
   created_at?: string | null
+  /** Domyślnie `user`; administrator ma `admin`. */
+  role?: string | null
+  /** Globalny ban konta (moderacja). */
+  is_banned?: boolean | null
 }
 
 export type Post = {

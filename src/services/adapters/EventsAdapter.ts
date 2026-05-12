@@ -39,7 +39,7 @@ class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
       type: 'event',
       title,
       author: {
-        id: `event:${raw.id}`,
+        id: raw.user_id ? `user:${raw.user_id}` : `event:${raw.id}`,
         displayName: isOfficial ? (raw.source_name ?? 'Uniwersytet Jagielloński') : 'Użytkownik',
         subtitle: authorSubtitle,
         avatarUrl: null,
@@ -70,6 +70,7 @@ class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
         mapUrl: raw.mapUrl ?? null,
         attendeeAvatars: raw.attendeeAvatars,
         ingestFromFallback: raw.ingest_from_fallback,
+        authorUserId: raw.user_id ?? null,
       },
       actions,
     }

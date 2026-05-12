@@ -97,12 +97,15 @@ export default function SinglePostView({
     }
   }, [postId])
 
+  const authorBanned = post?.profiles?.is_banned === true
+
   useEffect(() => {
+    if (!post || authorBanned) return
     if (!expandedComments.has(postId)) {
       void onToggleComments(postId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId])
+  }, [postId, post, authorBanned])
 
   const unifiedPost: UnifiedContent<PostMeta> | null = useMemo(() => {
     if (!post) return null
@@ -144,7 +147,13 @@ export default function SinglePostView({
         </div>
       )}
 
-      {!loading && !error && unifiedPost && (
+      {!loading && !error && post && authorBanned && (
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-100">
+          To konto zostało zablokowane przez administrację. Treść wpisu nie jest wyświetlana.
+        </div>
+      )}
+
+      {!loading && !error && unifiedPost && !authorBanned && (
         <PostCard
           content={unifiedPost}
           index={0}
