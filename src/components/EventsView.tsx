@@ -1,19 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Archive, Plus, Radio, Search, Shield, User } from 'lucide-react'
-import { formatEventDateLong, type UJEvent } from '../data/mockEvents'
+import { useMemo, useState } from 'react'
+import { Archive, Plus, Radio, Search, User } from 'lucide-react'
+import { type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
 import { useUnifiedEvents } from '../hooks/useContent'
 import type { EventMeta, UnifiedContent } from '../types/content'
 import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
-import WziksOfficialHub from './WziksOfficialHub'
 import EventCard from './events/EventCard'
 
 type EventFilter = 'all' | 'mine' | 'Wydarzenie' | 'Wydział' | 'Ogłoszenie' | 'Oficjalne'
-
-/** Etykiety na banerze wyróżnionym — w light theme łagodniejszy kontrast niż czarny „alert”. */
-const featuredHeroPillCls =
-  'inline-flex items-center gap-0.5 rounded-full border border-white/30 bg-zinc-950/45 px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-white/90 backdrop-blur-md dark:border-[#c9a227]/45 dark:bg-black/50 dark:text-brand-gold-bright'
 
 const FILTERS: { key: EventFilter; label: string }[] = [
   { key: 'all', label: 'Wszystkie' },
@@ -24,11 +19,13 @@ const FILTERS: { key: EventFilter; label: string }[] = [
   { key: 'Ogłoszenie', label: 'Ogłoszenie' },
 ]
 
-export default function EventsView() {
+type Props = {
+  currentUserId: string
+}
+
+export default function EventsView({ currentUserId }: Props) {
   const {
     events,
-    allEvents,
-    featuredEvent,
     toggleRsvp,
     addEvent,
     updateEvent,
@@ -40,33 +37,6 @@ export default function EventsView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<UJEvent | null>(null)
 
-  const trimmedFeaturedUrl = (featuredEvent?.imageUrl ?? '').trim()
-  const [featuredBannerState, setFeaturedBannerState] = useState<
-    'empty' | 'loading' | 'ok' | 'fail'
-  >('empty')
-
-  useEffect(() => {
-    if (!trimmedFeaturedUrl) {
-      setFeaturedBannerState('empty')
-      return
-    }
-    setFeaturedBannerState('loading')
-    let cancelled = false
-    const probe = new Image()
-    probe.onload = () => {
-      if (!cancelled) setFeaturedBannerState('ok')
-    }
-    probe.onerror = () => {
-      if (!cancelled) setFeaturedBannerState('fail')
-    }
-    probe.src = trimmedFeaturedUrl
-    return () => {
-      cancelled = true
-    }
-  }, [trimmedFeaturedUrl])
-
-  const showFeaturedHeroImage = featuredBannerState === 'ok'
-
   const selectedEvent = useMemo(
     () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
     [events, selectedEventId],
@@ -77,14 +47,14 @@ export default function EventsView() {
       filter === 'all'
         ? events
         : filter === 'mine'
-          ? events.filter((ev) => Boolean(ev.isAttending))
+          ? events.filter((ev) => ev.user_id === currentUserId)
           : events.filter((ev) => ev.category === filter)
     const q = searchQuery.trim().toLowerCase()
     if (q) {
       list = list.filter((ev) => ev.title.toLowerCase().includes(q))
     }
     return list
-  }, [filter, events, searchQuery])
+  }, [currentUserId, filter, events, searchQuery])
 
   // Mapowanie do UnifiedContent wyłącznie na potrzeby wizualnych kart siatki.
   // Mutacje (toggleRsvp, deleteEvent) nadal operują na UJEvent w kontekście.
@@ -100,55 +70,6 @@ export default function EventsView() {
       <aside className="hidden lg:block lg:col-span-3" aria-hidden />
 
       <div className="lg:col-span-6 space-y-4">
-        {featuredEvent ? (
-          <button
-            type="button"
-            onClick={() => setSelectedEventId(featuredEvent.id)}
-            className="group relative w-full h-64 lg:h-80 rounded-3xl overflow-hidden mb-8 border border-border-app text-left shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-          >
-            {showFeaturedHeroImage ? (
-              <img
-                src={trimmedFeaturedUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              />
-            ) : (
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-amber-600/30 to-zinc-950"
-                aria-hidden
-              />
-            )}
-            <div className="absolute inset-0 bg-black/60" aria-hidden />
-            <div
-              className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent dark:from-zinc-950 dark:via-zinc-950/80"
-              aria-hidden
-            />
-            <div className="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2">
-              <span className={featuredHeroPillCls}>WYRÓŻNIONE</span>
-              {featuredEvent.is_official ? (
-                <span className={featuredHeroPillCls}>
-                  <Shield size={12} className="text-[#e8c84a] dark:text-brand-gold-bright" strokeWidth={2.5} aria-hidden />
-                  OFICJALNE UJ
-                </span>
-              ) : null}
-            </div>
-            <div className="relative z-[1] flex h-full min-h-[16rem] lg:min-h-[20rem] flex-col justify-end p-6 lg:p-8">
-              <h2 className="text-2xl lg:text-3xl font-extrabold text-white leading-tight drop-shadow-md">
-                {featuredEvent.title}
-              </h2>
-              <p className="mt-2 text-sm text-slate-300">
-                {formatEventDateLong(featuredEvent.date)}
-              </p>
-              <p className="mt-1 text-sm text-slate-400 line-clamp-2">{featuredEvent.location}</p>
-              <span className="mt-5 inline-flex w-fit items-center rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-black/20 transition-colors group-hover:bg-zinc-800 dark:bg-brand-gold dark:text-zinc-900 dark:shadow-none dark:group-hover:bg-brand-gold/88">
-                Sprawdź szczegóły
-              </span>
-            </div>
-          </button>
-        ) : null}
-
-        <WziksOfficialHub events={allEvents} showOfflineHint={ingestFromStaticFallback} />
-
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-app pb-4">
           <div className="flex flex-wrap gap-2">
             {FILTERS.map(({ key, label }) => (
@@ -240,6 +161,7 @@ export default function EventsView() {
 
       <EventModal
         event={selectedEvent}
+        currentUserId={currentUserId}
         onClose={() => setSelectedEventId(null)}
         onToggleRsvp={toggleRsvp}
         onEditRequest={(e) => {

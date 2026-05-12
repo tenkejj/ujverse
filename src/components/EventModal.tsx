@@ -18,6 +18,7 @@ import { useEvents } from '../hooks/useEvents'
 
 type Props = {
   event: UJEvent | null
+  currentUserId: string
   onClose: () => void
   onToggleRsvp: (eventId: string) => void
   /** Otwiera formularz edycji (np. zamknij szczegóły i ustaw `editEvent` w rodzicu). */
@@ -88,6 +89,7 @@ function ModalToolbar({
 type ContentProps = {
   event: UJEvent
   isClosing: boolean
+  canManage: boolean
   handleClose: () => void
   onToggleRsvp: (eventId: string) => void
   onEditRequest?: (event: UJEvent) => void
@@ -100,6 +102,7 @@ type BannerImageState = 'empty' | 'loading' | 'ok' | 'fail'
 function EventModalContent({
   event,
   isClosing,
+  canManage,
   handleClose,
   onToggleRsvp,
   onEditRequest,
@@ -135,7 +138,6 @@ function EventModalContent({
   const avatars = (event.attendeeAvatars ?? []).slice(0, AVATAR_CAP)
   const showBannerImage = bannerImageState === 'ok'
   const official = Boolean(event.is_official)
-  const canManage = Boolean(onEditRequest) && !official
 
   const handleEdit = () => {
     onEditRequest?.(event)
@@ -285,11 +287,20 @@ function EventModalContent({
   )
 }
 
-export default function EventModal({ event, onClose, onToggleRsvp, onEditRequest }: Props) {
+function normalizeOwnerId(value: string | undefined | null): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return trimmed.startsWith('user:') ? trimmed.slice(5) : trimmed
+}
+
+export default function EventModal({ event, currentUserId, onClose, onToggleRsvp, onEditRequest }: Props) {
   const { deleteEvent } = useEvents()
   const [isClosing, setIsClosing] = useState(false)
   const [shareToast, setShareToast] = useState(false)
   const toastTimerRef = useRef<number | null>(null)
+  const ownerId = normalizeOwnerId(event?.user_id) ?? normalizeOwnerId(event?.author?.id)
+  const canManage = Boolean(ownerId && ownerId === currentUserId && !event?.is_official)
 
   const handleClose = () => {
     setIsClosing(true)
@@ -300,7 +311,7 @@ export default function EventModal({ event, onClose, onToggleRsvp, onEditRequest
 
   const handleDeleteClick = () => {
     if (!event) return
-    if (event.is_official) return
+    if (!canManage) return
     if (!window.confirm('Czy na pewno chcesz usunąć to wydarzenie?')) return
     deleteEvent(event.id)
     handleClose()
@@ -369,9 +380,10 @@ export default function EventModal({ event, onClose, onToggleRsvp, onEditRequest
         <EventModalContent
           event={event}
           isClosing={isClosing}
+          canManage={canManage}
           handleClose={handleClose}
           onToggleRsvp={onToggleRsvp}
-          onEditRequest={onEditRequest}
+          onEditRequest={canManage ? onEditRequest : undefined}
           onDeleteClick={handleDeleteClick}
           onShare={handleShare}
         />

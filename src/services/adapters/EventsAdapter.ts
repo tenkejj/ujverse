@@ -20,6 +20,12 @@ class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
     const isOfficial = Boolean(raw.is_official)
 
     const authorSubtitle = raw.faculty ?? raw.source_name ?? null
+    const profileName = raw.author?.full_name?.trim()
+    const profileHandle = raw.author?.username?.trim().replace(/^@+/, '')
+    const authorFromProfile = profileName || (profileHandle ? `@${profileHandle}` : null)
+    const authorDisplayName = authorFromProfile
+      ? UjverseSanitizer.cleanAuthor(authorFromProfile) || authorFromProfile
+      : null
 
     const actions: UnifiedContent<EventMeta>['actions'] = []
     if (raw.event_url) {
@@ -39,10 +45,12 @@ class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
       type: 'event',
       title,
       author: {
-        id: raw.user_id ? `user:${raw.user_id}` : `event:${raw.id}`,
-        displayName: isOfficial ? (raw.source_name ?? 'Uniwersytet Jagielloński') : 'Użytkownik',
+        id: raw.author?.id ?? (raw.user_id ? `user:${raw.user_id}` : `event:${raw.id}`),
+        displayName:
+          authorDisplayName ??
+          (isOfficial ? (raw.source_name ?? 'Uniwersytet Jagielloński') : 'Użytkownik'),
         subtitle: authorSubtitle,
-        avatarUrl: null,
+        avatarUrl: raw.author?.avatar_url ?? null,
       },
       body,
       timestamp: raw.date instanceof Date ? raw.date.toISOString() : null,

@@ -387,6 +387,7 @@ export default function FeedView({
 
       <EventModal
         event={selectedEvent}
+        currentUserId={currentUserId}
         onClose={() => setSelectedEventId(null)}
         onToggleRsvp={toggleRsvp}
         onEditRequest={(e) => {

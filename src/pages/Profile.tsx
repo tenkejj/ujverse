@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, MoreVertical, UserX } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Post, Profile as ProfileT } from '../types'
-import type { UJEvent } from '../data/mockEvents'
 import { toast } from '../lib/appToast'
 import { supabase } from '../supabaseClient'
-import { eventFromDbRow } from '../hooks/useEvents'
+import { useEvents } from '../hooks/useEvents'
 import { useProfileData } from '../hooks/useProfileData'
 import { useProfileSocialData } from '../hooks/useProfileSocialData'
 import ProfileHero from '../components/profile/ProfileHero'
@@ -127,8 +126,7 @@ export default function Profile({
 
   const [userReplies, setUserReplies] = useState<ReplyThread[]>([])
   const [repliesLoading, setRepliesLoading] = useState(false)
-  const [profileEvents, setProfileEvents] = useState<UJEvent[]>([])
-  const [profileEventsLoading, setProfileEventsLoading] = useState(false)
+  const { allEvents, externalEventsLoading } = useEvents()
 
   const [adminMenuOpen, setAdminMenuOpen] = useState(false)
   const [banActionLoading, setBanActionLoading] = useState(false)
@@ -553,31 +551,12 @@ export default function Profile({
     }
   }, [displayedUserId, fetchRepliesWithPostContext])
 
-  useEffect(() => {
-    if (!displayedUserId) return
-    const profileId = displayedUserId
-    let cancelled = false
-    ;(async () => {
-      setProfileEventsLoading(true)
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('user_id', profileId)
-        .order('date', { ascending: true })
-      if (cancelled) return
-      setProfileEventsLoading(false)
-      if (error) {
-        console.error('[Profile] events by user', error)
-        setProfileEvents([])
-        return
-      }
-      const rows = (data ?? []).map(eventFromDbRow).filter((e): e is UJEvent => e !== null)
-      setProfileEvents(rows)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [displayedUserId])
+  const profileEvents = useMemo(() => {
+    if (!displayedUserId) return []
+    return allEvents
+      .filter((ev) => ev.user_id === displayedUserId)
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+  }, [allEvents, displayedUserId])
 
   const normalizedUsername = profileForDisplay?.username?.trim().toLowerCase() ?? ''
   const hasPublicUsername = normalizedUsername.length > 0
@@ -840,7 +819,7 @@ export default function Profile({
           {activeTab === 'events' && (
             <EventsPanel
               events={profileEvents}
-              loading={profileEventsLoading}
+              loading={externalEventsLoading}
               isOwn={isOwn}
               onNavigateToEvents={onNavigateToEvents}
             />

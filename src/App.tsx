@@ -959,7 +959,7 @@ function App() {
           />
         )
       case 'events':
-        return <EventsView />
+        return <EventsView currentUserId={session.user.id} />
       case 'profile':
       case 'userProfile':
         if (effectiveActiveView === 'userProfile' && !viewedHandle) {

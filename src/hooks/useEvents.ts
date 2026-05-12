@@ -35,6 +35,30 @@ type EventRow = {
   event_url?: string | null
   faculty?: 'WZiKS' | 'Uniwersytet Jagielloński' | null
   ingest_from_fallback?: boolean | null
+  profiles?: EventAuthorRow | EventAuthorRow[] | null
+}
+
+type EventAuthorRow = {
+  id?: string | null
+  full_name?: string | null
+  username?: string | null
+  avatar_url?: string | null
+}
+
+const EVENTS_WITH_AUTHOR_SELECT = '*, profiles(*)'
+
+function normalizeEventAuthor(raw: unknown): UJEvent['author'] | undefined {
+  if (!raw) return undefined
+  const candidate = Array.isArray(raw) ? raw[0] : raw
+  if (!candidate || typeof candidate !== 'object') return undefined
+  const row = candidate as EventAuthorRow
+  if (typeof row.id !== 'string' || row.id.length === 0) return undefined
+  return {
+    id: row.id,
+    full_name: typeof row.full_name === 'string' ? row.full_name : null,
+    username: typeof row.username === 'string' ? row.username : null,
+    avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
+  }
 }
 
 /** Oficjalne na górze, potem rosnąco po dacie. */
@@ -75,6 +99,7 @@ function reviveEvent(raw: unknown): UJEvent | null {
     isAttending: Boolean(o.isAttending),
   }
   if (typeof o.user_id === 'string' && o.user_id.length > 0) out.user_id = o.user_id
+  if (o.author && typeof o.author === 'object') out.author = normalizeEventAuthor(o.author)
   if (typeof o.imageUrl === 'string' && o.imageUrl.length > 0) out.imageUrl = o.imageUrl
   if (typeof o.mapUrl === 'string' && o.mapUrl.length > 0) out.mapUrl = o.mapUrl
   if (attendeeAvatars) out.attendeeAvatars = attendeeAvatars
@@ -93,6 +118,9 @@ function reviveEvent(raw: unknown): UJEvent | null {
 export function eventFromDbRow(raw: unknown): UJEvent | null {
   if (!raw || typeof raw !== 'object') return null
   const row = raw as EventRow
+  if (import.meta.env.DEV) {
+    console.log('[Debug Events] Raw row from DB:', row)
+  }
   const src = raw as Record<string, unknown>
   const id = row.id
   if (typeof id !== 'string' && typeof id !== 'number') {
@@ -122,10 +150,20 @@ export function eventFromDbRow(raw: unknown): UJEvent | null {
         : ''
   const mapUrl =
     typeof row.map_url === 'string' ? row.map_url : typeof src.mapUrl === 'string' ? src.mapUrl : ''
+  const rawAuthor = Array.isArray(row.profiles) ? row.profiles[0] : (row.profiles || null)
+  if (import.meta.env.DEV && !rawAuthor && row.user_id) {
+    console.error('[CRITICAL JOIN FAIL] Brak profilu dla wydarzenia!', {
+      eventId: row.id,
+      userId: row.user_id,
+      rawRow: row,
+    })
+  }
+  const author = normalizeEventAuthor(rawAuthor)
 
   return {
     id: String(id),
     user_id: typeof row.user_id === 'string' && row.user_id.length > 0 ? row.user_id : undefined,
+    author,
     title,
     date,
     category: typeof row.category === 'string' ? row.category : 'Wydarzenie',
@@ -241,7 +279,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refetchDbEvents = useCallback(async () => {
-    const { data, error } = await supabase.from('events').select('*').order('date', { ascending: true })
+    const { data, error } = await supabase
+      .from('events')
+      .select(EVENTS_WITH_AUTHOR_SELECT)
+      .order('date', { ascending: true })
     if (error) {
       console.error('[useEvents] events select error', error)
       return
@@ -291,8 +332,28 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     const run = async () => {
       const date = typeof data.date === 'string' ? new Date(data.date) : data.date
       if (Number.isNaN(date.getTime())) return
+      const { data: sessionData } = await supabase.auth.getSession()
       const { data: authData } = await supabase.auth.getUser()
-      const currentUserId = authData.user?.id ?? null
+      const authUser = authData.user ?? sessionData.session?.user ?? null
+      const currentUserId = authUser?.id ?? null
+      const optimisticAuthor =
+        currentUserId && authUser
+          ? normalizeEventAuthor({
+              id: currentUserId,
+              full_name:
+                typeof authUser.user_metadata?.full_name === 'string'
+                  ? authUser.user_metadata.full_name
+                  : null,
+              username:
+                typeof authUser.user_metadata?.username === 'string'
+                  ? authUser.user_metadata.username
+                  : null,
+              avatar_url:
+                typeof authUser.user_metadata?.avatar_url === 'string'
+                  ? authUser.user_metadata.avatar_url
+                  : null,
+            })
+          : undefined
 
       const payload = {
         user_id: currentUserId,
@@ -301,13 +362,14 @@ export function EventsProvider({ children }: { children: ReactNode }) {
         category: data.category,
         location: data.location.trim(),
         description: data.description.trim(),
-        attendees: 0,
-        is_official: false,
         image_url: data.imageUrl?.trim() || null,
-        map_url: data.mapUrl?.trim() || null,
       }
 
-      const { data: inserted, error } = await supabase.from('events').insert(payload).select('*').single()
+      const { data: inserted, error } = await supabase
+        .from('events')
+        .insert(payload)
+        .select(EVENTS_WITH_AUTHOR_SELECT)
+        .single()
       if (error || !inserted) {
         if (error) console.error('[useEvents] events insert error', error)
         const fallbackEvent: UJEvent = {
@@ -330,9 +392,13 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       }
 
       const insertedEvent = eventFromDbRow(inserted)
-      if (insertedEvent) {
-        setDbEvents((prev) => mergeEvents([prev, [insertedEvent]]))
-        setEvents((prev) => mergeEvents([prev, [insertedEvent]]))
+      const insertedWithOptimisticAuthor =
+        insertedEvent && !insertedEvent.author && optimisticAuthor
+          ? { ...insertedEvent, author: optimisticAuthor }
+          : insertedEvent
+      if (insertedWithOptimisticAuthor) {
+        setDbEvents((prev) => mergeEvents([prev, [insertedWithOptimisticAuthor]]))
+        setEvents((prev) => mergeEvents([prev, [insertedWithOptimisticAuthor]]))
       }
       void refetchDbEvents()
     }

@@ -1,6 +1,8 @@
 import { Shield, Users } from 'lucide-react'
 import { formatEventDateParts } from '../../data/mockEvents'
+import type { Profile } from '../../types'
 import type { EventMeta, UnifiedContent } from '../../types/content'
+import UserAvatar from '../UserAvatar'
 import BaseCard from '../ui/BaseCard'
 
 function facultyTag(content: UnifiedContent<EventMeta>): string | null {
@@ -21,6 +23,13 @@ export default function EventCard({ content, onSelect }: Props) {
   const { monthLabel, dayNum } = formatEventDateParts(eventDate)
   const official = content.metadata.isOfficial
   const tag = facultyTag(content)
+  const posterUrl = content.metadata.imageUrl?.trim() || null
+  const authorProfile: Profile = {
+    id: content.author.id,
+    full_name: content.author.displayName,
+    avatar_url: content.author.avatarUrl ?? null,
+    username: null,
+  }
 
   const body = (
     <div className="relative z-[2] flex items-start gap-3">
@@ -61,6 +70,17 @@ export default function EventCard({ content, onSelect }: Props) {
         <p className="mt-1 line-clamp-2 text-xs text-slate-600 dark:text-slate-400">
           {content.metadata.location}
         </p>
+        <div className="mt-2 flex items-center gap-2">
+          <UserAvatar
+            profile={authorProfile}
+            name={content.author.displayName}
+            className="h-6 w-6"
+            textSize="text-[10px]"
+          />
+          <span className="truncate text-xs font-semibold text-fg-primary">
+            {content.author.displayName}
+          </span>
+        </div>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
           <Users size={16} strokeWidth={2} className="shrink-0 text-accent-interactive" aria-hidden />
           <span>{content.metadata.attendees} uczestników</span>
@@ -78,9 +98,14 @@ export default function EventCard({ content, onSelect }: Props) {
         flush
         type="button"
         onClick={() => onSelect(content.id)}
-        className="official-card-premium relative w-full cursor-pointer bg-gradient-to-br from-gray-100 via-brand-gold/10 to-gray-100 p-4 text-left dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent"
+        className="official-card-premium relative w-full cursor-pointer overflow-hidden bg-gradient-to-br from-gray-100 via-brand-gold/10 to-gray-100 text-left dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent"
       >
-        {body}
+        {posterUrl ? (
+          <div className="aspect-video w-full overflow-hidden">
+            <img src={posterUrl} alt={content.title} className="h-full w-full object-cover" />
+          </div>
+        ) : null}
+        <div className="p-4">{body}</div>
       </BaseCard>
     )
   }
@@ -89,9 +114,14 @@ export default function EventCard({ content, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(content.id)}
-      className="relative w-full cursor-pointer rounded-2xl border border-gray-200 bg-gray-100 p-4 text-left transition-colors hover:bg-gray-200/60 dark:border-border-app dark:bg-bg-card dark:hover:bg-white/5"
+      className="relative w-full cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 text-left transition-colors hover:bg-gray-200/60 dark:border-border-app dark:bg-bg-card dark:hover:bg-white/5"
     >
-      {body}
+      {posterUrl ? (
+        <div className="aspect-video w-full overflow-hidden">
+          <img src={posterUrl} alt={content.title} className="h-full w-full object-cover" />
+        </div>
+      ) : null}
+      <div className="p-4">{body}</div>
     </button>
   )
 }

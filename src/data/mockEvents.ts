@@ -1,6 +1,12 @@
 export interface UJEvent {
   id: string
   user_id?: string
+  author?: {
+    id: string
+    full_name?: string | null
+    username?: string | null
+    avatar_url?: string | null
+  }
   title: string
   date: Date
   category: string
