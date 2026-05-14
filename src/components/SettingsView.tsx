@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import {
   AcademicCapIcon,
-  ArrowLeftIcon,
   DocumentTextIcon,
   EnvelopeIcon,
   InformationCircleIcon,
@@ -127,11 +127,10 @@ export default function SettingsView({ email, onBack }: Props) {
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-bold text-zinc-600 transition-colors hover:bg-white/5 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-          aria-label="Wróć"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-600 transition-colors hover:bg-white/5 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+          aria-label="Poprzednia strona"
         >
-          <ArrowLeftIcon className="h-6 w-6 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
-          <span>Wróć</span>
+          <ArrowLeft size={22} strokeWidth={2} className="text-brand-gold dark:text-brand-gold-bright" aria-hidden />
         </button>
         <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
           Ustawienia

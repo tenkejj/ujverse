@@ -123,7 +123,7 @@ export default function SinglePostView({
         type="button"
         onClick={onBack}
         className="p-2 w-fit rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-fg-primary/70 dark:text-slate-300"
-        aria-label="Wróć"
+        aria-label="Poprzednia strona"
       >
         <ArrowLeft size={18} strokeWidth={2} />
       </button>

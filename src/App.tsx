@@ -28,6 +28,20 @@ import SettingsView from './components/SettingsView'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
 import { Analytics } from '@vercel/analytics/react'
+import { DataService } from './services/DataService'
+
+type AppShellView =
+  | 'feed'
+  | 'profile'
+  | 'notifications'
+  | 'events'
+  | 'post'
+  | 'userProfile'
+  | 'settings'
+
+function normalizePathname(pathname: string): string {
+  return pathname.replace(/\/+$/, '') || '/'
+}
 
 function profileHandleFromPath(pathname: string): string | null {
   const m = pathname.match(/^\/profile\/([^/]+)\/?$/)
@@ -40,8 +54,48 @@ function threadPostIdFromPath(pathname: string): string | null {
 }
 
 function isResetPasswordPath(pathname: string): boolean {
-  const normalized = pathname.replace(/\/+$/, '') || '/'
+  const normalized = normalizePathname(pathname)
   return normalized === '/reset-password'
+}
+
+type RouteParseOk = {
+  kind: 'ok'
+  view: AppShellView
+  profileHandle: string | null
+  postId: string | null
+}
+
+type RouteParseUnknown = { kind: 'unknown' }
+
+/** Single place that maps pathname → shell view + mirrored state (listener + effectiveActiveView). */
+function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown {
+  if (normalizedPath === '/settings') {
+    return { kind: 'ok', view: 'settings', profileHandle: null, postId: null }
+  }
+  const postId = threadPostIdFromPath(normalizedPath)
+  if (postId) {
+    return { kind: 'ok', view: 'post', profileHandle: null, postId }
+  }
+  const handleRaw = profileHandleFromPath(normalizedPath)
+  if (handleRaw) {
+    const profileHandle = handleRaw.trim().toLowerCase()
+    if (profileHandle) {
+      return { kind: 'ok', view: 'userProfile', profileHandle, postId: null }
+    }
+  }
+  if (normalizedPath === '/profile') {
+    return { kind: 'ok', view: 'profile', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/events') {
+    return { kind: 'ok', view: 'events', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/notifications') {
+    return { kind: 'ok', view: 'notifications', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/') {
+    return { kind: 'ok', view: 'feed', profileHandle: null, postId: null }
+  }
+  return { kind: 'unknown' }
 }
 
 function App() {
@@ -52,12 +106,6 @@ function App() {
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const [activeView, setActiveView] = useState<
-    'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile' | 'settings'
-  >('feed')
-  const settingsReturnView = useRef<
-    'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile'
-  >('feed')
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState('')
@@ -151,18 +199,37 @@ function App() {
     () => notifications.filter((n) => !n.is_read).length,
     [notifications],
   )
+  const normalizedPath = useMemo(() => normalizePathname(location.pathname), [location.pathname])
   const routeProfileHandle = useMemo(() => {
-    const h = profileHandleFromPath(location.pathname)
+    const h = profileHandleFromPath(normalizedPath)
     return h ? h.toLowerCase() : null
-  }, [location.pathname])
-  const routeThreadPostId = useMemo(() => threadPostIdFromPath(location.pathname), [location.pathname])
-  const effectiveActiveView = location.pathname === '/profile'
-    ? 'profile'
-    : routeThreadPostId
-      ? 'post'
-    : routeProfileHandle
-      ? 'userProfile'
-      : activeView
+  }, [normalizedPath])
+  const routeThreadPostId = useMemo(() => threadPostIdFromPath(normalizedPath), [normalizedPath])
+  const routeSnapshot = useMemo(() => parseAppRoute(normalizedPath), [normalizedPath])
+  const effectiveActiveView: AppShellView = useMemo(() => {
+    if (routeSnapshot.kind === 'unknown') return 'feed'
+    return routeSnapshot.view
+  }, [routeSnapshot])
+
+  /** Keep navigation-related state aligned with the URL (hybrid shell). */
+  useEffect(() => {
+    if (isResetPasswordPath(location.pathname)) return
+    if (!session) return
+    const parsed = parseAppRoute(normalizedPath)
+    if (parsed.kind === 'unknown') {
+      navigate('/', { replace: true })
+      return
+    }
+    const { profileHandle, postId } = parsed
+    setActiveProfileHandle((prev) => {
+      const next = profileHandle
+      return prev === next ? prev : next
+    })
+    setActivePostId((prev) => {
+      const next = postId
+      return prev === next ? prev : next
+    })
+  }, [normalizedPath, navigate, session])
 
   const fetchProfileHandleByUserId = useCallback(
     async (userId: string): Promise<string | null> => {
@@ -310,26 +377,25 @@ function App() {
     if (!session?.user?.id) return
     const silent = opts?.silent ?? false
     if (!silent) setNotificationsLoading(true)
-    const { data } = await supabase
-      .from('notifications')
-      .select('*, actor:profiles!notifications_actor_id_fkey(id, full_name, username, avatar_url)')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-    const next = (data ?? []) as AppNotification[]
-    setNotifications(next)
-    setProfileHandleByUserId((prev) => {
-      let changed = false
-      const merged = { ...prev }
-      for (const item of next) {
-        const actorId = item.actor?.id
-        const handle = item.actor?.username?.trim().toLowerCase()
-        if (!actorId || !handle || merged[actorId] === handle) continue
-        merged[actorId] = handle
-        changed = true
-      }
-      return changed ? merged : prev
-    })
+    const { data, error } = await DataService.listNotificationsForUser(session.user.id)
+    if (error) {
+      console.error('[fetchNotifications]', error.message)
+    } else {
+      const next = data ?? []
+      setNotifications(next)
+      setProfileHandleByUserId((prev) => {
+        let changed = false
+        const merged = { ...prev }
+        for (const item of next) {
+          const actorId = item.actor?.id
+          const handle = item.actor?.username?.trim().toLowerCase()
+          if (!actorId || !handle || merged[actorId] === handle) continue
+          merged[actorId] = handle
+          changed = true
+        }
+        return changed ? merged : prev
+      })
+    }
     if (!silent) setNotificationsLoading(false)
   }, [session])
 
@@ -461,91 +527,125 @@ function App() {
   // ── Notifications ─────────────────────────────────────────────────────────
 
   const navigateToPost = useCallback((postId: string) => {
-    setActivePostId(postId)
-    setActiveView('post')
-    if (location.pathname !== '/') navigate('/')
-  }, [location.pathname, navigate])
+    navigate(`/thread/${encodeURIComponent(postId)}`)
+  }, [navigate])
 
   const navigateToMainView = useCallback((
-    view: 'feed' | 'profile' | 'notifications' | 'events' | 'post' | 'userProfile' | 'settings',
+    view: AppShellView,
   ) => {
-    setActiveView(view)
+    const p = normalizePathname(location.pathname)
     if (view === 'profile') {
-      if (location.pathname !== '/profile') navigate('/profile')
+      if (p !== '/profile') navigate('/profile')
+      return
+    }
+    if (view === 'feed') {
+      if (p !== '/') navigate('/')
+      return
+    }
+    if (view === 'events') {
+      if (p !== '/events') navigate('/events')
+      return
+    }
+    if (view === 'notifications') {
+      if (p !== '/notifications') navigate('/notifications')
+      return
+    }
+    if (view === 'settings') {
+      if (p !== '/settings') navigate('/settings')
       return
     }
     const currentHandle = activeProfileHandle ?? routeProfileHandle
     if (view === 'userProfile' && currentHandle) {
-      navigate(`/profile/${encodeURIComponent(currentHandle)}`)
+      const target = `/profile/${encodeURIComponent(currentHandle)}`
+      if (p !== target) navigate(target)
       return
     }
-    if (location.pathname !== '/') navigate('/')
-  }, [activeProfileHandle, location.pathname, navigate, routeProfileHandle])
+    if (view === 'post' && activePostId) {
+      const target = `/thread/${encodeURIComponent(activePostId)}`
+      if (p !== target) navigate(target)
+      return
+    }
+    if (p !== '/') navigate('/')
+  }, [location.pathname, navigate, activeProfileHandle, routeProfileHandle, activePostId])
 
   const navigateToUser = useCallback(async (userId: string) => {
     const handle = await fetchProfileHandleByUserId(userId)
     if (!handle) return
-    setActiveProfileHandle(handle)
-    setActiveView('userProfile')
     navigate(`/profile/${encodeURIComponent(handle)}`)
   }, [fetchProfileHandleByUserId, navigate])
 
   const navigateToProfileByHandle = useCallback((handle: string) => {
     const normalized = handle.trim().toLowerCase()
     if (!normalized) return
-    setActiveProfileHandle(normalized)
-    setActiveView('userProfile')
     navigate(`/profile/${encodeURIComponent(normalized)}`)
   }, [navigate])
 
   const openSettings = useCallback(() => {
-    if (activeView !== 'settings') {
-      settingsReturnView.current = activeView
+    if (normalizePathname(location.pathname) !== '/settings') {
+      navigate('/settings')
     }
-    setActiveView('settings')
-    if (location.pathname !== '/') navigate('/')
-  }, [activeView, location.pathname, navigate])
+  }, [location.pathname, navigate])
 
   const navigateToPostFromNotificationsPanel = useCallback((postId: string) => {
     setNotificationsPanelOpen(false)
-    setActivePostId(postId)
-    setActiveView('post')
-    if (location.pathname !== '/') navigate('/')
-  }, [location.pathname, navigate])
+    navigate(`/thread/${encodeURIComponent(postId)}`)
+  }, [navigate])
+
+  const goBackInHistory = useCallback(() => {
+    navigate(-1)
+  }, [navigate])
 
   const navigateToUserFromNotificationsPanel = useCallback(async (userId: string) => {
     setNotificationsPanelOpen(false)
     await navigateToUser(userId)
   }, [navigateToUser])
 
-  const markNotificationRead = useCallback(async (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
-    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', Number(id))
-    if (error) console.error('[markNotificationRead]', error.message)
-  }, [])
+  const markNotificationRead = useCallback(
+    async (id: string) => {
+      const userId = session?.user?.id
+      if (!userId) return
+      const idKey = String(id)
+      setNotifications((prev) =>
+        prev.map((n) => (String(n.id) === idKey ? { ...n, is_read: true } : n)),
+      )
+      const { error } = await DataService.markNotificationRead(userId, idKey)
+      if (error) {
+        console.error('[markNotificationRead]', error.message)
+        toast.error('Nie udało się zaktualizować powiadomienia.')
+        await fetchNotifications({ silent: true })
+        return
+      }
+      await fetchNotifications({ silent: true })
+    },
+    [session?.user?.id, fetchNotifications],
+  )
 
   const markAllRead = useCallback(async () => {
+    const userId = session?.user?.id
+    if (!userId) return
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
-    if (session?.user?.id) {
-      const { error } = await supabase.from('notifications').update({ is_read: true })
-        .eq('user_id', session.user.id).eq('is_read', false)
-      if (error) console.error('[markAllRead]', error.message)
+    const { error } = await DataService.markAllNotificationsRead(userId)
+    if (error) {
+      console.error('[markAllRead]', error.message)
+      toast.error('Nie udało się oznaczyć powiadomień jako przeczytane.')
+      await fetchNotifications({ silent: true })
+      return
     }
-  }, [session])
+    await fetchNotifications({ silent: true })
+  }, [session?.user?.id, fetchNotifications])
 
   const clearAllNotifications = useCallback(async () => {
     if (!session?.user?.id) return
     setNotifications([])
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('user_id', session.user.id)
+    const { error } = await DataService.clearAllNotificationsForUser(session.user.id)
     if (error) {
       console.error('[clearAllNotifications]', error.message)
       toast.error('Nie udało się wyczyścić powiadomień.')
-      void fetchNotifications()
+      await fetchNotifications({ silent: true })
+      return
     }
-  }, [session, fetchNotifications])
+    await fetchNotifications({ silent: true })
+  }, [session?.user?.id, fetchNotifications])
 
   const toggleNotificationsPanel = useCallback(() => {
     setNotificationsPanelOpen((prev) => {
@@ -971,7 +1071,6 @@ function App() {
             posts={posts}
             postsLoading={postsLoading}
             viewedHandle={effectiveActiveView === 'userProfile' ? viewedHandle! : null}
-            onBack={effectiveActiveView === 'userProfile' ? () => navigateToMainView('feed') : undefined}
             onNavigateToPost={navigateToPost}
             joinedAtLabel={
               session.user.created_at
@@ -1005,12 +1104,12 @@ function App() {
           />
         )
       case 'post':
-        if (!routeThreadPostId && !activePostId) return null
+        if (!routeThreadPostId) return null
         return (
           <SinglePostView
-            postId={routeThreadPostId ?? activePostId!}
+            postId={routeThreadPostId}
             {...sharedPostProps}
-            onBack={() => navigateToMainView('feed')}
+            onBack={goBackInHistory}
             onNavigateToUser={navigateToUser}
           />
         )
@@ -1019,7 +1118,7 @@ function App() {
           <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
             <SettingsView
               email={session.user?.email ?? undefined}
-              onBack={() => navigateToMainView(settingsReturnView.current)}
+              onBack={goBackInHistory}
             />
           </ViewErrorBoundary>
         )

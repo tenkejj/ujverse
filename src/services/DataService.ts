@@ -11,6 +11,7 @@ import { AnnouncementsAdapter } from './adapters/AnnouncementsAdapter'
 import { ClubsAdapter } from './adapters/ClubsAdapter'
 import { EventsAdapter } from './adapters/EventsAdapter'
 import { PostsAdapter } from './adapters/PostsAdapter'
+import { NotificationsAdapter } from './adapters/NotificationsAdapter'
 import type { Unsubscribe } from './adapters/BaseAdapter'
 import { canonicalDepartment } from '../lib/departments'
 
@@ -77,6 +78,26 @@ class DataServiceImpl {
   /* Pobranie pojedynczego posta (np. dla SinglePostView). */
   async fetchPostById(id: string): Promise<Post | null> {
     return PostsAdapter.fetchById(id)
+  }
+
+  /* Powiadomienia — persists read/clear przez RLS dla auth.uid(). */
+  async listNotificationsForUser(
+    userId: string,
+    opts?: { limit?: number },
+  ): ReturnType<typeof NotificationsAdapter.listForUser> {
+    return NotificationsAdapter.listForUser(userId, opts?.limit ?? 50)
+  }
+
+  async markNotificationRead(userId: string, id: string) {
+    return NotificationsAdapter.markRead(userId, id)
+  }
+
+  async markAllNotificationsRead(userId: string) {
+    return NotificationsAdapter.markAllUnreadRead(userId)
+  }
+
+  async clearAllNotificationsForUser(userId: string) {
+    return NotificationsAdapter.deleteAllForUser(userId)
   }
 
   /* Mapowanie wydarzeń z kontekstu do UnifiedContent. */

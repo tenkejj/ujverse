@@ -1,0 +1,38 @@
+---
+description: UJverse architectural invariants (auth, profile, follows, glass, schema)
+alwaysApply: true
+---
+
+# UJverse architecture (compact)
+
+Anchor detail: [.cursor/ARCHITECT_MAP.md](.cursor/ARCHITECT_MAP.md). Prefer extending existing patterns.
+
+1. **Session ownership** — [`src/App.tsx`](src/App.tsx) owns `session`, `myProfile`, and feed interaction state; do not add an `AuthContext` for the same concern. See [Auth (client)](.cursor/ARCHITECT_MAP.md#auth-client).
+
+2. **No route table in App** — Routing is `useLocation` + `navigate` + `activeView` hybrid; there is no `<Routes>` / `<Route>` in [`src/App.tsx`](src/App.tsx). See [Routing model](.cursor/ARCHITECT_MAP.md#routing-model).
+
+3. **Shadow login** — [`src/components/auth/Login.tsx`](src/components/auth/Login.tsx) maps username → `{user}@ujverse.test` for Supabase email auth.
+
+4. **`useProfileData`** — [`src/hooks/useProfileData.ts`](src/hooks/useProfileData.ts): no Supabase Realtime; if `initialProfile?.id === userId`, skip fetch. See [Profile system](.cursor/ARCHITECT_MAP.md#profile-system).
+
+5. **Follows contract** — Schema + RLS in [`supabase/migrations/20260411120000_follows.sql`](supabase/migrations/20260411120000_follows.sql); UI via [`useProfileSocialData`](src/hooks/useProfileSocialData.ts), [`FollowListsModal`](src/components/FollowListsModal.tsx), [`ProfileActionButton`](src/components/profile/ProfileActionButton.tsx). See [Follow system](.cursor/ARCHITECT_MAP.md#follow-system).
+
+6. **Follow UX** — [`useProfileSocialData`](src/hooks/useProfileSocialData.ts): optimistic `toggleFollow` with rollback; Realtime on `public.follows` — ensure publication matches deployment ([Known drift](.cursor/ARCHITECT_MAP.md#known-drift)).
+
+7. **Admin gate** — `is_profile_admin()` reads **`profiles.role === 'admin'`**; used for comment delete policy. See [Auth & RLS model](.cursor/ARCHITECT_MAP.md#auth--rls-model).
+
+8. **Profiles SELECT** — Intended **authenticated** policy (`profiles_select_all` in migration `20260512140000`); reconcile with [`supabase_setup.sql`](supabase_setup.sql) if both ran.
+
+9. **`handle_new_user`** — Latest migration intent: **`username` null** at signup (`20260423100000_manual_username_on_signup.sql`); trigger wiring may live only in setup SQL.
+
+10. **Glass / cards** — Prefer [`BaseCard`](src/components/ui/BaseCard.tsx) + [`src/styles/theme.ts`](src/styles/theme.ts); profile mobile glass from [`PROFILE_MOBILE` in `mobile-theme.ts`](src/styles/mobile-theme.ts).
+
+11. **Tailwind v4** — Global tokens in [`src/index.css`](src/index.css) (`@theme`, CSS variables); theme class on `<html>` via [`ThemeContext`](src/ThemeContext.tsx).
+
+12. **Data facade** — Feature queries for unified content go through [`DataService`](src/services/DataService.ts) + adapters; **`App.tsx` may still use `supabase` directly** for feed/likes/comments — do not bypass DataService where the facade already exists without cause.
+
+13. **Schema source** — Treat [`supabase/migrations/`](supabase/migrations/) as the versioned contract; [`supabase_setup.sql`](supabase_setup.sql) is bootstrap / possibly divergent. See [Known drift](.cursor/ARCHITECT_MAP.md#known-drift).
+
+14. **RPC vs reality** — `get_replies_engagement_snapshot` references **`comment_likes`** / **`comment_replies`**; migrations do not define them — fix schema or drop RPC. Same section covers **hardcoded** [`supabaseClient.ts`](src/supabaseClient.ts).
+
+15. **API** — [`api/scrape-wziks.ts`](api/scrape-wziks.ts) is a Vercel serverless default export; [`vercel.json`](vercel.json) is minimal — env vars are deployment-owned. See [API surface](.cursor/ARCHITECT_MAP.md#api-surface).

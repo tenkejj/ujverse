@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, MoreVertical, UserX } from 'lucide-react'
+import { MoreVertical, UserX } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Post, Profile as ProfileT } from '../types'
 import { toast } from '../lib/appToast'
@@ -35,7 +35,6 @@ type Props = {
   displayName: string
   currentUserId: string
   viewedHandle?: string | null
-  onBack?: () => void
   onNavigateToPost?: (postId: string) => void
   joinedAtLabel?: string | null
   onOpenProfileModal: () => void
@@ -78,7 +77,6 @@ export default function Profile({
   displayName,
   currentUserId,
   viewedHandle = null,
-  onBack,
   onNavigateToPost,
   joinedAtLabel,
   onOpenProfileModal,
@@ -610,16 +608,6 @@ export default function Profile({
   if (!isOwn && otherLoading) {
     return (
       <div className="space-y-3">
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="-ml-1 mb-1 flex items-center gap-1.5 text-sm font-semibold text-fg-secondary transition-colors hover:text-fg-primary dark:text-gray-400 dark:hover:text-white"
-          >
-            <ArrowLeft size={18} />
-            Wróć
-          </button>
-        )}
         <ProfileSkeleton />
       </div>
     )
@@ -628,16 +616,6 @@ export default function Profile({
   if (!isOwn && otherNotFound) {
     return (
       <div className="space-y-3">
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="-ml-1 mb-1 flex items-center gap-1.5 text-sm font-semibold text-fg-secondary transition-colors hover:text-fg-primary dark:text-gray-400 dark:hover:text-white"
-          >
-            <ArrowLeft size={18} />
-            Wróć
-          </button>
-        )}
         <div className="flex flex-col items-center gap-3 py-20 text-zinc-400">
           <UserX size={48} strokeWidth={1.5} className="text-zinc-300 dark:text-white/20" />
           <p className="text-[15px] font-semibold text-zinc-500 dark:text-gray-400">
@@ -651,17 +629,6 @@ export default function Profile({
   return (
     <>
       <div className="space-y-6">
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="-ml-1 mb-1 flex items-center gap-1.5 text-sm font-semibold text-fg-secondary transition-colors hover:text-fg-primary dark:text-gray-400 dark:hover:text-white"
-          >
-            <ArrowLeft size={18} />
-            Wróć
-          </button>
-        )}
-
         <motion.section
           initial="hidden"
           animate="show"
