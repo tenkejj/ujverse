@@ -13,7 +13,7 @@ import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, PROFILE_MOBILE } from '../styles/mobile-theme'
-import { theme } from '../styles/theme'
+import { theme as uiTheme } from '../styles/theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -76,7 +76,7 @@ export default function Header({
   const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
   const notificationsRef = useRef<HTMLDivElement | null>(null)
-  const { theme, toggleTheme } = useTheme()
+  const { theme: colorMode, toggleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const [clubsModalOpen, setClubsModalOpen] = useState(false)
   const { clubs, loading: clubsLoading, error: clubsError, reload: reloadClubs } = useClubs()
@@ -207,9 +207,9 @@ export default function Header({
             type="button"
             onClick={toggleTheme}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out"
-            aria-label={theme === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
+            aria-label={colorMode === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
           >
-            {theme === 'dark' ? (
+            {colorMode === 'dark' ? (
               <Sun size={20} strokeWidth={2} className="shrink-0" />
             ) : (
               <Moon size={20} strokeWidth={2} className="shrink-0" />
@@ -411,7 +411,7 @@ export default function Header({
                 >
                   <div className="flex shrink-0 items-center justify-between gap-4 pr-10">
                     <h2
-                      className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.text.sectionHeader}`}
+                      className={`text-[10px] font-bold uppercase tracking-[0.22em] ${uiTheme.text.sectionHeader}`}
                     >
                       Powiadomienia
                     </h2>
@@ -425,18 +425,18 @@ export default function Header({
                     </button>
                   </div>
 
-                  <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                  <NotificationsView
-                    embedded
-                    cleanOverlay
-                    fullScreenModal
-                    notifications={notifications}
-                    loading={notificationsLoading}
-                    onMarkRead={onMarkNotificationRead}
-                    onMarkAllRead={onMarkAllNotificationsRead}
-                    onNavigateToPost={onNavigateToPostFromNotificationsPanel}
-                    onNavigateToUser={onNavigateToUserFromNotificationsPanel}
-                  />
+                  <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-8 pt-2 sm:px-3">
+                    <NotificationsView
+                      embedded
+                      cleanOverlay
+                      fullScreenModal
+                      notifications={notifications}
+                      loading={notificationsLoading}
+                      onMarkRead={onMarkNotificationRead}
+                      onMarkAllRead={onMarkAllNotificationsRead}
+                      onNavigateToPost={onNavigateToPostFromNotificationsPanel}
+                      onNavigateToUser={onNavigateToUserFromNotificationsPanel}
+                    />
                   </div>
                 </div>
               </div>

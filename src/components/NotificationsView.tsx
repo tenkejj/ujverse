@@ -5,6 +5,9 @@ import type { AppNotification } from '../types'
 import { relativeTime } from '../lib/utils'
 import UserAvatar from './UserAvatar'
 import EmptyState from './EmptyState'
+import BaseCard from './ui/BaseCard'
+import { theme } from '../styles/theme'
+import { PROFILE_MOBILE } from '../styles/mobile-theme'
 
 type Props = {
   notifications: AppNotification[]
@@ -16,14 +19,26 @@ type Props = {
   embedded?: boolean
   glassPanel?: boolean
   fullScreenModal?: boolean
-  /** Minimalistyczny overlay jak Search — bez glow, płaskie ikony, wiersze z border-b. */
   cleanOverlay?: boolean
 }
+
+/** Premium glass shell for standalone (mobile) route — room to breathe. */
+const standaloneShell = `${PROFILE_MOBILE.card.glassClass} ${PROFILE_MOBILE.card.paddingXClass} py-8 sm:py-10`
+
+/** Floating card: default BaseCard surface + extra glass polish. */
+const floatingCardClass = [
+  'w-full text-left border-white/10 shadow-sm dark:border-white/10 dark:shadow-lg',
+  theme.colors.surface.glass,
+  'backdrop-saturate-150',
+  'transition-[transform,box-shadow,filter] duration-200 ease-out',
+  'active:scale-[0.98]',
+  '[-webkit-tap-highlight-color:transparent]',
+].join(' ')
 
 function ActionBadge({ type, clean }: { type: 'like' | 'comment'; clean?: boolean }) {
   if (clean) {
     const wrap =
-      'absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200/80 bg-slate-100/90 dark:border-white/10 dark:bg-white/[0.08]'
+      'absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-border-app bg-black/[0.04] dark:border-white/12 dark:bg-white/[0.08]'
     if (type === 'like') {
       return (
         <span className={wrap} aria-hidden>
@@ -67,6 +82,21 @@ function SkeletonRow({
   borderless?: boolean
   cleanOverlay?: boolean
 }) {
+  if (!glassPanel) {
+    void borderless
+    void cleanOverlay
+    return (
+      <BaseCard variant="default" flush className={`${floatingCardClass} pointer-events-none`}>
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="h-10 w-10 shrink-0 rounded-full bg-black/[0.06] animate-pulse dark:bg-white/[0.08]" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 max-w-[200px] w-3/4 rounded-full bg-black/[0.06] animate-pulse dark:bg-white/[0.08]" />
+            <div className="h-2.5 w-1/3 rounded-full bg-black/[0.04] animate-pulse dark:bg-white/[0.05]" />
+          </div>
+        </div>
+      </BaseCard>
+    )
+  }
   if (cleanOverlay) {
     return (
       <div className="flex items-center gap-3 border-b border-slate-200/60 py-3 dark:border-white/5">
@@ -100,13 +130,13 @@ function SkeletonRow({
 function SectionLabel({ children, variant = 'default' }: { children: ReactNode; variant?: 'default' | 'earlier' }) {
   if (variant === 'earlier') {
     return (
-      <p className="px-1 pt-3 pb-1.5 text-[8px] font-bold uppercase tracking-[0.32em] text-brand-gold/45 dark:text-brand-gold-bright/40 first:pt-1">
+      <p className={`mb-4 px-1 pt-3 text-[8px] font-bold uppercase tracking-[0.32em] text-brand-gold/45 dark:text-brand-gold-bright/40 first:pt-1`}>
         {children}
       </p>
     )
   }
   return (
-    <p className="px-1 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500 first:pt-1">
+    <p className="mb-4 px-1 pt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 first:pt-1 dark:text-slate-500">
       {children}
     </p>
   )
@@ -115,13 +145,13 @@ function SectionLabel({ children, variant = 'default' }: { children: ReactNode; 
 function SectionLabelGlass({ children, variant = 'default' }: { children: ReactNode; variant?: 'default' | 'earlier' }) {
   if (variant === 'earlier') {
     return (
-      <p className="px-1 pt-3 pb-1.5 text-[8px] font-bold uppercase tracking-[0.32em] text-brand-gold/50 first:pt-1">
+      <p className="mb-1 px-1 pt-3 pb-1.5 text-[8px] font-bold uppercase tracking-[0.32em] text-brand-gold/50 first:pt-1">
         {children}
       </p>
     )
   }
   return (
-    <p className="px-1 pt-3 pb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-white/45 first:pt-1">
+    <p className="mb-1 px-1 pt-3 pb-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-white/45 first:pt-1">
       {children}
     </p>
   )
@@ -129,7 +159,7 @@ function SectionLabelGlass({ children, variant = 'default' }: { children: ReactN
 
 function SectionLabelClean({ children, variant = 'default' }: { children: ReactNode; variant?: 'default' | 'earlier' }) {
   const base =
-    'pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 first:pt-0 dark:text-slate-500'
+    'mb-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 first:pt-0 dark:text-slate-500'
   if (variant === 'earlier') {
     return <p className={`${base} text-brand-gold/70 dark:text-brand-gold-bright/55`}>{children}</p>
   }
@@ -159,7 +189,27 @@ function NotificationRow({
   const actorName = actorProfile?.full_name ?? 'Ktoś'
   const actionText = notif.type === 'like' ? 'polubił(a) Twój wpis' : 'skomentował(a) Twój wpis'
 
-  if (cleanOverlay) {
+  if (glassPanel) {
+    const avatarGlow =
+      notif.type === 'like'
+        ? 'shadow-[0_0_14px_rgba(201,162,39,0.45)] dark:shadow-[0_0_16px_rgba(250,204,21,0.35)]'
+        : 'shadow-[0_0_14px_rgba(59,130,246,0.35)] dark:shadow-[0_0_16px_rgba(96,165,250,0.3)]'
+
+    const cardGlass =
+      glassPanel && fullScreenModal
+        ? notif.is_read
+          ? 'border-0 bg-transparent shadow-none hover:bg-brand-gold/5 rounded-none'
+          : 'border-0 bg-white/[0.02] shadow-none hover:bg-brand-gold/5 rounded-none'
+        : glassPanel
+          ? notif.is_read
+            ? 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.09]'
+            : 'border-brand-gold/25 bg-brand-gold/[0.08] hover:bg-brand-gold/[0.12]'
+          : ''
+
+    const nameCls = `font-bold text-white ${onNavigateToUser ? 'cursor-pointer hover:underline decoration-white/40' : ''}`
+    const bodyCls = 'text-slate-400'
+    const timeCls = 'text-slate-500'
+
     return (
       <button
         type="button"
@@ -167,8 +217,60 @@ function NotificationRow({
           if (!notif.is_read) onMarkRead(notif.id)
           if (notif.post_id) onNavigateToPost(notif.post_id)
         }}
-        className="group flex w-full items-center gap-3 border-b border-slate-200/60 py-3.5 text-left transition-colors last:border-b-0 hover:bg-black/[0.02] dark:border-white/5 dark:hover:bg-white/[0.03]"
+        className={`group relative w-full flex items-center gap-3 px-4 py-3.5 border text-left transition-all duration-300 ${
+          fullScreenModal ? 'rounded-none' : 'rounded-2xl'
+        } ${glassPanel && fullScreenModal ? '' : 'hover:shadow-lg hover:border-white/15'} ${cardGlass}`}
       >
+        <div
+          className="relative shrink-0 rounded-full"
+          onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+        >
+          <UserAvatar
+            profile={actorProfile}
+            name={actorName}
+            className={`h-10 w-10 ring-2 ring-white/90 dark:ring-slate-950 rounded-full transition-shadow duration-300 ${avatarGlow}`}
+            textSize="text-sm"
+          />
+          <ActionBadge type={notif.type} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[13.5px] leading-snug">
+            <span
+              className={nameCls}
+              onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+            >
+              {actorName}
+            </span>{' '}
+            <span className={bodyCls}>{actionText}</span>
+          </p>
+          <p className={`text-xs mt-0.5 ${timeCls}`}>{relativeTime(notif.created_at)}</p>
+        </div>
+      </button>
+    )
+  }
+
+  void cleanOverlay
+
+  const unreadRing =
+    !notif.is_read
+      ? 'ring-1 ring-[#1e293b]/12 dark:ring-brand-gold-bright/25'
+      : ''
+
+  return (
+    <BaseCard
+      as="button"
+      type="button"
+      variant="default"
+      interactive
+      flush
+      onClick={() => {
+        if (!notif.is_read) onMarkRead(notif.id)
+        if (notif.post_id) onNavigateToPost(notif.post_id)
+      }}
+      className={`${floatingCardClass} ${unreadRing}`}
+    >
+      <div className="flex items-center gap-3 px-4 py-4">
         <div
           className="relative shrink-0"
           onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
@@ -176,93 +278,25 @@ function NotificationRow({
           <UserAvatar
             profile={actorProfile}
             name={actorName}
-            className="h-10 w-10 ring-1 ring-slate-200/80 dark:ring-white/10"
+            className="h-10 w-10 ring-1 ring-border-app dark:ring-white/10"
             textSize="text-sm"
           />
           <ActionBadge type={notif.type} clean />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[13.5px] leading-snug text-slate-800 dark:text-slate-100">
+          <p className={`text-[13.5px] leading-snug ${theme.text.primary}`}>
             <span
-              className={`font-semibold ${onNavigateToUser ? 'cursor-pointer group-hover:text-brand-gold dark:group-hover:text-brand-gold-bright' : ''}`}
+              className={`font-semibold ${onNavigateToUser ? 'cursor-pointer group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright' : ''}`}
               onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
             >
               {actorName}
             </span>{' '}
-            <span className="font-normal text-slate-500 dark:text-slate-400">{actionText}</span>
+            <span className={`font-normal ${theme.text.muted}`}>{actionText}</span>
           </p>
-          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{relativeTime(notif.created_at)}</p>
+          <p className={`mt-1 text-xs ${theme.text.muted}`}>{relativeTime(notif.created_at)}</p>
         </div>
-      </button>
-    )
-  }
-
-  const avatarGlow =
-    notif.type === 'like'
-      ? 'shadow-[0_0_14px_rgba(201,162,39,0.45)] dark:shadow-[0_0_16px_rgba(250,204,21,0.35)]'
-      : 'shadow-[0_0_14px_rgba(59,130,246,0.35)] dark:shadow-[0_0_16px_rgba(96,165,250,0.3)]'
-
-  const cardGlass =
-    glassPanel && fullScreenModal
-      ? notif.is_read
-        ? 'border-0 bg-transparent shadow-none hover:bg-brand-gold/5 rounded-none'
-        : 'border-0 bg-white/[0.02] shadow-none hover:bg-brand-gold/5 rounded-none'
-      : glassPanel
-        ? notif.is_read
-          ? 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.09]'
-          : 'border-brand-gold/25 bg-brand-gold/[0.08] hover:bg-brand-gold/[0.12]'
-        : ''
-
-  const cardDefault = !glassPanel
-    ? notif.is_read
-      ? 'bg-card border-slate-100 dark:border-border-app hover:bg-slate-50/90 dark:hover:bg-white/[0.06]'
-      : 'bg-uj-blue/5 dark:bg-accent-interactive/8 border-uj-blue/10 dark:border-accent-interactive/20 hover:bg-uj-blue/[0.08] dark:hover:bg-accent-interactive/12'
-    : ''
-
-  const nameCls = glassPanel
-    ? `font-bold text-white ${onNavigateToUser ? 'cursor-pointer hover:underline decoration-white/40' : ''}`
-    : `font-semibold text-slate-800 dark:text-gray-100 ${onNavigateToUser ? 'cursor-pointer hover:underline' : ''}`
-
-  const bodyCls = glassPanel ? 'text-slate-400' : 'text-slate-500 dark:text-gray-400'
-  const timeCls = glassPanel ? 'text-slate-500' : 'text-slate-400 dark:text-gray-500'
-
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        if (!notif.is_read) onMarkRead(notif.id)
-        if (notif.post_id) onNavigateToPost(notif.post_id)
-      }}
-      className={`group relative w-full flex items-center gap-3 px-4 py-3.5 border text-left transition-all duration-300 ${
-        fullScreenModal ? 'rounded-none' : 'rounded-2xl'
-      } ${glassPanel && fullScreenModal ? '' : 'hover:shadow-lg hover:border-white/15'} ${cardGlass} ${cardDefault}`}
-    >
-      <div
-        className="relative shrink-0 rounded-full"
-        onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
-      >
-        <UserAvatar
-          profile={actorProfile}
-          name={actorName}
-          className={`h-10 w-10 ring-2 ring-white/90 dark:ring-slate-950 rounded-full transition-shadow duration-300 ${avatarGlow}`}
-          textSize="text-sm"
-        />
-        <ActionBadge type={notif.type} />
       </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="text-[13.5px] leading-snug">
-          <span
-            className={nameCls}
-            onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
-          >
-            {actorName}
-          </span>{' '}
-          <span className={bodyCls}>{actionText}</span>
-        </p>
-        <p className={`text-xs mt-0.5 ${timeCls}`}>{relativeTime(notif.created_at)}</p>
-      </div>
-    </button>
+    </BaseCard>
   )
 }
 
@@ -317,12 +351,14 @@ export default function NotificationsView({
       ? SectionLabelGlass
       : SectionLabel
 
+  const useFloatingCards = !glassPanel
+
   if (loading) {
-    return (
-      <div className="space-y-0">
+    const loadingInner = (
+      <div className={useFloatingCards ? 'space-y-4' : 'space-y-0'}>
         {!embedded && (
-          <div className="flex items-center justify-between px-1 pb-2">
-            <h2 className="text-[15px] font-bold text-slate-800 dark:text-blue-50">Powiadomienia</h2>
+          <div className="flex items-center justify-between px-1 pb-3">
+            <h2 className={`text-[15px] font-bold ${theme.text.primary}`}>Powiadomienia</h2>
           </div>
         )}
         {[1, 2, 3, 4].map((i) => (
@@ -335,6 +371,8 @@ export default function NotificationsView({
         ))}
       </div>
     )
+    if (embedded) return loadingInner
+    return <div className={standaloneShell}>{loadingInner}</div>
   }
 
   if (notifications.length === 0) {
@@ -349,8 +387,8 @@ export default function NotificationsView({
           <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 dark:border-brand-gold-bright/35 dark:bg-brand-gold/15">
             <Check className="h-7 w-7 text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.25} />
           </div>
-          <p className="text-[17px] font-medium tracking-tight text-slate-800 dark:text-slate-100">Wszystko nadrobione!</p>
-          <p className="mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className={`text-[17px] font-medium tracking-tight ${theme.text.primary}`}>Wszystko nadrobione!</p>
+          <p className={`mt-1.5 max-w-[280px] text-[13px] leading-relaxed ${theme.text.muted}`}>
             Brak nowych powiadomień.
           </p>
         </motion.div>
@@ -374,13 +412,15 @@ export default function NotificationsView({
         </motion.div>
       )
     }
-    return (
+    const empty = (
       <EmptyState
         icon={Bell}
         title="Brak powiadomień"
         subtitle="Gdy ktoś polubi lub skomentuje Twój wpis, zobaczysz to tutaj"
       />
     )
+    if (embedded) return empty
+    return <div className={standaloneShell}>{empty}</div>
   }
 
   let staggerIndex = 0
@@ -395,24 +435,33 @@ export default function NotificationsView({
     ? { opacity: 1, y: 0, filter: 'blur(0px)' }
     : { opacity: 1, y: 0 }
 
-  const listOuterCls = fullScreenModal || cleanOverlay ? 'space-y-0' : 'space-y-1'
-  const sectionShell = fullScreenModal && !cleanOverlay
-    ? 'overflow-hidden rounded-xl border border-brand-gold/10'
-    : ''
+  const listOuterCls = useFloatingCards
+    ? 'space-y-8'
+    : fullScreenModal || cleanOverlay
+      ? 'space-y-0'
+      : 'space-y-1'
+  const sectionShell =
+    useFloatingCards
+      ? ''
+      : fullScreenModal && !cleanOverlay
+        ? 'overflow-hidden rounded-xl border border-brand-gold/10'
+        : ''
 
   const rowDivider = (idx: number, len: number) =>
-    fullScreenModal && !cleanOverlay && idx < len - 1 ? 'border-b border-brand-gold/10' : ''
+    !useFloatingCards && fullScreenModal && !cleanOverlay && idx < len - 1 ? 'border-b border-brand-gold/10' : ''
 
   const exitProps = cleanOverlay
     ? { opacity: 0, y: -6, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] as const } }
     : { opacity: 0, x: -14, transition: { duration: 0.22 } }
+
+  const cardStackClass = useFloatingCards ? 'space-y-4' : ''
 
   const listBlock = (
     <div className={listOuterCls}>
       {unreadList.length > 0 && (
         <>
           <SectionLabelCmp>Nowe</SectionLabelCmp>
-          <div className={sectionShell}>
+          <div className={`${sectionShell} ${cardStackClass}`.trim()}>
             <AnimatePresence mode="popLayout" initial={false}>
               {unreadList.map((notif, idx) => {
                 const d = staggerIndex * step
@@ -446,8 +495,8 @@ export default function NotificationsView({
 
       {readList.length > 0 && (
         <>
-          <SectionLabelCmp variant="earlier">Wcześniejsze</SectionLabelCmp>
-          <div className={sectionShell}>
+          <SectionLabelCmp variant="earlier">{glassPanel ? 'Wcześniejsze' : 'Starsze'}</SectionLabelCmp>
+          <div className={`${sectionShell} ${cardStackClass}`.trim()}>
             <AnimatePresence mode="popLayout" initial={false}>
               {readList.map((notif, idx) => {
                 const d = staggerIndex * step
@@ -486,20 +535,22 @@ export default function NotificationsView({
   }
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-3 px-1 pb-2">
-        <h2 className="text-[15px] font-bold text-slate-800 dark:text-blue-50">Powiadomienia</h2>
-        {hasUnread && (
-          <button
-            type="button"
-            onClick={onMarkAllRead}
-            className="shrink-0 rounded-full border border-brand-gold/30 bg-brand-gold/[0.12] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-brand-gold dark:border-brand-gold-bright/35 dark:bg-brand-gold/15 dark:text-brand-gold-bright transition-colors hover:bg-brand-gold/20 dark:hover:bg-brand-gold/25"
-          >
-            Oznacz wszystkie
-          </button>
-        )}
+    <div className={standaloneShell}>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3 px-1 pb-3">
+          <h2 className={`text-[15px] font-bold ${theme.text.primary}`}>Powiadomienia</h2>
+          {hasUnread && (
+            <button
+              type="button"
+              onClick={onMarkAllRead}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200 ease-in-out ${theme.colors.border.gold} bg-[#1e293b]/10 text-[#1e293b] hover:bg-[#1e293b]/16 active:scale-[0.98] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/18`}
+            >
+              Oznacz wszystkie
+            </button>
+          )}
+        </div>
+        {listBlock}
       </div>
-      {listBlock}
     </div>
   )
 }
