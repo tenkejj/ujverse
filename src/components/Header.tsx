@@ -12,7 +12,8 @@ import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
-import { HEADER_MOBILE } from '../styles/mobile-theme'
+import { HEADER_MOBILE, PROFILE_MOBILE } from '../styles/mobile-theme'
+import { theme } from '../styles/theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -377,47 +378,54 @@ export default function Header({
             role="dialog"
             aria-modal="true"
             aria-label="Powiadomienia"
-            className="fixed inset-0 z-[200] hidden md:flex flex-col bg-bg-app/95 dark:bg-bg-app/95 backdrop-blur-2xl"
+            className="fixed inset-0 z-[200] hidden md:flex flex-col bg-bg-app/70 backdrop-blur-xl"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             onPointerDown={onCloseNotificationsPanel}
           >
             <motion.div
               ref={notificationsRef}
-              className="relative flex flex-1 min-h-0 flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] max-w-6xl mx-auto w-full"
+              className="relative mx-auto flex w-full max-w-6xl flex-1 min-h-0 flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
               onPointerDown={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                onClick={onCloseNotificationsPanel}
-                className="absolute top-[max(1rem,env(safe-area-inset-top))] right-5 z-20 flex h-10 w-10 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-200/80 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100"
-                aria-label="Zamknij powiadomienia"
+              <div
+                className={`mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col ${PROFILE_MOBILE.card.glassClass}`}
               >
-                <X size={22} strokeWidth={2} />
-              </button>
+                <button
+                  type="button"
+                  onClick={onCloseNotificationsPanel}
+                  className="absolute right-3 top-3 z-20 rounded-full p-2 text-fg-secondary transition-colors duration-200 ease-in-out hover:bg-bg-app/35 hover:text-fg-primary [-webkit-tap-highlight-color:transparent]"
+                  aria-label="Zamknij powiadomienia"
+                >
+                  <X size={20} strokeWidth={2} />
+                </button>
 
-              <div className="mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col pt-20">
-                <div className="flex shrink-0 items-center justify-between gap-4 pr-12">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-600 dark:text-zinc-400">
-                    Powiadomienia
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={onClearAllNotifications}
-                    disabled={!hasAnyNotifications || notificationsLoading}
-                    className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500 transition-colors hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-35 dark:text-zinc-500 dark:hover:text-zinc-100"
-                  >
-                    Wyczyść
-                  </button>
-                </div>
+                <div
+                  className={`flex min-h-0 flex-1 flex-col ${PROFILE_MOBILE.card.paddingXClass} pb-4 pt-14`}
+                >
+                  <div className="flex shrink-0 items-center justify-between gap-4 pr-10">
+                    <h2
+                      className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.text.sectionHeader}`}
+                    >
+                      Powiadomienia
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={onClearAllNotifications}
+                      disabled={!hasAnyNotifications || notificationsLoading}
+                      className="rounded-md px-1.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-fg-secondary transition-colors duration-200 ease-in-out hover:text-fg-primary active:bg-black/[0.06] disabled:cursor-not-allowed disabled:opacity-35 dark:hover:text-white dark:active:bg-white/[0.06] [-webkit-tap-highlight-color:transparent]"
+                    >
+                      Wyczyść
+                    </button>
+                  </div>
 
-                <div className="mt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                  <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain">
                   <NotificationsView
                     embedded
                     cleanOverlay
@@ -429,6 +437,7 @@ export default function Header({
                     onNavigateToPost={onNavigateToPostFromNotificationsPanel}
                     onNavigateToUser={onNavigateToUserFromNotificationsPanel}
                   />
+                  </div>
                 </div>
               </div>
             </motion.div>
