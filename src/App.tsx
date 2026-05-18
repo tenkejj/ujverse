@@ -25,6 +25,7 @@ import NotificationsView from './components/NotificationsView'
 import SinglePostView from './components/SinglePostView'
 import ComposeBox from './components/ComposeBox'
 import SettingsView from './components/SettingsView'
+import NotificationPopup from './components/notifications/NotificationPopup'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
 import { Analytics } from '@vercel/analytics/react'
@@ -116,6 +117,7 @@ function App() {
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false)
   const [bellRingTick, setBellRingTick] = useState(0)
+  const notificationsAnchorRef = useRef<HTMLButtonElement | null>(null)
 
   // Posts
   const [posts, setPosts] = useState<Post[]>([])
@@ -659,6 +661,12 @@ function App() {
     setNotificationsPanelOpen(false)
   }, [])
 
+  const openNotificationsPanel = useCallback(() => {
+    setMenuOpen(false)
+    setNotificationsPanelOpen(true)
+    void fetchNotifications()
+  }, [fetchNotifications])
+
 
   // ── Likes ─────────────────────────────────────────────────────────────────
 
@@ -1197,15 +1205,9 @@ function App() {
           unreadCount={unreadCount}
           bellRingTick={bellRingTick}
           notificationsPanelOpen={notificationsPanelOpen}
+          notificationsAnchorRef={notificationsAnchorRef}
           onToggleNotificationsPanel={toggleNotificationsPanel}
           onCloseNotificationsPanel={closeNotificationsPanel}
-          notifications={notifications}
-          notificationsLoading={notificationsLoading}
-          onMarkNotificationRead={markNotificationRead}
-          onMarkAllNotificationsRead={markAllRead}
-          onClearAllNotifications={clearAllNotifications}
-          onNavigateToPostFromNotificationsPanel={navigateToPostFromNotificationsPanel}
-          onNavigateToUserFromNotificationsPanel={navigateToUserFromNotificationsPanel}
           onNavigateToUser={navigateToUser}
           onNavigateToPost={navigateToPost}
           onNavigateToFeed={() => navigateToMainView('feed')}
@@ -1242,6 +1244,7 @@ function App() {
           activeView={navActiveView}
           setActiveView={(v) => navigateToMainView(v)}
           unreadCount={unreadCount}
+          onOpenNotifications={openNotificationsPanel}
           onOpenCompose={() => {
             setCreateError(null)
             setCreateBody('')
@@ -1250,6 +1253,19 @@ function App() {
           }}
         />
       </div>
+
+      <NotificationPopup
+        open={notificationsPanelOpen}
+        onClose={closeNotificationsPanel}
+        notifications={notifications}
+        loading={notificationsLoading}
+        onMarkRead={markNotificationRead}
+        onMarkAllRead={markAllRead}
+        onClearAll={clearAllNotifications}
+        onNavigateToPost={navigateToPostFromNotificationsPanel}
+        onNavigateToUser={navigateToUserFromNotificationsPanel}
+        anchorRef={notificationsAnchorRef}
+      />
     </>
     </EventsProvider>
   )

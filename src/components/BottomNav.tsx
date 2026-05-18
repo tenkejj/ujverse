@@ -9,6 +9,7 @@ type Props = {
   activeView: ActiveView
   setActiveView: (view: ActiveView) => void
   onOpenCompose: () => void
+  onOpenNotifications: () => void
   unreadCount: number
 }
 
@@ -46,7 +47,7 @@ function ComposePlusIcon() {
   )
 }
 
-export default function BottomNav({ activeView, setActiveView, onOpenCompose, unreadCount }: Props) {
+export default function BottomNav({ activeView, setActiveView, onOpenCompose, onOpenNotifications, unreadCount }: Props) {
   const scrollY = useScrollY()
   const isScrolled = scrollY > BOTTOM_NAV_MOBILE.scrollThreshold
   const iconBtn = (isActive: boolean) =>
@@ -116,7 +117,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, un
 
         <motion.button
           type="button"
-          onClick={() => setActiveView('notifications')}
+          onClick={onOpenNotifications}
           whileTap={BOTTOM_NAV_MOBILE.motion.tabTap}
           className={iconBtn(activeView === 'notifications')}
           aria-label="Powiadomienia"

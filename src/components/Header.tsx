@@ -1,19 +1,17 @@
 import { useRef, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Settings, Sun, User, Users, X } from 'lucide-react'
+import type { RefObject } from 'react'
+import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
-import type { AppNotification, Profile } from '../types'
+import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import SearchBar from './SearchBar'
-import NotificationsView from './NotificationsView'
 import ClubsModal from './ClubsModal'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
-import { HEADER_MOBILE, PROFILE_MOBILE } from '../styles/mobile-theme'
-import { theme as uiTheme } from '../styles/theme'
+import { HEADER_MOBILE } from '../styles/mobile-theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -26,15 +24,9 @@ type Props = {
   unreadCount: number
   bellRingTick: number
   notificationsPanelOpen: boolean
+  notificationsAnchorRef?: RefObject<HTMLButtonElement | null>
   onToggleNotificationsPanel: () => void
   onCloseNotificationsPanel: () => void
-  notifications: AppNotification[]
-  notificationsLoading: boolean
-  onMarkNotificationRead: (id: string) => void
-  onMarkAllNotificationsRead: () => void
-  onClearAllNotifications: () => void
-  onNavigateToPostFromNotificationsPanel: (postId: string) => void
-  onNavigateToUserFromNotificationsPanel: (userId: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
   onNavigateToFeed: () => void
@@ -54,15 +46,9 @@ export default function Header({
   unreadCount,
   bellRingTick,
   notificationsPanelOpen,
+  notificationsAnchorRef,
   onToggleNotificationsPanel,
   onCloseNotificationsPanel,
-  notifications,
-  notificationsLoading,
-  onMarkNotificationRead,
-  onMarkAllNotificationsRead,
-  onClearAllNotifications,
-  onNavigateToPostFromNotificationsPanel,
-  onNavigateToUserFromNotificationsPanel,
   onNavigateToUser,
   onNavigateToPost,
   onNavigateToFeed,
@@ -75,13 +61,11 @@ export default function Header({
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
-  const notificationsRef = useRef<HTMLDivElement | null>(null)
   const { theme: colorMode, toggleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const [clubsModalOpen, setClubsModalOpen] = useState(false)
   const { clubs, loading: clubsLoading, error: clubsError, reload: reloadClubs } = useClubs()
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
-  const hasAnyNotifications = notifications.length > 0
 
   useEffect(() => {
     if (bellRingTick === 0) return
@@ -105,27 +89,6 @@ export default function Header({
       window.removeEventListener('keydown', onKey)
     }
   }, [menuOpen, setMenuOpen])
-
-  useEffect(() => {
-    if (!notificationsPanelOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseNotificationsPanel()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [notificationsPanelOpen, onCloseNotificationsPanel])
-
-  useEffect(() => {
-    if (!notificationsPanelOpen) return
-    const prevBody = document.body.style.overflow
-    const prevHtml = document.documentElement.style.overflow
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prevBody
-      document.documentElement.style.overflow = prevHtml
-    }
-  }, [notificationsPanelOpen])
 
   return (
     <>
@@ -218,6 +181,7 @@ export default function Header({
 
           <div className="relative shrink-0">
             <button
+              ref={notificationsAnchorRef}
               type="button"
               onClick={() => {
                 setMenuOpen(false)
@@ -227,7 +191,7 @@ export default function Header({
               aria-haspopup="dialog"
               aria-label="Powiadomienia"
               className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-black/5 dark:hover:bg-white/10 ${
-                bellActive
+                bellActive || unreadCount > 0
                   ? 'text-[#1e293b] dark:text-brand-gold-bright ring-2 ring-[#1e293b]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(30,41,59,0.35)]'
                   : 'text-[#1e293b] dark:text-gray-400'
               }`}
@@ -369,83 +333,6 @@ export default function Header({
       error={clubsError}
       onRetry={() => void reloadClubs()}
     />
-
-    {createPortal(
-      <AnimatePresence>
-        {notificationsPanelOpen && (
-          <motion.div
-            key="notifications-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Powiadomienia"
-            className="fixed inset-0 z-[200] hidden md:flex flex-col bg-bg-app/70 backdrop-blur-xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            onPointerDown={onCloseNotificationsPanel}
-          >
-            <motion.div
-              ref={notificationsRef}
-              className="relative mx-auto flex w-full max-w-6xl flex-1 min-h-0 flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <div
-                className={`mx-auto flex w-full max-w-2xl min-h-0 flex-1 flex-col ${PROFILE_MOBILE.card.glassClass}`}
-              >
-                <button
-                  type="button"
-                  onClick={onCloseNotificationsPanel}
-                  className="absolute right-3 top-3 z-20 rounded-full p-2 text-fg-secondary transition-colors duration-200 ease-in-out hover:bg-bg-app/35 hover:text-fg-primary [-webkit-tap-highlight-color:transparent]"
-                  aria-label="Zamknij powiadomienia"
-                >
-                  <X size={20} strokeWidth={2} />
-                </button>
-
-                <div
-                  className={`flex min-h-0 flex-1 flex-col ${PROFILE_MOBILE.card.paddingXClass} pb-4 pt-14`}
-                >
-                  <div className="flex shrink-0 items-center justify-between gap-4 pr-10">
-                    <h2
-                      className={`text-[10px] font-bold uppercase tracking-[0.22em] ${uiTheme.text.sectionHeader}`}
-                    >
-                      Powiadomienia
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={onClearAllNotifications}
-                      disabled={!hasAnyNotifications || notificationsLoading}
-                      className="rounded-md px-1.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-fg-secondary transition-colors duration-200 ease-in-out hover:text-fg-primary active:bg-black/[0.06] disabled:cursor-not-allowed disabled:opacity-35 dark:hover:text-white dark:active:bg-white/[0.06] [-webkit-tap-highlight-color:transparent]"
-                    >
-                      Wyczyść
-                    </button>
-                  </div>
-
-                  <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-8 pt-2 sm:px-3">
-                    <NotificationsView
-                      embedded
-                      cleanOverlay
-                      fullScreenModal
-                      notifications={notifications}
-                      loading={notificationsLoading}
-                      onMarkRead={onMarkNotificationRead}
-                      onMarkAllRead={onMarkAllNotificationsRead}
-                      onNavigateToPost={onNavigateToPostFromNotificationsPanel}
-                      onNavigateToUser={onNavigateToUserFromNotificationsPanel}
-                    />
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>,
-      document.body,
-    )}
     </>
   )
 }

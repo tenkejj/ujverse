@@ -3,7 +3,7 @@ import { supabase } from '../../supabaseClient'
 import type { AppNotification } from '../../types'
 
 const ACTOR_EMBED =
-  'actor:profiles!notifications_actor_id_fkey(id, full_name, username, avatar_url)'
+  'actor:profiles!notifications_actor_id_fkey(id, full_name, username, avatar_url, department)'
 
 class NotificationsAdapterImpl {
   async listForUser(
