@@ -1,11 +1,10 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
-import HeaderSearchTrigger from './HeaderSearchTrigger'
 import ClubsModal from './ClubsModal'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
@@ -88,22 +87,39 @@ export default function Header({
     }
   }, [menuOpen, setMenuOpen])
 
+  useEffect(() => {
+    if (!notificationsPanelOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseNotificationsPanel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [notificationsPanelOpen, onCloseNotificationsPanel])
+
+  useEffect(() => {
+    if (!notificationsPanelOpen) return
+    const prevBody = document.body.style.overflow
+    const prevHtml = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevBody
+      document.documentElement.style.overflow = prevHtml
+    }
+  }, [notificationsPanelOpen])
+
   return (
     <>
     <header
-      className={`${HEADER_MOBILE.containerClass} w-full grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center sticky top-0 z-50 overflow-visible border-t-0 outline-none ring-0 shadow-none ${
+      className={`${HEADER_MOBILE.containerClass} w-full flex items-center justify-between sticky top-0 z-50 overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
           : 'bg-bg-app/80 backdrop-blur-md backdrop-saturate-150 dark:bg-black/20 dark:backdrop-blur-md dark:backdrop-saturate-150'
       }`}
     >
-      <div className={`${HEADER_MOBILE.sideSectionClass} shrink-0 flex items-center justify-start relative z-10`}>
-        <div className="md:hidden shrink-0">
-          <HeaderSearchTrigger onNavigateToSearch={onNavigateToSearch} variant="icon" />
-        </div>
-      </div>
+      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`} />
 
-      <div className="flex items-center justify-center">
+      <div className="flex-1 flex justify-center items-center overflow-visible min-w-0">
         <motion.button
           type="button"
           whileTap={{ scale: 0.95 }}
@@ -112,7 +128,7 @@ export default function Header({
             window.scrollTo({ top: 0, behavior: 'smooth' })
             onRefreshPosts()
           }}
-          className="pointer-events-auto overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 inline-flex items-center justify-center border-0"
+          className="overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 inline-flex items-center justify-center border-0"
           aria-label="Strona główna"
         >
           <div
@@ -132,7 +148,7 @@ export default function Header({
         </motion.button>
       </div>
 
-      <div className={`${HEADER_MOBILE.sideSectionClass} md:w-auto md:min-w-fit shrink-0 flex items-center justify-end gap-2.5 lg:gap-3 relative z-10 justify-self-end`}>
+      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-end gap-3 relative z-10`}>
         <div className="hidden md:flex items-center gap-0.5 shrink-0">
           <button
             type="button"
@@ -187,7 +203,7 @@ export default function Header({
               aria-haspopup="dialog"
               aria-label="Powiadomienia"
               className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-black/5 dark:hover:bg-white/10 ${
-                bellActive || unreadCount > 0
+                bellActive
                   ? 'text-[#1e293b] dark:text-brand-gold-bright ring-2 ring-[#1e293b]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(30,41,59,0.35)]'
                   : 'text-[#1e293b] dark:text-gray-400'
               }`}
@@ -219,10 +235,15 @@ export default function Header({
               )}
             </button>
           </div>
-        </div>
 
-        <div className="hidden md:block relative shrink-0">
-          <HeaderSearchTrigger onNavigateToSearch={onNavigateToSearch} variant="inlineCapsule" />
+          <button
+            type="button"
+            onClick={() => onNavigateToSearch()}
+            className="w-9 h-9 flex items-center justify-center rounded-full p-2 text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none shrink-0"
+            aria-label="Szukaj"
+          >
+            <Search size={20} strokeWidth={2} />
+          </button>
         </div>
 
         <div className="relative shrink-0 min-w-0 block" ref={menuRef}>
@@ -333,6 +354,7 @@ export default function Header({
       error={clubsError}
       onRetry={() => void reloadClubs()}
     />
+
     </>
   )
 }

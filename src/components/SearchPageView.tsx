@@ -89,6 +89,12 @@ export default function SearchPageView() {
     navigate('/')
   }, [navigate])
 
+  const handleClearInput = useCallback(() => {
+    setInputValue('')
+    setActiveQuery('')
+    navigate('/search')
+  }, [navigate])
+
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-4">
       <aside className="hidden lg:col-span-3 lg:block" />
@@ -99,7 +105,7 @@ export default function SearchPageView() {
             <label className="sr-only" htmlFor="search-page-query-input">
               Wyszukaj w UJverse
             </label>
-            <div className="flex h-14 w-full items-center rounded-full border border-zinc-200 bg-white/80 px-5 shadow-sm transition-colors focus-within:border-zinc-300 dark:border-white/10 dark:bg-black/35 dark:focus-within:border-brand-gold-bright/45">
+            <div className="relative flex h-14 w-full items-center rounded-full border border-zinc-200 bg-white/80 px-5 shadow-sm transition-colors focus-within:border-zinc-300 dark:border-white/10 dark:bg-black/35 dark:focus-within:border-brand-gold-bright/45">
               <Search size={19} strokeWidth={2} className="mr-3 shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
               <input
                 id="search-page-query-input"
@@ -107,10 +113,20 @@ export default function SearchPageView() {
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
                 placeholder="Szukaj wpisów i komunikatów..."
-                className="h-full w-full bg-transparent text-[15px] text-zinc-800 outline-none placeholder:text-zinc-500 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                className="h-full min-w-0 flex-1 bg-transparent pr-8 text-[15px] text-zinc-800 outline-none placeholder:text-zinc-500 dark:text-zinc-100 dark:placeholder:text-zinc-500 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                 autoComplete="off"
                 spellCheck={false}
               />
+              {inputValue.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearInput}
+                  className="absolute right-4 flex shrink-0 items-center justify-center rounded-full p-1 text-zinc-400 transition-colors hover:text-zinc-600 focus:outline-none dark:text-zinc-500 dark:hover:text-zinc-300"
+                  aria-label="Wyczyść wyszukiwanie"
+                >
+                  <X size={16} strokeWidth={2} />
+                </button>
+              )}
             </div>
           </form>
 
