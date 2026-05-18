@@ -19,7 +19,7 @@ export default function CompactEventRow({ event: ev, onSelect }: Props) {
       onClick={() => onSelect(ev)}
       className={`group m-0 p-3 w-full flex cursor-pointer items-start gap-3 text-left transition-colors ${sidePanelHoverFocus} ${
         official
-          ? 'ring-1 ring-[#a48955]/25 bg-[#a48955]/[0.08] dark:ring-brand-gold/25 dark:bg-brand-gold/[0.06]'
+          ? 'border-zinc-100 bg-zinc-50/80 dark:ring-1 dark:ring-brand-gold/25 dark:bg-brand-gold/[0.06]'
           : ''
       }`}
     >

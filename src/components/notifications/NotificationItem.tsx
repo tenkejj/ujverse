@@ -7,6 +7,7 @@ import { getNotificationBadgeBackground } from './notification.theme'
 
 type Props = {
   notif: AppNotification
+  isLastInList?: boolean
   onMarkRead: (id: string) => void
   onNavigateToPost: (postId: string) => void
   onNavigateToUser: (userId: string) => void
@@ -15,6 +16,7 @@ type Props = {
 
 export default function NotificationItem({
   notif,
+  isLastInList = false,
   onMarkRead,
   onNavigateToPost,
   onNavigateToUser,
@@ -43,29 +45,29 @@ export default function NotificationItem({
       type="button"
       data-notification-row="true"
       onClick={handleRowClick}
-      className={`group relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.04] ${
-        !notif.is_read ? 'bg-brand-gold/10 dark:bg-brand-gold-bright/10' : ''
-      }`}
+      className={`group relative flex w-full items-center gap-3 border-b border-zinc-100 px-4 py-3 text-left font-sans transition-colors dark:border-white/5 dark:bg-bg-card/95 dark:hover:bg-white/5 ${
+        !notif.is_read ? 'bg-brand-gold/10 hover:bg-brand-gold/14 dark:bg-bg-card/95' : 'hover:bg-black/4'
+      } ${isLastInList ? 'border-b-0' : ''}`}
     >
       <div className="relative shrink-0">
         <button type="button" onClick={handleActorClick} className="rounded-full" aria-label={`Otwórz profil ${actorName}`}>
           <UserAvatar profile={actor} name={actorName} className="h-11 w-11 ring-1 ring-zinc-900/10 dark:ring-white/10" textSize="text-sm" />
         </button>
         <span
-          className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white shadow-sm dark:border-[#0a0a0f]"
+          className="absolute -bottom-0.5 -right-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-white p-0 shadow-sm dark:border-[#0a0a0f]"
           style={{ background: badgeBg }}
           aria-hidden
         >
           {notif.type === 'like' ? (
-            <Heart size={11} fill="currentColor" strokeWidth={0} className="text-white" />
+            <Heart size={10} fill="currentColor" strokeWidth={0} className="block text-white" />
           ) : (
-            <MessageCircle size={11} strokeWidth={2.5} className="text-white" />
+            <MessageCircle size={10} strokeWidth={2.5} className="block translate-x-[0.5px] translate-y-[0.5px] text-white" />
           )}
         </span>
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[13.5px] leading-snug text-fg-primary">
+        <p className="font-sans text-[13.5px] leading-snug text-fg-primary">
           {notif.actor_id ? (
             <button type="button" onClick={handleActorClick} className="font-semibold hover:underline">
               {actorName}
@@ -75,7 +77,7 @@ export default function NotificationItem({
           )}{' '}
           <span className="text-fg-secondary">{actionText}</span>
         </p>
-        <p className="mt-0.5 text-[11.5px] text-zinc-500 dark:text-zinc-500">{relativeTime(notif.created_at)}</p>
+        <p className="mt-0.5 font-sans text-[11.5px] leading-normal text-zinc-500 dark:text-zinc-500">{relativeTime(notif.created_at)}</p>
       </div>
 
       {!notif.is_read && (

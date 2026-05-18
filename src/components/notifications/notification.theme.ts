@@ -3,9 +3,9 @@ import { getDeptAccent } from '../../lib/departments'
 
 export const notificationGlass = {
   panel:
-    'rounded-2xl border border-zinc-900/10 bg-white/85 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_30px_80px_-32px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#0a0a0f]/85 dark:shadow-[0_30px_80px_-32px_rgba(0,0,0,0.9)]',
+    'rounded-2xl border border-zinc-200 bg-white/85 backdrop-blur-md backdrop-saturate-150 shadow-[0_30px_80px_-32px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-bg-card/95 dark:shadow-[0_30px_80px_-32px_rgba(0,0,0,0.9)]',
   sheet:
-    'rounded-t-3xl border-t border-zinc-900/10 bg-white/85 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_-24px_60px_-20px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#0a0a0f]/85 dark:shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.85)]',
+    'rounded-t-3xl border border-zinc-200 bg-white/85 backdrop-blur-md backdrop-saturate-150 shadow-[0_-24px_60px_-20px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-bg-card/95 dark:shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.85)]',
 } as const
 
 export const motionPresets = {

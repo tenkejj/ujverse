@@ -30,12 +30,14 @@ import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
 import { Analytics } from '@vercel/analytics/react'
 import { DataService } from './services/DataService'
+import SearchPageView from './components/SearchPageView'
 
 type AppShellView =
   | 'feed'
   | 'profile'
   | 'notifications'
   | 'events'
+  | 'search'
   | 'post'
   | 'userProfile'
   | 'settings'
@@ -92,6 +94,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/notifications') {
     return { kind: 'ok', view: 'notifications', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/search') {
+    return { kind: 'ok', view: 'search', profileHandle: null, postId: null }
   }
   if (normalizedPath === '/') {
     return { kind: 'ok', view: 'feed', profileHandle: null, postId: null }
@@ -552,6 +557,10 @@ function App() {
       if (p !== '/notifications') navigate('/notifications')
       return
     }
+    if (view === 'search') {
+      if (p !== '/search') navigate('/search')
+      return
+    }
     if (view === 'settings') {
       if (p !== '/settings') navigate('/settings')
       return
@@ -996,6 +1005,8 @@ function App() {
   const navActiveView =
     effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
       ? 'feed'
+      : effectiveActiveView === 'search'
+        ? 'feed'
       : effectiveActiveView === 'settings'
         ? 'profile'
         : effectiveActiveView
@@ -1111,6 +1122,8 @@ function App() {
             onNavigateToUser={navigateToUser}
           />
         )
+      case 'search':
+        return <SearchPageView />
       case 'post':
         if (!routeThreadPostId) return null
         return (
@@ -1155,7 +1168,7 @@ function App() {
         {isMobileComposeOpen && (
           <motion.div
             key="mobile-compose-overlay"
-            className="fixed inset-0 z-[320] md:hidden flex flex-col justify-end"
+            className="fixed inset-0 z-320 md:hidden flex flex-col justify-end"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1208,11 +1221,17 @@ function App() {
           notificationsAnchorRef={notificationsAnchorRef}
           onToggleNotificationsPanel={toggleNotificationsPanel}
           onCloseNotificationsPanel={closeNotificationsPanel}
-          onNavigateToUser={navigateToUser}
-          onNavigateToPost={navigateToPost}
           onNavigateToFeed={() => navigateToMainView('feed')}
           onNavigateToProfile={() => navigateToMainView('profile')}
           onNavigateToEvents={() => navigateToMainView('events')}
+          onNavigateToSearch={(query) => {
+            const normalized = (query ?? '').trim()
+            if (!normalized) {
+              navigate('/search')
+              return
+            }
+            navigate(`/search?q=${encodeURIComponent(normalized)}`)
+          }}
           onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}
           onRefreshPosts={() => void fetchPosts()}
@@ -1221,6 +1240,7 @@ function App() {
         <main
           className={`mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
             effectiveActiveView === 'feed' || effectiveActiveView === 'events' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
+            || effectiveActiveView === 'search'
               ? 'max-w-7xl px-4 lg:px-6'
               : effectiveActiveView === 'settings'
                 ? 'max-w-2xl px-4 space-y-0'
@@ -1260,8 +1280,7 @@ function App() {
         notifications={notifications}
         loading={notificationsLoading}
         onMarkRead={markNotificationRead}
-        onMarkAllRead={markAllRead}
-        onClearAll={clearAllNotifications}
+        onClearAll={() => void clearAllNotifications()}
         onNavigateToPost={navigateToPostFromNotificationsPanel}
         onNavigateToUser={navigateToUserFromNotificationsPanel}
         anchorRef={notificationsAnchorRef}

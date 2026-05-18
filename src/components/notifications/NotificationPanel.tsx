@@ -9,7 +9,6 @@ type Props = {
   notifications: AppNotification[]
   loading: boolean
   onMarkRead: (id: string) => void
-  onMarkAllRead: () => void
   onClearAll: () => void
   onNavigateToPost: (postId: string) => void
   onNavigateToUser: (userId: string) => void
@@ -19,19 +18,22 @@ type Props = {
 
 type Position = {
   top: number
-  right: number
+  left: number
+  caretLeft: number
+  originX: number
 }
 
 const FALLBACK_POSITION: Position = {
   top: 64,
-  right: 16,
+  left: 16,
+  caretLeft: 190,
+  originX: 50,
 }
 
 export default function NotificationPanel({
   notifications,
   loading,
   onMarkRead,
-  onMarkAllRead,
   onClearAll,
   onNavigateToPost,
   onNavigateToUser,
@@ -43,16 +45,36 @@ export default function NotificationPanel({
 
   useLayoutEffect(() => {
     const updatePosition = () => {
+      const panelWidth = 380
+      const viewportGutter = 16
       const trigger = anchorRef?.current
       if (!trigger) {
-        setPosition(FALLBACK_POSITION)
+        const center = window.innerWidth / 2
+        const clampedCenter = Math.min(
+          window.innerWidth - viewportGutter - panelWidth / 2,
+          Math.max(viewportGutter + panelWidth / 2, center),
+        )
+        const left = clampedCenter - panelWidth / 2
+        setPosition({
+          top: FALLBACK_POSITION.top,
+          left,
+          caretLeft: panelWidth / 2,
+          originX: 50,
+        })
         return
       }
 
       const rect = trigger.getBoundingClientRect()
       const top = rect.bottom + 12
-      const right = Math.max(16, window.innerWidth - rect.right)
-      setPosition({ top, right })
+      const centerX = rect.left + rect.width / 2
+      const minCenter = viewportGutter + panelWidth / 2
+      const maxCenter = window.innerWidth - viewportGutter - panelWidth / 2
+      const clampedCenter = Math.min(maxCenter, Math.max(minCenter, centerX))
+      const panelLeft = clampedCenter - panelWidth / 2
+      const caretLeft = Math.min(panelWidth - 20, Math.max(20, centerX - panelLeft))
+      const originX = (caretLeft / panelWidth) * 100
+
+      setPosition({ top, left: panelLeft, caretLeft, originX })
     }
 
     updatePosition()
@@ -69,7 +91,7 @@ export default function NotificationPanel({
       role="dialog"
       aria-modal="true"
       aria-label="Powiadomienia"
-      className="fixed inset-0 z-[210] hidden md:block"
+      className="fixed inset-0 z-210 hidden md:block"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -78,11 +100,11 @@ export default function NotificationPanel({
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
 
       <motion.div
-        className={`absolute w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden ${notificationGlass.panel}`}
+        className={`absolute flex w-[380px] max-h-[min(480px,calc(100vh-88px))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden ${notificationGlass.panel}`}
         style={{
           top: `${position.top}px`,
-          right: `${position.right}px`,
-          maxHeight: 'min(640px, calc(100vh - 88px))',
+          left: `${position.left}px`,
+          transformOrigin: `${position.originX}% top`,
         }}
         initial={{ opacity: 0, y: -8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -90,17 +112,21 @@ export default function NotificationPanel({
         transition={shouldReduceMotion ? { duration: 0.14 } : motionPresets.panelSpring}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="pointer-events-none absolute -top-1.5 right-6 h-3 w-3 rotate-45 border-l border-t border-zinc-900/10 bg-white/85 dark:border-white/10 dark:bg-[#0a0a0f]/85" />
-        <NotificationList
-          notifications={notifications}
-          loading={loading}
-          onMarkRead={onMarkRead}
-          onMarkAllRead={onMarkAllRead}
-          onClearAll={onClearAll}
-          onNavigateToPost={onNavigateToPost}
-          onNavigateToUser={onNavigateToUser}
-          onClose={onClose}
+        <div
+          className="pointer-events-none absolute -top-1.5 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-zinc-200 bg-white/85 dark:border-white/10 dark:bg-bg-card/95"
+          style={{ left: `${position.caretLeft}px` }}
         />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <NotificationList
+            notifications={notifications}
+            loading={loading}
+            onMarkRead={onMarkRead}
+            onClearAll={onClearAll}
+            onNavigateToPost={onNavigateToPost}
+            onNavigateToUser={onNavigateToUser}
+            onClose={onClose}
+          />
+        </div>
       </motion.div>
     </motion.div>
   )

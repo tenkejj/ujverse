@@ -13,7 +13,6 @@ type Props = {
   notifications: AppNotification[]
   loading: boolean
   onMarkRead: (id: string) => void
-  onMarkAllRead: () => void
   onClearAll: () => void
   onNavigateToPost: (postId: string) => void
   onNavigateToUser: (userId: string) => void
@@ -26,7 +25,6 @@ export default function NotificationPopup({
   notifications,
   loading,
   onMarkRead,
-  onMarkAllRead,
   onClearAll,
   onNavigateToPost,
   onNavigateToUser,
@@ -55,7 +53,6 @@ export default function NotificationPopup({
             notifications={notifications}
             loading={loading}
             onMarkRead={onMarkRead}
-            onMarkAllRead={onMarkAllRead}
             onClearAll={onClearAll}
             onNavigateToPost={onNavigateToPost}
             onNavigateToUser={onNavigateToUser}
@@ -67,7 +64,6 @@ export default function NotificationPopup({
             notifications={notifications}
             loading={loading}
             onMarkRead={onMarkRead}
-            onMarkAllRead={onMarkAllRead}
             onClearAll={onClearAll}
             onNavigateToPost={onNavigateToPost}
             onNavigateToUser={onNavigateToUser}

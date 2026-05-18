@@ -8,7 +8,6 @@ type Props = {
   notifications: AppNotification[]
   loading: boolean
   onMarkRead: (id: string) => void
-  onMarkAllRead: () => void
   onClearAll: () => void
   onNavigateToPost: (postId: string) => void
   onNavigateToUser: (userId: string) => void
@@ -19,7 +18,6 @@ export default function NotificationSheet({
   notifications,
   loading,
   onMarkRead,
-  onMarkAllRead,
   onClearAll,
   onNavigateToPost,
   onNavigateToUser,
@@ -48,7 +46,7 @@ export default function NotificationSheet({
       role="dialog"
       aria-modal="true"
       aria-label="Powiadomienia"
-      className="fixed inset-0 z-[210] md:hidden"
+      className="fixed inset-0 z-210 md:hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -57,7 +55,7 @@ export default function NotificationSheet({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
 
       <motion.div
-        className={`absolute inset-x-0 bottom-0 z-[220] max-h-[88vh] ${notificationGlass.sheet}`}
+        className={`absolute inset-x-0 bottom-0 z-220 flex max-h-[75vh] flex-col ${notificationGlass.sheet}`}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -68,13 +66,11 @@ export default function NotificationSheet({
         onDragEnd={handleDragEnd}
       >
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-white/15" />
-        <div className="max-h-[calc(88vh-0.75rem)] min-h-[300px] min-w-0 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+        <div className="flex min-h-[300px] flex-1 flex-col pb-[max(0.25rem,env(safe-area-inset-bottom))]">
           <NotificationList
-            stickyHeader
             notifications={notifications}
             loading={loading}
             onMarkRead={onMarkRead}
-            onMarkAllRead={onMarkAllRead}
             onClearAll={onClearAll}
             onNavigateToPost={onNavigateToPost}
             onNavigateToUser={onNavigateToUser}
