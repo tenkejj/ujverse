@@ -11,8 +11,9 @@ import {
   ChevronLeft,
 } from 'lucide-react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
-import { supabase } from '../supabaseClient'
 import type { Profile, Post } from '../types'
+import { SearchService } from '../services/SearchService'
+import type { SearchHit } from '../types/search'
 import UserAvatar from './UserAvatar'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useEvents } from '../hooks/useEvents'
@@ -27,10 +28,27 @@ type Props = {
 
 type PlaceHit = { id: string; title: string; location: string }
 
+type SearchPostResult = Post & {
+  _searchType?: SearchHit['type']
+}
+
 type Results = {
   users: Profile[]
-  posts: Post[]
+  posts: SearchPostResult[]
   places: PlaceHit[]
+}
+
+function contentHitToPost(hit: SearchHit): SearchPostResult {
+  return {
+    id: hit.sourceId,
+    content: hit._formatted?.content ?? hit.content,
+    _searchType: hit.type,
+    profiles: {
+      id: hit.authorId ?? hit.sourceId,
+      full_name: (hit._formatted?.author ?? hit.author) || 'Użytkownik',
+      avatar_url: null,
+    },
+  }
 }
 
 /** Aktywna pigułka w mobilnym overlay (wpływa na zapytania). */
@@ -211,6 +229,22 @@ export default function SearchBar({
     [clearSearch, onNavigateToPost, pushHistory, query],
   )
 
+  const handleNavigateContent = useCallback(
+    (post: SearchPostResult) => {
+      if (post._searchType === 'komunikat') {
+        pushHistory(query)
+        setMobileModalOpen(false)
+        setDesktopOverlayOpen(false)
+        setMobilePill('all')
+        clearSearch()
+        onNavigateToEvents()
+        return
+      }
+      handleNavigatePost(String(post.id))
+    },
+    [clearSearch, handleNavigatePost, onNavigateToEvents, pushHistory, query],
+  )
+
   const handleNavigatePlace = useCallback(() => {
     pushHistory(query)
     setMobileModalOpen(false)
@@ -293,7 +327,7 @@ export default function SearchBar({
     el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [highlightIndex, desktopOverlayOpen])
 
-  // Debounced search
+  // Debounced search (Meilisearch: ujverse_content + ujverse_users)
   useEffect(() => {
     if (query.length < 2) {
       setResults({ users: [], posts: [], places: [] })
@@ -302,6 +336,7 @@ export default function SearchBar({
     }
 
     setIsSearching(true)
+    const controller = new AbortController()
 
     const timer = window.setTimeout(async () => {
       const mode = mobileModalOpen ? mobilePill : 'all'
@@ -309,41 +344,49 @@ export default function SearchBar({
       const wantPosts = mode === 'all'
       const wantPlaces = mode === 'all' || mode === 'places'
 
-      const usersP = wantUsers
-        ? (() => {
-            let qb = supabase
-              .from('profiles')
-              .select('id, full_name, avatar_url, department')
-              .ilike('full_name', `%${query}%`)
-            if (mode === 'wpi') qb = qb.eq('department', WPIA_DEPARTMENT)
-            return qb.limit(5)
-          })()
-        : Promise.resolve({ data: [] as Profile[] })
+      try {
+        const { content, users } = await SearchService.searchUnified(query, {
+          signal: controller.signal,
+          limit: 5,
+          includeContent: wantPosts,
+          includeUsers: wantUsers,
+          userDepartmentFilter: mode === 'wpi' ? WPIA_DEPARTMENT : undefined,
+        })
 
-      const postsP =
-        wantPosts
-          ? supabase
-              .from('posts')
-              .select('*, profiles(id, full_name, avatar_url, is_banned)')
-              .ilike('content', `%${query}%`)
-              .order('created_at', { ascending: false })
-              .limit(5)
-          : Promise.resolve({ data: [] as Post[] })
+        if (controller.signal.aborted) return
 
-      const [usersRes, postsRes] = await Promise.all([usersP, postsP])
+        if (controller.signal.aborted) return
 
-      const places = wantPlaces ? pickPlaceHits(allEvents, query, 5) : []
+        const places = wantPlaces ? pickPlaceHits(allEvents, query, 5) : []
 
-      const rawPosts = (postsRes.data ?? []) as Post[]
-      setResults({
-        users: (usersRes.data ?? []) as Profile[],
-        posts: rawPosts.filter((p) => p.profiles?.is_banned !== true),
-        places,
-      })
-      setIsSearching(false)
+        setResults({
+          users: wantUsers
+            ? users.map((u) => ({
+                id: u.id,
+                full_name: u.fullName ?? u.username ?? 'Użytkownik',
+                username: u.username,
+                avatar_url: u.avatarUrl,
+                department: u.department,
+              }))
+            : [],
+          posts: wantPosts ? content.map(contentHitToPost) : [],
+          places,
+        })
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.error('[SearchBar] Meilisearch search failed:', error)
+        setResults({ users: [], posts: [], places: [] })
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearching(false)
+        }
+      }
     }, 300)
 
-    return () => window.clearTimeout(timer)
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
   }, [query, mobileModalOpen, mobilePill, allEvents])
 
   const resultItemBase =
@@ -368,7 +411,7 @@ export default function SearchBar({
     }
     for (const p of results.posts) {
       if (idx === hi) {
-        handleNavigatePost(String(p.id))
+        handleNavigateContent(p)
         return
       }
       idx++
@@ -380,7 +423,7 @@ export default function SearchBar({
       }
       idx++
     }
-  }, [resultCount, results.users, results.posts, results.places, handleNavigateUser, handleNavigatePost, handleNavigatePlace])
+  }, [resultCount, results.users, results.posts, results.places, handleNavigateUser, handleNavigateContent, handleNavigatePlace])
 
   const onDesktopSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
@@ -598,7 +641,7 @@ export default function SearchBar({
                   key={postId}
                   type="button"
                   variants={searchStaggerItem}
-                  onClick={() => handleNavigatePost(postId)}
+                  onClick={() => handleNavigateContent(post)}
                   whileTap={{ scale: SEARCH_MOBILE.mobileResults.tapScale }}
                   className={mobileResultRow}
                 >
@@ -807,7 +850,7 @@ export default function SearchBar({
                       data-search-result-index={idx}
                       role="option"
                       aria-selected={hi}
-                      onClick={() => handleNavigatePost(postId)}
+                      onClick={() => handleNavigateContent(post)}
                       whileTap={{ scale: 0.99 }}
                       className={`${resultItemBase} ${desktopRowHover} ${hi ? desktopHighlight : ''}`}
                     >

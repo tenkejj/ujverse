@@ -15,3 +15,13 @@ export type SearchDocument = {
 export type SearchHit = SearchDocument & {
   _formatted?: Partial<Pick<SearchDocument, 'content' | 'author'>>
 }
+
+export type SearchUserDocument = {
+  id: string
+  username: string | null
+  fullName: string | null
+  department: string | null
+  avatarUrl: string | null
+}
+
+export type SearchUserHit = SearchUserDocument
