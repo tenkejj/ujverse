@@ -86,7 +86,7 @@ class SearchServiceImpl {
         filter: opts?.userDepartmentFilter
           ? `department = "${opts.userDepartmentFilter.replaceAll('"', '\\"')}"`
           : undefined,
-        attributesToHighlight: ['fullName', 'username'],
+        attributesToHighlight: ['fullName', 'username', 'department'],
         highlightPreTag: '<mark>',
         highlightPostTag: '</mark>',
       })

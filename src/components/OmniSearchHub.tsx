@@ -218,10 +218,7 @@ export default function OmniSearchHub(props: Props) {
             {o.isOpen && o.query.trim().length >= 2 && (
               <DropdownFooter
                 count={o.totalCount}
-                onSubmit={() => {
-                  props.onNavigateToSearch(o.query)
-                  o.close()
-                }}
+                onSubmit={() => o.submitFullSearch()}
               />
             )}
           </motion.div>

@@ -2,10 +2,14 @@ import { createClient } from '@supabase/supabase-js'
 import { Meilisearch } from 'meilisearch'
 import * as dotenv from 'dotenv'
 
+import { ensureUsersIndexSettings, USERS_INDEX_UID } from '../lib/meilisearchIndexSettings'
 import {
   mapAnnouncementToSearchDocument,
   mapPostToSearchDocument,
+  mapProfileToSearchDocument,
+  type ProfileRecord,
   type SearchContentDocument,
+  type SearchUserDocument,
 } from '../lib/searchSyncMapper'
 
 dotenv.config({ path: '.env.local' })
@@ -43,13 +47,13 @@ async function ensureIndex(): Promise<void> {
   }
 }
 
-async function wipeIndex(): Promise<void> {
-  const index = meili.index(INDEX_UID)
+async function wipeIndex(indexUid: string, label: string): Promise<void> {
+  const index = meili.index(indexUid)
   const stats = await index.getStats()
-  console.log(`[force-resync] Dokumenty w indeksie przed czyszczeniem: ${stats.numberOfDocuments}`)
+  console.log(`[force-resync] ${label} — dokumenty przed czyszczeniem: ${stats.numberOfDocuments}`)
   if (stats.numberOfDocuments === 0) return
   await index.deleteAllDocuments().waitTask()
-  console.log('[force-resync] Indeks wyczyszczony.')
+  console.log(`[force-resync] ${label} — indeks wyczyszczony.`)
 }
 
 async function collectPostDocuments(): Promise<SearchContentDocument[]> {
@@ -120,6 +124,31 @@ async function collectAnnouncementDocuments(): Promise<SearchContentDocument[]> 
   return documents
 }
 
+async function collectProfileDocuments(): Promise<SearchUserDocument[]> {
+  const documents: SearchUserDocument[] = []
+  let offset = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, avatar_url, department, is_banned')
+      .order('id', { ascending: true })
+      .range(offset, offset + BATCH_SIZE - 1)
+
+    if (error) throw error
+    const rows = data ?? []
+    if (rows.length === 0) break
+
+    for (const row of rows) {
+      const doc = mapProfileToSearchDocument(row as ProfileRecord)
+      if (doc) documents.push(doc)
+    }
+
+    offset += BATCH_SIZE
+    if (rows.length < BATCH_SIZE) break
+  }
+  return documents
+}
+
 async function pushDocuments(documents: SearchContentDocument[]): Promise<void> {
   if (documents.length === 0) {
     console.log('[force-resync] Nic do wepchnięcia.')
@@ -135,26 +164,48 @@ async function pushDocuments(documents: SearchContentDocument[]): Promise<void> 
   console.log(`[force-resync] Wepchnięto ${documents.length} dokumentów (task ${finished.uid}).`)
 }
 
+async function pushUserDocuments(documents: SearchUserDocument[]): Promise<void> {
+  if (documents.length === 0) {
+    console.log('[force-resync] Brak profili do wepchnięcia do ujverse_users.')
+    return
+  }
+  const index = meili.index(USERS_INDEX_UID)
+  const finished = await index.addDocuments(documents, { primaryKey: 'id' }).waitTask()
+  if (finished.status !== 'succeeded') {
+    console.error('[force-resync] Task Meili (ujverse_users) NIE zakończony sukcesem:', finished)
+    process.exitCode = 1
+    return
+  }
+  console.log(`[force-resync] Wepchnięto ${documents.length} profilów do ujverse_users.`)
+}
+
 async function main(): Promise<void> {
   console.log(`[force-resync] Supabase: ${SUPABASE_URL}`)
   console.log(`[force-resync] Meilisearch: ${MEILI_HOST}, index="${INDEX_UID}"`)
 
   await ensureIndex()
-  await wipeIndex()
+  await ensureUsersIndexSettings(meili)
+  console.log('[force-resync] Indeks użytkowników: searchableAttributes username, fullName, department.')
+  await wipeIndex(INDEX_UID, 'ujverse_content')
+  await wipeIndex(USERS_INDEX_UID, 'ujverse_users')
 
-  const [posts, announcements] = await Promise.all([
+  const [posts, announcements, profiles] = await Promise.all([
     collectPostDocuments(),
     collectAnnouncementDocuments(),
+    collectProfileDocuments(),
   ])
 
   console.log(
-    `[force-resync] Zebrano z bazy: ${posts.length} postów, ${announcements.length} komunikatów.`,
+    `[force-resync] Zebrano z bazy: ${posts.length} postów, ${announcements.length} komunikatów, ${profiles.length} profili.`,
   )
 
   await pushDocuments([...posts, ...announcements])
+  await pushUserDocuments(profiles)
 
-  const finalStats = await meili.index(INDEX_UID).getStats()
-  console.log(`[force-resync] Dokumenty w indeksie po imporcie: ${finalStats.numberOfDocuments}`)
+  const contentStats = await meili.index(INDEX_UID).getStats()
+  const usersStats = await meili.index(USERS_INDEX_UID).getStats()
+  console.log(`[force-resync] ujverse_content — dokumenty po imporcie: ${contentStats.numberOfDocuments}`)
+  console.log(`[force-resync] ujverse_users — dokumenty po imporcie: ${usersStats.numberOfDocuments}`)
   console.log('[force-resync] Gotowe.')
 }
 

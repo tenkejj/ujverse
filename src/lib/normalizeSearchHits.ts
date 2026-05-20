@@ -92,16 +92,34 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
   return null
 }
 
+function pickFormattedUserField(
+  formatted: Record<string, string | undefined> | undefined,
+  field: string,
+  fallback: string | null,
+): string | null {
+  const raw = formatted?.[field]
+  if (!raw) return fallback
+  const stripped = stripHtmlMarks(raw).trim()
+  return stripped || fallback
+}
+
 export function normalizeUserHit(raw: Record<string, unknown>): SearchUserHit | null {
   const id = raw.id != null ? String(raw.id).trim() : ''
   if (!id) return null
 
-  const username = typeof raw.username === 'string' ? raw.username.trim() || null : null
-  const fullName = typeof raw.fullName === 'string'
-    ? raw.fullName.trim() || null
-    : typeof raw.full_name === 'string'
-      ? raw.full_name.trim() || null
-      : null
+  const formatted = raw._formatted as Record<string, string | undefined> | undefined
+
+  const username =
+    typeof raw.username === 'string'
+      ? raw.username.trim() || null
+      : pickFormattedUserField(formatted, 'username', null)
+  const fullName =
+    typeof raw.fullName === 'string'
+      ? raw.fullName.trim() || null
+      : typeof raw.full_name === 'string'
+        ? raw.full_name.trim() || null
+        : pickFormattedUserField(formatted, 'fullName', null) ??
+          pickFormattedUserField(formatted, 'full_name', null)
 
   if (!username && !fullName) return null
 

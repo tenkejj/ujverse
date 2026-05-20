@@ -66,6 +66,8 @@ export type UseOmniSearchReturn = {
   onKeyDown: (event: ReactKeyboardEvent<HTMLInputElement>) => void
   /** Wpisuje frazę do inputu i odpala focus (np. klik chipa / historii). */
   applyQuery: (next: string) => void
+  /** Przejście na /search — czyści input i zamyka dropdown (Enter bez wiersza / stopka). */
+  submitFullSearch: (overrideQuery?: string) => void
   /** Otwiera highlight dla wskazanego flat-index (nav klawiaturowa zawsze przez setActiveIndex). */
   /** Stabilny rejestr setterów ref dla wierszy (scroll-into-view aktywnego). */
   registerRow: (index: number, node: HTMLElement | null) => void
@@ -335,14 +337,27 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
     ],
   )
 
-  const submitFullSearch = useCallback(() => {
-    const q = query.trim()
-    if (q.length < 2) return
-    pushToHistory(q)
-    setIsOpen(false)
-    setActiveIndex(-1)
-    onNavigateToSearch(q)
-  }, [query, pushToHistory, onNavigateToSearch])
+  const submitFullSearch = useCallback(
+    (overrideQuery?: string) => {
+      const q = (overrideQuery ?? query).trim()
+      if (q.length < 2) return
+      pushToHistory(q)
+      onNavigateToSearch(q)
+      setQueryRaw('')
+      setIsOpen(false)
+      setActiveIndex(-1)
+      setResults(EMPTY_RESULTS)
+      setIsLoading(false)
+      setError(null)
+      setLastSearchedKey(null)
+      controllerRef.current?.abort()
+      if (debounceRef.current != null) {
+        window.clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+    },
+    [query, pushToHistory, onNavigateToSearch],
+  )
 
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -416,6 +431,7 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
     clearHistory,
     onKeyDown,
     applyQuery,
+    submitFullSearch,
     registerRow,
   }
 }

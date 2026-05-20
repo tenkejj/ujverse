@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { Meilisearch } from 'meilisearch'
+import { ensureUsersIndexSettings } from '../lib/meilisearchIndexSettings'
 import {
   documentIdFor,
   mapAnnouncementToSearchDocument,
@@ -24,6 +25,15 @@ type WebhookPayload = {
 const CONTENT_INDEX = 'ujverse_content'
 const USERS_INDEX = 'ujverse_users'
 const SUPPORTED_TABLES = new Set<SearchSyncTable>(['posts', 'announcements', 'profiles'])
+
+let usersIndexSettingsPromise: Promise<void> | null = null
+
+function ensureUsersIndexSettingsOnce(client: Meilisearch): Promise<void> {
+  if (!usersIndexSettingsPromise) {
+    usersIndexSettingsPromise = ensureUsersIndexSettings(client)
+  }
+  return usersIndexSettingsPromise
+}
 
 function getBearerToken(headerValue: string | string[] | undefined): string | null {
   if (!headerValue) return null
@@ -144,6 +154,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (table === 'announcements') {
       document = mapAnnouncementToSearchDocument((payload.record ?? {}) as AnnouncementRecord)
     } else {
+      await ensureUsersIndexSettingsOnce(meiliClient)
       document = mapProfileToSearchDocument((payload.record ?? {}) as ProfileRecord)
     }
 

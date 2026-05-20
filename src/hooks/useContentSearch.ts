@@ -1,55 +1,57 @@
 import { useEffect, useState } from 'react'
 import { SearchService } from '../services/SearchService'
-import type { SearchHit } from '../types/search'
+import type { SearchHit, SearchUserHit } from '../types/search'
 
 type SearchState = {
-  results: SearchHit[]
+  content: SearchHit[]
+  users: SearchUserHit[]
   isLoading: boolean
   error: string | null
 }
 
 const INITIAL_STATE: SearchState = {
-  results: [],
+  content: [],
+  users: [],
   isLoading: false,
   error: null,
 }
 
 export function useContentSearch(query: string): SearchState {
-  console.log('🔧 [useContentSearch] HOOK CALLED:', { query, type: typeof query, len: query?.length })
   const [state, setState] = useState<SearchState>(INITIAL_STATE)
 
   useEffect(() => {
-    console.log('🌀 [useContentSearch] EFFECT FIRED, query:', JSON.stringify(query))
     const normalized = query.trim()
+
     if (normalized.length < 2) {
-      console.log('⏭ [useContentSearch] early return (< 2 znaki), normalized=', JSON.stringify(normalized))
       setState(INITIAL_STATE)
       return
     }
 
-    // Nie używamy AbortController, bo w StrictMode cleanup pierwszego mountu
-    // potrafi przerwać sygnał ZANIM SDK Meilisearch zdąży wywołać fetch().
-    // Fetch z już-aborted signal nie wychodzi w sieć — wtedy Network tab
-    // zostaje pusty, a stan utyka jako "brak wyników". Flaga isCurrent
-    // pozwala zapytaniu zawsze realnie wystartować i tylko odfiltrowuje
-    // nieaktualne odpowiedzi.
+    // Bez AbortControllera — cleanup ze signal potrafi przerwać fetch zanim
+    // SDK Meilisearch wyśle żądanie (StrictMode / szybka zmiana query).
     let isCurrent = true
-    setState((previous) => ({ ...previous, isLoading: true, error: null }))
+    setState({ content: [], users: [], isLoading: true, error: null })
 
-    console.log('🚀 [useContentSearch] Wywołuję sieć dla frazy:', normalized)
-    SearchService.searchContent(normalized)
-      .then((results) => {
-        console.log('📥 [useContentSearch] Serwer zwrócił hity:', results)
+    void SearchService.searchUnified(normalized, {
+      limit: 24,
+      includeContent: true,
+      includeUsers: true,
+    })
+      .then((response) => {
         if (!isCurrent) return
-        setState({ results, isLoading: false, error: null })
+        setState({
+          content: Array.isArray(response.content) ? response.content : [],
+          users: Array.isArray(response.users) ? response.users : [],
+          isLoading: false,
+          error: null,
+        })
       })
       .catch((error: unknown) => {
-        console.error('❌ [useContentSearch] Błąd searchContent:', error)
         if (!isCurrent) return
         const message = error instanceof Error
           ? error.message
           : 'Nie udało się pobrać wyników wyszukiwania.'
-        setState({ results: [], isLoading: false, error: message })
+        setState({ content: [], users: [], isLoading: false, error: message })
       })
 
     return () => {

@@ -1123,7 +1123,7 @@ function App() {
           />
         )
       case 'search':
-        return <SearchPageView />
+        return <SearchPageView onNavigateToUser={navigateToUser} />
       case 'post':
         if (!routeThreadPostId) return null
         return (

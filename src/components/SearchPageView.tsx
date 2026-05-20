@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { FileText, History, LayoutGrid, Megaphone, Search, X } from 'lucide-react'
+import { FileText, History, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useContentSearch } from '../hooks/useContentSearch'
-import type { SearchHit } from '../types/search'
+import type { SearchHit, SearchUserHit } from '../types/search'
 import SearchResultRow from './search/SearchResultRow'
+import SearchUserResultRow from './search/SearchUserResultRow'
 import {
   loadSearchHistory,
   pushHistoryEntry,
@@ -12,7 +13,16 @@ import {
   clearAllHistory,
 } from '../lib/searchHistory'
 
-type SearchFilter = 'all' | 'post' | 'komunikat'
+type SearchFilter = 'all' | 'post' | 'komunikat' | 'user'
+type ContentFilter = Exclude<SearchFilter, 'all'>
+
+type SearchPageItem =
+  | { kind: 'user'; hit: SearchUserHit }
+  | { kind: 'content'; hit: SearchHit }
+
+type Props = {
+  onNavigateToUser: (userId: string) => void
+}
 
 const FILTER_TABS: ReadonlyArray<{
   id: SearchFilter
@@ -22,17 +32,19 @@ const FILTER_TABS: ReadonlyArray<{
   { id: 'all', label: 'Wszystko', icon: LayoutGrid },
   { id: 'post', label: 'Posty', icon: FileText },
   { id: 'komunikat', label: 'Komunikaty', icon: Megaphone },
+  { id: 'user', label: 'Użytkownicy', icon: Users },
 ]
 
-export default function SearchPageView() {
+const SUGGESTIBLE_FILTERS: ReadonlyArray<ContentFilter> = ['user', 'post', 'komunikat']
+
+export default function SearchPageView({ onNavigateToUser }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const [inputValue, setInputValue] = useState('')
   const [activeQuery, setActiveQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<SearchFilter>('all')
   const [searchHistory, setSearchHistory] = useState<string[]>(loadSearchHistory)
-  const { results, isLoading, error } = useContentSearch(activeQuery)
-  console.log("🔍 [SearchPageView] Aktywne zapytanie:", activeQuery, "Wyniki z Meilisearch:", results);
+  const { content, users, isLoading, error } = useContentSearch(activeQuery)
 
   const queryFromUrl = useMemo(
     () => new URLSearchParams(location.search).get('q')?.trim() ?? '',
@@ -45,16 +57,34 @@ export default function SearchPageView() {
     setActiveFilter('all')
   }, [queryFromUrl])
 
-  const resultCounts = useMemo<Record<SearchFilter, number>>(() => ({
-    all: results.length,
-    post: results.filter((result) => result.type === 'post').length,
-    komunikat: results.filter((result) => result.type === 'komunikat').length,
-  }), [results])
+  const safeUsers = Array.isArray(users) ? users : []
+  const safeContent = Array.isArray(content) ? content : []
 
-  const filteredResults = useMemo(() => {
-    if (activeFilter === 'all') return results
-    return results.filter((result) => result.type === activeFilter)
-  }, [activeFilter, results])
+  const resultCounts = useMemo<Record<SearchFilter, number>>(() => ({
+    all: safeUsers.length + safeContent.length,
+    post: safeContent.filter((result) => result.type === 'post').length,
+    komunikat: safeContent.filter((result) => result.type === 'komunikat').length,
+    user: safeUsers.length,
+  }), [safeUsers, safeContent])
+
+  // Kolejność w "Wszystko" mirroruje Omni-Search: Profile → Posty → Komunikaty.
+  const allItems = useMemo<SearchPageItem[]>(() => [
+    ...safeUsers.map((hit) => ({ kind: 'user' as const, hit })),
+    ...safeContent
+      .filter((h) => h.type === 'post')
+      .map((hit) => ({ kind: 'content' as const, hit })),
+    ...safeContent
+      .filter((h) => h.type === 'komunikat')
+      .map((hit) => ({ kind: 'content' as const, hit })),
+  ], [safeUsers, safeContent])
+
+  const filteredResults = useMemo<SearchPageItem[]>(() => {
+    if (activeFilter === 'all') return allItems
+    if (activeFilter === 'user') return allItems.filter((item) => item.kind === 'user')
+    return allItems.filter(
+      (item) => item.kind === 'content' && item.hit.type === activeFilter,
+    )
+  }, [activeFilter, allItems])
 
   const activeTab = useMemo(
     () => FILTER_TABS.find((tab) => tab.id === activeFilter) ?? FILTER_TABS[0],
@@ -62,8 +92,8 @@ export default function SearchPageView() {
   )
   const ActiveTabIcon = activeTab.icon
 
-  const suggestedFilter = useMemo<'post' | 'komunikat' | null>(() => {
-    const candidates = (['post', 'komunikat'] as const)
+  const suggestedFilter = useMemo<ContentFilter | null>(() => {
+    const candidates = SUGGESTIBLE_FILTERS
       .filter((tabId) => tabId !== activeFilter && resultCounts[tabId] > 0)
       .sort((left, right) => resultCounts[right] - resultCounts[left])
 
@@ -98,7 +128,7 @@ export default function SearchPageView() {
     setSearchHistory(clearAllHistory())
   }, [])
 
-  const handleOpenResult = useCallback((result: SearchHit) => {
+  const handleOpenContent = useCallback((result: SearchHit) => {
     if (result.type === 'post') {
       navigate(`/thread/${encodeURIComponent(result.sourceId)}`)
       return
@@ -111,6 +141,8 @@ export default function SearchPageView() {
     setActiveQuery('')
     navigate('/search')
   }, [navigate])
+
+  const hasAnyResults = resultCounts.all > 0
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-4">
@@ -129,7 +161,7 @@ export default function SearchPageView() {
                 type="search"
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
-                placeholder="Szukaj wpisów i komunikatów..."
+                placeholder="Szukaj wpisów, komunikatów i użytkowników..."
                 className="h-full min-w-0 flex-1 bg-transparent pr-8 text-[15px] text-zinc-800 outline-none placeholder:text-zinc-500 dark:text-zinc-100 dark:placeholder:text-zinc-500 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                 autoComplete="off"
                 spellCheck={false}
@@ -147,12 +179,12 @@ export default function SearchPageView() {
             </div>
           </form>
 
-          {activeQuery.trim().length >= 2 && results.length > 0 && (
+          {activeQuery.trim().length >= 2 && hasAnyResults && (
             <div className="mx-auto mt-5 w-full max-w-2xl">
               <div
                 role="tablist"
                 aria-label="Filtr wyników wyszukiwania"
-                className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                className="flex w-full items-center justify-center gap-2 pb-1 md:flex-nowrap md:overflow-visible"
               >
                 {FILTER_TABS.map((tab) => {
                   const Icon = tab.icon
@@ -192,7 +224,7 @@ export default function SearchPageView() {
                             : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
                         }
                       >
-                        {resultCounts[tab.id]}
+                        {tab.id === 'user' ? resultCounts.user : resultCounts[tab.id]}
                       </span>
                     </button>
                   )
@@ -268,7 +300,7 @@ export default function SearchPageView() {
               <div className="py-6 text-center">
                 <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
               </div>
-            ) : results.length === 0 ? (
+            ) : !hasAnyResults ? (
               <div className="py-6 text-center">
                 <p className="text-sm text-zinc-600 dark:text-zinc-300">
                   Brak wyników dla „{activeQuery}”.
@@ -297,9 +329,13 @@ export default function SearchPageView() {
               </div>
             ) : (
               <ul className="space-y-2">
-                {filteredResults.map((result) => (
-                  <li key={result.id}>
-                    <SearchResultRow result={result} onOpen={handleOpenResult} />
+                {filteredResults.map((item) => (
+                  <li key={item.kind === 'user' ? `user-${item.hit.id}` : item.hit.id}>
+                    {item.kind === 'user' ? (
+                      <SearchUserResultRow hit={item.hit} onOpen={onNavigateToUser} />
+                    ) : (
+                      <SearchResultRow result={item.hit} onOpen={handleOpenContent} />
+                    )}
                   </li>
                 ))}
               </ul>
