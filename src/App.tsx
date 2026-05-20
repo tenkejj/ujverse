@@ -1232,6 +1232,8 @@ function App() {
             }
             navigate(`/search?q=${encodeURIComponent(normalized)}`)
           }}
+          onNavigateToUser={navigateToUser}
+          onNavigateToPost={navigateToPost}
           onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}
           onRefreshPosts={() => void fetchPosts()}

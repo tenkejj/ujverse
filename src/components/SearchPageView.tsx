@@ -1,38 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { History, Search, X } from 'lucide-react'
+import { FileText, History, LayoutGrid, Megaphone, Search, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useContentSearch } from '../hooks/useContentSearch'
 import type { SearchHit } from '../types/search'
 import SearchResultRow from './search/SearchResultRow'
+import {
+  loadSearchHistory,
+  pushHistoryEntry,
+  removeHistoryEntry,
+  clearAllHistory,
+} from '../lib/searchHistory'
 
-const HISTORY_KEY = 'ujverse_search_history_v1'
-const MAX_HISTORY = 12
+type SearchFilter = 'all' | 'post' | 'komunikat'
 
-function readSearchHistory(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
-  } catch {
-    return []
-  }
-}
-
-function persistSearchHistory(entries: string[]) {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, MAX_HISTORY)))
-}
+const FILTER_TABS: ReadonlyArray<{
+  id: SearchFilter
+  label: string
+  icon: typeof LayoutGrid
+}> = [
+  { id: 'all', label: 'Wszystko', icon: LayoutGrid },
+  { id: 'post', label: 'Posty', icon: FileText },
+  { id: 'komunikat', label: 'Komunikaty', icon: Megaphone },
+]
 
 export default function SearchPageView() {
   const location = useLocation()
   const navigate = useNavigate()
   const [inputValue, setInputValue] = useState('')
   const [activeQuery, setActiveQuery] = useState('')
-  const [searchHistory, setSearchHistory] = useState<string[]>(readSearchHistory)
+  const [activeFilter, setActiveFilter] = useState<SearchFilter>('all')
+  const [searchHistory, setSearchHistory] = useState<string[]>(loadSearchHistory)
   const { results, isLoading, error } = useContentSearch(activeQuery)
   console.log("🔍 [SearchPageView] Aktywne zapytanie:", activeQuery, "Wyniki z Meilisearch:", results);
 
@@ -44,17 +42,40 @@ export default function SearchPageView() {
   useEffect(() => {
     setInputValue(queryFromUrl)
     setActiveQuery(queryFromUrl)
+    setActiveFilter('all')
   }, [queryFromUrl])
 
+  const resultCounts = useMemo<Record<SearchFilter, number>>(() => ({
+    all: results.length,
+    post: results.filter((result) => result.type === 'post').length,
+    komunikat: results.filter((result) => result.type === 'komunikat').length,
+  }), [results])
+
+  const filteredResults = useMemo(() => {
+    if (activeFilter === 'all') return results
+    return results.filter((result) => result.type === activeFilter)
+  }, [activeFilter, results])
+
+  const activeTab = useMemo(
+    () => FILTER_TABS.find((tab) => tab.id === activeFilter) ?? FILTER_TABS[0],
+    [activeFilter],
+  )
+  const ActiveTabIcon = activeTab.icon
+
+  const suggestedFilter = useMemo<'post' | 'komunikat' | null>(() => {
+    const candidates = (['post', 'komunikat'] as const)
+      .filter((tabId) => tabId !== activeFilter && resultCounts[tabId] > 0)
+      .sort((left, right) => resultCounts[right] - resultCounts[left])
+
+    return candidates[0] ?? null
+  }, [activeFilter, resultCounts])
+  const suggestedTab = useMemo(
+    () => (suggestedFilter ? FILTER_TABS.find((tab) => tab.id === suggestedFilter) ?? null : null),
+    [suggestedFilter],
+  )
+
   const pushHistory = useCallback((query: string) => {
-    const normalized = query.trim()
-    if (normalized.length < 2) return
-    setSearchHistory((previous) => {
-      const next = [normalized, ...previous.filter((entry) => entry.toLowerCase() !== normalized.toLowerCase())]
-        .slice(0, MAX_HISTORY)
-      persistSearchHistory(next)
-      return next
-    })
+    setSearchHistory((previous) => pushHistoryEntry(previous, query))
   }, [])
 
   const handleSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
@@ -70,16 +91,11 @@ export default function SearchPageView() {
   }, [inputValue, navigate, pushHistory])
 
   const removeHistoryItem = useCallback((entry: string) => {
-    setSearchHistory((previous) => {
-      const next = previous.filter((item) => item !== entry)
-      persistSearchHistory(next)
-      return next
-    })
+    setSearchHistory((previous) => removeHistoryEntry(previous, entry))
   }, [])
 
   const clearHistory = useCallback(() => {
-    setSearchHistory([])
-    persistSearchHistory([])
+    setSearchHistory(clearAllHistory())
   }, [])
 
   const handleOpenResult = useCallback((result: SearchHit) => {
@@ -130,6 +146,60 @@ export default function SearchPageView() {
               )}
             </div>
           </form>
+
+          {activeQuery.trim().length >= 2 && results.length > 0 && (
+            <div className="mx-auto mt-5 w-full max-w-2xl">
+              <div
+                role="tablist"
+                aria-label="Filtr wyników wyszukiwania"
+                className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {FILTER_TABS.map((tab) => {
+                  const Icon = tab.icon
+                  const isActive = activeFilter === tab.id
+
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActiveFilter(tab.id)}
+                      className={
+                        'group inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 ' +
+                        'text-sm font-semibold tracking-[0.01em] transition-all duration-200 ' +
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ' +
+                        'focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/45 ' +
+                        (isActive
+                          ? 'border-[#1e293b]/45 bg-[#1e293b]/10 text-[#1e293b] ' +
+                            'shadow-[inset_0_0_0_1px_rgba(30,41,59,0.08)] ' +
+                            'dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright ' +
+                            'dark:shadow-[0_0_18px_-8px_rgba(232,200,74,0.45),inset_0_0_0_1px_rgba(232,200,74,0.18)]'
+                          : 'border-zinc-200 bg-white/60 text-zinc-600 ' +
+                            'hover:border-zinc-300 hover:bg-white/80 hover:text-[#1e293b] ' +
+                            'dark:border-white/10 dark:bg-black/25 dark:text-zinc-400 ' +
+                            'dark:hover:border-white/20 dark:hover:bg-black/40 dark:hover:text-brand-gold-bright')
+                      }
+                    >
+                      <Icon size={15} strokeWidth={2} className="shrink-0" />
+                      <span>{tab.label}</span>
+                      <span
+                        className={
+                          'ml-1 inline-flex min-w-6 justify-center rounded-full px-1.5 py-0.5 ' +
+                          'text-[10px] font-bold tabular-nums leading-none ' +
+                          (isActive
+                            ? 'bg-[#1e293b]/15 text-[#1e293b] dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright'
+                            : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
+                        }
+                      >
+                        {resultCounts[tab.id]}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="mx-auto mt-8 w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-white/10 dark:bg-black/25">
             <div className="mb-4 flex items-center justify-between">
@@ -204,9 +274,30 @@ export default function SearchPageView() {
                   Brak wyników dla „{activeQuery}”.
                 </p>
               </div>
+            ) : filteredResults.length === 0 ? (
+              <div className="py-8 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-zinc-400 dark:border-white/10 dark:bg-black/30 dark:text-zinc-500">
+                  <ActiveTabIcon size={22} strokeWidth={1.75} />
+                </div>
+                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                  Brak wyników w kategorii „{activeTab.label}”.
+                </p>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Dla frazy „{activeQuery}” nie znaleziono nic w tej kategorii.
+                </p>
+                {suggestedFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveFilter(suggestedFilter)}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/45 bg-[#1e293b]/10 px-4 py-2 text-xs font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/15 dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
+                  >
+                    Pokaż {suggestedTab?.label.toLowerCase()} ({resultCounts[suggestedFilter]})
+                  </button>
+                )}
+              </div>
             ) : (
               <ul className="space-y-2">
-                {results.map((result) => (
+                {filteredResults.map((result) => (
                   <li key={result.id}>
                     <SearchResultRow result={result} onOpen={handleOpenResult} />
                   </li>

@@ -170,6 +170,116 @@ export const PROFILE_MOBILE = {
   },
 } as const
 
+/**
+ * OMNI_DESKTOP — tokeny dla OmniSearchHub v2 (desktop md:+).
+ *
+ * Glassmorphizm panelu dropdowna: jasny tryb mleczna kapsuła `bg-white/95`,
+ * dark tryb głęboki gradient `bg-black/80` + złoty akcent `brand-gold-bright`.
+ *
+ * Wszystkie wiersze wyników korzystają z `rowBase`; podświetlenie aktywnego
+ * wiersza (System 2 — klawiatura) używa `rowActive` zamiast samego hovera.
+ */
+export const OMNI_DESKTOP = {
+  inputCapsuleWrap:
+    'relative hidden md:flex h-9 lg:h-10 w-64 lg:w-80 xl:w-96 shrink-0 items-center rounded-2xl px-3.5 ' +
+    'backdrop-blur-md backdrop-saturate-150 border border-zinc-200 bg-white/80 ' +
+    'transition-colors duration-200 focus-within:border-[#1e293b]/40 ' +
+    'dark:border-white/10 dark:bg-bg-card/80 dark:focus-within:border-brand-gold-bright/45',
+  inputInner:
+    'h-full w-full bg-transparent text-sm text-zinc-800 outline-none placeholder:text-zinc-500 ' +
+    'caret-[#1e293b] dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:caret-brand-gold-bright',
+  inputLeadingIcon:
+    'mr-2.5 shrink-0 text-[#1e293b] dark:text-zinc-400',
+  modeBadge:
+    'mr-2 inline-flex items-center gap-1 rounded-md border border-[#1e293b]/30 bg-[#1e293b]/10 px-1.5 py-0.5 ' +
+    'text-[10px] font-bold uppercase tracking-wider text-[#1e293b] ' +
+    'dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright',
+  panel:
+    'absolute right-0 top-[calc(100%+0.5rem)] z-[120] w-[min(28rem,calc(100vw-2rem))] ' +
+    'origin-top-right overflow-hidden rounded-2xl ' +
+    'border border-zinc-200/80 bg-white/95 shadow-2xl shadow-black/15 ring-1 ring-black/[0.04] ' +
+    'backdrop-blur-2xl backdrop-saturate-150 ' +
+    'dark:border-white/10 dark:bg-black/80 dark:shadow-black/60 dark:ring-white/[0.06]',
+  panelInner: 'max-h-[min(70vh,560px)] overflow-y-auto overflow-x-hidden overscroll-contain',
+  sectionHeader:
+    'flex items-center gap-2 px-4 pt-3 pb-1.5 ' +
+    'text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-brand-gold-bright',
+  sectionDivider: 'mx-3 border-t border-zinc-200/70 dark:border-white/10',
+  sectionIcon: 'shrink-0 text-[#1e293b] dark:text-brand-gold-bright',
+  sectionBody: 'px-1 pb-1',
+  rowBase:
+    'flex w-full items-center gap-3 mx-2 px-2 py-2 rounded-xl cursor-pointer text-left ' +
+    'transition-colors duration-150',
+  rowHover:
+    'hover:bg-zinc-100/80 active:bg-zinc-200/70 ' +
+    'dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]',
+  rowActive:
+    'bg-zinc-100/90 ring-1 ring-inset ring-[#1e293b]/25 ' +
+    'dark:bg-brand-gold/10 dark:ring-brand-gold-bright/35',
+  rowAvatar:
+    'h-8 w-8 shrink-0 ring-2 ring-[#1e293b]/20 dark:ring-brand-gold/30',
+  rowIconBubble:
+    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full ' +
+    'border border-[#1e293b]/15 bg-[#1e293b]/[0.06] text-[#1e293b] ' +
+    'dark:border-brand-gold/30 dark:bg-brand-gold/10 dark:text-brand-gold-bright',
+  rowTitle: 'block truncate text-sm font-semibold text-zinc-800 dark:text-zinc-100',
+  rowMeta: 'block truncate text-xs text-zinc-500 dark:text-slate-400',
+  rowSnippet: 'block line-clamp-2 text-sm text-zinc-700 dark:text-slate-300',
+  recentRow:
+    'group flex items-center gap-2 px-3 py-2 mx-2 rounded-xl ' +
+    'hover:bg-zinc-100/80 dark:hover:bg-white/[0.05]',
+  recentClock: 'shrink-0 text-zinc-400 dark:text-zinc-500',
+  recentText:
+    'flex-1 min-w-0 truncate text-left text-sm text-zinc-700 dark:text-zinc-200 [-webkit-tap-highlight-color:transparent]',
+  recentRemove:
+    'shrink-0 rounded-md p-1.5 text-zinc-400 opacity-0 group-hover:opacity-100 ' +
+    'transition-opacity hover:text-zinc-600 hover:bg-zinc-100 ' +
+    'dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-white/5',
+  hintsHeader:
+    'flex items-center gap-2 px-4 pt-3 pb-2 ' +
+    'text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-brand-gold-bright',
+  hintsWrap: 'flex flex-wrap gap-2 px-4 pb-3',
+  hintChip:
+    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 ' +
+    'text-xs font-medium transition-colors ' +
+    'border-zinc-200 bg-white/70 text-zinc-700 ' +
+    'hover:border-[#1e293b]/35 hover:bg-zinc-100 ' +
+    'dark:border-white/15 dark:bg-white/[0.04] dark:text-zinc-200 ' +
+    'dark:hover:border-brand-gold-bright/45 dark:hover:bg-brand-gold-bright/10',
+  hintIcon: 'shrink-0 text-[#1e293b] dark:text-brand-gold-bright',
+  emptyMessage:
+    'px-4 py-5 text-center text-[13px] text-slate-500 dark:text-slate-400',
+  loadingRow:
+    'flex items-center justify-center gap-2.5 px-4 py-6 text-[13px] text-slate-500 dark:text-slate-400',
+  footer:
+    'sticky bottom-0 flex items-center justify-center border-t border-zinc-200/80 ' +
+    'bg-zinc-50/90 px-4 py-3.5 backdrop-blur-md cursor-pointer transition-colors ' +
+    'hover:bg-zinc-100 dark:border-white/10 dark:bg-black/90 dark:hover:bg-zinc-900',
+  footerLabel:
+    'text-sm font-bold text-[#1e293b] dark:text-brand-gold-bright transition-colors ' +
+    'hover:text-[#1e293b]/70 dark:hover:text-brand-gold-bright/80',
+  motion: {
+    panel: {
+      initial: { opacity: 0, y: -8, scale: 0.985 },
+      animate: { opacity: 1, y: 0, scale: 1 },
+      exit: { opacity: 0, y: -6, scale: 0.985 },
+      transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
+    },
+    staggerContainer: {
+      hidden: {},
+      show: { transition: { staggerChildren: 0.025, delayChildren: 0.02 } },
+    },
+    staggerItem: {
+      hidden: { opacity: 0, y: 6 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { type: 'spring' as const, stiffness: 320, damping: 28 },
+      },
+    },
+  },
+} as const
+
 export const BOTTOM_NAV_MOBILE = {
   scrollThreshold: 10,
   navBaseClass: 'md:hidden fixed bottom-0 left-0 right-0 z-50 border-t',

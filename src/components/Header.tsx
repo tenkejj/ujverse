@@ -1,11 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import ClubsModal from './ClubsModal'
+import OmniSearchHub from './OmniSearchHub'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
@@ -30,6 +31,8 @@ type Props = {
   onNavigateToProfile: () => void
   onNavigateToEvents: () => void
   onNavigateToSearch: (query?: string) => void
+  onNavigateToUser: (userId: string) => void
+  onNavigateToPost: (postId: string) => void
   onOpenProfileModal: () => void
   onNavigateToSettings: () => void
   onRefreshPosts: () => void
@@ -51,6 +54,8 @@ export default function Header({
   onNavigateToProfile,
   onNavigateToEvents,
   onNavigateToSearch,
+  onNavigateToUser,
+  onNavigateToPost,
   onOpenProfileModal,
   onNavigateToSettings,
   onRefreshPosts,
@@ -149,7 +154,13 @@ export default function Header({
       </div>
 
       <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-end gap-3 relative z-10`}>
-        <div className="hidden md:flex items-center gap-0.5 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
+          <OmniSearchHub
+            onNavigateToUser={onNavigateToUser}
+            onNavigateToPost={onNavigateToPost}
+            onNavigateToEvents={onNavigateToEvents}
+            onNavigateToSearch={onNavigateToSearch}
+          />
           <button
             type="button"
             onClick={() => {
@@ -236,14 +247,6 @@ export default function Header({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onNavigateToSearch()}
-            className="w-9 h-9 flex items-center justify-center rounded-full p-2 text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none shrink-0"
-            aria-label="Szukaj"
-          >
-            <Search size={20} strokeWidth={2} />
-          </button>
         </div>
 
         <div className="relative shrink-0 min-w-0 block" ref={menuRef}>

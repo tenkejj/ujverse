@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Search,
@@ -14,11 +14,16 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import type { Profile, Post } from '../types'
 import { SearchService } from '../services/SearchService'
 import type { SearchHit } from '../types/search'
-import UserAvatar from './UserAvatar'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useEvents } from '../hooks/useEvents'
 import type { UJEvent } from '../data/mockEvents'
 import { ICONS_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
+import {
+  loadSearchHistory,
+  pushHistoryEntry,
+  removeHistoryEntry,
+  clearAllHistory,
+} from '../lib/searchHistory'
 
 type Props = {
   onNavigateToUser: (userId: string) => void
@@ -56,16 +61,9 @@ type MobilePill = 'all' | 'users' | 'places' | 'wpi'
 
 const WPIA_DEPARTMENT = 'Wydział Prawa i Administracji' as const
 
-const HISTORY_KEY = 'ujverse_search_history_v1'
-const MAX_HISTORY = 12
-
 /** Jak nagłówek „Wydziały” w sidebarze feedu. */
 const crystalSectionTitleCls =
   'font-bold text-[10px] uppercase tracking-[0.2em] text-[#1e293b] dark:text-brand-gold-bright'
-
-/** Ramka i promień jak karta postu (PostCard, variant card). */
-const searchResultPanelCls =
-  'rounded-2xl border border-[#0f172a]/5 dark:border-white/10 bg-transparent shadow-sm dark:shadow-lg dark:shadow-black/25'
 
 /** Powrót: sama ikona, cel dotykowy min. 44×44, bez ramki / tła (delikatny hover). */
 const backIconBtnCls = SEARCH_MOBILE.backButtonClass
@@ -89,27 +87,6 @@ const searchStaggerItem = {
   },
 }
 
-function loadSearchHistory(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY)
-    if (!raw) return []
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).slice(0, MAX_HISTORY)
-  } catch {
-    return []
-  }
-}
-
-function saveSearchHistory(entries: string[]) {
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, MAX_HISTORY)))
-  } catch {
-    /* ignore */
-  }
-}
-
 function eventMatchesPlaceQuery(ev: UJEvent, q: string): boolean {
   const n = q.trim().toLowerCase()
   if (!n) return false
@@ -129,14 +106,6 @@ function pickPlaceHits(events: UJEvent[], q: string, limit: number): PlaceHit[] 
   }))
 }
 
-function shouldIgnoreSearchHotkeyTarget(el: EventTarget | null): boolean {
-  if (!el || !(el instanceof HTMLElement)) return false
-  if (el.isContentEditable) return true
-  const tag = el.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  return false
-}
-
 export default function SearchBar({
   onNavigateToUser,
   onNavigateToPost,
@@ -147,51 +116,33 @@ export default function SearchBar({
   const [results, setResults] = useState<Results>({ users: [], posts: [], places: [] })
   const [isSearching, setIsSearching] = useState(false)
   const [mobileModalOpen, setMobileModalOpen] = useState(false)
-  const [desktopOverlayOpen, setDesktopOverlayOpen] = useState(false)
   const [mobilePill, setMobilePill] = useState<MobilePill>('all')
   const [searchHistory, setSearchHistory] = useState<string[]>(loadSearchHistory)
-  const [highlightIndex, setHighlightIndex] = useState(-1)
-  const [desktopInputFocused, setDesktopInputFocused] = useState(false)
   const [mobileInputFocused, setMobileInputFocused] = useState(false)
 
-  const desktopInputRef = useRef<HTMLInputElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const highlightIndexRef = useRef(-1)
 
   const hasResults =
     results.users.length > 0 || results.posts.length > 0 || results.places.length > 0
   const searched = !isSearching && query.length >= 2
-  const resultCount = results.users.length + results.posts.length + results.places.length
 
   const pushHistory = useCallback((q: string) => {
-    const t = q.trim()
-    if (t.length < 2) return
-    setSearchHistory((prev) => {
-      const next = [t, ...prev.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, MAX_HISTORY)
-      saveSearchHistory(next)
-      return next
-    })
+    setSearchHistory((prev) => pushHistoryEntry(prev, q))
   }, [])
 
   const clearHistory = useCallback(() => {
-    setSearchHistory([])
-    saveSearchHistory([])
+    setSearchHistory(clearAllHistory())
   }, [])
 
   const removeHistoryItem = useCallback((entry: string) => {
-    setSearchHistory((prev) => {
-      const next = prev.filter((x) => x !== entry)
-      saveSearchHistory(next)
-      return next
-    })
+    setSearchHistory((prev) => removeHistoryEntry(prev, entry))
   }, [])
 
   const clearSearch = useCallback(() => {
     setQuery('')
     setResults({ users: [], posts: [], places: [] })
     setIsSearching(false)
-    setHighlightIndex(-1)
   }, [])
 
   const closeMobileModal = useCallback(() => {
@@ -200,16 +151,10 @@ export default function SearchBar({
     clearSearch()
   }, [clearSearch])
 
-  const closeDesktopOverlay = useCallback(() => {
-    setDesktopOverlayOpen(false)
-    clearSearch()
-  }, [clearSearch])
-
   const handleNavigateUser = useCallback(
     (userId: string) => {
       pushHistory(query)
       setMobileModalOpen(false)
-      setDesktopOverlayOpen(false)
       setMobilePill('all')
       clearSearch()
       onNavigateToUser(userId)
@@ -221,7 +166,6 @@ export default function SearchBar({
     (postId: string) => {
       pushHistory(query)
       setMobileModalOpen(false)
-      setDesktopOverlayOpen(false)
       setMobilePill('all')
       clearSearch()
       onNavigateToPost(postId)
@@ -234,7 +178,6 @@ export default function SearchBar({
       if (post._searchType === 'komunikat') {
         pushHistory(query)
         setMobileModalOpen(false)
-        setDesktopOverlayOpen(false)
         setMobilePill('all')
         clearSearch()
         onNavigateToEvents()
@@ -248,48 +191,13 @@ export default function SearchBar({
   const handleNavigatePlace = useCallback(() => {
     pushHistory(query)
     setMobileModalOpen(false)
-    setDesktopOverlayOpen(false)
     setMobilePill('all')
     clearSearch()
     onNavigateToEvents()
   }, [clearSearch, onNavigateToEvents, pushHistory, query])
 
-  // Ctrl/Cmd+K — otwiera paletę (pomija pola formularzy poza naszym inputem)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'k') return
-      const active = document.activeElement
-      if (active === desktopInputRef.current) {
-        e.preventDefault()
-        return
-      }
-      if (shouldIgnoreSearchHotkeyTarget(active)) return
-      e.preventDefault()
-      if (desktopOverlayOpen) {
-        desktopInputRef.current?.focus({ preventScroll: true })
-        return
-      }
-      setDesktopOverlayOpen(true)
-      window.setTimeout(() => {
-        desktopInputRef.current?.focus({ preventScroll: true })
-      }, 80)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [desktopOverlayOpen])
-
-  // Focus desktop input when overlay opens
-  useEffect(() => {
-    if (!desktopOverlayOpen) return
-    const t = window.setTimeout(() => {
-      desktopInputRef.current?.focus({ preventScroll: true })
-    }, 120)
-    return () => window.clearTimeout(t)
-  }, [desktopOverlayOpen])
-
-  // Blokada scrolla pod overlayem (body + html)
-  useEffect(() => {
-    if (!mobileModalOpen && !desktopOverlayOpen) return
+    if (!mobileModalOpen) return
     const prevBody = document.body.style.overflow
     const prevHtml = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
@@ -298,9 +206,8 @@ export default function SearchBar({
       document.body.style.overflow = prevBody
       document.documentElement.style.overflow = prevHtml
     }
-  }, [mobileModalOpen, desktopOverlayOpen])
+  }, [mobileModalOpen])
 
-  // Focus mobile input when modal opens
   useEffect(() => {
     if (!mobileModalOpen) return
     const t = window.setTimeout(() => {
@@ -310,22 +217,6 @@ export default function SearchBar({
     }, 120)
     return () => window.clearTimeout(t)
   }, [mobileModalOpen])
-
-  // Reset podświetlenia przy nowym zapytaniu / wynikach
-  useEffect(() => {
-    setHighlightIndex(-1)
-  }, [query, results.users, results.posts, results.places, isSearching])
-
-  useEffect(() => {
-    highlightIndexRef.current = highlightIndex
-  }, [highlightIndex])
-
-  // Przewiń do aktywnego wyniku
-  useEffect(() => {
-    if (!desktopOverlayOpen || highlightIndex < 0) return
-    const el = document.querySelector(`[data-search-result-index="${highlightIndex}"]`)
-    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [highlightIndex, desktopOverlayOpen])
 
   // Debounced search (Meilisearch: ujverse_content + ujverse_users)
   useEffect(() => {
@@ -389,78 +280,7 @@ export default function SearchBar({
     }
   }, [query, mobileModalOpen, mobilePill, allEvents])
 
-  const resultItemBase =
-    'w-full flex items-center gap-3 py-2.5 px-1 rounded-xl cursor-pointer text-left transition-colors duration-200'
   const mobileResultRow = SEARCH_MOBILE.mobileResults.rowClass
-
-  const desktopRowHover =
-    'hover:bg-slate-100/90 dark:hover:bg-white/[0.06] active:bg-slate-200/80 dark:active:bg-white/[0.08]'
-  const desktopHighlight =
-    'ring-2 ring-[#1e293b]/45 dark:ring-brand-gold-bright/50 bg-[#1e293b]/[0.08] dark:bg-brand-gold/10'
-
-  const activateHighlightedResult = useCallback(() => {
-    const hi = highlightIndexRef.current
-    if (hi < 0 || hi >= resultCount) return
-    let idx = 0
-    for (const u of results.users) {
-      if (idx === hi) {
-        handleNavigateUser(u.id)
-        return
-      }
-      idx++
-    }
-    for (const p of results.posts) {
-      if (idx === hi) {
-        handleNavigateContent(p)
-        return
-      }
-      idx++
-    }
-    for (let placeIndex = 0; placeIndex < results.places.length; placeIndex++) {
-      if (idx === hi) {
-        handleNavigatePlace()
-        return
-      }
-      idx++
-    }
-  }, [resultCount, results.users, results.posts, results.places, handleNavigateUser, handleNavigateContent, handleNavigatePlace])
-
-  const onDesktopSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      closeDesktopOverlay()
-      return
-    }
-    if (resultCount === 0 || isSearching) return
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setHighlightIndex((i) => (i < 0 ? 0 : (i + 1) % resultCount))
-      return
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightIndex((i) => (i < 0 ? resultCount - 1 : (i - 1 + resultCount) % resultCount))
-      return
-    }
-    if (e.key === 'Home') {
-      e.preventDefault()
-      setHighlightIndex(0)
-      return
-    }
-    if (e.key === 'End') {
-      e.preventDefault()
-      setHighlightIndex(resultCount - 1)
-      return
-    }
-    if (e.key === 'Enter') {
-      const hi = highlightIndexRef.current
-      if (hi >= 0 && hi < resultCount) {
-        e.preventDefault()
-        activateHighlightedResult()
-      }
-    }
-  }
 
   const crystalHistorySection = (sectionClassName: string, focusInput: () => void) => (
     <section className={sectionClassName}>
@@ -717,230 +537,9 @@ export default function SearchBar({
     )
   }
 
-  const renderDesktopResultsGrid = () => {
-    const tTitle = 'text-fg-primary dark:text-slate-200'
-    const tMuted = 'text-fg-secondary dark:text-slate-400'
-    const tHint = 'text-slate-500 dark:text-slate-500'
-    const tQuote = 'text-fg-primary dark:text-slate-300'
-    const sectionIconCls = 'text-[#1e293b] dark:text-brand-gold-bright shrink-0'
-    const sectionDivider = 'border-slate-200/80 dark:border-white/10'
-    let flatIdx = 0
-
-    const mainStatuses = (
-      <>
-        {query.length >= 2 && isSearching && (
-          <div
-            className={`lg:col-span-2 flex items-center justify-center gap-2.5 py-10 text-[13px] ${tMuted}`}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <Loader2 size={14} className="animate-spin text-[#1e293b] dark:text-brand-gold-bright shrink-0" />
-            Szukam…
-          </div>
-        )}
-        {query.length === 1 && (
-          <div className={`lg:col-span-2 px-2 py-4 text-[12px] ${tHint}`} onPointerDown={(e) => e.stopPropagation()}>
-            Wpisz co najmniej 2 znaki…
-          </div>
-        )}
-        {query.length >= 2 && !isSearching && searched && !hasResults && (
-          <div
-            className={`lg:col-span-2 px-2 py-6 text-center text-[13px] ${tHint}`}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            Brak wyników dla <span className={`font-semibold ${tQuote}`}>"{query}"</span>
-          </div>
-        )}
-      </>
-    )
-
-    const resultsTwoColumns =
-      query.length >= 2 && !isSearching && hasResults ? (
-        <>
-          <div
-            className={`flex min-h-0 max-h-[min(62vh,520px)] min-w-0 flex-col overflow-hidden lg:max-h-none ${searchResultPanelCls}`}
-            onPointerDown={(e) => e.stopPropagation()}
-            role="listbox"
-            aria-label="Użytkownicy"
-          >
-            <div
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 border-b ${sectionDivider} text-[10px] font-bold uppercase tracking-widest ${tHint}`}
-            >
-              <UserRound size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
-              Użytkownicy
-            </div>
-            <motion.div
-              className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1"
-              variants={searchStaggerContainer}
-              initial="hidden"
-              animate="show"
-            >
-              {results.users.map((user) => {
-                const idx = flatIdx++
-                const hi = highlightIndex === idx
-                return (
-                  <motion.button
-                    key={user.id}
-                    type="button"
-                    variants={searchStaggerItem}
-                    data-search-result-index={idx}
-                    role="option"
-                    aria-selected={hi}
-                    onClick={() => handleNavigateUser(user.id)}
-                    whileTap={{ scale: 0.99 }}
-                    className={`${resultItemBase} ${desktopRowHover} ${hi ? desktopHighlight : ''}`}
-                  >
-                    <UserAvatar
-                      profile={user}
-                      name={user.full_name ?? 'U'}
-                      className="h-9 w-9 shrink-0 ring-2 ring-[#1e293b]/25 dark:ring-brand-gold/30"
-                      textSize="text-sm"
-                    />
-                    <span className="flex-1 min-w-0">
-                      <span className={`block text-sm font-semibold truncate ${tTitle}`}>
-                        {user.full_name ?? 'Użytkownik'}
-                      </span>
-                      {user.department && (
-                        <span className={`block text-xs truncate mt-0.5 ${tHint}`}>
-                          {getDeptAbbreviation(user.department)}
-                        </span>
-                      )}
-                    </span>
-                  </motion.button>
-                )
-              })}
-              {results.users.length === 0 && (
-                <p className={`text-[12px] px-2 py-3 ${tHint}`}>Brak dopasowań w ludziach.</p>
-              )}
-            </motion.div>
-          </div>
-
-          <div
-            className={`flex min-h-0 max-h-[min(62vh,520px)] min-w-0 flex-col overflow-hidden lg:max-h-none ${searchResultPanelCls}`}
-            onPointerDown={(e) => e.stopPropagation()}
-            role="listbox"
-            aria-label="Wpisy i miejsca"
-          >
-            <div
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 border-b ${sectionDivider} text-[10px] font-bold uppercase tracking-widest ${tHint}`}
-            >
-              <MessageSquareText size={14} strokeWidth={2.25} className={sectionIconCls} aria-hidden />
-              Wpisy i miejsca
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-3">
-              <motion.div
-                className="space-y-1"
-                variants={searchStaggerContainer}
-                initial="hidden"
-                animate="show"
-              >
-                {results.posts.length > 0 && (
-                  <div className={`text-[10px] font-bold uppercase tracking-widest ${tHint} px-1 pb-1`}>Wpisy</div>
-                )}
-                {results.posts.map((post) => {
-                  const postId = String(post.id)
-                  const author = post.profiles
-                  const authorName = author?.full_name ?? 'Użytkownik'
-                  const idx = flatIdx++
-                  const hi = highlightIndex === idx
-                  return (
-                    <motion.button
-                      key={postId}
-                      type="button"
-                      variants={searchStaggerItem}
-                      data-search-result-index={idx}
-                      role="option"
-                      aria-selected={hi}
-                      onClick={() => handleNavigateContent(post)}
-                      whileTap={{ scale: 0.99 }}
-                      className={`${resultItemBase} ${desktopRowHover} ${hi ? desktopHighlight : ''}`}
-                    >
-                      <UserAvatar
-                        profile={author}
-                        name={authorName}
-                        className="h-9 w-9 shrink-0 ring-2 ring-[#1e293b]/25 dark:ring-brand-gold/30"
-                        textSize="text-sm"
-                      />
-                      <span className="flex-1 min-w-0">
-                        <span className={`block text-sm font-semibold truncate ${tTitle}`}>{authorName}</span>
-                        <span className={`block text-sm line-clamp-2 mt-0.5 ${tMuted}`}>{post.content ?? ''}</span>
-                      </span>
-                    </motion.button>
-                  )
-                })}
-              </motion.div>
-              {results.places.length > 0 && (
-                <motion.div
-                  className={`space-y-1 pt-1 border-t ${sectionDivider}`}
-                  variants={searchStaggerContainer}
-                  initial="hidden"
-                  animate="show"
-                >
-                  <div className={`text-[10px] font-bold uppercase tracking-widest ${tHint} px-1 pb-1`}>Miejsca</div>
-                  {results.places.map((place) => {
-                    const idx = flatIdx++
-                    const hi = highlightIndex === idx
-                    return (
-                      <motion.button
-                        key={place.id}
-                        type="button"
-                        variants={searchStaggerItem}
-                        data-search-result-index={idx}
-                        role="option"
-                        aria-selected={hi}
-                        onClick={handleNavigatePlace}
-                        whileTap={{ scale: 0.99 }}
-                        className={`${resultItemBase} ${desktopRowHover} ${hi ? desktopHighlight : ''}`}
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent-gold/35 bg-accent-gold/10 text-accent-gold">
-                          <MapPin size={17} strokeWidth={2} />
-                        </span>
-                        <span className="flex-1 min-w-0">
-                          <span className={`block text-sm font-semibold truncate ${tTitle}`}>
-                            {place.location.trim() || place.title}
-                          </span>
-                          <span className={`block text-xs line-clamp-1 mt-0.5 ${tHint}`}>
-                            {place.location.trim() && place.title !== place.location.trim()
-                              ? place.title
-                              : 'Wydarzenie'}
-                          </span>
-                        </span>
-                      </motion.button>
-                    )
-                  })}
-                </motion.div>
-              )}
-              {results.posts.length === 0 && results.places.length === 0 && (
-                <p className={`text-[12px] px-2 py-3 ${tHint}`}>Brak wpisów i miejsc.</p>
-              )}
-            </div>
-          </div>
-        </>
-      ) : null
-
-    return (
-      <div
-        className="mx-auto flex w-full max-w-5xl flex-1 min-h-0 flex-col"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="grid min-h-0 w-full flex-1 grid-cols-1 auto-rows-fr gap-4 lg:grid-cols-2 lg:items-stretch">
-          {query.length === 0 && (
-            <p
-              className={`hidden text-center text-[13px] lg:col-span-2 ${tHint} px-1 py-2 lg:block`}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              Wyniki wyszukiwania pojawią się tutaj — zacznij wpisywać powyżej.
-            </p>
-          )}
-          {mainStatuses}
-          {resultsTwoColumns}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
-      <div ref={containerRef} className="relative flex shrink-0 items-center">
+      <div ref={containerRef} className="relative flex shrink-0 items-center md:hidden">
         <button
           type="button"
           onClick={() => setMobileModalOpen(true)}
@@ -953,97 +552,7 @@ export default function SearchBar({
             className={`shrink-0 ${ICONS_MOBILE.strongStrokeClass}`}
           />
         </button>
-
-        <button
-          type="button"
-          onClick={() => setDesktopOverlayOpen(true)}
-          className="hidden md:flex w-9 h-9 shrink-0 items-center justify-center rounded-full text-slate-500 dark:text-gray-400 hover:text-[#1e293b] dark:hover:text-brand-gold-bright hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-          aria-label="Szukaj"
-        >
-          <Search size={ICONS_MOBILE.searchDesktopTriggerSize} strokeWidth={2} className="shrink-0 md:stroke-2" />
-        </button>
       </div>
-
-      {createPortal(
-        <AnimatePresence>
-          {desktopOverlayOpen && (
-            <motion.div
-              key="desktop-search-overlay"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Wyszukiwanie"
-              className="fixed inset-0 z-[200] hidden md:flex flex-col bg-bg-app/95"
-              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-              animate={{ opacity: 1, backdropFilter: 'blur(20px)' }}
-              exit={{ opacity: 0, backdropFilter: 'blur(6px)' }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-              onPointerDown={() => closeDesktopOverlay()}
-            >
-              <motion.div
-                className="relative mx-auto flex w-full max-w-6xl flex-1 min-h-0 flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 12 }}
-                transition={searchCrystalEntry}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <div className="relative mx-auto flex w-full max-w-5xl shrink-0 items-center gap-2">
-                  <motion.button
-                    type="button"
-                    onClick={closeDesktopOverlay}
-                    whileTap={{ scale: 0.96 }}
-                    className={backIconBtnCls}
-                    aria-label="Wróć do feedu"
-                  >
-                    <ChevronLeft size={24} strokeWidth={2.25} className="h-6 w-6 shrink-0" aria-hidden />
-                  </motion.button>
-                  <div className="relative min-w-0 flex-1 rounded-2xl">
-                    <motion.div
-                      aria-hidden
-                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-[#1e293b] dark:border-brand-gold-bright"
-                      initial={false}
-                      animate={{
-                        opacity: desktopInputFocused ? 1 : 0,
-                        scale: desktopInputFocused ? 1 : 0.992,
-                      }}
-                      transition={searchSpringContent}
-                    />
-                    <Search
-                      size={18}
-                      strokeWidth={2}
-                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-[#1e293b] dark:text-brand-gold-bright"
-                    />
-                    <input
-                      ref={desktopInputRef}
-                      type="search"
-                      name="ujverse-desktop-search"
-                      autoComplete="off"
-                      spellCheck={false}
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={onDesktopSearchKeyDown}
-                      onFocus={() => setDesktopInputFocused(true)}
-                      onBlur={() => setDesktopInputFocused(false)}
-                      placeholder="Szukaj użytkowników, wpisów, miejsc…"
-                      className="ujverse-search-input relative z-[1] h-12 w-full rounded-2xl border border-[#0f172a]/10 bg-black/[0.06] pl-11 pr-3 text-[15px] text-logo-navy shadow-none outline-none ring-0 transition-[border-color] duration-300 placeholder:text-fg-secondary focus:border-[#0f172a]/20 focus:ring-0 dark:border-white/10 dark:bg-black/40 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-white/25 caret-[#1e293b] dark:caret-brand-gold-bright"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex-1 min-h-0 flex flex-col mt-6 overflow-hidden">
-                  {query.length === 0 &&
-                    crystalHistorySection('mx-auto mb-6 w-full max-w-5xl shrink-0', () => {
-                      desktopInputRef.current?.focus({ preventScroll: true })
-                    })}
-
-                  <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{renderDesktopResultsGrid()}</div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body,
-      )}
 
       {createPortal(
         <AnimatePresence>
