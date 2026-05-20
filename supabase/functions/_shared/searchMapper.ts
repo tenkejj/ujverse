@@ -37,7 +37,7 @@ export type PostProfile = {
 }
 
 export function documentIdFor(table: SearchSyncTable, rowId: string): string {
-  return table === 'posts' ? `post:${rowId}` : `komunikat:${rowId}`
+  return table === 'posts' ? `post-${rowId}` : `announcement-${rowId}`
 }
 
 function normalizeDate(input: unknown): string {

@@ -34,6 +34,7 @@ export default function SearchPageView() {
   const [activeQuery, setActiveQuery] = useState('')
   const [searchHistory, setSearchHistory] = useState<string[]>(readSearchHistory)
   const { results, isLoading, error } = useContentSearch(activeQuery)
+  console.log("🔍 [SearchPageView] Aktywne zapytanie:", activeQuery, "Wyniki z Meilisearch:", results);
 
   const queryFromUrl = useMemo(
     () => new URLSearchParams(location.search).get('q')?.trim() ?? '',

@@ -19,10 +19,11 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
 
   if (typeof raw.sourceId === 'string' && typeof raw.type === 'string' && typeof raw.content === 'string') {
     const type = raw.type === 'komunikat' ? 'komunikat' : 'post'
+    const idPrefix = type === 'komunikat' ? 'announcement' : 'post'
     const content = pickFormatted(formatted, 'content', raw.content)
     const author = pickFormatted(formatted, 'author', typeof raw.author === 'string' ? raw.author : '')
     return {
-      id: String(raw.id ?? `${type}:${raw.sourceId}`),
+      id: String(raw.id ?? `${idPrefix}-${raw.sourceId}`),
       sourceId: raw.sourceId,
       type,
       content,
@@ -42,12 +43,12 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
   const rawId = raw.id != null ? String(raw.id) : ''
 
   if (rawId && (legacyContent || legacyTitle)) {
-    const sourceId = rawId.startsWith('post:')
+    const sourceId = rawId.startsWith('post-')
       ? rawId.slice(5)
       : rawId.replace(/^post_/, '')
     const content = legacyContent || legacyTitle
     return {
-      id: rawId.startsWith('post:') ? rawId : `post:${sourceId}`,
+      id: rawId.startsWith('post-') ? rawId : `post-${sourceId}`,
       sourceId,
       type: 'post',
       content: pickFormatted(formatted, 'content', content),
@@ -62,14 +63,14 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
   }
 
   if (raw.kind === 'post' && rawId) {
-    const sourceId = rawId.replace(/^post:/, '')
+    const sourceId = rawId.replace(/^post-/, '')
     const content =
       (typeof raw.content === 'string' ? raw.content.trim() : '') ||
       legacyTitle ||
       legacyContent
     if (!content) return null
     return {
-      id: `post:${sourceId}`,
+      id: `post-${sourceId}`,
       sourceId,
       type: 'post',
       content: pickFormatted(formatted, 'content', content),

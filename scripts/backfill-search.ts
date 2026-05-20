@@ -51,11 +51,11 @@ async function meiliUpsertDocuments(indexUid: string, docs: SearchDocument[]) {
 }
 
 function postDocumentId(id: string | number): string {
-  return `post:${String(id)}`
+  return `post-${String(id)}`
 }
 
 function announcementDocumentId(id: string | number): string {
-  return `komunikat:${String(id)}`
+  return `announcement-${String(id)}`
 }
 
 async function main() {

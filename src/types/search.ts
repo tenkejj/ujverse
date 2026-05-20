@@ -1,7 +1,7 @@
 export type SearchContentType = 'post' | 'komunikat'
 
 export type SearchDocument = {
-  /** Primary key in index, e.g. `post:42` or `komunikat:uuid`. */
+  /** Primary key in index, e.g. `post-42` or `announcement-uuid`. */
   id: string
   sourceId: string
   type: SearchContentType

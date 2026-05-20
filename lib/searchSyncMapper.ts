@@ -56,8 +56,8 @@ export type PostProfile = {
 }
 
 export function documentIdFor(table: SearchSyncTable, rowId: string): string {
-  if (table === 'posts') return `post:${rowId}`
-  if (table === 'announcements') return `komunikat:${rowId}`
+  if (table === 'posts') return `post-${rowId}`
+  if (table === 'announcements') return `announcement-${rowId}`
   return rowId
 }
 
