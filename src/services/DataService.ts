@@ -80,6 +80,11 @@ class DataServiceImpl {
     return PostsAdapter.fetchById(id)
   }
 
+  /* Batch fetch dla list ID — wyszukiwarka łączy hity Meili z pełnym Post[]. */
+  async fetchPostsByIds(ids: ReadonlyArray<string>): Promise<Post[]> {
+    return PostsAdapter.fetchByIds(ids)
+  }
+
   /* Powiadomienia — persists read/clear przez RLS dla auth.uid(). */
   async listNotificationsForUser(
     userId: string,

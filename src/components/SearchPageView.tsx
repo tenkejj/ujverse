@@ -1,11 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { FileText, History, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
+import { FileText, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useContentSearch } from '../hooks/useContentSearch'
+import type { Comment, Post, Profile } from '../types'
 import type { SearchHit, SearchUserHit } from '../types/search'
+import { DataService } from '../services/DataService'
+import PostCard from './PostCard'
 import SearchResultRow from './search/SearchResultRow'
 import SearchUserResultRow from './search/SearchUserResultRow'
+import SearchDashboard from './search/SearchDashboard'
+import type { DashboardScope } from './search/SearchDashboard'
 import {
   loadSearchHistory,
   pushHistoryEntry,
@@ -22,6 +28,33 @@ type SearchPageItem =
 
 type Props = {
   onNavigateToUser: (userId: string) => void
+
+  // sharedPostProps — tożsame z SinglePostView, żeby renderować pełne PostCard
+  // dla post-hitów z Meilisearch (likes/komentarze/usuwanie współdzielą stan App.tsx).
+  myProfile: Profile | null
+  displayName: string
+  currentUserId: string
+  likesCountByPost: Record<string, number>
+  likedPostIds: Record<string, boolean>
+  heartPopPostId: string | null
+  commentsCountByPost: Record<string, number>
+  commentsByPost: Record<string, Comment[]>
+  commentsLoadingByPost: Record<string, boolean>
+  expandedComments: Set<string>
+  commentInput: Record<string, string>
+  commentSubmitting: Record<string, boolean>
+  commentReplyTargetByPost: Record<string, { commentId: number; username: string } | null>
+  commentLikeLoadingByPost: Record<string, Record<number, boolean>>
+  onToggleLike: (postId: string) => void
+  onToggleComments: (postId: string) => void
+  onSubmitComment: (postId: string) => void
+  onCommentInputChange: (postId: string, value: string) => void
+  onToggleCommentLike: (postId: string, comment: Comment) => void
+  onReplyToComment: (postId: string, comment: Comment) => void
+  onCancelReply: (postId: string) => void
+  onDeletePost: (postId: string) => void
+  onDeleteComment: (commentId: number, postId: string) => void
+  onNavigateToPost?: (postId: string) => void
 }
 
 const FILTER_TABS: ReadonlyArray<{
@@ -37,14 +70,50 @@ const FILTER_TABS: ReadonlyArray<{
 
 const SUGGESTIBLE_FILTERS: ReadonlyArray<ContentFilter> = ['user', 'post', 'komunikat']
 
-export default function SearchPageView({ onNavigateToUser }: Props) {
+const SCOPE_PLACEHOLDER: Record<DashboardScope, string> = {
+  post: 'Szukaj wśród wpisów studentów…',
+  komunikat: 'Szukaj wśród oficjalnych komunikatów…',
+}
+
+const DEFAULT_PLACEHOLDER = 'Szukaj wpisów, komunikatów i użytkowników...'
+
+export default function SearchPageView({
+  onNavigateToUser,
+  myProfile,
+  displayName,
+  currentUserId,
+  likesCountByPost,
+  likedPostIds,
+  heartPopPostId,
+  commentsCountByPost,
+  commentsByPost,
+  commentsLoadingByPost,
+  expandedComments,
+  commentInput,
+  commentSubmitting,
+  commentReplyTargetByPost,
+  commentLikeLoadingByPost,
+  onToggleLike,
+  onToggleComments,
+  onSubmitComment,
+  onCommentInputChange,
+  onToggleCommentLike,
+  onReplyToComment,
+  onCancelReply,
+  onDeletePost,
+  onDeleteComment,
+  onNavigateToPost,
+}: Props) {
   const location = useLocation()
   const navigate = useNavigate()
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [inputValue, setInputValue] = useState('')
   const [activeQuery, setActiveQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<SearchFilter>('all')
+  const [pendingFilter, setPendingFilter] = useState<ContentFilter | null>(null)
   const [searchHistory, setSearchHistory] = useState<string[]>(loadSearchHistory)
   const { content, users, isLoading, error } = useContentSearch(activeQuery)
+  const [fullPostsById, setFullPostsById] = useState<Record<string, Post>>({})
 
   const queryFromUrl = useMemo(
     () => new URLSearchParams(location.search).get('q')?.trim() ?? '',
@@ -57,8 +126,68 @@ export default function SearchPageView({ onNavigateToUser }: Props) {
     setActiveFilter('all')
   }, [queryFromUrl])
 
+  // Aplikujemy preseeded filter z Quick Scopes / Department shortcuts dopiero, gdy
+  // użytkownik wpisze ≥2 znaki (lub URL wniesie taki query). Wtedy pigułki są widoczne,
+  // a wyniki od razu zawężone do wybranego zakresu.
+  useEffect(() => {
+    if (pendingFilter && activeQuery.trim().length >= 2) {
+      setActiveFilter(pendingFilter)
+      setPendingFilter(null)
+    }
+  }, [activeQuery, pendingFilter])
+
   const safeUsers = Array.isArray(users) ? users : []
   const safeContent = Array.isArray(content) ? content : []
+
+  const postHitIds = useMemo<string[]>(
+    () =>
+      safeContent
+        .filter((hit) => hit.type === 'post' && Boolean(hit.sourceId))
+        .map((hit) => hit.sourceId),
+    [safeContent],
+  )
+
+  // Batch dofetch pełnych Post[] dla post-hitów Meilisearch (search index zawiera
+  // tylko zindeksowane pola). Pomijamy ID, które już mamy w cache — strony
+  // wyszukiwania zazwyczaj rotują query, a większość post-hitów się zmienia.
+  useEffect(() => {
+    if (postHitIds.length === 0) return
+    const missing = postHitIds.filter((id) => !(id in fullPostsById))
+    if (missing.length === 0) return
+    let cancelled = false
+    void DataService.fetchPostsByIds(missing).then((rows) => {
+      if (cancelled) return
+      setFullPostsById((previous) => {
+        const next = { ...previous }
+        for (const row of rows) {
+          if (row.id) next[String(row.id)] = row
+        }
+        return next
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [postHitIds, fullPostsById])
+
+  const unifiedPostsBySourceId = useMemo(() => {
+    const map: Record<string, ReturnType<typeof DataService.toUnifiedPosts>[number]> = {}
+    const fetched: Post[] = []
+    for (const id of postHitIds) {
+      const row = fullPostsById[id]
+      if (row) fetched.push(row)
+    }
+    if (fetched.length === 0) return map
+    const unified = DataService.toUnifiedPosts(fetched, {
+      likesCountByPost,
+      likedPostIds,
+      commentsCountByPost,
+    })
+    for (const uc of unified) {
+      if (uc.id) map[uc.id] = uc
+    }
+    return map
+  }, [postHitIds, fullPostsById, likesCountByPost, likedPostIds, commentsCountByPost])
 
   const resultCounts = useMemo<Record<SearchFilter, number>>(() => ({
     all: safeUsers.length + safeContent.length,
@@ -139,10 +268,41 @@ export default function SearchPageView({ onNavigateToUser }: Props) {
   const handleClearInput = useCallback(() => {
     setInputValue('')
     setActiveQuery('')
+    setPendingFilter(null)
     navigate('/search')
   }, [navigate])
 
+  const handlePickHistory = useCallback((entry: string) => {
+    setInputValue(entry)
+    setActiveQuery(entry)
+    navigate(`/search?q=${encodeURIComponent(entry)}`)
+  }, [navigate])
+
+  const handlePickScope = useCallback((scope: DashboardScope) => {
+    setPendingFilter(scope)
+    // Małe opóźnienie, żeby focus zadziałał po re-renderze inputa z nowym placeholderem.
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus()
+    })
+  }, [])
+
+  const handlePickDepartment = useCallback((dept: string) => {
+    setInputValue(dept)
+    setActiveQuery(dept)
+    setPendingFilter('user')
+    pushHistory(dept)
+    navigate(`/search?q=${encodeURIComponent(dept)}`)
+  }, [navigate, pushHistory])
+
   const hasAnyResults = resultCounts.all > 0
+  const isEmptyState = activeQuery.trim().length < 2
+
+  const inputPlaceholder = useMemo(() => {
+    if (pendingFilter === 'post' || pendingFilter === 'komunikat') {
+      return SCOPE_PLACEHOLDER[pendingFilter]
+    }
+    return DEFAULT_PLACEHOLDER
+  }, [pendingFilter])
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-4">
@@ -157,11 +317,12 @@ export default function SearchPageView({ onNavigateToUser }: Props) {
             <div className="relative flex h-14 w-full items-center rounded-full border border-zinc-200 bg-white/80 px-5 shadow-sm transition-colors focus-within:border-zinc-300 dark:border-white/10 dark:bg-black/35 dark:focus-within:border-brand-gold-bright/45">
               <Search size={19} strokeWidth={2} className="mr-3 shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
               <input
+                ref={searchInputRef}
                 id="search-page-query-input"
                 type="search"
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
-                placeholder="Szukaj wpisów, komunikatów i użytkowników..."
+                placeholder={inputPlaceholder}
                 className="h-full min-w-0 flex-1 bg-transparent pr-8 text-[15px] text-zinc-800 outline-none placeholder:text-zinc-500 dark:text-zinc-100 dark:placeholder:text-zinc-500 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                 autoComplete="off"
                 spellCheck={false}
@@ -233,114 +394,151 @@ export default function SearchPageView({ onNavigateToUser }: Props) {
             </div>
           )}
 
-          <div className="mx-auto mt-8 w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-white/10 dark:bg-black/25">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#1e293b] dark:text-brand-gold-bright">
-                Ostatnio wyszukiwane
-              </h2>
-              {searchHistory.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearHistory}
-                  className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition-colors hover:text-[#1e293b] dark:hover:text-brand-gold-bright"
-                >
-                  Wyczyść
-                </button>
-              )}
-            </div>
-
-            {searchHistory.length === 0 ? (
-              <p className="text-sm text-zinc-500">Brak ostatnich wyszukiwań.</p>
+          <AnimatePresence mode="wait" initial={false}>
+            {isEmptyState ? (
+              <SearchDashboard
+                key="search-dashboard"
+                history={searchHistory}
+                pendingFilter={
+                  pendingFilter === 'post' || pendingFilter === 'komunikat'
+                    ? pendingFilter
+                    : null
+                }
+                onPickHistory={handlePickHistory}
+                onRemoveHistory={removeHistoryItem}
+                onClearHistory={clearHistory}
+                onPickScope={handlePickScope}
+                onPickDepartment={handlePickDepartment}
+              />
             ) : (
-              <ul className="flex flex-wrap gap-2.5">
-                {searchHistory.map((entry) => (
-                  <li key={entry}>
-                    <div className="group flex items-center gap-1 rounded-full border border-zinc-200 bg-white/70 px-2 py-1 dark:border-white/10 dark:bg-black/30">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInputValue(entry)
-                          setActiveQuery(entry)
-                          navigate(`/search?q=${encodeURIComponent(entry)}`)
-                        }}
-                        className="flex items-center gap-2 rounded-full px-2 py-1 text-sm text-zinc-700 transition-colors hover:text-[#1e293b] dark:text-zinc-300 dark:hover:text-brand-gold-bright"
-                      >
-                        <History size={14} strokeWidth={2} className="shrink-0" />
-                        <span>{entry}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeHistoryItem(entry)}
-                        className="rounded-full p-1 text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
-                        aria-label={`Usuń „${entry}” z historii`}
-                      >
-                        <X size={14} strokeWidth={2} />
-                      </button>
+              <motion.div
+                key="search-results"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                // Bez dashed chrome'u — pełne PostCardy mają już własne szkło.
+                // Stany puste/loading/error otrzymują wewnętrzny mini-panel poniżej.
+                className="mx-auto mt-6 w-full max-w-2xl"
+              >
+                {isLoading ? (
+                  <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-white/65 px-6 py-6 text-center dark:border-white/15 dark:bg-black/20">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                      Szukam wyników dla „{activeQuery}”...
+                    </p>
+                  </div>
+                ) : error ? (
+                  <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-white/65 px-6 py-6 text-center dark:border-white/15 dark:bg-black/20">
+                    <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
+                  </div>
+                ) : !hasAnyResults ? (
+                  <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-white/65 px-6 py-6 text-center dark:border-white/15 dark:bg-black/20">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                      Brak wyników dla „{activeQuery}”.
+                    </p>
+                  </div>
+                ) : filteredResults.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-white/65 px-6 py-8 text-center dark:border-white/15 dark:bg-black/20">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-zinc-400 dark:border-white/10 dark:bg-black/30 dark:text-zinc-500">
+                      <ActiveTabIcon size={22} strokeWidth={1.75} />
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="mx-auto mt-6 w-full max-w-2xl rounded-2xl border border-dashed border-zinc-300/90 bg-white/65 px-6 py-6 dark:border-white/15 dark:bg-black/20">
-            {activeQuery.trim().length < 2 ? (
-              <div className="py-6 text-center">
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                  Wpisz co najmniej 2 znaki, aby rozpocząć wyszukiwanie.
-                </p>
-              </div>
-            ) : isLoading ? (
-              <div className="py-6 text-center">
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                  Szukam wyników dla „{activeQuery}”...
-                </p>
-              </div>
-            ) : error ? (
-              <div className="py-6 text-center">
-                <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
-              </div>
-            ) : !hasAnyResults ? (
-              <div className="py-6 text-center">
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                  Brak wyników dla „{activeQuery}”.
-                </p>
-              </div>
-            ) : filteredResults.length === 0 ? (
-              <div className="py-8 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-zinc-400 dark:border-white/10 dark:bg-black/30 dark:text-zinc-500">
-                  <ActiveTabIcon size={22} strokeWidth={1.75} />
-                </div>
-                <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                  Brak wyników w kategorii „{activeTab.label}”.
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Dla frazy „{activeQuery}” nie znaleziono nic w tej kategorii.
-                </p>
-                {suggestedFilter && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveFilter(suggestedFilter)}
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/45 bg-[#1e293b]/10 px-4 py-2 text-xs font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/15 dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
-                  >
-                    Pokaż {suggestedTab?.label.toLowerCase()} ({resultCounts[suggestedFilter]})
-                  </button>
-                )}
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {filteredResults.map((item) => (
-                  <li key={item.kind === 'user' ? `user-${item.hit.id}` : item.hit.id}>
-                    {item.kind === 'user' ? (
-                      <SearchUserResultRow hit={item.hit} onOpen={onNavigateToUser} />
-                    ) : (
-                      <SearchResultRow result={item.hit} onOpen={handleOpenContent} />
+                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                      Brak wyników w kategorii „{activeTab.label}”.
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      Dla frazy „{activeQuery}” nie znaleziono nic w tej kategorii.
+                    </p>
+                    {suggestedFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveFilter(suggestedFilter)}
+                        className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/45 bg-[#1e293b]/10 px-4 py-2 text-xs font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/15 dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
+                      >
+                        Pokaż {suggestedTab?.label.toLowerCase()} ({resultCounts[suggestedFilter]})
+                      </button>
                     )}
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                ) : (
+                  <ul className="space-y-4">
+                    {filteredResults.map((item, index) => {
+                      if (item.kind === 'user') {
+                        return (
+                          <li key={`user-${item.hit.id}`}>
+                            <SearchUserResultRow hit={item.hit} onOpen={onNavigateToUser} />
+                          </li>
+                        )
+                      }
+
+                      // Komunikaty (announcements) — pozostają w kompaktowej formie
+                      // SearchResultRow: nie mają interaktywnych likes/komentarzy.
+                      if (item.hit.type !== 'post') {
+                        return (
+                          <li key={item.hit.id}>
+                            <SearchResultRow result={item.hit} onOpen={handleOpenContent} />
+                          </li>
+                        )
+                      }
+
+                      const postSourceId = item.hit.sourceId
+                      const unified = unifiedPostsBySourceId[postSourceId]
+
+                      if (!unified) {
+                        // Dofetch w toku — utrzymujemy tę samą wysokość co PostCard
+                        // (skeleton kompatybilny z BaseCard default).
+                        return (
+                          <li key={item.hit.id}>
+                            <div className="animate-pulse rounded-2xl border border-zinc-200/70 bg-white/70 p-6 dark:border-white/10 dark:bg-zinc-950/40">
+                              <div className="flex gap-3">
+                                <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-200 dark:bg-white/10" />
+                                <div className="flex-1 space-y-2 pt-1">
+                                  <div className="h-3 w-1/3 rounded-full bg-zinc-200 dark:bg-white/10" />
+                                  <div className="h-3 w-2/3 rounded-full bg-zinc-100 dark:bg-white/5" />
+                                  <div className="h-3 w-1/2 rounded-full bg-zinc-100 dark:bg-white/5" />
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      }
+
+                      return (
+                        <li key={item.hit.id}>
+                          <PostCard
+                            content={unified}
+                            index={index}
+                            currentUserId={currentUserId}
+                            myProfile={myProfile}
+                            displayName={displayName}
+                            isPop={heartPopPostId === postSourceId}
+                            isCommentsOpen={expandedComments.has(postSourceId)}
+                            comments={commentsByPost[postSourceId] ?? []}
+                            commentsLoading={Boolean(commentsLoadingByPost[postSourceId])}
+                            commentInputValue={commentInput[postSourceId] ?? ''}
+                            isCommentSubmitting={Boolean(commentSubmitting[postSourceId])}
+                            onToggleLike={() => onToggleLike(postSourceId)}
+                            onToggleComments={() => onToggleComments(postSourceId)}
+                            onSubmitComment={() => onSubmitComment(postSourceId)}
+                            onCommentInputChange={(v) => onCommentInputChange(postSourceId, v)}
+                            onToggleCommentLike={(comment) => onToggleCommentLike(postSourceId, comment)}
+                            onReplyToComment={(comment) => onReplyToComment(postSourceId, comment)}
+                            onCancelReply={() => onCancelReply(postSourceId)}
+                            replyTarget={commentReplyTargetByPost[postSourceId] ?? null}
+                            commentLikeLoadingById={commentLikeLoadingByPost[postSourceId] ?? {}}
+                            onDeletePost={() => onDeletePost(postSourceId)}
+                            onDeleteComment={(cId) => onDeleteComment(cId, postSourceId)}
+                            onNavigateToPost={
+                              onNavigateToPost ? () => onNavigateToPost(postSourceId) : undefined
+                            }
+                            onNavigateToUser={onNavigateToUser}
+                          />
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       </section>
 

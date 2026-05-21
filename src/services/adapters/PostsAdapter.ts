@@ -71,6 +71,29 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
     return data as Post
   }
 
+  /**
+   * Batch pobranie postów po liście ID — używane przez wyszukiwarkę, żeby
+   * z hitów Meilisearch (które zawierają tylko zindeksowane pola) zbudować
+   * pełne UnifiedContent dla `PostCard`. Pomija puste / niepoprawne ID i
+   * autorów z `is_banned = true`. Kolejność zwracana z Supabase nie jest
+   * gwarantowana — sortowanie do kolejności wejściowej leży po stronie
+   * konsumenta (Search zachowuje kolejność trafień).
+   */
+  async fetchByIds(ids: ReadonlyArray<string>): Promise<Post[]> {
+    const numericIds = ids
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id) && id > 0)
+    if (numericIds.length === 0) return []
+
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*, profiles(id, full_name, avatar_url, department, is_banned)')
+      .in('id', numericIds)
+
+    if (error || !data) return []
+    return (data as Post[]).filter((row) => row.profiles?.is_banned !== true)
+  }
+
   /** Batch mapowanie posta + enrichment indeksowany po `post.id`. */
   toUnifiedList(
     posts: Post[],

@@ -280,6 +280,103 @@ export const OMNI_DESKTOP = {
   },
 } as const
 
+/**
+ * SEARCH_DASHBOARD — tokeny dla pustego stanu `SearchPageView` (`activeQuery === ""`).
+ *
+ * Glass-pulpit z trzema sekcjami: Recent Searches, Quick Scopes, Department Grid.
+ * Bazuje na fundamentach z `OMNI_DESKTOP.panel` (deep glass) i `PROFILE_MOBILE.card`
+ * (backdrop-blur-2xl), ale w wersji desktop-first dla strony `/search`.
+ *
+ * Każdy panel = `panel` + opcjonalnie `panelInteractive` (hover gold + microscale).
+ * Inne komponenty (np. SearchBar mobile) NIE używają tych klas — to izolowany namespace.
+ */
+export const SEARCH_DASHBOARD = {
+  panel:
+    'relative overflow-hidden rounded-2xl border backdrop-blur-xl backdrop-saturate-150 ' +
+    'border-zinc-200/70 bg-white/70 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)] ' +
+    'dark:border-white/[0.06] dark:bg-zinc-950/40 dark:shadow-[0_25px_70px_-30px_rgba(0,0,0,0.9)]',
+  panelInnerGlow:
+    'before:pointer-events-none before:absolute before:inset-px before:rounded-[15px] ' +
+    'before:bg-gradient-to-b before:from-white/[0.04] before:to-transparent z-20',
+  panelInteractive:
+    'transition-all duration-300 ease-out ' +
+    'hover:scale-[1.01] hover:border-[#1e293b]/35 hover:bg-white/85 ' +
+    'dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-950/60',
+  panelActive:
+    'border-[#1e293b]/45 bg-[#1e293b]/[0.05] ' +
+    'dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/[0.06] ' +
+    'dark:shadow-[0_0_28px_-10px_rgba(232,200,74,0.35)]',
+  sectionTitle:
+    'text-[10px] font-bold uppercase tracking-[0.22em] text-[#1e293b] dark:text-brand-gold-bright',
+  sectionSubtle:
+    'text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 ' +
+    'transition-colors hover:text-[#1e293b] dark:hover:text-brand-gold-bright',
+  recentChip:
+    'group inline-flex items-center gap-1.5 rounded-full border border-zinc-200/70 bg-white/55 px-2.5 py-1 ' +
+    'text-sm text-zinc-700 backdrop-blur-md transition-all duration-200 ' +
+    'hover:border-[#1e293b]/30 hover:bg-white/80 hover:text-[#1e293b] ' +
+    'dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200 ' +
+    'dark:hover:border-brand-gold-bright/35 dark:hover:bg-brand-gold-bright/[0.07] dark:hover:text-brand-gold-bright',
+  recentClock:
+    'shrink-0 text-zinc-400 dark:text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright',
+  recentRemove:
+    'shrink-0 rounded-full p-1 text-zinc-400 opacity-0 transition-opacity duration-200 ' +
+    'group-hover:opacity-100 focus-visible:opacity-100 hover:text-zinc-700 hover:bg-zinc-100/80 ' +
+    'dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-white/5',
+  scopeTile:
+    'group relative flex flex-col justify-between gap-3 overflow-hidden rounded-2xl border p-5 text-left ' +
+    'border-zinc-200/70 bg-white/60 backdrop-blur-xl backdrop-saturate-150 ' +
+    'shadow-[0_18px_60px_-30px_rgba(15,23,42,0.35)] ' +
+    'transition-all duration-300 ease-out hover:scale-[1.01] hover:border-[#1e293b]/35 hover:bg-white/85 ' +
+    'dark:border-white/10 dark:bg-zinc-900/40 ' +
+    'dark:shadow-[0_22px_80px_-35px_rgba(0,0,0,0.85)] ' +
+    'dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-900/55 ' +
+    'dark:hover:shadow-[0_0_36px_-12px_rgba(232,200,74,0.32)] ' +
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/45',
+  scopeIcon:
+    'inline-flex h-10 w-10 items-center justify-center rounded-xl ' +
+    'bg-[#1e293b]/[0.06] text-[#1e293b] transition-colors ' +
+    'group-hover:bg-[#1e293b]/10 ' +
+    'dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:group-hover:bg-brand-gold-bright/15',
+  scopeTitle: 'text-base font-semibold text-zinc-800 dark:text-zinc-100',
+  scopeDescription: 'text-xs text-zinc-500 dark:text-zinc-400',
+  deptBadge:
+    'group flex items-center gap-2 rounded-full border border-zinc-200/70 bg-white/55 px-3.5 py-1.5 ' +
+    'text-xs font-semibold text-zinc-700 backdrop-blur-md ' +
+    'transition-all duration-200 hover:scale-[1.03] hover:border-[#1e293b]/35 hover:bg-white/80 hover:text-[#1e293b] ' +
+    'dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200 ' +
+    'dark:hover:border-brand-gold-bright/45 dark:hover:bg-brand-gold-bright/10 dark:hover:text-brand-gold-bright ' +
+    'dark:hover:shadow-[0_0_18px_-8px_var(--dept-glow,rgba(232,200,74,0.4))] ' +
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/45',
+  deptDot: 'h-2 w-2 shrink-0 rounded-full',
+  motion: {
+    container: {
+      hidden: {},
+      show: { transition: { staggerChildren: 0.08, delayChildren: 0.04 } },
+    },
+    section: {
+      hidden: { opacity: 0, y: 12 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const },
+      },
+    },
+    chipContainer: {
+      hidden: {},
+      show: { transition: { staggerChildren: 0.018, delayChildren: 0.02 } },
+    },
+    chip: {
+      hidden: { opacity: 0, y: 6 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { type: 'spring' as const, stiffness: 320, damping: 28 },
+      },
+    },
+  },
+} as const
+
 export const BOTTOM_NAV_MOBILE = {
   scrollThreshold: 10,
   navBaseClass: 'md:hidden fixed bottom-0 left-0 right-0 z-50 border-t',
