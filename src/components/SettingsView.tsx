@@ -23,7 +23,9 @@ type Props = {
 }
 
 const settingsActionBtnClass =
-  'shrink-0 rounded-full border border-zinc-200/90 bg-white px-4 py-1 text-sm font-medium text-brand-gold transition-all hover:bg-zinc-50 dark:border-brand-gold/45 dark:bg-bg-card dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-zinc-900'
+  'shrink-0 rounded-full border border-zinc-200 bg-white px-4 py-1 text-sm font-medium text-[#1e293b] transition-all hover:border-zinc-300 hover:bg-zinc-50 dark:border-brand-gold/45 dark:bg-bg-card dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-zinc-900'
+
+const accentIconCls = 'text-[#1e293b] dark:text-brand-gold-bright'
 
 function SettingsToggle({
   enabled,
@@ -41,9 +43,9 @@ function SettingsToggle({
       role="switch"
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold/45 ${
         enabled
-          ? 'bg-brand-gold shadow-[0_0_10px_rgba(201,162,39,0.35)]'
+          ? 'bg-[#1e293b] shadow-none dark:bg-brand-gold dark:shadow-[0_0_10px_rgba(201,162,39,0.35)]'
           : 'bg-zinc-300 shadow-none dark:bg-zinc-600'
       }`}
     >
@@ -68,7 +70,7 @@ function SectionCard({
   return (
     <section className="mb-4 rounded-2xl bg-white p-4 shadow-sm last:mb-0 dark:bg-bg-card">
       <div className="mb-3 flex items-center gap-2">
-        <Icon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+        <Icon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
         <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-900 opacity-70 dark:text-white">
           {title}
         </h2>
@@ -119,7 +121,7 @@ export default function SettingsView({ email, onBack }: Props) {
   }
 
   const fieldCls =
-    'w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-brand-gold dark:border-zinc-800 dark:bg-bg-card dark:text-white dark:placeholder:text-zinc-500'
+    'w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-[#1e293b] dark:border-zinc-800 dark:bg-bg-card dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-brand-gold'
 
   return (
     <div className="min-h-[50vh] space-y-5 bg-zinc-50 dark:bg-bg-app -mx-4 px-4 py-2 md:mx-0 md:rounded-2xl md:px-0 md:bg-transparent dark:md:bg-transparent">
@@ -130,7 +132,7 @@ export default function SettingsView({ email, onBack }: Props) {
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-600 transition-colors hover:bg-white/5 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
           aria-label="Poprzednia strona"
         >
-          <ArrowLeft size={22} strokeWidth={2} className="text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+          <ArrowLeft size={22} strokeWidth={2} className={accentIconCls} aria-hidden />
         </button>
         <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
           Ustawienia
@@ -145,7 +147,7 @@ export default function SettingsView({ email, onBack }: Props) {
                 E-mail
               </p>
               <p className="mt-1 flex items-center gap-2 truncate text-sm font-medium text-zinc-900 dark:text-white">
-                <EnvelopeIcon className="h-4 w-4 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+                <EnvelopeIcon className={`h-4 w-4 shrink-0 ${accentIconCls}`} aria-hidden />
                 {displayEmail}
               </p>
             </div>
@@ -160,7 +162,7 @@ export default function SettingsView({ email, onBack }: Props) {
           <div>
             <Row>
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <KeyIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+                <KeyIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
                 <span className="text-sm font-semibold text-zinc-900 dark:text-white">Zmiana hasła</span>
               </div>
               <button
@@ -214,7 +216,7 @@ export default function SettingsView({ email, onBack }: Props) {
                 </label>
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-brand-gold py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
+                  className="w-full rounded-xl bg-[#1e293b] py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 dark:bg-brand-gold dark:text-black"
                 >
                   Zapisz nowe hasło
                 </button>
@@ -227,9 +229,9 @@ export default function SettingsView({ email, onBack }: Props) {
           <Row>
             <div className="flex items-center gap-3 min-w-0">
               {theme === 'dark' ? (
-                <MoonIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+                <MoonIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               ) : (
-                <SunIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+                <SunIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               )}
               <div>
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Motyw</p>
@@ -249,7 +251,7 @@ export default function SettingsView({ email, onBack }: Props) {
         <SectionCard title="Prywatność" icon={ShieldCheckIcon}>
           <Row>
             <div className="flex items-center gap-3 min-w-0 pr-2">
-              <MagnifyingGlassIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+              <MagnifyingGlassIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               <span className="text-sm font-medium text-zinc-900 dark:text-white">
                 Pokaż mój profil w wyszukiwarce
               </span>
@@ -262,7 +264,7 @@ export default function SettingsView({ email, onBack }: Props) {
           </Row>
           <Row>
             <div className="flex items-center gap-3 min-w-0 pr-2">
-              <AcademicCapIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+              <AcademicCapIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               <span className="text-sm font-medium text-zinc-900 dark:text-white">
                 Pokaż mój wydział przy postach
               </span>
@@ -278,7 +280,7 @@ export default function SettingsView({ email, onBack }: Props) {
         <SectionCard title="Informacje" icon={InformationCircleIcon}>
           <Row className="!justify-start flex-col items-stretch sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <InformationCircleIcon className="h-5 w-5 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+              <InformationCircleIcon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
               <span className="text-sm text-zinc-600 dark:text-zinc-300">Wersja aplikacji</span>
             </div>
             <span className="text-sm font-mono font-semibold text-zinc-900 dark:text-white sm:text-right">
@@ -291,7 +293,7 @@ export default function SettingsView({ email, onBack }: Props) {
             className="flex w-full items-center justify-between gap-3 py-3.5 text-left transition-colors hover:bg-zinc-50/80 dark:hover:bg-white/[0.04]"
           >
             <span className="flex items-center gap-3 text-sm font-medium text-zinc-900 dark:text-white">
-              <DocumentTextIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+              <DocumentTextIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               Regulamin
             </span>
             <span className="text-zinc-400 text-lg">›</span>
@@ -302,7 +304,7 @@ export default function SettingsView({ email, onBack }: Props) {
             className="flex w-full items-center justify-between gap-3 py-3.5 text-left transition-colors hover:bg-zinc-50/80 dark:hover:bg-white/[0.04]"
           >
             <span className="flex items-center gap-3 text-sm font-medium text-zinc-900 dark:text-white">
-              <ShieldCheckIcon className="h-5 w-5 shrink-0 text-brand-gold dark:text-brand-gold-bright" aria-hidden />
+              <ShieldCheckIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               Polityka prywatności
             </span>
             <span className="text-zinc-400 text-lg">›</span>
