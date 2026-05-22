@@ -469,8 +469,7 @@ export default function SearchPageView({
                         )
                       }
 
-                      // Komunikaty (announcements) — pozostają w kompaktowej formie
-                      // SearchResultRow: nie mają interaktywnych likes/komentarzy.
+                      // Komunikaty — pełna karta jak w panelu „Komunikaty Akademickie”.
                       if (item.hit.type !== 'post') {
                         return (
                           <li key={item.hit.id}>

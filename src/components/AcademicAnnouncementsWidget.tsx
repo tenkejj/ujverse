@@ -1,79 +1,15 @@
 import { Megaphone } from 'lucide-react'
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import {
-  ACADEMIC_ISI_BADGE_LABEL,
-  ACADEMIC_ISI_BADGE_TITLE,
-  showAcademicIsiBadge,
-} from '../lib/announcementBranding'
-import {
-  ANNOUNCEMENT_STATUS_BADGE,
-  ANNOUNCEMENT_STATUS_DOT,
-  ANNOUNCEMENT_STATUS_LABEL,
-} from '../lib/announcementStatusStyles'
+import { ACTIVE_ANNOUNCEMENT_DAYS, isActiveAnnouncementTimestamp } from '../lib/announcementRecency'
 import {
   sectionTitleCls,
   sideMutedCls,
   widgetGoldCls,
 } from '../lib/sidePanelStyles'
+import AnnouncementCard from './announcements/AnnouncementCard'
 import BaseCard from './ui/BaseCard'
 import type { AnnouncementMeta, UnifiedContent } from '../types/content'
-
-function formatAnnDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-const DAYS_TO_SHOW = 30
-
-function getTimestamp(value: string | null): number {
-  if (!value) return Number.NEGATIVE_INFINITY
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
-}
-
-function AnnouncementBodyClamp({
-  body,
-  expanded,
-  onToggle,
-}: {
-  body: string
-  expanded: boolean
-  onToggle: () => void
-}) {
-  const ref = useRef<HTMLParagraphElement>(null)
-  const [overflows, setOverflows] = useState(false)
-
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    if (expanded) return
-    setOverflows(el.scrollHeight > el.clientHeight + 1)
-  }, [body, expanded])
-
-  return (
-    <div className="min-h-0">
-      <p
-        ref={ref}
-        className={`text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap break-words ${
-          expanded ? '' : 'line-clamp-4'
-        }`}
-      >
-        {body}
-      </p>
-      {(overflows || expanded) && (
-        <button
-          type="button"
-          onClick={onToggle}
-          className={`mt-1.5 text-xs font-medium ${sideMutedCls} hover:text-logo-navy/80 dark:hover:text-slate-300 transition-colors`}
-        >
-          {expanded ? 'zwiń' : 'rozwiń'}
-        </button>
-      )}
-    </div>
-  )
-}
 
 function SkeletonBlock() {
   return (
@@ -104,13 +40,7 @@ export default function AcademicAnnouncementsWidget({
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({})
 
   const { visible, totalFiltered, olderCount } = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setHours(0, 0, 0, 0)
-    cutoff.setDate(cutoff.getDate() - DAYS_TO_SHOW)
-
-    const recent = announcements.filter(
-      (ann) => getTimestamp(ann.timestamp) >= cutoff.getTime(),
-    )
+    const recent = announcements.filter((ann) => isActiveAnnouncementTimestamp(ann.timestamp))
 
     return {
       visible: recent,
@@ -126,10 +56,6 @@ export default function AcademicAnnouncementsWidget({
       totalFiltered,
       visibleCount: visible.length,
       olderCount,
-      sortDescValid: visible.every(
-        (item, index, arr) =>
-          index === 0 || getTimestamp(arr[index - 1].timestamp) >= getTimestamp(item.timestamp),
-      ),
     })
   }, [announcements.length, totalFiltered, visible, olderCount])
 
@@ -153,7 +79,7 @@ export default function AcademicAnnouncementsWidget({
 
       {!loading && !error && visible.length === 0 && (
         <p className={`text-xs ${sideMutedCls} leading-relaxed`}>
-          Brak nowych komunikatów z ostatnich {DAYS_TO_SHOW} dni.
+          Brak nowych komunikatów z ostatnich {ACTIVE_ANNOUNCEMENT_DAYS} dni.
         </p>
       )}
 
@@ -173,49 +99,13 @@ export default function AcademicAnnouncementsWidget({
                     transition={{ duration: 0.22, delay: Math.min(idx * 0.04, 0.24) }}
                     className="min-h-0"
                   >
-                    <BaseCard variant="inner" className="m-0 p-3 min-h-0">
-                      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
-                        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug min-w-0 break-words whitespace-normal">
-                          {ann.author.displayName}
-                        </p>
-                        <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
-                          {showAcademicIsiBadge(ann.metadata.source) && (
-                            <span
-                              className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-[#1e293b] dark:text-zinc-400 opacity-70 text-right"
-                              title={ACADEMIC_ISI_BADGE_TITLE}
-                            >
-                              {ACADEMIC_ISI_BADGE_LABEL}
-                            </span>
-                          )}
-                          {ann.timestamp && (
-                            <time
-                              dateTime={ann.timestamp}
-                              className={`text-[10px] tabular-nums ${sideMutedCls}`}
-                            >
-                              {formatAnnDate(ann.timestamp)}
-                            </time>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className={`inline-block size-2 rounded-full shrink-0 ${ANNOUNCEMENT_STATUS_DOT[ann.metadata.status]}`}
-                          aria-hidden
-                        />
-                        <span
-                          className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border bg-transparent ${ANNOUNCEMENT_STATUS_BADGE[ann.metadata.status]}`}
-                        >
-                          {ANNOUNCEMENT_STATUS_LABEL[ann.metadata.status]}
-                        </span>
-                      </div>
-                      <AnnouncementBodyClamp
-                        body={ann.body}
-                        expanded={expanded}
-                        onToggle={() =>
-                          setExpandedById((p) => ({ ...p, [ann.id]: !p[ann.id] }))
-                        }
-                      />
-                    </BaseCard>
+                    <AnnouncementCard
+                      announcement={ann}
+                      expanded={expanded}
+                      onToggleExpand={() =>
+                        setExpandedById((p) => ({ ...p, [ann.id]: !p[ann.id] }))
+                      }
+                    />
                   </motion.article>
                 )
               })}

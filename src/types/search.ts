@@ -1,3 +1,5 @@
+import type { AnnouncementStatus } from './content'
+
 export type SearchContentType = 'post' | 'komunikat'
 
 export type SearchDocument = {
@@ -10,6 +12,9 @@ export type SearchDocument = {
   authorId?: string | null
   department?: string | null
   createdAt: string
+  /** Tylko dla `type === 'komunikat'` — badge DYŻUR / ZDALNE / odwołane. */
+  announcementStatus?: AnnouncementStatus
+  announcementSource?: string | null
 }
 
 export type SearchHit = SearchDocument & {

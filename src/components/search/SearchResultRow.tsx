@@ -1,4 +1,6 @@
+import AnnouncementCard from '../announcements/AnnouncementCard'
 import BaseCard from '../ui/BaseCard'
+import { searchHitToAnnouncement } from '../../lib/searchAnnouncement'
 import type { SearchHit } from '../../types/search'
 
 type Props = {
@@ -14,7 +16,7 @@ function typeLabel(type: SearchHit['type']): string {
   return type === 'post' ? 'Wpis' : 'Komunikat'
 }
 
-export default function SearchResultRow({ result, onOpen }: Props) {
+function PostSearchResultRow({ result, onOpen }: Props) {
   const snippet = stripHighlight(result._formatted?.content ?? result.content)
   const author = stripHighlight(result._formatted?.author ?? result.author)
 
@@ -38,4 +40,18 @@ export default function SearchResultRow({ result, onOpen }: Props) {
       </div>
     </BaseCard>
   )
+}
+
+export default function SearchResultRow({ result, onOpen }: Props) {
+  if (result.type === 'komunikat') {
+    const announcement = searchHitToAnnouncement(result)
+    return (
+      <AnnouncementCard
+        announcement={announcement}
+        onOpen={() => onOpen(result)}
+      />
+    )
+  }
+
+  return <PostSearchResultRow result={result} onOpen={onOpen} />
 }

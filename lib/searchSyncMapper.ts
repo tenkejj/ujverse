@@ -2,6 +2,8 @@ export type SearchSyncType = 'post' | 'komunikat'
 
 export type SearchSyncTable = 'posts' | 'announcements' | 'profiles'
 
+export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty'
+
 export type SearchContentDocument = {
   id: string
   sourceId: string
@@ -11,6 +13,8 @@ export type SearchContentDocument = {
   authorId?: string | null
   department?: string | null
   createdAt: string
+  announcementStatus?: AnnouncementStatus
+  announcementSource?: string | null
 }
 
 export type SearchUserDocument = {
@@ -35,6 +39,8 @@ export type AnnouncementRecord = {
   body?: string | null
   lecturer_name?: string | null
   department?: string | null
+  source?: string | null
+  status?: string | null
   created_at?: string | null
 }
 
@@ -69,11 +75,17 @@ function normalizeDate(input: unknown): string {
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
 }
 
+function parseAnnouncementStatus(value: unknown): AnnouncementStatus | null {
+  if (value === 'cancelled' || value === 'remote' || value === 'duty') return value
+  return null
+}
+
 export function mapAnnouncementToSearchDocument(record: AnnouncementRecord): SearchContentDocument | null {
   const sourceId = String(record.id ?? '').trim()
   const content = record.body?.trim() ?? ''
   const author = record.lecturer_name?.trim() ?? ''
-  if (!sourceId || !content || !author) return null
+  const status = parseAnnouncementStatus(record.status)
+  if (!sourceId || !content || !author || !status) return null
 
   return {
     id: documentIdFor('announcements', sourceId),
@@ -83,6 +95,8 @@ export function mapAnnouncementToSearchDocument(record: AnnouncementRecord): Sea
     author,
     department: record.department?.trim() || null,
     createdAt: normalizeDate(record.created_at),
+    announcementStatus: status,
+    announcementSource: record.source?.trim() || null,
   }
 }
 

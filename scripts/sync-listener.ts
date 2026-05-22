@@ -97,7 +97,7 @@ async function collectAnnouncementDocuments(): Promise<SearchContentDocument[]> 
   while (true) {
     const { data, error } = await supabase
       .from('announcements')
-      .select('id, body, lecturer_name, department, created_at')
+      .select('id, body, lecturer_name, department, source, status, created_at')
       .order('id', { ascending: true })
       .range(offset, offset + BATCH_SIZE - 1)
 
@@ -117,6 +117,8 @@ async function collectAnnouncementDocuments(): Promise<SearchContentDocument[]> 
         body: row.body,
         lecturer_name: row.lecturer_name,
         department: row.department,
+        source: row.source,
+        status: row.status,
         created_at: row.created_at,
       })
       if (doc) documents.push(doc)

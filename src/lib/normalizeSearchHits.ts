@@ -22,6 +22,13 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
     const idPrefix = type === 'komunikat' ? 'announcement' : 'post'
     const content = pickFormatted(formatted, 'content', raw.content)
     const author = pickFormatted(formatted, 'author', typeof raw.author === 'string' ? raw.author : '')
+    const announcementStatus =
+      raw.announcementStatus === 'cancelled' ||
+      raw.announcementStatus === 'remote' ||
+      raw.announcementStatus === 'duty'
+        ? raw.announcementStatus
+        : undefined
+
     return {
       id: String(raw.id ?? `${idPrefix}-${raw.sourceId}`),
       sourceId: raw.sourceId,
@@ -31,6 +38,9 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
       authorId: typeof raw.authorId === 'string' ? raw.authorId : null,
       department: typeof raw.department === 'string' ? raw.department : null,
       createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+      announcementStatus,
+      announcementSource:
+        typeof raw.announcementSource === 'string' ? raw.announcementSource : null,
       _formatted: formatted
         ? { content: formatted.content, author: formatted.author }
         : undefined,

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Meilisearch } from 'meilisearch'
 import * as dotenv from 'dotenv'
 
+import { activeAnnouncementCutoff } from '../src/lib/announcementRecency'
 import { ensureUsersIndexSettings, USERS_INDEX_UID } from '../lib/meilisearchIndexSettings'
 import {
   mapAnnouncementToSearchDocument,
@@ -58,11 +59,14 @@ async function ensureIndex(): Promise<void> {
 
 async function wipeIndex(indexUid: string, label: string): Promise<void> {
   const index = meili.index(indexUid)
-  const stats = await index.getStats()
-  console.log(`[force-resync] ${label} — dokumenty przed czyszczeniem: ${stats.numberOfDocuments}`)
-  if (stats.numberOfDocuments === 0) return
-  await index.deleteAllDocuments().waitTask()
-  console.log(`[force-resync] ${label} — indeks wyczyszczony.`)
+  const before = await index.getStats()
+  console.log(`[force-resync] ${label} — dokumenty przed czyszczeniem: ${before.numberOfDocuments}`)
+  const wiped = await index.deleteAllDocuments().waitTask()
+  if (wiped.status !== 'succeeded') {
+    throw new Error(`[force-resync] ${label} — deleteAllDocuments nie powiodło się: ${wiped.status}`)
+  }
+  const after = await index.getStats()
+  console.log(`[force-resync] ${label} — indeks wyczyszczony (pozostało: ${after.numberOfDocuments}).`)
 }
 
 async function collectPostDocuments(): Promise<SearchContentDocument[]> {
@@ -96,11 +100,13 @@ async function collectPostDocuments(): Promise<SearchContentDocument[]> {
 
 async function collectAnnouncementDocuments(): Promise<SearchContentDocument[]> {
   const documents: SearchContentDocument[] = []
+  const cutoffIso = activeAnnouncementCutoff().toISOString()
   let offset = 0
   while (true) {
     const { data, error } = await supabase
       .from('announcements')
-      .select('id, body, lecturer_name, department, created_at')
+      .select('id, body, lecturer_name, department, source, status, created_at')
+      .gte('created_at', cutoffIso)
       .order('id', { ascending: true })
       .range(offset, offset + BATCH_SIZE - 1)
 
@@ -122,6 +128,8 @@ async function collectAnnouncementDocuments(): Promise<SearchContentDocument[]> 
         body: row.body,
         lecturer_name: row.lecturer_name,
         department: row.department,
+        source: row.source,
+        status: row.status,
         created_at: row.created_at,
       })
       if (doc) documents.push(doc)
