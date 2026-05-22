@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -11,7 +11,7 @@ import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
-import { HEADER_MOBILE } from '../styles/mobile-theme'
+import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -122,7 +122,22 @@ export default function Header({
           : 'bg-bg-app/80 backdrop-blur-md backdrop-saturate-150 dark:bg-black/20 dark:backdrop-blur-md dark:backdrop-saturate-150'
       }`}
     >
-      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`} />
+      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
+        <div className="block md:hidden">
+          <button
+            type="button"
+            onClick={() => onNavigateToSearch()}
+            className="w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
+            aria-label="Szukaj"
+          >
+            <Search
+              size={ICONS_MOBILE.bottomNavIconSize}
+              strokeWidth={ICONS_MOBILE.bottomNavInactiveStrokeWidth}
+              className="shrink-0"
+            />
+          </button>
+        </div>
+      </div>
 
       <div className="flex-1 flex justify-center items-center overflow-visible min-w-0">
         <motion.button
