@@ -324,7 +324,7 @@ export default function SearchPageView({
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
                 placeholder={inputPlaceholder}
-                className="h-full min-w-0 flex-1 bg-transparent pr-8 text-[15px] text-zinc-800 outline-none placeholder:text-zinc-500 dark:text-zinc-100 dark:placeholder:text-zinc-500 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+                className="h-full w-full min-w-0 flex-1 bg-transparent pr-10 text-[15px] text-zinc-800 outline-none placeholder:truncate placeholder:text-zinc-500 dark:text-zinc-100 dark:placeholder:text-zinc-500 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                 autoComplete="off"
                 spellCheck={false}
               />
