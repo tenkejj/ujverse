@@ -19,7 +19,7 @@ export function searchHitToAnnouncement(hit: SearchHit): UnifiedContent<Announce
     author: {
       id: `lecturer:${UjverseSanitizer.slugify(author) || hit.sourceId}`,
       displayName: author,
-      subtitle: hit.department,
+      subtitle: hit.department ?? null,
       avatarUrl: null,
     },
     body,
@@ -28,7 +28,7 @@ export function searchHitToAnnouncement(hit: SearchHit): UnifiedContent<Announce
     metadata: {
       status: parseAnnouncementStatus(hit.announcementStatus),
       source: hit.announcementSource ?? null,
-      department: hit.department,
+      department: hit.department ?? null,
       bodyFingerprint: null,
     },
     actions: [],
