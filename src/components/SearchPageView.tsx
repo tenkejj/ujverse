@@ -11,6 +11,7 @@ import PostCard from './PostCard'
 import SearchResultRow from './search/SearchResultRow'
 import SearchUserResultRow from './search/SearchUserResultRow'
 import SearchDashboard from './search/SearchDashboard'
+import HorizontalPillScroller from './ui/HorizontalPillScroller'
 import type { DashboardScope } from './search/SearchDashboard'
 import {
   loadSearchHistory,
@@ -341,12 +342,14 @@ export default function SearchPageView({
           </form>
 
           {activeQuery.trim().length >= 2 && hasAnyResults && (
-            <div className="mx-auto mt-5 w-full max-w-2xl">
-              <div
-                role="tablist"
-                aria-label="Filtr wyników wyszukiwania"
-                className="flex w-full items-center justify-center gap-2 pb-1 md:flex-nowrap md:overflow-visible"
-              >
+            <HorizontalPillScroller
+              className="mx-auto mt-5 max-w-2xl"
+              scrollClassName="scrollbar-hide flex w-full min-w-0 flex-row flex-nowrap items-center justify-start gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 pr-1 [-webkit-overflow-scrolling:touch] md:justify-center md:gap-2 md:overflow-visible"
+              watchDeps={[activeFilter, activeQuery, resultCounts]}
+              scrollLeftLabel="Przewiń filtry w lewo"
+              scrollRightLabel="Przewiń filtry w prawo"
+              scrollProps={{ role: 'tablist', 'aria-label': 'Filtr wyników wyszukiwania' }}
+            >
                 {FILTER_TABS.map((tab) => {
                   const Icon = tab.icon
                   const isActive = activeFilter === tab.id
@@ -390,8 +393,7 @@ export default function SearchPageView({
                     </button>
                   )
                 })}
-              </div>
-            </div>
+            </HorizontalPillScroller>
           )}
 
           <AnimatePresence mode="wait" initial={false}>

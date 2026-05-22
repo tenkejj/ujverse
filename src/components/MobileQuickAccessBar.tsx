@@ -1,7 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
+import { ICONS_MOBILE } from '../styles/mobile-theme'
 
-const barCls =
-  'm-0 grid w-full min-w-0 grid-cols-3 gap-1.5 rounded-xl border border-zinc-200 bg-white/85 py-2.5 shadow-sm shadow-zinc-900/5 ring-1 ring-zinc-200/80 backdrop-blur-md dark:border-white/10 dark:bg-black/35 dark:shadow-none dark:ring-0'
+const linkCls =
+  'm-0 flex w-full min-w-0 flex-col items-center justify-center gap-1 px-0 py-1.5 text-center text-zinc-600 transition-colors hover:text-[#1e293b] active:text-[#1e293b] dark:text-zinc-400 dark:hover:text-zinc-200 dark:active:text-zinc-100 [-webkit-tap-highlight-color:transparent]'
+
+const labelCls =
+  'text-[10px] font-medium leading-none tracking-wide text-zinc-600 dark:text-zinc-400'
 
 type Item = { label: string; href: string; Icon: LucideIcon }
 
@@ -9,28 +13,25 @@ type Props = {
   items: readonly Item[]
 }
 
+/** Minimalistyczny wiersz linków (ikona + podpis), jak dolna nawigacja — bez pigułek. */
 export default function MobileQuickAccessBar({ items }: Props) {
   return (
-    <div className={barCls}>
+    <div className="m-0 grid w-full min-w-0 grid-cols-3 px-0 py-0.5">
       {items.map(({ label, href, Icon }) => (
         <a
           key={label}
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="m-0 flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-1 text-center transition-colors hover:bg-zinc-100/90 active:bg-zinc-100 dark:hover:bg-white/10 dark:active:bg-white/5"
+          className={linkCls}
         >
-          <span className="flex h-5 w-full items-center justify-center">
-            <Icon
-              size={18}
-              className="shrink-0 text-zinc-800 dark:text-brand-gold-bright"
-              strokeWidth={2}
-              aria-hidden
-            />
-          </span>
-          <span className="block w-full text-center text-[8px] font-semibold uppercase leading-tight tracking-wide text-zinc-900 dark:text-slate-300">
-            {label}
-          </span>
+          <Icon
+            size={ICONS_MOBILE.bottomNavIconSize}
+            strokeWidth={ICONS_MOBILE.bottomNavInactiveStrokeWidth}
+            className="shrink-0 text-[#1e293b] dark:text-zinc-300"
+            aria-hidden
+          />
+          <span className={labelCls}>{label}</span>
         </a>
       ))}
     </div>

@@ -15,6 +15,7 @@ import CompactEventRow from './CompactEventRow'
 import EmptyState from './EmptyState'
 import AnnouncementPills from './AnnouncementPills'
 import MobileQuickAccessBar from './MobileQuickAccessBar'
+import UserAvatar from './UserAvatar'
 import BaseCard from './ui/BaseCard'
 import {
   sectionTitleCls,
@@ -259,13 +260,19 @@ export default function FeedView({
             <button
               type="button"
               onClick={() => onMobileComposeTap?.()}
-              className="m-0 w-full rounded-2xl border border-zinc-200/90 bg-white py-7 md:py-3 pl-4 pr-3 text-left shadow-lg hover:bg-zinc-50 active:bg-zinc-100 focus-visible:outline-none focus-visible:border-[#1e293b]/55 focus-visible:ring-2 focus-visible:ring-[#1e293b]/20 dark:border-white/5 dark:bg-zinc-900/40 dark:shadow-none dark:backdrop-blur-md dark:hover:bg-zinc-900/55 dark:active:bg-zinc-900/65 dark:focus-visible:border-brand-gold/50 dark:focus-visible:ring-brand-gold/25"
+              className="m-0 flex w-full min-w-0 items-center gap-3 rounded-xl px-0 py-2 text-left transition-colors hover:bg-black/[0.03] active:bg-black/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/20 dark:hover:bg-white/[0.04] dark:active:bg-white/[0.06] dark:focus-visible:ring-brand-gold/25"
             >
-              <span className="text-[15px] font-medium text-zinc-900 dark:text-zinc-400">
+              <UserAvatar
+                profile={myProfile}
+                name={displayName}
+                className="h-9 w-9 shrink-0"
+                textSize="text-xs"
+              />
+              <span className="min-w-0 flex-1 text-[15px] font-normal text-zinc-500 dark:text-zinc-400">
                 Co słychać na uczelni?
               </span>
             </button>
-            <div className="mt-6 space-y-4">
+            <div className="mt-4 space-y-3">
               <MobileQuickAccessBar
                 items={[
                   { label: 'USOS', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap },
