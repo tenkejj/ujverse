@@ -1,4 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+
+dotenv.config({ path: '.env.local' })
 
 type SearchDocument = {
   id: string
@@ -13,16 +16,40 @@ type SearchDocument = {
 
 const BATCH_SIZE = 500
 
-function requireEnv(name: string): string {
-  const value = process.env[name]?.trim()
-  if (!value) throw new Error(`Missing env ${name}`)
-  return value
+function requireEnv(name: string, fallbacks: readonly string[] = []): string {
+  const candidates = [name, ...fallbacks]
+  for (const candidate of candidates) {
+    const value = process.env[candidate]?.trim()
+    if (value) return value
+  }
+  throw new Error(`Missing env (tried: ${candidates.join(', ')})`)
 }
+
+function resolveEnv(names: readonly string[], fallback: string): string {
+  for (const name of names) {
+    const value = process.env[name]?.trim()
+    if (value) return value
+  }
+  return fallback
+}
+
+const MEILI_HOST = resolveEnv(
+  ['MEILISEARCH_HOST', 'VITE_MEILISEARCH_HOST'],
+  'http://localhost:7700',
+)
+const MEILI_KEY = resolveEnv(
+  [
+    'MEILISEARCH_MASTER_KEY',
+    'VITE_MEILISEARCH_MASTER_KEY',
+    'MEILISEARCH_ADMIN_KEY',
+  ],
+  'admin',
+)
 
 async function meiliUpsertDocuments(indexUid: string, docs: SearchDocument[]) {
   if (docs.length === 0) return
-  const host = requireEnv('MEILISEARCH_HOST')
-  const key = requireEnv('MEILISEARCH_ADMIN_KEY')
+  const host = MEILI_HOST
+  const key = MEILI_KEY
   const response = await fetch(`${host}/indexes/${encodeURIComponent(indexUid)}/documents`, {
     method: 'POST',
     headers: {
@@ -59,9 +86,12 @@ function announcementDocumentId(id: string | number): string {
 }
 
 async function main() {
-  const supabaseUrl = requireEnv('SUPABASE_URL')
+  const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL'])
   const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
-  const indexUid = process.env.MEILISEARCH_INDEX?.trim() || 'ujverse_content'
+  const indexUid = resolveEnv(
+    ['MEILISEARCH_INDEX', 'VITE_MEILISEARCH_INDEX'],
+    'ujverse_content',
+  )
   const supabase = createClient(supabaseUrl, serviceRoleKey)
 
   let postsOffset = 0

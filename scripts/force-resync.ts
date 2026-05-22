@@ -16,10 +16,19 @@ dotenv.config({ path: '.env.local' })
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim()
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-const MEILI_HOST = process.env.MEILISEARCH_HOST?.trim() || 'http://localhost:7700'
+const MEILI_HOST =
+  process.env.MEILISEARCH_HOST?.trim() ||
+  process.env.VITE_MEILISEARCH_HOST?.trim() ||
+  'http://localhost:7700'
 const MEILI_KEY =
-  process.env.MEILISEARCH_ADMIN_KEY?.trim() || process.env.MEILISEARCH_MASTER_KEY?.trim() || 'Truskawka777'
-const INDEX_UID = process.env.MEILISEARCH_INDEX?.trim() || 'ujverse_content'
+  process.env.MEILISEARCH_MASTER_KEY?.trim() ||
+  process.env.VITE_MEILISEARCH_MASTER_KEY?.trim() ||
+  process.env.MEILISEARCH_ADMIN_KEY?.trim() ||
+  'admin'
+const INDEX_UID =
+  process.env.MEILISEARCH_INDEX?.trim() ||
+  process.env.VITE_MEILISEARCH_INDEX?.trim() ||
+  'ujverse_content'
 const BATCH_SIZE = 500
 
 if (!SUPABASE_URL) {

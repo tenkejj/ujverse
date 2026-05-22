@@ -1,0 +1,17 @@
+services:
+  # Mikrousługa silnika wyszukiwania pełnotekstowego
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    container_name: meilisearch
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+    environment:
+      - MEILI_ENV=development
+      - MEILI_MASTER_KEY=admin
+    restart: unless-stopped
+
+volumes:
+  meili_data:
+    driver: local
