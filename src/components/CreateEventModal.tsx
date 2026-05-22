@@ -289,7 +289,7 @@ export default function CreateEventModal({
                 <button
                   type="button"
                   onClick={() => setLocationPickerOpen(true)}
-                  className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl border border-uj-gold px-3 py-2.5 text-sm font-semibold text-uj-gold transition-colors hover:bg-uj-gold/10 dark:text-brand-gold-bright dark:border-brand-gold-bright"
+                  className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl border border-[#1e293b]/40 px-3 py-2.5 text-sm font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/5 dark:border-brand-gold-bright dark:text-brand-gold-bright dark:hover:bg-brand-gold/10"
                 >
                   <Map size={18} strokeWidth={2} aria-hidden />
                   Wybierz na mapie
@@ -351,7 +351,7 @@ export default function CreateEventModal({
               </button>
               <button
                 type="submit"
-                className="min-h-[44px] min-w-[160px] flex-1 rounded-xl bg-uj-gold px-4 text-sm font-semibold text-black transition-colors hover:bg-uj-gold/90 dark:bg-brand-gold dark:hover:bg-brand-gold/85"
+                className="min-h-[44px] min-w-[160px] flex-1 rounded-xl bg-[#1e293b] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
               >
                 {isEdit ? 'Zapisz zmiany' : 'Utwórz wydarzenie'}
               </button>

@@ -35,9 +35,7 @@ export default function EventCard({ content, onSelect }: Props) {
     <div className="relative z-[2] flex items-start gap-3">
       <div className="min-w-[40px] shrink-0 text-center">
         <span
-          className={`block text-[10px] font-bold uppercase leading-none tracking-wide ${
-            official ? 'text-brand-gold dark:text-brand-gold-bright' : 'text-accent-interactive'
-          }`}
+          className="block text-[10px] font-bold uppercase leading-none tracking-wide text-[#1e293b] dark:text-brand-gold-bright"
         >
           {monthLabel}
         </span>
@@ -82,7 +80,7 @@ export default function EventCard({ content, onSelect }: Props) {
           </span>
         </div>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-          <Users size={16} strokeWidth={2} className="shrink-0 text-accent-interactive" aria-hidden />
+          <Users size={16} strokeWidth={2} className="shrink-0 text-[#1e293b]/70 dark:text-brand-gold-bright" aria-hidden />
           <span>{content.metadata.attendees} uczestników</span>
         </p>
       </div>
@@ -98,7 +96,7 @@ export default function EventCard({ content, onSelect }: Props) {
         flush
         type="button"
         onClick={() => onSelect(content.id)}
-        className="official-card-premium relative w-full cursor-pointer overflow-hidden bg-gradient-to-br from-gray-100 via-brand-gold/10 to-gray-100 text-left dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent"
+        className="official-card-premium relative w-full cursor-pointer overflow-hidden bg-gradient-to-br from-gray-100 via-[#1e293b]/[0.04] to-gray-100 text-left dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent"
       >
         {posterUrl ? (
           <div className="aspect-video w-full overflow-hidden">

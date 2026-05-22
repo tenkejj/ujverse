@@ -30,7 +30,7 @@ const AVATAR_CAP = 4
 const dialogPanelCls =
   'relative w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-200 bg-white/80 shadow-none backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/90'
 
-const goldIconCls = 'text-brand-gold dark:text-brand-gold-bright'
+const goldIconCls = 'text-[#1e293b] dark:text-brand-gold-bright'
 
 const actionBtnCls =
   'z-10 rounded-full border border-brand-gold/30 bg-black/40 p-2 text-brand-gold backdrop-blur-sm transition-colors hover:bg-black/55 dark:text-brand-gold-bright'
@@ -158,7 +158,7 @@ function EventModalContent({
               href={event.mapUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex flex-wrap items-center gap-1 text-slate-600 transition-colors hover:text-brand-gold dark:text-slate-400 dark:hover:text-brand-gold-bright"
+              className="inline-flex flex-wrap items-center gap-1 text-slate-600 transition-colors hover:text-[#1e293b] dark:text-slate-400 dark:hover:text-brand-gold-bright"
             >
               <span className="underline-offset-2 hover:underline">{event.location}</span>
             </a>
@@ -175,7 +175,7 @@ function EventModalContent({
           href={event.event_url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold ${goldIconCls} transition-colors hover:text-brand-gold dark:hover:text-brand-gold-bright`}
+          className={`mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold ${goldIconCls} transition-colors hover:text-[#1e293b]/80 dark:hover:text-brand-gold-bright`}
         >
           <ExternalLink size={16} className={`shrink-0 ${goldIconCls}`} strokeWidth={2} aria-hidden />
           Strona wydarzenia u źródła
@@ -189,8 +189,8 @@ function EventModalContent({
             onClick={() => onToggleRsvp(event.id)}
             className={`min-w-[120px] flex-1 rounded-xl py-3 font-bold transition-colors ${
               isAttending
-                ? 'border border-brand-gold bg-transparent text-brand-gold hover:bg-brand-gold/10 dark:text-brand-gold-bright'
-                : 'bg-brand-gold text-black hover:bg-brand-gold/85'
+                ? 'border border-[#1e293b]/45 bg-transparent text-[#1e293b] hover:bg-[#1e293b]/5 dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10'
+                : 'bg-[#1e293b] text-white hover:bg-[#1e293b]/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85'
             }`}
           >
             {isAttending ? '✓ Bierzesz udział' : 'Wezmę udział'}
@@ -198,7 +198,7 @@ function EventModalContent({
           <button
             type="button"
             onClick={onShare}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-brand-gold/50 bg-brand-gold/5 px-4 py-3 text-sm font-semibold text-brand-gold transition-colors hover:bg-brand-gold/10 dark:text-brand-gold-bright"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[#1e293b]/35 bg-[#1e293b]/[0.03] px-4 py-3 text-sm font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/[0.06] dark:border-brand-gold/50 dark:bg-brand-gold/5 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10"
             aria-label="Udostępnij wydarzenie"
           >
             <Share2 size={18} strokeWidth={2} className={goldIconCls} aria-hidden />
@@ -228,7 +228,7 @@ function EventModalContent({
           href={generateGoogleCalendarLink(event)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-fit items-center gap-2 text-sm text-slate-600 transition-colors hover:text-brand-gold dark:text-slate-400 dark:hover:text-brand-gold-bright"
+          className="inline-flex w-fit items-center gap-2 text-sm text-slate-600 transition-colors hover:text-[#1e293b] dark:text-slate-400 dark:hover:text-brand-gold-bright"
         >
           <CalendarPlus size={16} className={`shrink-0 ${goldIconCls}`} aria-hidden />
           Dodaj do kalendarza
@@ -257,7 +257,7 @@ function EventModalContent({
           <img src={trimmedBannerUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <div
-            className="h-full w-full bg-gradient-to-br from-amber-500/10 to-transparent"
+            className="h-full w-full bg-gradient-to-br from-[#1e293b]/[0.08] to-transparent dark:from-brand-gold/15 dark:to-transparent"
             aria-hidden
           />
         )}

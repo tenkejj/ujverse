@@ -79,7 +79,7 @@ export default function EventsView({ currentUserId }: Props) {
                 onClick={() => setFilter(key)}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm transition-colors ${
                   filter === key
-                    ? 'text-accent-interactive font-bold'
+                    ? 'font-bold text-[#1e293b] dark:text-brand-gold-bright'
                     : 'text-slate-600 hover:text-fg-primary font-medium dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
@@ -98,7 +98,7 @@ export default function EventsView({ currentUserId }: Props) {
             >
               {ingestFromStaticFallback ? (
                 <>
-                  <Archive size={12} className="text-brand-gold dark:text-brand-gold-bright shrink-0" aria-hidden />
+                  <Archive size={12} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
                   Archiwum
                 </>
               ) : (
@@ -124,7 +124,7 @@ export default function EventsView({ currentUserId }: Props) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Szukaj po nazwie…"
-                className="w-full rounded-xl border border-gray-200 bg-gray-100 py-2 pl-9 pr-3 text-sm text-fg-primary placeholder:text-slate-500 focus:border-accent-interactive focus:outline-none dark:border-border-app dark:bg-black/20 dark:text-white dark:placeholder:text-slate-500"
+                className="w-full rounded-xl border border-gray-200 bg-gray-100 py-2 pl-9 pr-3 text-sm text-fg-primary placeholder:text-slate-500 focus:border-[#1e293b] focus:outline-none dark:border-border-app dark:bg-black/20 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-brand-gold-bright"
                 aria-label="Szukaj wydarzeń po nazwie"
               />
             </div>
@@ -134,7 +134,7 @@ export default function EventsView({ currentUserId }: Props) {
                 setEditTarget(null)
                 setIsCreateOpen(true)
               }}
-              className="shrink-0 flex items-center gap-2 border border-brand-gold text-accent-interactive hover:bg-brand-gold/10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+              className="shrink-0 flex items-center gap-2 rounded-xl border border-[#1e293b]/40 px-4 py-2 text-sm font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/5 dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10"
             >
               <Plus size={18} strokeWidth={2} aria-hidden />
               Dodaj wydarzenie
