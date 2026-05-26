@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Archive, Plus, Radio, Search, User } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
+import { DataService } from '../services/DataService'
 import { useUnifiedEvents } from '../hooks/useContent'
 import type { EventMeta, UnifiedContent } from '../types/content'
 import CreateEventModal from './CreateEventModal'
@@ -24,8 +26,11 @@ type Props = {
 }
 
 export default function EventsView({ currentUserId }: Props) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const {
     events,
+    allEvents,
     toggleRsvp,
     addEvent,
     updateEvent,
@@ -34,13 +39,42 @@ export default function EventsView({ currentUserId }: Props) {
   const [filter, setFilter] = useState<EventFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [deepLinkEvent, setDeepLinkEvent] = useState<UJEvent | null>(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<UJEvent | null>(null)
 
-  const selectedEvent = useMemo(
-    () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
-    [events, selectedEventId],
-  )
+  useEffect(() => {
+    const state = location.state as { openEventId?: string } | null
+    const openEventId = state?.openEventId?.trim()
+    if (!openEventId) return
+
+    setSelectedEventId(openEventId)
+    const fromContext = allEvents.find((e) => e.id === openEventId)
+    if (fromContext) {
+      setDeepLinkEvent(fromContext)
+      navigate(location.pathname, { replace: true, state: null })
+      return
+    }
+
+    let cancelled = false
+    void DataService.fetchEventById(openEventId).then((row) => {
+      if (cancelled) return
+      if (row) setDeepLinkEvent(row)
+      navigate(location.pathname, { replace: true, state: null })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [allEvents, location.pathname, location.state, navigate])
+
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId) return null
+    return (
+      events.find((e) => e.id === selectedEventId) ??
+      allEvents.find((e) => e.id === selectedEventId) ??
+      (deepLinkEvent?.id === selectedEventId ? deepLinkEvent : null)
+    )
+  }, [events, allEvents, deepLinkEvent, selectedEventId])
 
   const filtered = useMemo(() => {
     let list =

@@ -43,7 +43,7 @@ export default function EventCard({ content, onSelect }: Props) {
       </div>
       <div className="min-w-0 flex-1">
         {official && tag ? (
-          <span className="mb-1 inline-flex rounded-full border border-[#c9a227]/40 bg-[#c9a227]/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-uj-navy dark:text-[#e8c84a]">
+          <span className="mb-1 inline-flex rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-fg-primary dark:text-brand-gold-bright">
             {tag}
           </span>
         ) : null}
@@ -57,15 +57,15 @@ export default function EventCard({ content, onSelect }: Props) {
           </p>
           {official ? (
             <span
-              className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-[#c9a227]/45 bg-black/[0.04] px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-uj-navy dark:bg-black/30 dark:text-[#f0d060]"
+              className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-brand-gold/45 bg-black/[0.04] px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-fg-primary dark:bg-black/30 dark:text-brand-gold-bright"
               title={content.metadata.sourceName ? `Źródło: ${content.metadata.sourceName}` : undefined}
             >
-              <Shield size={11} className="text-[#b8922a] dark:text-[#e8c84a]" strokeWidth={2.5} aria-hidden />
+              <Shield size={11} className="text-accent-gold" strokeWidth={2.5} aria-hidden />
               OFICJALNE UJ
             </span>
           ) : null}
         </div>
-        <p className="mt-1 line-clamp-2 text-xs text-slate-600 dark:text-slate-400">
+        <p className="mt-1 line-clamp-2 text-xs text-fg-secondary">
           {content.metadata.location}
         </p>
         <div className="mt-2 flex items-center gap-2">
@@ -79,7 +79,7 @@ export default function EventCard({ content, onSelect }: Props) {
             {content.author.displayName}
           </span>
         </div>
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-fg-secondary">
           <Users size={16} strokeWidth={2} className="shrink-0 text-[#1e293b]/70 dark:text-brand-gold-bright" aria-hidden />
           <span>{content.metadata.attendees} uczestników</span>
         </p>
@@ -112,7 +112,7 @@ export default function EventCard({ content, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(content.id)}
-      className="relative w-full cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 text-left transition-colors hover:bg-gray-200/60 dark:border-border-app dark:bg-bg-card dark:hover:bg-white/5"
+      className="relative w-full cursor-pointer overflow-hidden rounded-2xl border border-border-app bg-bg-card text-left transition-colors hover:bg-white/80 dark:hover:bg-white/5"
     >
       {posterUrl ? (
         <div className="aspect-video w-full overflow-hidden">

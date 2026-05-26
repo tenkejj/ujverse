@@ -109,6 +109,29 @@ class DataServiceImpl {
   toUnifiedEvents(events: UJEvent[]): UnifiedContent<EventMeta>[] {
     return EventsAdapter.toUnifiedList(events)
   }
+
+  /** Hybrydowe wyszukiwanie: Supabase (ilike) + cache oficjalnych z ingestu. */
+  async searchEvents(
+    query: string,
+    opts?: { limit?: number; includePast?: boolean },
+  ): Promise<UnifiedContent<EventMeta>[]> {
+    const normalized = query.trim()
+    if (normalized.length < 2) return []
+    const rows = await EventsAdapter.search(normalized, opts)
+    return EventsAdapter.toUnifiedList(rows)
+  }
+
+  /** Wydarzenia użytkownika z DB (profil — domyślnie z przeszłymi). */
+  async fetchEventsByUserId(
+    userId: string,
+    opts?: { includePast?: boolean },
+  ): Promise<UJEvent[]> {
+    return EventsAdapter.listByUserId(userId, opts)
+  }
+
+  async fetchEventById(id: string): Promise<UJEvent | null> {
+    return EventsAdapter.fetchById(id)
+  }
 }
 
 export const DataService = new DataServiceImpl()

@@ -1,17 +1,128 @@
 import type { UJEvent } from '../../data/mockEvents'
+import {
+  escapeIlikePattern,
+  eventFromDbRow,
+  eventMatchesTextQuery,
+  eventPassesDateFilter,
+  EVENTS_WITH_AUTHOR_SELECT,
+  mergeEventLists,
+  queryImpliesPastEvents,
+  startOfTodayIso,
+} from '../../lib/eventRow'
 import { UjverseSanitizer } from '../../lib/sanitizer'
+import { hydrateOfficialEventsFromStorage } from '../EventIngestor'
+import { supabase } from '../../supabaseClient'
 import type { EventMeta, UnifiedContent } from '../../types/content'
 import type { ContentAdapter } from './BaseAdapter'
+
+export type EventSearchOpts = {
+  limit?: number
+  includePast?: boolean
+}
+
+function resolveIncludePast(query: string, opts?: EventSearchOpts): boolean {
+  if (opts?.includePast === true) return true
+  if (opts?.includePast === false) return false
+  return queryImpliesPastEvents(query)
+}
 
 /**
  * Adapter wydarzeń.
  *
- * Źródło: `useEvents` (context) + EventIngestor. Adapter odpowiada tylko za
- * tłumaczenie `UJEvent` -> `UnifiedContent<EventMeta>` — stan i mutacje
- * (toggleRsvp, addEvent) zostają w kontekście.
+ * Źródło: Supabase `events`, cache oficjalnych z EventIngestor, kontekst UI.
+ * Mapuje `UJEvent` -> `UnifiedContent<EventMeta>`; wyszukiwanie hybrydowe DB + ingest.
  */
 class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
   readonly type = 'event' as const
+
+  async searchDb(query: string, opts?: EventSearchOpts): Promise<UJEvent[]> {
+    const normalized = query.trim()
+    if (normalized.length < 2) return []
+
+    const includePast = resolveIncludePast(normalized, opts)
+    const pattern = escapeIlikePattern(normalized)
+    const orFilter = `title.ilike.%${pattern}%,description.ilike.%${pattern}%,location.ilike.%${pattern}%`
+
+    let builder = supabase
+      .from('events')
+      .select(EVENTS_WITH_AUTHOR_SELECT)
+      .or(orFilter)
+      .order('date', { ascending: true })
+
+    if (!includePast) {
+      builder = builder.gte('date', startOfTodayIso())
+    }
+
+    const limit = opts?.limit ?? 24
+    const { data, error } = await builder.limit(limit)
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return (data ?? []).map(eventFromDbRow).filter((e): e is UJEvent => e !== null)
+  }
+
+  searchOfficialCache(query: string, opts?: EventSearchOpts): UJEvent[] {
+    const normalized = query.trim()
+    if (normalized.length < 2) return []
+
+    const includePast = resolveIncludePast(normalized, opts)
+    const limit = opts?.limit ?? 24
+
+    return hydrateOfficialEventsFromStorage()
+      .filter((ev) => eventMatchesTextQuery(ev, normalized))
+      .filter((ev) => eventPassesDateFilter(ev, includePast))
+      .slice(0, limit)
+  }
+
+  mergeSearchResults(db: UJEvent[], cache: UJEvent[], limit = 24): UJEvent[] {
+    return mergeEventLists([db, cache]).slice(0, limit)
+  }
+
+  async search(query: string, opts?: EventSearchOpts): Promise<UJEvent[]> {
+    const limit = opts?.limit ?? 24
+    const [db, cache] = await Promise.all([
+      this.searchDb(query, opts).catch(() => [] as UJEvent[]),
+      Promise.resolve(this.searchOfficialCache(query, opts)),
+    ])
+    return this.mergeSearchResults(db, cache, limit)
+  }
+
+  async fetchById(id: string): Promise<UJEvent | null> {
+    const { data, error } = await supabase
+      .from('events')
+      .select(EVENTS_WITH_AUTHOR_SELECT)
+      .eq('id', id)
+      .maybeSingle()
+    if (error) {
+      throw new Error(error.message)
+    }
+    if (data) {
+      const row = eventFromDbRow(data)
+      if (row) return row
+    }
+    const fromCache = hydrateOfficialEventsFromStorage().find((ev) => ev.id === id)
+    return fromCache ?? null
+  }
+
+  async listByUserId(userId: string, opts?: { includePast?: boolean }): Promise<UJEvent[]> {
+    const includePast = opts?.includePast ?? true
+    let builder = supabase
+      .from('events')
+      .select(EVENTS_WITH_AUTHOR_SELECT)
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+
+    if (!includePast) {
+      builder = builder.gte('date', startOfTodayIso())
+    }
+
+    const { data, error } = await builder
+    if (error) {
+      throw new Error(error.message)
+    }
+    return (data ?? []).map(eventFromDbRow).filter((e): e is UJEvent => e !== null)
+  }
 
   toUnified(raw: UJEvent): UnifiedContent<EventMeta> | null {
     if (!raw.id || !raw.title) return null

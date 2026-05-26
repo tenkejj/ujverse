@@ -7,7 +7,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
 } from 'react'
+import { DataService } from '../services/DataService'
 import { SearchService } from '../services/SearchService'
+import type { EventMeta, UnifiedContent } from '../types/content'
 import { useTheme } from '../ThemeContext'
 import { parseSearchCommand, type ParsedCommand } from '../lib/searchCommands'
 import {
@@ -24,11 +26,17 @@ export type OmniResults = {
   profiles: SearchUserHit[]
   posts: SearchHit[]
   announcements: SearchHit[]
+  events: UnifiedContent<EventMeta>[]
 }
 
 type CacheEntry = { results: OmniResults; expiresAt: number }
 
-const EMPTY_RESULTS: OmniResults = { profiles: [], posts: [], announcements: [] }
+const EMPTY_RESULTS: OmniResults = {
+  profiles: [],
+  posts: [],
+  announcements: [],
+  events: [],
+}
 const SECTION_LIMIT = 5
 const DEBOUNCE_MS = 180
 const CACHE_TTL_MS = 120_000
@@ -37,7 +45,7 @@ const DESKTOP_MEDIA_QUERY = '(min-width: 768px)'
 export type OmniSearchHandlers = {
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
-  onNavigateToEvents: () => void
+  onNavigateToEvents: (openEventId?: string) => void
   onNavigateToSearch: (query?: string) => void
 }
 
@@ -207,15 +215,24 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
     setError(null)
 
     debounceRef.current = window.setTimeout(async () => {
+      const wantEvents = parsed.mode === 'all'
+
       try {
-        const { content, users } = await SearchService.searchUnified(q, {
-          signal,
-          limit: SECTION_LIMIT,
-          includeContent: parsed.mode !== 'profiles',
-          includeUsers: parsed.mode !== 'komunikaty',
-        })
+        const [meiliResponse, eventRows] = await Promise.all([
+          SearchService.searchUnified(q, {
+            signal,
+            limit: SECTION_LIMIT,
+            includeContent: parsed.mode !== 'profiles',
+            includeUsers: parsed.mode !== 'komunikaty',
+          }),
+          wantEvents
+            ? DataService.searchEvents(q, { limit: SECTION_LIMIT }).catch(() => [])
+            : Promise.resolve([]),
+        ])
 
         if (signal.aborted) return
+
+        const { content, users } = meiliResponse
 
         const profiles = parsed.mode === 'komunikaty' ? [] : users.slice(0, SECTION_LIMIT)
         const posts =
@@ -226,8 +243,9 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
           parsed.mode === 'profiles'
             ? []
             : content.filter((c) => c.type === 'komunikat').slice(0, SECTION_LIMIT)
+        const events = wantEvents ? eventRows.slice(0, SECTION_LIMIT) : []
 
-        const next: OmniResults = { profiles, posts, announcements }
+        const next: OmniResults = { profiles, posts, announcements, events }
         cacheRef.current.set(cacheKey, { results: next, expiresAt: Date.now() + CACHE_TTL_MS })
         setResults(next)
         setLastSearchedKey(cacheKey)
@@ -276,7 +294,10 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
   }, [inputRef])
 
   const totalCount =
-    results.profiles.length + results.posts.length + results.announcements.length
+    results.profiles.length +
+    results.posts.length +
+    results.announcements.length +
+    results.events.length
   const hasResults = totalCount > 0
 
   const searched = useMemo(() => {
@@ -323,11 +344,22 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
         }
         cursor++
       }
+      for (const event of results.events) {
+        if (cursor === idx) {
+          pushToHistory(query)
+          setIsOpen(false)
+          setActiveIndex(-1)
+          onNavigateToEvents(event.id)
+          return
+        }
+        cursor++
+      }
     },
     [
       results.profiles,
       results.posts,
       results.announcements,
+      results.events,
       totalCount,
       pushToHistory,
       query,

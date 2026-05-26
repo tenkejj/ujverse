@@ -1128,6 +1128,13 @@ function App() {
             {...sharedPostProps}
             onNavigateToUser={navigateToUser}
             onNavigateToPost={navigateToPost}
+            onNavigateToEvents={(openEventId) => {
+              if (openEventId) {
+                navigate('/events', { state: { openEventId } })
+                return
+              }
+              navigateToMainView('events')
+            }}
           />
         )
       case 'post':
@@ -1229,7 +1236,13 @@ function App() {
           onCloseNotificationsPanel={closeNotificationsPanel}
           onNavigateToFeed={() => navigateToMainView('feed')}
           onNavigateToProfile={() => navigateToMainView('profile')}
-          onNavigateToEvents={() => navigateToMainView('events')}
+          onNavigateToEvents={(openEventId) => {
+            if (openEventId) {
+              navigate('/events', { state: { openEventId } })
+              return
+            }
+            navigateToMainView('events')
+          }}
           onNavigateToSearch={(query) => {
             const normalized = (query ?? '').trim()
             if (!normalized) {

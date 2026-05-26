@@ -29,7 +29,7 @@ type Props = {
   onCloseNotificationsPanel: () => void
   onNavigateToFeed: () => void
   onNavigateToProfile: () => void
-  onNavigateToEvents: () => void
+  onNavigateToEvents: (openEventId?: string) => void
   onNavigateToSearch: (query?: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
@@ -193,7 +193,7 @@ export default function Header({
           </button>
           <button
             type="button"
-            onClick={onNavigateToEvents}
+            onClick={() => onNavigateToEvents()}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
               activeView === 'events'
                 ? 'text-[#1e293b] dark:text-accent-interactive'

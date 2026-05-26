@@ -7,16 +7,17 @@ import {
   UserRound,
   MessageSquareText,
   MapPin,
+  Calendar,
   Clock,
   ChevronLeft,
 } from 'lucide-react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import type { Profile, Post } from '../types'
+import { DataService } from '../services/DataService'
 import { SearchService } from '../services/SearchService'
+import type { EventMeta, UnifiedContent } from '../types/content'
 import type { SearchHit } from '../types/search'
 import { getDeptAbbreviation } from '../lib/departments'
-import { useEvents } from '../hooks/useEvents'
-import type { UJEvent } from '../data/mockEvents'
 import { ICONS_MOBILE, SEARCH_MOBILE } from '../styles/mobile-theme'
 import {
   loadSearchHistory,
@@ -28,7 +29,7 @@ import {
 type Props = {
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
-  onNavigateToEvents: () => void
+  onNavigateToEvents: (openEventId?: string) => void
 }
 
 type PlaceHit = { id: string; title: string; location: string }
@@ -41,6 +42,7 @@ type Results = {
   users: Profile[]
   posts: SearchPostResult[]
   places: PlaceHit[]
+  events: UnifiedContent<EventMeta>[]
 }
 
 function contentHitToPost(hit: SearchHit): SearchPostResult {
@@ -87,33 +89,18 @@ const searchStaggerItem = {
   },
 }
 
-function eventMatchesPlaceQuery(ev: UJEvent, q: string): boolean {
-  const n = q.trim().toLowerCase()
-  if (!n) return false
-  return (
-    ev.location.toLowerCase().includes(n) ||
-    ev.title.toLowerCase().includes(n) ||
-    ev.description.toLowerCase().includes(n)
-  )
-}
-
-function pickPlaceHits(events: UJEvent[], q: string, limit: number): PlaceHit[] {
-  const hits = events.filter((ev) => eventMatchesPlaceQuery(ev, q))
-  return hits.slice(0, limit).map((ev) => ({
-    id: ev.id,
-    title: ev.title,
-    location: ev.location,
-  }))
-}
-
 export default function SearchBar({
   onNavigateToUser,
   onNavigateToPost,
   onNavigateToEvents,
 }: Props) {
-  const { allEvents } = useEvents()
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<Results>({ users: [], posts: [], places: [] })
+  const [results, setResults] = useState<Results>({
+    users: [],
+    posts: [],
+    places: [],
+    events: [],
+  })
   const [isSearching, setIsSearching] = useState(false)
   const [mobileModalOpen, setMobileModalOpen] = useState(false)
   const [mobilePill, setMobilePill] = useState<MobilePill>('all')
@@ -124,7 +111,10 @@ export default function SearchBar({
   const containerRef = useRef<HTMLDivElement>(null)
 
   const hasResults =
-    results.users.length > 0 || results.posts.length > 0 || results.places.length > 0
+    results.users.length > 0 ||
+    results.posts.length > 0 ||
+    results.places.length > 0 ||
+    results.events.length > 0
   const searched = !isSearching && query.length >= 2
 
   const pushHistory = useCallback((q: string) => {
@@ -141,7 +131,7 @@ export default function SearchBar({
 
   const clearSearch = useCallback(() => {
     setQuery('')
-    setResults({ users: [], posts: [], places: [] })
+    setResults({ users: [], posts: [], places: [], events: [] })
     setIsSearching(false)
   }, [])
 
@@ -188,13 +178,16 @@ export default function SearchBar({
     [clearSearch, handleNavigatePost, onNavigateToEvents, pushHistory, query],
   )
 
-  const handleNavigatePlace = useCallback(() => {
-    pushHistory(query)
-    setMobileModalOpen(false)
-    setMobilePill('all')
-    clearSearch()
-    onNavigateToEvents()
-  }, [clearSearch, onNavigateToEvents, pushHistory, query])
+  const handleNavigateEvent = useCallback(
+    (eventId: string) => {
+      pushHistory(query)
+      setMobileModalOpen(false)
+      setMobilePill('all')
+      clearSearch()
+      onNavigateToEvents(eventId)
+    },
+    [clearSearch, onNavigateToEvents, pushHistory, query],
+  )
 
   useEffect(() => {
     if (!mobileModalOpen) return
@@ -221,7 +214,7 @@ export default function SearchBar({
   // Debounced search (Meilisearch: ujverse_content + ujverse_users)
   useEffect(() => {
     if (query.length < 2) {
-      setResults({ users: [], posts: [], places: [] })
+      setResults({ users: [], posts: [], places: [], events: [] })
       setIsSearching(false)
       return
     }
@@ -233,22 +226,36 @@ export default function SearchBar({
       const mode = mobileModalOpen ? mobilePill : 'all'
       const wantUsers = mode === 'all' || mode === 'users' || mode === 'wpi'
       const wantPosts = mode === 'all'
-      const wantPlaces = mode === 'all' || mode === 'places'
+      const wantPlaces = mode === 'places'
+      const wantEvents = mode === 'all'
+      const wantEventFetch = wantPlaces || wantEvents
 
       try {
-        const { content, users } = await SearchService.searchUnified(query, {
-          signal: controller.signal,
-          limit: 5,
-          includeContent: wantPosts,
-          includeUsers: wantUsers,
-          userDepartmentFilter: mode === 'wpi' ? WPIA_DEPARTMENT : undefined,
-        })
+        const [meiliResponse, eventRows] = await Promise.all([
+          SearchService.searchUnified(query, {
+            signal: controller.signal,
+            limit: 5,
+            includeContent: wantPosts,
+            includeUsers: wantUsers,
+            userDepartmentFilter: mode === 'wpi' ? WPIA_DEPARTMENT : undefined,
+          }),
+          wantEventFetch
+            ? DataService.searchEvents(query, { limit: 5 }).catch(() => [])
+            : Promise.resolve([]),
+        ])
 
         if (controller.signal.aborted) return
 
-        if (controller.signal.aborted) return
+        const { content, users } = meiliResponse
+        const limitedEvents = eventRows.slice(0, 5)
 
-        const places = wantPlaces ? pickPlaceHits(allEvents, query, 5) : []
+        const places: PlaceHit[] = wantPlaces
+          ? limitedEvents.map((ev) => ({
+              id: ev.id,
+              title: ev.title,
+              location: ev.metadata.location ?? '',
+            }))
+          : []
 
         setResults({
           users: wantUsers
@@ -262,11 +269,12 @@ export default function SearchBar({
             : [],
           posts: wantPosts ? content.map(contentHitToPost) : [],
           places,
+          events: wantEvents ? limitedEvents : [],
         })
       } catch (error) {
         if (controller.signal.aborted) return
-        console.error('[SearchBar] Meilisearch search failed:', error)
-        setResults({ users: [], posts: [], places: [] })
+        console.error('[SearchBar] search failed:', error)
+        setResults({ users: [], posts: [], places: [], events: [] })
       } finally {
         if (!controller.signal.aborted) {
           setIsSearching(false)
@@ -278,7 +286,7 @@ export default function SearchBar({
       controller.abort()
       window.clearTimeout(timer)
     }
-  }, [query, mobileModalOpen, mobilePill, allEvents])
+  }, [query, mobileModalOpen, mobilePill])
 
   const mobileResultRow = SEARCH_MOBILE.mobileResults.rowClass
 
@@ -482,11 +490,62 @@ export default function SearchBar({
           </motion.div>
         )}
 
-        {!isSearching && results.places.length > 0 && (
+        {!isSearching && results.events.length > 0 && (
           <motion.div
             variants={searchStaggerItem}
             className={`${SEARCH_MOBILE.mobileResults.sectionSecondaryWrapperClass} ${
               results.users.length > 0 || results.posts.length > 0
+                ? `mt-1 border-t ${sectionDivider} pt-2`
+                : 'pt-2'
+            }`}
+          >
+            <div className={`${SEARCH_MOBILE.mobileResults.sectionTitleClass} ${tHint}`}>
+              <Calendar
+                size={ICONS_MOBILE.searchSectionIconSize}
+                strokeWidth={ICONS_MOBILE.searchSectionIconStrokeWidth}
+                className={sectionIconCls}
+                aria-hidden
+              />
+              Wydarzenia
+            </div>
+            <motion.div variants={searchStaggerContainer} initial="hidden" animate="show">
+              {results.events.map((event) => {
+                const location = event.metadata.location?.trim()
+                return (
+                  <motion.button
+                    key={event.id}
+                    type="button"
+                    variants={searchStaggerItem}
+                    onClick={() => handleNavigateEvent(event.id)}
+                    whileTap={{ scale: SEARCH_MOBILE.mobileResults.tapScale }}
+                    className={mobileResultRow}
+                  >
+                    <Calendar
+                      size={ICONS_MOBILE.searchResultIconSize}
+                      strokeWidth={ICONS_MOBILE.searchResultIconStrokeWidth}
+                      className="shrink-0 text-slate-400 dark:text-slate-500"
+                      aria-hidden
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className={`block text-sm font-semibold truncate ${tTitle}`}>
+                        {event.title}
+                      </span>
+                      <span className={`block text-xs line-clamp-1 mt-0.5 ${tHint}`}>
+                        {location || event.metadata.category || 'Wydarzenie'}
+                      </span>
+                    </span>
+                  </motion.button>
+                )
+              })}
+            </motion.div>
+          </motion.div>
+        )}
+
+        {!isSearching && results.places.length > 0 && (
+          <motion.div
+            variants={searchStaggerItem}
+            className={`${SEARCH_MOBILE.mobileResults.sectionSecondaryWrapperClass} ${
+              results.users.length > 0 || results.posts.length > 0 || results.events.length > 0
                 ? `mt-1 border-t ${sectionDivider} pt-2`
                 : 'pt-2'
             }`}
@@ -508,7 +567,7 @@ export default function SearchBar({
                   key={place.id}
                   type="button"
                   variants={searchStaggerItem}
-                  onClick={handleNavigatePlace}
+                  onClick={() => handleNavigateEvent(place.id)}
                   whileTap={{ scale: SEARCH_MOBILE.mobileResults.tapScale }}
                   className={mobileResultRow}
                 >

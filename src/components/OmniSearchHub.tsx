@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  Calendar,
   Clock,
   Loader2,
   MapPin,
@@ -16,6 +17,7 @@ import { OMNI_DESKTOP as T } from '../styles/mobile-theme'
 import { getDeptAbbreviation } from '../lib/departments'
 import UserAvatar from './UserAvatar'
 import type { Profile } from '../types'
+import type { EventMeta, UnifiedContent } from '../types/content'
 import type { SearchHit, SearchUserHit } from '../types/search'
 
 /**
@@ -74,6 +76,7 @@ export default function OmniSearchHub(props: Props) {
   const profilesOffset = 0
   const postsOffset = o.results.profiles.length
   const announcementsOffset = postsOffset + o.results.posts.length
+  const eventsOffset = announcementsOffset + o.results.announcements.length
 
   return (
     <div ref={containerRef} className="relative hidden md:flex">
@@ -144,7 +147,7 @@ export default function OmniSearchHub(props: Props) {
 
               {showEmptyRecent && (
                 <div className={T.emptyMessage}>
-                  Zacznij pisać aby wyszukać posty, komunikaty i profile.
+                  Zacznij pisać aby wyszukać posty, komunikaty, wydarzenia i profile.
                 </div>
               )}
 
@@ -203,6 +206,18 @@ export default function OmniSearchHub(props: Props) {
                       onPick={() => {
                         o.close()
                         props.onNavigateToEvents()
+                      }}
+                      registerRow={o.registerRow}
+                    />
+                  )}
+                  {o.results.events.length > 0 && (
+                    <EventsSection
+                      items={o.results.events}
+                      activeIndex={o.activeIndex}
+                      indexOffset={eventsOffset}
+                      onPick={(eventId) => {
+                        o.close()
+                        props.onNavigateToEvents(eventId)
                       }}
                       registerRow={o.registerRow}
                     />
@@ -329,6 +344,53 @@ function PostsSection({
         })}
       </ul>
       <div className={T.sectionDivider} aria-hidden />
+    </section>
+  )
+}
+
+function EventsSection({
+  items,
+  activeIndex,
+  indexOffset,
+  onPick,
+  registerRow,
+}: SectionProps<UnifiedContent<EventMeta>>) {
+  return (
+    <section aria-label="Wydarzenia">
+      <div className={T.sectionHeader}>
+        <Calendar size={12} strokeWidth={2.25} className={T.sectionIcon} aria-hidden />
+        Wydarzenia
+      </div>
+      <ul className={T.sectionBody} role="presentation">
+        {items.map((event, i) => {
+          const idx = indexOffset + i
+          const active = activeIndex === idx
+          const location = event.metadata.location?.trim()
+          return (
+            <li key={event.id} role="presentation">
+              <button
+                ref={(node) => registerRow(idx, node)}
+                id={`omni-row-${idx}`}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => onPick(event.id)}
+                className={rowClassFor(active)}
+              >
+                <span className={T.rowIconBubble} aria-hidden>
+                  <Calendar size={14} strokeWidth={2} />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className={T.rowTitle}>{event.title}</span>
+                  <span className={T.rowSnippet}>
+                    {location || event.metadata.category || 'Wydarzenie'}
+                  </span>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
     </section>
   )
 }

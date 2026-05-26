@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { FileText, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
+import { Calendar, FileText, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useContentSearch } from '../hooks/useContentSearch'
 import type { Comment, Post, Profile } from '../types'
+import type { EventMeta, UnifiedContent } from '../types/content'
 import type { SearchHit, SearchUserHit } from '../types/search'
+import EventCard from './events/EventCard'
 import { DataService } from '../services/DataService'
 import PostCard from './PostCard'
 import SearchResultRow from './search/SearchResultRow'
@@ -20,15 +22,17 @@ import {
   clearAllHistory,
 } from '../lib/searchHistory'
 
-type SearchFilter = 'all' | 'post' | 'komunikat' | 'user'
+type SearchFilter = 'all' | 'post' | 'komunikat' | 'user' | 'event'
 type ContentFilter = Exclude<SearchFilter, 'all'>
 
 type SearchPageItem =
   | { kind: 'user'; hit: SearchUserHit }
   | { kind: 'content'; hit: SearchHit }
+  | { kind: 'event'; content: UnifiedContent<EventMeta> }
 
 type Props = {
   onNavigateToUser: (userId: string) => void
+  onNavigateToEvents?: (openEventId?: string) => void
 
   // sharedPostProps — tożsame z SinglePostView, żeby renderować pełne PostCard
   // dla post-hitów z Meilisearch (likes/komentarze/usuwanie współdzielą stan App.tsx).
@@ -67,19 +71,22 @@ const FILTER_TABS: ReadonlyArray<{
   { id: 'post', label: 'Posty', icon: FileText },
   { id: 'komunikat', label: 'Komunikaty', icon: Megaphone },
   { id: 'user', label: 'Użytkownicy', icon: Users },
+  { id: 'event', label: 'Wydarzenia', icon: Calendar },
 ]
 
-const SUGGESTIBLE_FILTERS: ReadonlyArray<ContentFilter> = ['user', 'post', 'komunikat']
+const SUGGESTIBLE_FILTERS: ReadonlyArray<ContentFilter> = ['user', 'post', 'komunikat', 'event']
 
-const SCOPE_PLACEHOLDER: Record<DashboardScope, string> = {
+const SCOPE_PLACEHOLDER: Record<DashboardScope | 'event', string> = {
   post: 'Szukaj wśród wpisów studentów…',
   komunikat: 'Szukaj wśród oficjalnych komunikatów…',
+  event: 'Szukaj wydarzeń, koncertów, targów...',
 }
 
-const DEFAULT_PLACEHOLDER = 'Szukaj wpisów, komunikatów i użytkowników...'
+const DEFAULT_PLACEHOLDER = 'Szukaj wpisów, komunikatów, wydarzeń i użytkowników...'
 
 export default function SearchPageView({
   onNavigateToUser,
+  onNavigateToEvents,
   myProfile,
   displayName,
   currentUserId,
@@ -113,7 +120,7 @@ export default function SearchPageView({
   const [activeFilter, setActiveFilter] = useState<SearchFilter>('all')
   const [pendingFilter, setPendingFilter] = useState<ContentFilter | null>(null)
   const [searchHistory, setSearchHistory] = useState<string[]>(loadSearchHistory)
-  const { content, users, isLoading, error } = useContentSearch(activeQuery)
+  const { content, users, events, isLoading, error } = useContentSearch(activeQuery)
   const [fullPostsById, setFullPostsById] = useState<Record<string, Post>>({})
 
   const queryFromUrl = useMemo(
@@ -139,6 +146,7 @@ export default function SearchPageView({
 
   const safeUsers = Array.isArray(users) ? users : []
   const safeContent = Array.isArray(content) ? content : []
+  const safeEvents = Array.isArray(events) ? events : []
 
   const postHitIds = useMemo<string[]>(
     () =>
@@ -191,13 +199,14 @@ export default function SearchPageView({
   }, [postHitIds, fullPostsById, likesCountByPost, likedPostIds, commentsCountByPost])
 
   const resultCounts = useMemo<Record<SearchFilter, number>>(() => ({
-    all: safeUsers.length + safeContent.length,
+    all: safeUsers.length + safeContent.length + safeEvents.length,
     post: safeContent.filter((result) => result.type === 'post').length,
     komunikat: safeContent.filter((result) => result.type === 'komunikat').length,
     user: safeUsers.length,
-  }), [safeUsers, safeContent])
+    event: safeEvents.length,
+  }), [safeUsers, safeContent, safeEvents])
 
-  // Kolejność w "Wszystko" mirroruje Omni-Search: Profile → Posty → Komunikaty.
+  // Kolejność w "Wszystko": Profile → Posty → Komunikaty → Wydarzenia.
   const allItems = useMemo<SearchPageItem[]>(() => [
     ...safeUsers.map((hit) => ({ kind: 'user' as const, hit })),
     ...safeContent
@@ -206,11 +215,13 @@ export default function SearchPageView({
     ...safeContent
       .filter((h) => h.type === 'komunikat')
       .map((hit) => ({ kind: 'content' as const, hit })),
-  ], [safeUsers, safeContent])
+    ...safeEvents.map((eventContent) => ({ kind: 'event' as const, content: eventContent })),
+  ], [safeUsers, safeContent, safeEvents])
 
   const filteredResults = useMemo<SearchPageItem[]>(() => {
     if (activeFilter === 'all') return allItems
     if (activeFilter === 'user') return allItems.filter((item) => item.kind === 'user')
+    if (activeFilter === 'event') return allItems.filter((item) => item.kind === 'event')
     return allItems.filter(
       (item) => item.kind === 'content' && item.hit.type === activeFilter,
     )
@@ -266,6 +277,17 @@ export default function SearchPageView({
     navigate('/')
   }, [navigate])
 
+  const handleOpenEvent = useCallback(
+    (eventId: string) => {
+      if (onNavigateToEvents) {
+        onNavigateToEvents(eventId)
+        return
+      }
+      navigate('/events', { state: { openEventId: eventId } })
+    },
+    [navigate, onNavigateToEvents],
+  )
+
   const handleClearInput = useCallback(() => {
     setInputValue('')
     setActiveQuery('')
@@ -299,7 +321,11 @@ export default function SearchPageView({
   const isEmptyState = activeQuery.trim().length < 2
 
   const inputPlaceholder = useMemo(() => {
-    if (pendingFilter === 'post' || pendingFilter === 'komunikat') {
+    if (
+      pendingFilter === 'post' ||
+      pendingFilter === 'komunikat' ||
+      pendingFilter === 'event'
+    ) {
       return SCOPE_PLACEHOLDER[pendingFilter]
     }
     return DEFAULT_PLACEHOLDER
@@ -388,7 +414,7 @@ export default function SearchPageView({
                             : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
                         }
                       >
-                        {tab.id === 'user' ? resultCounts.user : resultCounts[tab.id]}
+                        {resultCounts[tab.id]}
                       </span>
                     </button>
                   )
@@ -467,6 +493,17 @@ export default function SearchPageView({
                         return (
                           <li key={`user-${item.hit.id}`}>
                             <SearchUserResultRow hit={item.hit} onOpen={onNavigateToUser} />
+                          </li>
+                        )
+                      }
+
+                      if (item.kind === 'event') {
+                        return (
+                          <li key={`event-${item.content.id}`}>
+                            <EventCard
+                              content={item.content}
+                              onSelect={handleOpenEvent}
+                            />
                           </li>
                         )
                       }
