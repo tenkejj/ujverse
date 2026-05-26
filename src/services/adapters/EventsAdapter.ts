@@ -5,7 +5,6 @@ import {
   eventMatchesTextQuery,
   EVENTS_WITH_AUTHOR_SELECT,
   mergeEventLists,
-  queryImpliesPastEvents,
   startOfTodayIso,
 } from '../../lib/eventRow'
 import { UjverseSanitizer } from '../../lib/sanitizer'
@@ -14,15 +13,16 @@ import { supabase } from '../../supabaseClient'
 import type { EventMeta, UnifiedContent } from '../../types/content'
 import type { ContentAdapter } from './BaseAdapter'
 
+/**
+ * Opcje wyszukiwania wydarzeń.
+ *
+ * `includePast` jest świadomie wyłączone z `searchDb` / `searchOfficialCache`:
+ * gdy użytkownik jawnie wpisuje frazę, oczekuje trafień niezależnie od daty.
+ * Pole zostaje dla kompatybilności z `listByUserId` (profil), gdzie ma sens.
+ */
 export type EventSearchOpts = {
   limit?: number
   includePast?: boolean
-}
-
-function resolveIncludePast(query: string, opts?: EventSearchOpts): boolean {
-  if (opts?.includePast === true) return true
-  if (opts?.includePast === false) return false
-  return queryImpliesPastEvents(query)
 }
 
 /**
@@ -34,26 +34,29 @@ function resolveIncludePast(query: string, opts?: EventSearchOpts): boolean {
 class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
   readonly type = 'event' as const
 
+  /**
+   * Wyszukiwanie tekstowe w `public.events`.
+   *
+   * Świadomie BEZ filtra daty: gdy użytkownik jawnie szuka frazy, oczekuje
+   * trafień niezależnie od tego, czy wydarzenie minęło. Czystość głównego
+   * widoku (lista nadchodzących) jest pilnowana po stronie `refetchDbEvents`
+   * w `useEvents.ts`, a nie tu.
+   */
   async searchDb(query: string, opts?: EventSearchOpts): Promise<UJEvent[]> {
     const normalized = query.trim()
     if (normalized.length < 2) return []
 
-    const includePast = resolveIncludePast(normalized, opts)
     const pattern = escapeIlikePattern(normalized)
     const orFilter = `title.ilike.%${pattern}%,description.ilike.%${pattern}%,location.ilike.%${pattern}%`
 
-    let builder = supabase
+    const limit = opts?.limit ?? 24
+    const { data, error } = await supabase
       .from('events')
       .select(EVENTS_WITH_AUTHOR_SELECT)
       .or(orFilter)
-      .order('date', { ascending: true })
+      .order('date', { ascending: false })
+      .limit(limit)
 
-    if (!includePast) {
-      builder = builder.gte('date', startOfTodayIso())
-    }
-
-    const limit = opts?.limit ?? 24
-    const { data, error } = await builder.limit(limit)
     if (error) {
       if (import.meta.env.DEV) {
         console.error('[EventsAdapter.searchDb] error', { query: normalized, error })
@@ -69,8 +72,6 @@ class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
     if (import.meta.env.DEV) {
       console.log('[EventsAdapter.searchDb]', {
         query: normalized,
-        includePast,
-        dateFilter: includePast ? null : startOfTodayIso(),
         rawCount: rawRows.length,
         mappedCount: mapped.length,
         mappedTitles: mapped.map((e) => e.title),
