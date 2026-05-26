@@ -370,7 +370,7 @@ export default function SearchPageView({
           {activeQuery.trim().length >= 2 && hasAnyResults && (
             <HorizontalPillScroller
               className="mx-auto mt-5 max-w-2xl"
-              scrollClassName="scrollbar-hide flex w-full min-w-0 flex-row flex-nowrap items-center justify-start gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 pl-12 pr-12 sm:pl-14 sm:pr-14 [-webkit-overflow-scrolling:touch] md:justify-center md:gap-2 md:overflow-visible"
+              scrollClassName="scrollbar-hide flex w-full min-w-0 flex-row flex-nowrap items-center justify-start gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [-webkit-overflow-scrolling:touch] md:justify-center md:gap-2 md:overflow-visible"
               watchDeps={[activeFilter, activeQuery, resultCounts]}
               scrollLeftLabel="Przewiń filtry w lewo"
               scrollRightLabel="Przewiń filtry w prawo"
