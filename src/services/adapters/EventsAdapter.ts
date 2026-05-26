@@ -3,7 +3,6 @@ import {
   escapeIlikePattern,
   eventFromDbRow,
   eventMatchesTextQuery,
-  eventPassesDateFilter,
   EVENTS_WITH_AUTHOR_SELECT,
   mergeEventLists,
   queryImpliesPastEvents,
@@ -56,23 +55,51 @@ class EventsAdapterImpl implements ContentAdapter<UJEvent, EventMeta> {
     const limit = opts?.limit ?? 24
     const { data, error } = await builder.limit(limit)
     if (error) {
+      if (import.meta.env.DEV) {
+        console.error('[EventsAdapter.searchDb] error', { query: normalized, error })
+      }
       throw new Error(error.message)
     }
 
-    return (data ?? []).map(eventFromDbRow).filter((e): e is UJEvent => e !== null)
+    const rawRows = data ?? []
+    const mapped = rawRows
+      .map(eventFromDbRow)
+      .filter((e): e is UJEvent => e !== null)
+
+    if (import.meta.env.DEV) {
+      console.log('[EventsAdapter.searchDb]', {
+        query: normalized,
+        includePast,
+        dateFilter: includePast ? null : startOfTodayIso(),
+        rawCount: rawRows.length,
+        mappedCount: mapped.length,
+        mappedTitles: mapped.map((e) => e.title),
+      })
+    }
+
+    return mapped
   }
 
   searchOfficialCache(query: string, opts?: EventSearchOpts): UJEvent[] {
     const normalized = query.trim()
     if (normalized.length < 2) return []
 
-    const includePast = resolveIncludePast(normalized, opts)
     const limit = opts?.limit ?? 24
+    const cache = hydrateOfficialEventsFromStorage()
+    const matched = cache.filter((ev) => eventMatchesTextQuery(ev, normalized))
+    const result = matched.slice(0, limit)
 
-    return hydrateOfficialEventsFromStorage()
-      .filter((ev) => eventMatchesTextQuery(ev, normalized))
-      .filter((ev) => eventPassesDateFilter(ev, includePast))
-      .slice(0, limit)
+    if (import.meta.env.DEV) {
+      console.log('[EventsAdapter.searchOfficialCache]', {
+        query: normalized,
+        cacheSize: cache.length,
+        matchedCount: matched.length,
+        returnedCount: result.length,
+        matchedTitles: matched.map((e) => e.title),
+      })
+    }
+
+    return result
   }
 
   mergeSearchResults(db: UJEvent[], cache: UJEvent[], limit = 24): UJEvent[] {

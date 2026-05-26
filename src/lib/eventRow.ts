@@ -81,10 +81,13 @@ export function compareOfficialThenDate(a: UJEvent, b: UJEvent): number {
 export function eventMatchesTextQuery(ev: UJEvent, query: string): boolean {
   const normalized = query.trim().toLowerCase()
   if (!normalized) return false
+  const title = (ev.title ?? '').toLowerCase()
+  const location = (ev.location ?? '').toLowerCase()
+  const description = (ev.description ?? '').toLowerCase()
   return (
-    ev.location.toLowerCase().includes(normalized) ||
-    ev.title.toLowerCase().includes(normalized) ||
-    ev.description.toLowerCase().includes(normalized)
+    title.includes(normalized) ||
+    location.includes(normalized) ||
+    description.includes(normalized)
   )
 }
 
