@@ -3,7 +3,10 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/**/*.ts": {
+    "api/scrape-wziks.ts": {
+      "maxDuration": 60
+    },
+    "api/sync-search.ts": {
       "maxDuration": 60
     }
   }
