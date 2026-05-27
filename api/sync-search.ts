@@ -4,7 +4,7 @@ import { Meilisearch } from 'meilisearch'
 import {
   ensureContentIndexSettings,
   ensureUsersIndexSettings,
-} from '../lib/meilisearchIndexSettings'
+} from '../lib/meilisearchIndexSettings.js'
 import {
   documentIdFor,
   mapAnnouncementToSearchDocument,
@@ -15,7 +15,7 @@ import {
   type PostRecord,
   type ProfileRecord,
   type SearchSyncTable,
-} from '../lib/searchSyncMapper'
+} from '../lib/searchSyncMapper.js'
 
 type WebhookPayload = {
   type: 'INSERT' | 'UPDATE' | 'DELETE'
