@@ -1,3 +1,4 @@
+// Serverless cron endpoint: scrapes ISI UJ communiqués → upserts into announcements.
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import axios from 'axios'
 import { load, type CheerioAPI } from 'cheerio'
