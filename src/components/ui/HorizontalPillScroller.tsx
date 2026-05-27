@@ -13,15 +13,20 @@ const arrowBtnCls =
   'pointer-events-auto absolute top-1/2 z-20 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[#1e293b] backdrop-blur-md transition-colors hover:bg-white/20 dark:border-white/10 dark:bg-zinc-800/40 dark:text-white dark:hover:bg-zinc-700/60'
 
 /**
- * Spacery — realne flex items po obu stronach listy.
+ * Spacery — realne flex items po obu stronach listy (tylko mobile).
  *
  * Workaround na znany quirk Chromium/Firefox: `padding-inline-end` na flex
  * containerze z `overflow-x: auto` bywa ignorowane jako koniec scrollable
  * area, przez co ostatni element ląduje pod absolutnie pozycjonowaną
  * strzałką nawigacji. Spacer jako flex item gwarantuje miejsce nawet po
  * całkowitym przewinięciu (szer. > strzałka 40 px + gradient 40–48 px).
+ *
+ * Na desktopie (md+) spacery są ukryte (`md:hidden`), bo zawartość zwykle
+ * mieści się w linii — sztuczna szerokość fałszowałaby `scrollWidth`
+ * i aktywowała strzałki przewijania, a także psułaby centrowanie
+ * (`md:justify-center`) oraz symetrię układu.
  */
-const spacerCls = 'shrink-0 w-12 sm:w-14'
+const spacerCls = 'shrink-0 w-12 sm:w-14 md:hidden'
 
 type Props = {
   children: ReactNode
@@ -80,7 +85,11 @@ export default function HorizontalPillScroller({
 
   return (
     <div className={`relative w-full min-w-0 ${className}`.trim()}>
-      <div ref={containerRef} className={scrollClassName} {...scrollProps}>
+      <div
+        ref={containerRef}
+        className={`${scrollClassName} md:px-0`.trim()}
+        {...scrollProps}
+      >
         <div aria-hidden role="presentation" className={spacerCls} />
         {children}
         <div aria-hidden role="presentation" className={spacerCls} />
