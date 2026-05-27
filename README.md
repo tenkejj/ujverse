@@ -41,6 +41,36 @@ The user interface of UJverse is built around the concept of reducing cognitive 
 * **Responsive Layouts:** Components like the `PostCard` dynamically hug their content, ensuring images of varying aspect ratios are displayed perfectly without awkward empty spaces.
 * **Minimalism:** Stripping away unnecessary text labels (e.g., icon-only navigation) and streamlining user profile creation to focus purely on identity and content.
 
+## Deployment
+
+Production deploys go to Vercel as **prebuilt artifacts** rather than via Vercel's git auto-detect pipeline. The remote `vercel build` running on Vercel's infrastructure deterministically refuses to register `api/scrape-wziks.ts` as a serverless function (the file passes TypeScript `nodenext` checks and esbuild bundles it cleanly, but Vercel's auto-detect silently drops it from the function list — confirmed by the hard error `"doesn't match any Serverless Functions inside the api directory"` when listed explicitly under `functions` in `vercel.json`). The local `vercel build` does not have this glitch and produces a `.vercel/output/` artifact containing both lambdas plus an isolated `/api/*` routing config.
+
+Until the remote auto-detect is fixed (Vercel support or repro upstream), production deploys must be run manually:
+
+```powershell
+# Windows / PowerShell
+./deploy.ps1
+```
+
+```bash
+# Cross-shell (npm script)
+npm run deploy:prod
+```
+
+Both invoke the same sequence:
+
+1. `npx vercel build --prod` — local Vite build + local `@vercel/node` lambda compilation into `.vercel/output/`.
+2. `npx vercel deploy --prebuilt --prod --force --yes` — upload the prebuilt artifact to production, bypassing remote re-detection.
+
+Vercel's git auto-deploy should be disabled in the project dashboard (Project Settings → Git) to avoid the auto-deploy reverting `/api/scrape-wziks` to a 404/SPA-fallback state after each push.
+
+First-time setup on a fresh checkout:
+
+```powershell
+npx vercel link --yes                              # link to tenkejjs-projects/ujverse
+npx vercel pull --yes --environment=production     # populate .vercel/.env.production.local
+```
+
 ## Future Roadmap
 
 As the platform grows, the architecture is prepared to support several advanced features:
