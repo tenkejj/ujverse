@@ -1,13 +1,11 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.ts", "use": "@vercel/node" },
+    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
   ],
-  "functions": {
-    "api/scrape-wziks.ts": {
-      "maxDuration": 60
-    },
-    "api/sync-search.ts": {
-      "maxDuration": 60
-    }
-  }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": ".*", "dest": "/index.html" }
+  ]
 }
