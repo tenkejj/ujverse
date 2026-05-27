@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Calendar, FileText, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
+import { Calendar, Camera, FileText, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useContentSearch } from '../hooks/useContentSearch'
@@ -13,7 +13,6 @@ import PostCard from './PostCard'
 import SearchResultRow from './search/SearchResultRow'
 import SearchUserResultRow from './search/SearchUserResultRow'
 import SearchDashboard from './search/SearchDashboard'
-import HorizontalPillScroller from './ui/HorizontalPillScroller'
 import type { DashboardScope } from './search/SearchDashboard'
 import {
   loadSearchHistory,
@@ -22,8 +21,10 @@ import {
   clearAllHistory,
 } from '../lib/searchHistory'
 
-type SearchFilter = 'all' | 'post' | 'komunikat' | 'user' | 'event'
-type ContentFilter = Exclude<SearchFilter, 'all'>
+type SearchFilter = 'all' | 'post' | 'komunikat' | 'user' | 'event' | 'media'
+// 'media' to placeholder — feature multimediów jeszcze niezaindeksowany w Meili,
+// pigułka pokazuje stan pusty, ale nie pojawia się w sugestiach.
+type ContentFilter = Exclude<SearchFilter, 'all' | 'media'>
 
 type SearchPageItem =
   | { kind: 'user'; hit: SearchUserHit }
@@ -62,6 +63,9 @@ type Props = {
   onNavigateToPost?: (postId: string) => void
 }
 
+// Kolejność = grid 2×3:
+//   Rząd 1: Wszystko · Posty · Komunikaty
+//   Rząd 2: Użytkownicy · Wydarzenia · Multimedia
 const FILTER_TABS: ReadonlyArray<{
   id: SearchFilter
   label: string
@@ -72,6 +76,7 @@ const FILTER_TABS: ReadonlyArray<{
   { id: 'komunikat', label: 'Komunikaty', icon: Megaphone },
   { id: 'user', label: 'Użytkownicy', icon: Users },
   { id: 'event', label: 'Wydarzenia', icon: Calendar },
+  { id: 'media', label: 'Multimedia', icon: Camera },
 ]
 
 const SUGGESTIBLE_FILTERS: ReadonlyArray<ContentFilter> = ['user', 'post', 'komunikat', 'event']
@@ -204,6 +209,7 @@ export default function SearchPageView({
     komunikat: safeContent.filter((result) => result.type === 'komunikat').length,
     user: safeUsers.length,
     event: safeEvents.length,
+    media: 0,
   }), [safeUsers, safeContent, safeEvents])
 
   // Kolejność w "Wszystko": Profile → Posty → Komunikaty → Wydarzenia.
@@ -222,6 +228,8 @@ export default function SearchPageView({
     if (activeFilter === 'all') return allItems
     if (activeFilter === 'user') return allItems.filter((item) => item.kind === 'user')
     if (activeFilter === 'event') return allItems.filter((item) => item.kind === 'event')
+    // Multimedia — feature jeszcze niezaindeksowana; pigułka klikalna, ale stan pusty.
+    if (activeFilter === 'media') return []
     return allItems.filter(
       (item) => item.kind === 'content' && item.hit.type === activeFilter,
     )
@@ -368,58 +376,55 @@ export default function SearchPageView({
           </form>
 
           {activeQuery.trim().length >= 2 && hasAnyResults && (
-            <HorizontalPillScroller
-              className="mx-auto mt-5 max-w-2xl"
-              scrollClassName="scrollbar-hide flex w-full min-w-0 flex-row flex-nowrap items-center justify-start gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [-webkit-overflow-scrolling:touch] md:justify-center md:gap-2 md:overflow-visible"
-              watchDeps={[activeFilter, activeQuery, resultCounts]}
-              scrollLeftLabel="Przewiń filtry w lewo"
-              scrollRightLabel="Przewiń filtry w prawo"
-              scrollProps={{ role: 'tablist', 'aria-label': 'Filtr wyników wyszukiwania' }}
+            <div
+              role="tablist"
+              aria-label="Filtr wyników wyszukiwania"
+              className="mx-auto mt-5 grid w-full max-w-2xl grid-cols-3 gap-2"
             >
-                {FILTER_TABS.map((tab) => {
-                  const Icon = tab.icon
-                  const isActive = activeFilter === tab.id
+              {FILTER_TABS.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeFilter === tab.id
 
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => setActiveFilter(tab.id)}
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveFilter(tab.id)}
+                    className={
+                      'group flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2 ' +
+                      'text-xs sm:text-sm font-semibold tracking-[0.01em] transition-all duration-200 ' +
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ' +
+                      'focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/45 ' +
+                      (isActive
+                        ? 'border-[#1e293b]/45 bg-[#1e293b]/10 text-[#1e293b] ' +
+                          'shadow-[inset_0_0_0_1px_rgba(30,41,59,0.08)] ' +
+                          'dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright ' +
+                          'dark:shadow-[0_0_18px_-8px_rgba(232,200,74,0.45),inset_0_0_0_1px_rgba(232,200,74,0.18)]'
+                        : 'border-zinc-200 bg-white/60 text-zinc-600 ' +
+                          'hover:border-zinc-300 hover:bg-white/80 hover:text-[#1e293b] ' +
+                          'dark:border-white/10 dark:bg-black/25 dark:text-zinc-400 ' +
+                          'dark:hover:border-white/20 dark:hover:bg-black/40 dark:hover:text-brand-gold-bright')
+                    }
+                  >
+                    <Icon size={14} strokeWidth={2} className="shrink-0" />
+                    <span className="min-w-0 truncate">{tab.label}</span>
+                    <span
                       className={
-                        'group inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 ' +
-                        'text-sm font-semibold tracking-[0.01em] transition-all duration-200 ' +
-                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ' +
-                        'focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/45 ' +
+                        'ml-0.5 hidden min-w-5 shrink-0 justify-center rounded-full px-1.5 py-0.5 sm:inline-flex ' +
+                        'text-[10px] font-bold tabular-nums leading-none ' +
                         (isActive
-                          ? 'border-[#1e293b]/45 bg-[#1e293b]/10 text-[#1e293b] ' +
-                            'shadow-[inset_0_0_0_1px_rgba(30,41,59,0.08)] ' +
-                            'dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright ' +
-                            'dark:shadow-[0_0_18px_-8px_rgba(232,200,74,0.45),inset_0_0_0_1px_rgba(232,200,74,0.18)]'
-                          : 'border-zinc-200 bg-white/60 text-zinc-600 ' +
-                            'hover:border-zinc-300 hover:bg-white/80 hover:text-[#1e293b] ' +
-                            'dark:border-white/10 dark:bg-black/25 dark:text-zinc-400 ' +
-                            'dark:hover:border-white/20 dark:hover:bg-black/40 dark:hover:text-brand-gold-bright')
+                          ? 'bg-[#1e293b]/15 text-[#1e293b] dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright'
+                          : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
                       }
                     >
-                      <Icon size={15} strokeWidth={2} className="shrink-0" />
-                      <span>{tab.label}</span>
-                      <span
-                        className={
-                          'ml-1 inline-flex min-w-6 justify-center rounded-full px-1.5 py-0.5 ' +
-                          'text-[10px] font-bold tabular-nums leading-none ' +
-                          (isActive
-                            ? 'bg-[#1e293b]/15 text-[#1e293b] dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright'
-                            : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
-                        }
-                      >
-                        {resultCounts[tab.id]}
-                      </span>
-                    </button>
-                  )
-                })}
-            </HorizontalPillScroller>
+                      {resultCounts[tab.id]}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           )}
 
           <AnimatePresence mode="wait" initial={false}>
