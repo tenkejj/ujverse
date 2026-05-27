@@ -3,7 +3,12 @@ import { Meilisearch } from 'meilisearch'
 import * as dotenv from 'dotenv'
 
 import { activeAnnouncementCutoff } from '../src/lib/announcementRecency'
-import { ensureUsersIndexSettings, USERS_INDEX_UID } from '../lib/meilisearchIndexSettings'
+import {
+  ensureContentIndexSettings,
+  ensureUsersIndexSettings,
+  USERS_INDEX_UID,
+} from '../lib/meilisearchIndexSettings'
+import { extractPostTags } from '../src/lib/postTags'
 import {
   mapAnnouncementToSearchDocument,
   mapPostToSearchDocument,
@@ -75,7 +80,7 @@ async function collectPostDocuments(): Promise<SearchContentDocument[]> {
   while (true) {
     const { data, error } = await supabase
       .from('posts')
-      .select('id, content, user_id, created_at, profiles(id, full_name, username, department, is_banned)')
+      .select('id, content, tags, user_id, created_at, profiles(id, full_name, username, department, is_banned)')
       .order('id', { ascending: true })
       .range(offset, offset + BATCH_SIZE - 1)
 
@@ -85,8 +90,17 @@ async function collectPostDocuments(): Promise<SearchContentDocument[]> {
 
     for (const row of rows) {
       const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
+      const dbTags = Array.isArray(row.tags) ? row.tags : []
+      const tags =
+        dbTags.length > 0 ? dbTags : extractPostTags(typeof row.content === 'string' ? row.content : '')
       const doc = mapPostToSearchDocument(
-        { id: row.id, content: row.content, user_id: row.user_id, created_at: row.created_at },
+        {
+          id: row.id,
+          content: row.content,
+          tags,
+          user_id: row.user_id,
+          created_at: row.created_at,
+        },
         profile ?? null,
       )
       if (doc) documents.push(doc)
@@ -201,7 +215,9 @@ async function main(): Promise<void> {
   console.log(`[force-resync] Meilisearch: ${MEILI_HOST}, index="${INDEX_UID}"`)
 
   await ensureIndex()
+  await ensureContentIndexSettings(meili, INDEX_UID)
   await ensureUsersIndexSettings(meili)
+  console.log('[force-resync] Indeks treści: filterableAttributes type, department, tags, announcementStatus.')
   console.log('[force-resync] Indeks użytkowników: searchableAttributes username, fullName, department.')
   await wipeIndex(INDEX_UID, 'ujverse_content')
   await wipeIndex(USERS_INDEX_UID, 'ujverse_users')

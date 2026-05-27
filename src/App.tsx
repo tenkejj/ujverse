@@ -28,6 +28,7 @@ import SettingsView from './components/SettingsView'
 import NotificationPopup from './components/notifications/NotificationPopup'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
+import { extractPostTags } from './lib/postTags'
 import { Analytics } from '@vercel/analytics/react'
 import { DataService } from './services/DataService'
 import SearchPageView from './components/SearchPageView'
@@ -505,9 +506,10 @@ function App() {
     }
 
     const postContent = content || ''
+    const tags = extractPostTags(postContent)
     const { error } = await supabase
       .from('posts')
-      .insert([{ content: postContent, image_url: imageUrl, user_id: userId }])
+      .insert([{ content: postContent, image_url: imageUrl, user_id: userId, tags }])
     if (error) {
       setCreateError(error.message)
       toast.error('Nie udało się opublikować wpisu.')

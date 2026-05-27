@@ -1,6 +1,7 @@
 import type { Profile } from '../types'
 import type { SearchHit, SearchUserHit } from '../types/search'
 import { normalizeContentHit, normalizeUserHit } from '../lib/normalizeSearchHits'
+import { parseTagSearchQuery } from '../lib/postTags'
 import { meiliSearchInstance, readContentIndexName, USERS_INDEX } from '../lib/meilisearchClient'
 
 type SearchOpts = {
@@ -12,6 +13,8 @@ type UnifiedSearchOpts = SearchOpts & {
   includeUsers?: boolean
   includeContent?: boolean
   userDepartmentFilter?: string
+  /** Filtruj posty po Smart Tag (np. z `#ankieta`). */
+  contentTagFilter?: string
 }
 
 export type UnifiedSearchResults = {
@@ -56,22 +59,30 @@ class SearchServiceImpl {
 
   async searchUnified(query: string, opts?: UnifiedSearchOpts): Promise<UnifiedSearchResults> {
     const normalized = query.trim()
-    if (normalized.length < 2) {
+    const parsed = parseTagSearchQuery(normalized)
+    const tagFilter =
+      opts?.contentTagFilter?.trim().toLowerCase() || parsed.tag
+    const textQuery = parsed.textQuery
+
+    if (!tagFilter && normalized.length < 2) {
       return { content: [], users: [] }
     }
 
     const limit = opts?.limit ?? 24
     const includeContent = opts?.includeContent !== false
-    const includeUsers = opts?.includeUsers !== false
+    const includeUsers = tagFilter ? false : opts?.includeUsers !== false
     const indexName = readContentIndexName()
+    const contentQuery = tagFilter && !textQuery ? '' : textQuery || normalized
 
     const queries: Parameters<typeof meiliSearchInstance.multiSearch>[0]['queries'] = []
 
     if (includeContent) {
+      const escapedTag = tagFilter?.replaceAll('"', '\\"')
       queries.push({
         indexUid: indexName,
-        q: normalized,
+        q: contentQuery,
         limit,
+        filter: escapedTag ? `tags = "${escapedTag}" AND type = "post"` : undefined,
         attributesToHighlight: ['content', 'author', 'title'],
         highlightPreTag: '<mark>',
         highlightPostTag: '</mark>',

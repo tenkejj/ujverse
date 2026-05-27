@@ -20,6 +20,7 @@ import {
   removeHistoryEntry,
   clearAllHistory,
 } from '../lib/searchHistory'
+import { parseTagSearchQuery } from '../lib/postTags'
 
 type SearchFilter = 'all' | 'post' | 'komunikat' | 'user' | 'event' | 'media'
 // 'media' to placeholder — feature multimediów jeszcze niezaindeksowany w Meili,
@@ -133,6 +134,11 @@ export default function SearchPageView({
     [location.search],
   )
 
+  const activeTagFilter = useMemo(
+    () => parseTagSearchQuery(activeQuery).tag,
+    [activeQuery],
+  )
+
   useEffect(() => {
     setInputValue(queryFromUrl)
     setActiveQuery(queryFromUrl)
@@ -143,11 +149,18 @@ export default function SearchPageView({
   // użytkownik wpisze ≥2 znaki (lub URL wniesie taki query). Wtedy pigułki są widoczne,
   // a wyniki od razu zawężone do wybranego zakresu.
   useEffect(() => {
-    if (pendingFilter && activeQuery.trim().length >= 2) {
+    if (activeTagFilter) {
+      setActiveFilter('post')
+    }
+  }, [activeTagFilter])
+
+  useEffect(() => {
+    const hasQuery = activeQuery.trim().length >= 2 || Boolean(activeTagFilter)
+    if (pendingFilter && hasQuery) {
       setActiveFilter(pendingFilter)
       setPendingFilter(null)
     }
-  }, [activeQuery, pendingFilter])
+  }, [activeQuery, activeTagFilter, pendingFilter])
 
   const safeUsers = Array.isArray(users) ? users : []
   const safeContent = Array.isArray(content) ? content : []
@@ -325,8 +338,25 @@ export default function SearchPageView({
     navigate(`/search?q=${encodeURIComponent(dept)}`)
   }, [navigate, pushHistory])
 
+  const handlePickTag = useCallback((tag: string) => {
+    const query = `#${tag}`
+    setInputValue(query)
+    setActiveQuery(query)
+    setPendingFilter('post')
+    pushHistory(query)
+    navigate(`/search?q=${encodeURIComponent(query)}`)
+  }, [navigate, pushHistory])
+
+  const handleTagClick = useCallback(
+    (tag: string) => {
+      handlePickTag(tag)
+    },
+    [handlePickTag],
+  )
+
   const hasAnyResults = resultCounts.all > 0
-  const isEmptyState = activeQuery.trim().length < 2
+  const isEmptyState = !activeTagFilter && activeQuery.trim().length < 2
+  const hasActiveSearch = Boolean(activeTagFilter) || activeQuery.trim().length >= 2
 
   const inputPlaceholder = useMemo(() => {
     if (
@@ -375,7 +405,16 @@ export default function SearchPageView({
             </div>
           </form>
 
-          {activeQuery.trim().length >= 2 && hasAnyResults && (
+          {activeTagFilter && (
+            <p className="mx-auto mt-3 w-full max-w-2xl text-center text-xs text-zinc-500 dark:text-zinc-400">
+              Filtr tagu:{' '}
+              <span className="font-semibold text-brand-gold dark:text-brand-gold-bright">
+                #{activeTagFilter}
+              </span>
+            </p>
+          )}
+
+          {hasActiveSearch && hasAnyResults && (
             <div
               role="tablist"
               aria-label="Filtr wyników wyszukiwania"
@@ -442,6 +481,7 @@ export default function SearchPageView({
                 onClearHistory={clearHistory}
                 onPickScope={handlePickScope}
                 onPickDepartment={handlePickDepartment}
+                onPickTag={handlePickTag}
               />
             ) : (
               <motion.div
@@ -573,6 +613,7 @@ export default function SearchPageView({
                               onNavigateToPost ? () => onNavigateToPost(postSourceId) : undefined
                             }
                             onNavigateToUser={onNavigateToUser}
+                            onTagClick={handleTagClick}
                           />
                         </li>
                       )

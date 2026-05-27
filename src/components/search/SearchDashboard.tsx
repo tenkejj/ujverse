@@ -9,6 +9,8 @@ import {
 
 export type DashboardScope = 'post' | 'komunikat'
 
+const POPULAR_TAGS = ['ankieta', 'ogloszenie', 'pytanie'] as const
+
 type Props = {
   history: string[]
   pendingFilter: DashboardScope | null
@@ -17,6 +19,7 @@ type Props = {
   onClearHistory: () => void
   onPickScope: (scope: DashboardScope) => void
   onPickDepartment: (dept: string) => void
+  onPickTag: (tag: string) => void
 }
 
 type QuickScope = {
@@ -49,6 +52,7 @@ export default function SearchDashboard({
   onClearHistory,
   onPickScope,
   onPickDepartment,
+  onPickTag,
 }: Props) {
   return (
     <motion.div
@@ -65,6 +69,8 @@ export default function SearchDashboard({
       />
 
       <QuickScopesGrid pendingFilter={pendingFilter} onPickScope={onPickScope} />
+
+      <PopularTagsPanel onPickTag={onPickTag} />
 
       <DepartmentShortcutsGrid onPickDepartment={onPickDepartment} />
     </motion.div>
@@ -135,6 +141,32 @@ function RecentSearchesPanel({
           ))}
         </motion.ul>
       )}
+    </motion.section>
+  )
+}
+
+function PopularTagsPanel({ onPickTag }: { onPickTag: (tag: string) => void }) {
+  return (
+    <motion.section
+      variants={SEARCH_DASHBOARD.motion.section}
+      className={`${SEARCH_DASHBOARD.panel} ${SEARCH_DASHBOARD.panelInnerGlow} p-5`}
+    >
+      <header className="mb-3">
+        <h2 className={SEARCH_DASHBOARD.sectionTitle}>Popularne tagi</h2>
+        <p className={SEARCH_DASHBOARD.sectionSubtle}>Filtruj wpisy po hashtagu</p>
+      </header>
+      <div className="flex flex-wrap gap-2">
+        {POPULAR_TAGS.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            onClick={() => onPickTag(tag)}
+            className={`${SEARCH_DASHBOARD.recentChip} border-brand-gold/25 text-brand-gold dark:text-brand-gold-bright`}
+          >
+            #{tag}
+          </button>
+        ))}
+      </div>
     </motion.section>
   )
 }

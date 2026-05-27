@@ -12,6 +12,7 @@ import { SearchService } from '../services/SearchService'
 import type { EventMeta, UnifiedContent } from '../types/content'
 import { useTheme } from '../ThemeContext'
 import { parseSearchCommand, type ParsedCommand } from '../lib/searchCommands'
+import { parseTagSearchQuery } from '../lib/postTags'
 import {
   loadSearchHistory,
   pushHistoryEntry,
@@ -181,7 +182,8 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
     if (parsed.action) return
 
     const q = parsed.stripped.trim()
-    if (q.length < 2) {
+    const { tag: tagFilter } = parseTagSearchQuery(q)
+    if (!tagFilter && q.length < 2) {
       setResults(EMPTY_RESULTS)
       setIsLoading(false)
       setError(null)
@@ -223,7 +225,8 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
             signal,
             limit: SECTION_LIMIT,
             includeContent: parsed.mode !== 'profiles',
-            includeUsers: parsed.mode !== 'komunikaty',
+            includeUsers: tagFilter ? false : parsed.mode !== 'komunikaty',
+            contentTagFilter: tagFilter ?? undefined,
           }),
           wantEvents
             ? DataService.searchEvents(q, { limit: SECTION_LIMIT }).catch(() => [])

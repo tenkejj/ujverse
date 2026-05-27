@@ -11,11 +11,13 @@ export type SearchSyncDocument = {
   authorId?: string | null
   department?: string | null
   createdAt: string
+  tags?: string[]
 }
 
 export type PostRecord = {
   id: string | number
   content?: string | null
+  tags?: string[] | null
   user_id?: string | null
   created_at?: string | null
 }
@@ -78,6 +80,10 @@ export function mapPostToSearchDocument(
     || profile?.username?.trim()
     || 'Użytkownik'
 
+  const tags = Array.isArray(record.tags)
+    ? record.tags.map((t) => String(t).trim().toLowerCase()).filter(Boolean)
+    : []
+
   return {
     id: documentIdFor('posts', sourceId),
     sourceId,
@@ -87,5 +93,6 @@ export function mapPostToSearchDocument(
     authorId: profile?.id ?? record.user_id ?? null,
     department: profile?.department?.trim() || null,
     createdAt: normalizeDate(record.created_at),
+    tags,
   }
 }

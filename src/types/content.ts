@@ -88,6 +88,8 @@ export type PostMeta = {
   /** Oryginalny autor posta — do obsługi nawigacji po profilach. */
   authorUserId: string
   department: string | null
+  /** Smart Tags — hashtagi wyciągnięte z treści (bez `#`). */
+  tags: string[]
 }
 
 export type EventMeta = {

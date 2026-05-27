@@ -1,3 +1,4 @@
+import { normalizePostTags } from './postTags'
 import type { SearchHit, SearchUserHit } from '../types/search'
 
 function stripHtmlMarks(value: string): string {
@@ -29,6 +30,8 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
         ? raw.announcementStatus
         : undefined
 
+    const tags = type === 'post' ? normalizePostTags(raw.tags) : undefined
+
     return {
       id: String(raw.id ?? `${idPrefix}-${raw.sourceId}`),
       sourceId: raw.sourceId,
@@ -41,6 +44,7 @@ export function normalizeContentHit(raw: Record<string, unknown>): SearchHit | n
       announcementStatus,
       announcementSource:
         typeof raw.announcementSource === 'string' ? raw.announcementSource : null,
+      ...(tags && tags.length > 0 ? { tags } : {}),
       _formatted: formatted
         ? { content: formatted.content, author: formatted.author }
         : undefined,

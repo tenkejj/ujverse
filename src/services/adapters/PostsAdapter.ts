@@ -1,4 +1,5 @@
 import { supabase } from '../../supabaseClient'
+import { normalizePostTags } from '../../lib/postTags'
 import { UjverseSanitizer } from '../../lib/sanitizer'
 import type { Post, Profile } from '../../types'
 import type { PostMeta, UnifiedContent } from '../../types/content'
@@ -50,6 +51,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
         isLiked: enrichment?.isLiked ?? false,
         authorUserId: profile?.id ?? raw.user_id ?? 'unknown',
         department,
+        tags: normalizePostTags(raw.tags),
       },
       actions: [],
     }

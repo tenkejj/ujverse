@@ -15,6 +15,8 @@ export type SearchDocument = {
   /** Tylko dla `type === 'komunikat'` — badge DYŻUR / ZDALNE / odwołane. */
   announcementStatus?: AnnouncementStatus
   announcementSource?: string | null
+  /** Smart Tags — tylko dla `type === 'post'`. */
+  tags?: string[]
 }
 
 export type SearchHit = SearchDocument & {

@@ -1,7 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { Meilisearch } from 'meilisearch'
-import { ensureUsersIndexSettings } from '../lib/meilisearchIndexSettings'
+import {
+  ensureContentIndexSettings,
+  ensureUsersIndexSettings,
+} from '../lib/meilisearchIndexSettings'
 import {
   documentIdFor,
   mapAnnouncementToSearchDocument,
@@ -27,12 +30,20 @@ const USERS_INDEX = 'ujverse_users'
 const SUPPORTED_TABLES = new Set<SearchSyncTable>(['posts', 'announcements', 'profiles'])
 
 let usersIndexSettingsPromise: Promise<void> | null = null
+let contentIndexSettingsPromise: Promise<void> | null = null
 
 function ensureUsersIndexSettingsOnce(client: Meilisearch): Promise<void> {
   if (!usersIndexSettingsPromise) {
     usersIndexSettingsPromise = ensureUsersIndexSettings(client)
   }
   return usersIndexSettingsPromise
+}
+
+function ensureContentIndexSettingsOnce(client: Meilisearch, indexUid: string): Promise<void> {
+  if (!contentIndexSettingsPromise) {
+    contentIndexSettingsPromise = ensureContentIndexSettings(client, indexUid)
+  }
+  return contentIndexSettingsPromise
 }
 
 function getBearerToken(headerValue: string | string[] | undefined): string | null {
@@ -143,6 +154,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (payload.type === 'DELETE') {
       await deleteDocument(index, documentId)
       return res.status(200).json({ ok: true, action: 'delete', id: documentId, index: indexUid })
+    }
+
+    if (table !== 'profiles') {
+      await ensureContentIndexSettingsOnce(meiliClient, indexUid)
     }
 
     let document = null

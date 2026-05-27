@@ -76,6 +76,8 @@ type Props = {
   onDeleteComment: (commentId: number) => void
   onNavigateToPost?: () => void
   onNavigateToUser?: (userId: string) => void
+  /** Klik w pigułkę Smart Tag (np. przejście do /search?q=%23tag). */
+  onTagClick?: (tag: string) => void
   /** card: pojedyncza karta | flat: bez ramki | stacked: wpis na liście (linie z parent divide-y) */
   variant?: 'card' | 'flat' | 'stacked'
 }
@@ -105,6 +107,7 @@ export default function PostCard({
   onDeleteComment,
   onNavigateToPost,
   onNavigateToUser,
+  onTagClick,
   variant = 'card',
 }: Props) {
   const isFlat = variant === 'flat'
@@ -120,7 +123,8 @@ export default function PostCard({
   const postId = content.id || `fallback-${index}`
   const body = content.body
   const hasBody = Boolean(body.trim())
-  const { imageUrl, likeCount, commentCount, isLiked, authorUserId, department } = content.metadata
+  const { imageUrl, likeCount, commentCount, isLiked, authorUserId, department, tags } =
+    content.metadata
   const createdAt = content.timestamp
   const authorName = content.author.displayName
   const authorId = authorUserId
@@ -282,6 +286,24 @@ export default function PostCard({
                 <p className="mt-1.5 text-[15px] font-normal text-fg-primary dark:text-zinc-100 leading-relaxed whitespace-pre-line">
                   {body}
                 </p>
+              )}
+
+              {tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onTagClick?.(tag)
+                      }}
+                      className="rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-0.5 text-xs font-medium text-brand-gold transition-colors hover:bg-brand-gold/20 dark:text-brand-gold-bright"
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 

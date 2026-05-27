@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { parseTagSearchQuery } from '../lib/postTags'
 import { DataService } from '../services/DataService'
 import { SearchService } from '../services/SearchService'
 import type { EventMeta, UnifiedContent } from '../types/content'
@@ -25,8 +26,9 @@ export function useContentSearch(query: string): SearchState {
 
   useEffect(() => {
     const normalized = query.trim()
+    const { tag: tagFilter, textQuery } = parseTagSearchQuery(normalized)
 
-    if (normalized.length < 2) {
+    if (!tagFilter && normalized.length < 2) {
       setState(INITIAL_STATE)
       return
     }
@@ -59,7 +61,8 @@ export function useContentSearch(query: string): SearchState {
     void SearchService.searchUnified(normalized, {
       limit: 24,
       includeContent: true,
-      includeUsers: true,
+      includeUsers: !tagFilter,
+      contentTagFilter: tagFilter ?? undefined,
     })
       .then((response) => {
         if (!isCurrent) return
@@ -78,7 +81,7 @@ export function useContentSearch(query: string): SearchState {
         maybeFinish()
       })
 
-    void DataService.searchEvents(normalized, { limit: 24 })
+    void DataService.searchEvents(tagFilter ? textQuery : normalized, { limit: 24 })
       .then((rows) => {
         if (!isCurrent) return
         events = rows

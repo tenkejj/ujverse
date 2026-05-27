@@ -1,18 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
+import { Meilisearch } from 'meilisearch'
 import * as dotenv from 'dotenv'
 
-dotenv.config({ path: '.env.local' })
+import { ensureContentIndexSettings } from '../lib/meilisearchIndexSettings'
+import {
+  mapAnnouncementToSearchDocument,
+  mapPostToSearchDocument,
+  type AnnouncementRecord,
+  type PostProfile,
+  type SearchContentDocument,
+} from '../lib/searchSyncMapper'
+import { extractPostTags } from '../src/lib/postTags'
 
-type SearchDocument = {
-  id: string
-  sourceId: string
-  type: 'post' | 'komunikat'
-  content: string
-  author: string
-  authorId?: string | null
-  department?: string | null
-  createdAt: string
-}
+dotenv.config({ path: '.env.local' })
 
 const BATCH_SIZE = 500
 
@@ -46,45 +46,6 @@ const MEILI_KEY = resolveEnv(
   'admin',
 )
 
-async function meiliUpsertDocuments(indexUid: string, docs: SearchDocument[]) {
-  if (docs.length === 0) return
-  const host = MEILI_HOST
-  const key = MEILI_KEY
-  const response = await fetch(`${host}/indexes/${encodeURIComponent(indexUid)}/documents`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(docs),
-  })
-  if (response.ok) return
-  if (response.status === 404) {
-    const createResponse = await fetch(`${host}/indexes`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ uid: indexUid, primaryKey: 'id' }),
-    })
-    if (!createResponse.ok && createResponse.status !== 409) {
-      throw new Error(`Could not create index: ${await createResponse.text()}`)
-    }
-    await meiliUpsertDocuments(indexUid, docs)
-    return
-  }
-  throw new Error(`Meilisearch upsert failed: ${await response.text()}`)
-}
-
-function postDocumentId(id: string | number): string {
-  return `post-${String(id)}`
-}
-
-function announcementDocumentId(id: string | number): string {
-  return `announcement-${String(id)}`
-}
-
 async function main() {
   const supabaseUrl = requireEnv('SUPABASE_URL', ['VITE_SUPABASE_URL'])
   const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
@@ -93,12 +54,15 @@ async function main() {
     'ujverse_content',
   )
   const supabase = createClient(supabaseUrl, serviceRoleKey)
+  const meili = new Meilisearch({ host: MEILI_HOST, apiKey: MEILI_KEY })
+  await ensureContentIndexSettings(meili, indexUid)
+  const index = meili.index(indexUid)
 
   let postsOffset = 0
   while (true) {
     const { data, error } = await supabase
       .from('posts')
-      .select('id, content, user_id, created_at, profiles(id, full_name, username, department, is_banned)')
+      .select('id, content, tags, user_id, created_at, profiles(id, full_name, username, department, is_banned)')
       .order('id', { ascending: true })
       .range(postsOffset, postsOffset + BATCH_SIZE - 1)
 
@@ -106,27 +70,30 @@ async function main() {
     const rows = data ?? []
     if (rows.length === 0) break
 
-    const docs: SearchDocument[] = rows
+    const docs: SearchContentDocument[] = rows
       .map((row) => {
-        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
-        if (profile?.is_banned === true) return null
-        const content = typeof row.content === 'string' ? row.content.trim() : ''
-        if (!content) return null
-        const sourceId = String(row.id)
-        return {
-          id: postDocumentId(sourceId),
-          sourceId,
-          type: 'post' as const,
-          content,
-          author: profile?.full_name?.trim() || profile?.username?.trim() || 'Użytkownik',
-          authorId: typeof row.user_id === 'string' ? row.user_id : null,
-          department: profile?.department ?? null,
-          createdAt: row.created_at ?? new Date().toISOString(),
-        }
+        const profile = (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles) as PostProfile | null
+        const dbTags = Array.isArray(row.tags) ? row.tags : []
+        const tags =
+          dbTags.length > 0
+            ? dbTags
+            : extractPostTags(typeof row.content === 'string' ? row.content : '')
+        return mapPostToSearchDocument(
+          {
+            id: row.id,
+            content: row.content,
+            tags,
+            user_id: row.user_id,
+            created_at: row.created_at,
+          },
+          profile,
+        )
       })
-      .filter((doc): doc is SearchDocument => doc !== null)
+      .filter((doc): doc is SearchContentDocument => doc !== null)
 
-    await meiliUpsertDocuments(indexUid, docs)
+    if (docs.length > 0) {
+      await index.addDocuments(docs).waitTask()
+    }
     postsOffset += BATCH_SIZE
     console.log(`[backfill-search] synced posts: ${postsOffset}`)
   }
@@ -135,7 +102,7 @@ async function main() {
   while (true) {
     const { data, error } = await supabase
       .from('announcements')
-      .select('id, body, lecturer_name, department, created_at')
+      .select('id, body, lecturer_name, department, source, status, created_at')
       .order('id', { ascending: true })
       .range(announcementsOffset, announcementsOffset + BATCH_SIZE - 1)
 
@@ -143,25 +110,23 @@ async function main() {
     const rows = data ?? []
     if (rows.length === 0) break
 
-    const docs: SearchDocument[] = rows
-      .map((row) => {
-        const content = typeof row.body === 'string' ? row.body.trim() : ''
-        const author = typeof row.lecturer_name === 'string' ? row.lecturer_name.trim() : ''
-        if (!content || !author) return null
-        const sourceId = String(row.id)
-        return {
-          id: announcementDocumentId(sourceId),
-          sourceId,
-          type: 'komunikat' as const,
-          content,
-          author,
-          department: typeof row.department === 'string' ? row.department : null,
-          createdAt: row.created_at ?? new Date().toISOString(),
-        }
-      })
-      .filter((doc): doc is SearchDocument => doc !== null)
+    const docs: SearchContentDocument[] = rows
+      .map((row) =>
+        mapAnnouncementToSearchDocument({
+          id: row.id,
+          body: row.body,
+          lecturer_name: row.lecturer_name,
+          department: row.department,
+          source: row.source,
+          status: row.status,
+          created_at: row.created_at,
+        } as AnnouncementRecord),
+      )
+      .filter((doc): doc is SearchContentDocument => doc !== null)
 
-    await meiliUpsertDocuments(indexUid, docs)
+    if (docs.length > 0) {
+      await index.addDocuments(docs).waitTask()
+    }
     announcementsOffset += BATCH_SIZE
     console.log(`[backfill-search] synced announcements: ${announcementsOffset}`)
   }
