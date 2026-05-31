@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import ReactDOM from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { Flag, Heart, MessageCircle, MoreHorizontal, Trash2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Profile } from '../types'
@@ -76,8 +77,6 @@ type Props = {
   onDeleteComment: (commentId: number) => void
   onNavigateToPost?: () => void
   onNavigateToUser?: (userId: string) => void
-  /** Klik w pigułkę Smart Tag (np. przejście do /search?q=%23tag). */
-  onTagClick?: (tag: string) => void
   /** card: pojedyncza karta | flat: bez ramki | stacked: wpis na liście (linie z parent divide-y) */
   variant?: 'card' | 'flat' | 'stacked'
 }
@@ -107,9 +106,9 @@ export default function PostCard({
   onDeleteComment,
   onNavigateToPost,
   onNavigateToUser,
-  onTagClick,
   variant = 'card',
 }: Props) {
+  const navigate = useNavigate()
   const isFlat = variant === 'flat'
   const isStacked = variant === 'stacked'
   /** null — zamknięty; owner — własny wpis; admin — usuwanie cudzego wpisu przez administratora */
@@ -296,9 +295,10 @@ export default function PostCard({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onTagClick?.(tag)
+                        navigate(`/search?q=%23${encodeURIComponent(tag)}`)
                       }}
-                      className="rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-0.5 text-xs font-medium text-brand-gold transition-colors hover:bg-brand-gold/20 dark:text-brand-gold-bright"
+                      className="rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-0.5 text-xs font-medium text-brand-gold transition-all duration-150 hover:border-brand-gold/60 hover:bg-brand-gold/25 hover:shadow-[0_0_0_2px_rgba(232,200,74,0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-bright/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
+                      aria-label={`Filtruj po tagu #${tag}`}
                     >
                       #{tag}
                     </button>

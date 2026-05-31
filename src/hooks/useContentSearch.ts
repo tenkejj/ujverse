@@ -62,7 +62,7 @@ export function useContentSearch(query: string): SearchState {
       limit: 24,
       includeContent: true,
       includeUsers: !tagFilter,
-      contentTagFilter: tagFilter ?? undefined,
+      tag: tagFilter ?? undefined,
     })
       .then((response) => {
         if (!isCurrent) return

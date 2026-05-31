@@ -14,7 +14,7 @@ type UnifiedSearchOpts = SearchOpts & {
   includeContent?: boolean
   userDepartmentFilter?: string
   /** Filtruj posty po Smart Tag (np. z `#ankieta`). */
-  contentTagFilter?: string
+  tag?: string
 }
 
 export type UnifiedSearchResults = {
@@ -60,8 +60,7 @@ class SearchServiceImpl {
   async searchUnified(query: string, opts?: UnifiedSearchOpts): Promise<UnifiedSearchResults> {
     const normalized = query.trim()
     const parsed = parseTagSearchQuery(normalized)
-    const tagFilter =
-      opts?.contentTagFilter?.trim().toLowerCase() || parsed.tag
+    const tagFilter = opts?.tag?.trim().toLowerCase() || parsed.tag
     const textQuery = parsed.textQuery
 
     if (!tagFilter && normalized.length < 2) {
@@ -82,7 +81,7 @@ class SearchServiceImpl {
         indexUid: indexName,
         q: contentQuery,
         limit,
-        filter: escapedTag ? `tags = "${escapedTag}" AND type = "post"` : undefined,
+        filter: escapedTag ? `tags = "${escapedTag}"` : undefined,
         attributesToHighlight: ['content', 'author', 'title'],
         highlightPreTag: '<mark>',
         highlightPostTag: '</mark>',

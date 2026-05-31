@@ -226,7 +226,7 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
             limit: SECTION_LIMIT,
             includeContent: parsed.mode !== 'profiles',
             includeUsers: tagFilter ? false : parsed.mode !== 'komunikaty',
-            contentTagFilter: tagFilter ?? undefined,
+            tag: tagFilter ?? undefined,
           }),
           wantEvents
             ? DataService.searchEvents(q, { limit: SECTION_LIMIT }).catch(() => [])

@@ -347,13 +347,6 @@ export default function SearchPageView({
     navigate(`/search?q=${encodeURIComponent(query)}`)
   }, [navigate, pushHistory])
 
-  const handleTagClick = useCallback(
-    (tag: string) => {
-      handlePickTag(tag)
-    },
-    [handlePickTag],
-  )
-
   const hasAnyResults = resultCounts.all > 0
   const isEmptyState = !activeTagFilter && activeQuery.trim().length < 2
   const hasActiveSearch = Boolean(activeTagFilter) || activeQuery.trim().length >= 2
@@ -613,7 +606,6 @@ export default function SearchPageView({
                               onNavigateToPost ? () => onNavigateToPost(postSourceId) : undefined
                             }
                             onNavigateToUser={onNavigateToUser}
-                            onTagClick={handleTagClick}
                           />
                         </li>
                       )
