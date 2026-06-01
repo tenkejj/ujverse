@@ -98,6 +98,43 @@ export type Database = {
           user_id?: string
         }
       }
+      groups: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          created_at?: string
+        }
+      }
+      group_memberships: {
+        Row: {
+          group_id: string
+          post_id: number
+          created_at: string
+        }
+        Insert: {
+          group_id: string
+          post_id: number
+          created_at?: string
+        }
+        Update: {
+          group_id?: string
+          post_id?: number
+          created_at?: string
+        }
+      }
     }
     Functions: {
       get_replies_engagement_snapshot: {
@@ -120,3 +157,15 @@ export type Database = {
 
 export type TablesInsert<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Insert']
+
+export type TablesRow<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Row']
+
+/** Wiersz `public.groups` — źródło prawdy dla menu grup i triggera tagów. */
+export type Group = TablesRow<'groups'>
+
+/** Wiersz `public.group_memberships` — relacja N:N post ↔ grupa. */
+export type GroupMembership = TablesRow<'group_memberships'>
+
+/** Payload do INSERT'u członkostwa w grupie (z opcjonalnym `created_at`). */
+export type GroupMembershipInsert = TablesInsert<'group_memberships'>

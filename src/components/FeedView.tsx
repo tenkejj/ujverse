@@ -11,6 +11,7 @@ import EventModal from './EventModal'
 import PostCard from './PostCard'
 import DepartmentFilter from './DepartmentFilter'
 import AcademicAnnouncementsWidget from './AcademicAnnouncementsWidget'
+import GroupNav from './GroupNav'
 import CompactEventRow from './CompactEventRow'
 import EmptyState from './EmptyState'
 import AnnouncementPills from './AnnouncementPills'
@@ -284,6 +285,9 @@ export default function FeedView({
                 announcements={academicAnnouncements}
                 loading={academicAnnouncementsLoading}
               />
+              <div className="lg:hidden -mx-0.5">
+                <GroupNav variant="rail" />
+              </div>
             </div>
           </div>
 
@@ -323,12 +327,12 @@ export default function FeedView({
         </div>
       </div>
 
-      {/* ── RIGHT SIDEBAR (desktop only) ────────────────────────────── */}
+      {/* ── RIGHT SIDEBAR (desktop) — sticky bez scrolla kolumny; scroll tylko w liście Stref ── */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] h-fit flex-col ${unifiedCardGapCls} sticky top-20 self-start pt-0`}
+        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky top-20 self-start pt-0`}
       >
-        {/* Niezbędnik UJ — szybkie linki (layout jak Wydarzenia UJ) */}
-        <BaseCard variant="default" className="p-4 flex flex-col gap-4">
+        {/* Niezbędnik UJ — szybkie linki */}
+        <BaseCard variant="default" className="p-4 flex flex-col gap-4 shrink-0">
           <div className="flex items-center gap-2 mb-3">
             <LinkIcon size={13} className="text-[#1e293b] dark:text-[#D4AF37] shrink-0" strokeWidth={2} />
             <span className={sectionTitleCls}>
@@ -365,8 +369,10 @@ export default function FeedView({
           </div>
         </BaseCard>
 
-        {/* Upcoming events widget */}
-        <BaseCard variant="default" className="p-4 flex flex-col gap-4">
+        <GroupNav variant="panel" className="shrink-0" />
+
+        {/* Wydarzenia UJ */}
+        <BaseCard variant="default" className="p-4 flex flex-col gap-4 shrink-0">
           <div className="mb-3 flex min-w-0 items-center gap-2">
             <CalendarDays size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
             <span className={`${sectionTitleCls} min-w-0 flex-1`}>Wydarzenia UJ</span>
@@ -386,8 +392,7 @@ export default function FeedView({
           </div>
         </BaseCard>
 
-        {/* Footer note */}
-        <p className="text-[11px] text-zinc-600 dark:text-zinc-400 text-center px-2">
+        <p className="shrink-0 text-[11px] text-zinc-600 dark:text-zinc-400 text-center px-2 pb-1">
           UJverse &copy; {new Date().getFullYear()} &middot; dla społeczności UJ
         </p>
       </aside>

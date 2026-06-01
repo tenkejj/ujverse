@@ -1,5 +1,4 @@
 import { supabase } from '../../supabaseClient'
-import { normalizePostTags } from '../../lib/postTags'
 import { UjverseSanitizer } from '../../lib/sanitizer'
 import type { Post, Profile } from '../../types'
 import type { PostMeta, UnifiedContent } from '../../types/content'
@@ -31,6 +30,11 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
     const body = UjverseSanitizer.cleanBody(raw.content ?? '')
     const department = profile?.department ?? null
 
+    const rawTags = raw.tags ?? []
+    const tags = Array.isArray(rawTags)
+      ? rawTags.filter((tag): tag is string => typeof tag === 'string' && tag.length > 0)
+      : []
+
     return {
       id: raw.id,
       type: 'post',
@@ -51,7 +55,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
         isLiked: enrichment?.isLiked ?? false,
         authorUserId: profile?.id ?? raw.user_id ?? 'unknown',
         department,
-        tags: normalizePostTags(raw.tags),
+        tags,
       },
       actions: [],
     }

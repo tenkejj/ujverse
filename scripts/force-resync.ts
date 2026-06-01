@@ -2,22 +2,21 @@ import { createClient } from '@supabase/supabase-js'
 import { Meilisearch } from 'meilisearch'
 import * as dotenv from 'dotenv'
 
-import { activeAnnouncementCutoff } from '../src/lib/announcementRecency'
-import {
-  ensureContentIndexSettings,
-  ensureUsersIndexSettings,
-  USERS_INDEX_UID,
-} from '../lib/meilisearchIndexSettings'
-import { extractPostTags } from '../src/lib/postTags'
-import {
+import { activeAnnouncementCutoff } from '../src/lib/announcementRecency.ts';
+import { extractPostTags } from '../src/lib/postTags.ts';
+import { 
+  ensureContentIndexSettings, 
+  ensureUsersIndexSettings, 
+  USERS_INDEX_UID 
+} from '../lib/meilisearchIndexSettings';
+import { 
   mapAnnouncementToSearchDocument,
   mapPostToSearchDocument,
   mapProfileToSearchDocument,
   type ProfileRecord,
   type SearchContentDocument,
   type SearchUserDocument,
-} from '../lib/searchSyncMapper'
-
+} from '../lib/searchSyncMapper';
 dotenv.config({ path: '.env.local' })
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim()

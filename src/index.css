@@ -43,6 +43,9 @@ html {
   --color-accent-interactive: var(--accent-interactive);
   --color-accent-purple: var(--accent-purple);
   --color-logo-navy: var(--logo-navy);
+  --color-zone-accent-strong: var(--zone-accent-strong);
+  --color-zone-accent-muted: var(--zone-accent-muted);
+  --color-zone-list-bg: var(--zone-list-bg);
   /* Ciepły bursztyn — akcenty w light (czytelny na jasnym tle) */
   --color-uj-deep-gold: var(--uj-deep-gold);
 
@@ -89,6 +92,9 @@ html {
     --text-primary: var(--logo-navy);
     --text-secondary: rgb(30 41 59 / 0.62);
     --text-label: rgb(30 41 59 / 0.72);
+    --zone-accent-strong: #18181b; /* zinc-900 */
+    --zone-accent-muted: #71717a; /* zinc-500 */
+    --zone-list-bg: #ffffff;
     --uj-deep-gold: #a48955;
     --accent-gold: var(--uj-deep-gold);
     --accent-like: var(--uj-deep-gold);
@@ -114,6 +120,9 @@ html {
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-label: #94a3b8;
+    --zone-accent-strong: #f4f4f5; /* zinc-100 */
+    --zone-accent-muted: var(--brand-gold-bright);
+    --zone-list-bg: transparent;
     --accent-gold: var(--brand-gold-bright);
     --accent-like: #f0d060;
     --accent-interactive: var(--brand-gold-bright);

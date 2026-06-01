@@ -81,7 +81,10 @@ export function mapPostToSearchDocument(
     || 'Użytkownik'
 
   const tags = Array.isArray(record.tags)
-    ? record.tags.map((t) => String(t).trim().toLowerCase()).filter(Boolean)
+    ? record.tags
+        .filter((t): t is string => typeof t === 'string')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
     : []
 
   return {

@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import ReactDOM from 'react-dom'
-import { useNavigate } from 'react-router-dom'
-import { Flag, Heart, MessageCircle, MoreHorizontal, Trash2, X } from 'lucide-react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import { Flag, Heart, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Profile } from '../types'
 import type { PostMeta, UnifiedContent } from '../types/content'
@@ -22,32 +21,44 @@ import {
   likeActionButtonClass,
   heartLikedIconClass,
 } from '../lib/interactionBar'
+import { groupPathForSlug } from '../lib/groupPaths'
 
-function LightboxPortal({ src, onClose }: { src: string; onClose: () => void }) {
-  const portal = document.getElementById('lightbox-portal')
-  if (!portal) return null
-  return ReactDOM.createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
-      onClick={onClose}
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute top-4 right-4 text-white/70 hover:text-white bg-black/40 rounded-full p-2 transition-colors"
-        aria-label="Zamknij"
+const HASHTAG_REGEX = /#\w+/g
+
+function renderBodyWithHashtags(body: string): ReactNode[] {
+  const parts: ReactNode[] = []
+  let lastIndex = 0
+
+  for (const match of body.matchAll(HASHTAG_REGEX)) {
+    const hashtag = match[0]
+    const startIndex = match.index ?? -1
+    if (startIndex < 0) continue
+    if (startIndex > lastIndex) {
+      parts.push(body.slice(lastIndex, startIndex))
+    }
+
+    const rawTag = hashtag.slice(1)
+    const normalizedTag = rawTag.trim().toLowerCase()
+
+    parts.push(
+      <Link
+        key={`${normalizedTag}-${startIndex}`}
+        to={groupPathForSlug(normalizedTag)}
+        onClick={(event) => event.stopPropagation()}
+        className="text-zinc-600 font-medium hover:underline hover:text-zinc-700 dark:text-brand-gold-bright dark:hover:text-brand-gold-bright/80 transition-colors"
       >
-        <X size={20} />
-      </button>
-      <img
-        src={src}
-        alt=""
-        className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-none"
-        onClick={(e) => e.stopPropagation()}
-      />
-    </div>,
-    portal,
-  )
+        {hashtag}
+      </Link>,
+    )
+
+    lastIndex = startIndex + hashtag.length
+  }
+
+  if (lastIndex < body.length) {
+    parts.push(body.slice(lastIndex))
+  }
+
+  return parts.length > 0 ? parts : [body]
 }
 
 type Props = {
@@ -77,8 +88,8 @@ type Props = {
   onDeleteComment: (commentId: number) => void
   onNavigateToPost?: () => void
   onNavigateToUser?: (userId: string) => void
-  /** card: pojedyncza karta | flat: bez ramki | stacked: wpis na liście (linie z parent divide-y) */
-  variant?: 'card' | 'flat' | 'stacked'
+  /** isolated: pojedyncza karta | feed: wpis na liście (parent divide-y) | flat: bez ramki */
+  variant?: 'isolated' | 'feed' | 'flat' | 'card' | 'stacked'
 }
 
 export default function PostCard({
@@ -106,14 +117,13 @@ export default function PostCard({
   onDeleteComment,
   onNavigateToPost,
   onNavigateToUser,
-  variant = 'card',
+  variant = 'isolated',
 }: Props) {
-  const navigate = useNavigate()
   const isFlat = variant === 'flat'
-  const isStacked = variant === 'stacked'
+  const isFeed = variant === 'feed' || variant === 'stacked'
+  const isIsolated = variant === 'isolated' || variant === 'card'
   /** null — zamknięty; owner — własny wpis; admin — usuwanie cudzego wpisu przez administratora */
   const [deleteModalIntent, setDeleteModalIntent] = useState<'owner' | 'admin' | null>(null)
-  const [isImageOpen, setIsImageOpen] = useState(false)
   const [isPostMenuOpen, setIsPostMenuOpen] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isReportSubmitting, setIsReportSubmitting] = useState(false)
@@ -122,7 +132,7 @@ export default function PostCard({
   const postId = content.id || `fallback-${index}`
   const body = content.body
   const hasBody = Boolean(body.trim())
-  const { imageUrl, likeCount, commentCount, isLiked, authorUserId, department, tags } =
+  const { likeCount, commentCount, isLiked, authorUserId, department } =
     content.metadata
   const createdAt = content.timestamp
   const authorName = content.author.displayName
@@ -283,42 +293,10 @@ export default function PostCard({
 
               {hasBody && (
                 <p className="mt-1.5 text-[15px] font-normal text-fg-primary dark:text-zinc-100 leading-relaxed whitespace-pre-line">
-                  {body}
+                  {renderBodyWithHashtags(body)}
                 </p>
               )}
-
-              {tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {tags.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/search?q=%23${encodeURIComponent(tag)}`)
-                      }}
-                      className="rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-0.5 text-xs font-medium text-brand-gold transition-all duration-150 hover:border-brand-gold/60 hover:bg-brand-gold/25 hover:shadow-[0_0_0_2px_rgba(232,200,74,0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-bright/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
-                      aria-label={`Filtruj po tagu #${tag}`}
-                    >
-                      #{tag}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-
-            {imageUrl && (
-              <img
-                src={imageUrl}
-                alt=""
-                className={`${hasBody ? 'mt-3' : 'mt-1.5'} w-full h-auto max-h-[500px] object-contain cursor-pointer`}
-                loading="lazy"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setIsImageOpen(true)
-                }}
-              />
-            )}
 
             <div className={`${INTERACTION_BAR_ROW} mt-2.5 -mx-1 pr-2`}>
               <motion.button
@@ -428,15 +406,11 @@ export default function PostCard({
         confirmLabel="Zgłoś"
         isSubmitting={isReportSubmitting}
       />
-
-      {isImageOpen && imageUrl && (
-        <LightboxPortal src={imageUrl} onClose={() => setIsImageOpen(false)} />
-      )}
     </>
   )
 
-  if (isFlat || isStacked) {
-    // Stacked / flat używają kontenerów nadrzędnych (divide-y), BaseCard nie pasuje —
+  if (isFlat || isFeed) {
+    // Feed / flat używają kontenerów nadrzędnych (divide-y), BaseCard nie pasuje —
     // utrzymujemy istniejący transparentny wrapper z klasami hover.
     return (
       <article
@@ -450,6 +424,10 @@ export default function PostCard({
         {innerBody}
       </article>
     )
+  }
+
+  if (!isIsolated) {
+    return <article className="overflow-hidden">{innerBody}</article>
   }
 
   return (

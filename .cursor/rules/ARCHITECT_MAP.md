@@ -19,6 +19,7 @@ Operational memory for subagents working in this repo. **Before changing auth, p
 - [Glassmorphism, theme, Tailwind v4](#glassmorphism-theme-tailwind-v4)
 - [Services & adapters](#services--adapters)
 - [Types](#types)
+- [Smart Tags & search indexing](#smart-tags--search-indexing)
 - [Component dependency hotspots](#component-dependency-hotspots)
 
 ---
@@ -184,6 +185,12 @@ Dense per-file summary (execute order = filename). Tables referenced but **not c
 
 - **Conditional** on `public.profiles`: enables RLS; `profiles_select_all` — **SELECT to `authenticated`**, `USING (true)`.
 
+### [20260527120000_posts_tags.sql](supabase/migrations/20260527120000_posts_tags.sql)
+
+- **Column**: `posts.tags text[] NOT NULL DEFAULT '{}'` — denormalized hashtags parsed client-side from `#tag` in `content` (lowercased, deduped).
+- **Index**: `posts_tags_gin_idx` (GIN on `tags`) — fast `&&` / `@>` lookups if ever queried in SQL; primary read path is Meilisearch.
+- **RLS**: inherits row-level policies of `posts` (no separate policy on the column).
+
 ---
 
 ## Auth & RLS model
@@ -197,6 +204,7 @@ Dense per-file summary (execute order = filename). Tables referenced but **not c
 ## API surface
 
 - **[api/scrape-wziks.ts](api/scrape-wziks.ts)** — Vercel Node handler (`export default`); scrapes ISI announcements, Groq optional for nominative names, upserts `announcements` + `lecturer_names_cache` with service-role Supabase client. Requires env vars (e.g. `GROQ_API_KEY`, Supabase URL + **service** key — see file).
+- **[api/sync-search.ts](api/sync-search.ts)** — Vercel Node handler called by Supabase webhook on `posts` / `announcements` / `profiles` INSERT/UPDATE/DELETE; uses [lib/searchSyncMapper.ts](lib/searchSyncMapper.ts) to map row → document and pushes to Meilisearch. Lazily ensures index settings via [lib/meilisearchIndexSettings.ts](lib/meilisearchIndexSettings.ts) (`ensureContentIndexSettings`, `ensureUsersIndexSettings`) before first upsert; Edge-function duplicate in [supabase/functions/_shared/searchMapper.ts](supabase/functions/_shared/searchMapper.ts) (see [Known drift](#known-drift)).
 - **[vercel.json](vercel.json)** — currently **`{ "version": 2 }`** only. Function routing/rewrites are **defaults** (API routes under `/api` map to `api/`). Document env secrets in deployment, not in repo.
 
 ---
@@ -209,6 +217,8 @@ Dense per-file summary (execute order = filename). Tables referenced but **not c
 - **[src/supabaseClient.ts](src/supabaseClient.ts)** — **hardcoded** project URL and anon key (rotate in Supabase if leaked; prefer env for new work).
 - **Policy naming**: [supabase_setup.sql](supabase_setup.sql) also defines `profiles_select_all` but with **different role scope** than [20260512140000_profiles_public_select.sql](supabase/migrations/20260512140000_profiles_public_select.sql) — reconcile in DB.
 - **Realtime**: only **`announcements`** added to publication in migrations; **`follows`**, **`likes`**, **`comments`**, **`comment_likes`**, **`notifications`** subscriptions in code may require matching **Supabase Dashboard → Realtime** settings.
+- **Search mapper duplication**: [lib/searchSyncMapper.ts](lib/searchSyncMapper.ts) (Node webhook) and [supabase/functions/_shared/searchMapper.ts](supabase/functions/_shared/searchMapper.ts) (Deno Edge function) hold **parallel** `mapPostToSearchDocument` implementations. Schema changes affecting indexed fields (e.g. tags) must be applied to **both** files; the Edge variant's `SearchSyncDocument` is also slimmer (no `announcementStatus`/`announcementSource`).
+- **Meili filterable attributes on remote**: [lib/meilisearchIndexSettings.ts](lib/meilisearchIndexSettings.ts) sets them lazily from [api/sync-search.ts](api/sync-search.ts) on first cold start. Existing remote indexes provisioned before this code shipped need either a cold restart with traffic, or a one-off `scripts/resync-search-final.ts` run, to gain `tags` in `filterableAttributes`.
 
 ---
 
@@ -225,15 +235,72 @@ Dense per-file summary (execute order = filename). Tables referenced but **not c
 
 - **[src/services/DataService.ts](src/services/DataService.ts)** — Facade: clubs, announcements (+ realtime subscribe), unified posts mapping, events adapter, **no raw `App` imports**.
 - **Adapters** — [AnnouncementsAdapter.ts](src/services/adapters/AnnouncementsAdapter.ts), [PostsAdapter.ts](src/services/adapters/PostsAdapter.ts), [EventsAdapter.ts](src/services/adapters/EventsAdapter.ts), [ClubsAdapter.ts](src/services/adapters/ClubsAdapter.ts); common patterns in [BaseAdapter.ts](src/services/adapters/BaseAdapter.ts).
+  - **[PostsAdapter.toUnified](src/services/adapters/PostsAdapter.ts)** — type-guarded mapping of `raw.tags` into `metadata.tags` (`filter((tag): tag is string => typeof tag === 'string' && tag.length > 0)`); no lowercase here — DB layer already normalises.
+- **[src/services/SearchService.ts](src/services/SearchService.ts)** — Meilisearch facade (`searchUnified` / `searchContent` / `searchUsers` / `searchProfiles`). `UnifiedSearchOpts.tag?: string` triggers content-only filter `tags = "${escapedTag}"` and forces `includeUsers: false`. Falls back to [parseTagSearchQuery](src/lib/postTags.ts) on raw `q` when `opts.tag` not provided.
 - **[src/services/EventIngestor.ts](src/services/EventIngestor.ts)** — separate ingestion path for events data.
 
 ---
 
 ## Types
 
-- **[src/types/index.ts](src/types/index.ts)** — `Profile`, `Post`, `Comment`, `AppNotification` (legacy domain types).
-- **[src/types/content.ts](src/types/content.ts)** — unified content model for feed/widgets (`UnifiedContent`, meta per kind).
+- **[src/types/index.ts](src/types/index.ts)** — `Profile`, `Post` (with `tags?: string[] | null`), `Comment`, `AppNotification` (legacy domain types).
+- **[src/types/content.ts](src/types/content.ts)** — unified content model for feed/widgets (`UnifiedContent`, meta per kind); `PostMeta.tags: string[]` is the Smart Tags surface for UI.
+- **[src/types/search.ts](src/types/search.ts)** — `SearchHit` / `SearchUserHit` shape exchanged with Meilisearch (`SearchHit.tags?: string[]`); normaliser in [src/lib/normalizeSearchHits.ts](src/lib/normalizeSearchHits.ts).
 - **[src/types/database.ts](src/types/database.ts)** — generated or hand-maintained DB typings (align with actual Supabase).
+
+---
+
+## Smart Tags & search indexing
+
+End-to-end flow for `#hashtag` extraction, indexing, and `#tag` filtered search.
+
+```mermaid
+flowchart LR
+  ComposeBox --> App_handleCreatePost
+  App_handleCreatePost -->|"insert tags[] via extractPostTags"| posts_table[(public.posts)]
+  posts_table -->|webhook on INSERT/UPDATE| sync_search[api/sync-search.ts]
+  sync_search --> mapPostToSearchDocument
+  mapPostToSearchDocument --> meili_content[(Meili ujverse_content)]
+  PostCard -->|"#tag pill click"| navigate
+  navigate --> SearchPageView
+  SearchPageView --> useContentSearch --> SearchService
+  SearchService -->|"filter tags = tag"| meili_content
+  meili_content --> SearchService --> SearchPageView
+```
+
+### Data layer
+
+- **Schema** — [supabase/migrations/20260527120000_posts_tags.sql](supabase/migrations/20260527120000_posts_tags.sql): `posts.tags text[] NOT NULL DEFAULT '{}'`, GIN index `posts_tags_gin_idx`. Tags inherit row-level policies of `posts`.
+- **Extraction** — [src/lib/postTags.ts](src/lib/postTags.ts) `extractPostTags(text)` regex `/#([a-zA-Z0-9_]+)/g` → lowercase, deduped. Used in `App.handleCreatePost` insert payload and as fallback in resync scripts.
+- **Normalisation helper** — same file: `normalizePostTags(unknown)` for defensive read (type-guard `(t): t is string => typeof t === 'string'` → `trim` → `toLowerCase` → `filter(Boolean)` → `new Set`).
+- **Hashtags stay in `content`** — `#ankieta` remains visible in body; `tags[]` is a denormalisation for filtering only.
+
+### Search indexing
+
+- **Mapper** — [lib/searchSyncMapper.ts](lib/searchSyncMapper.ts) `mapPostToSearchDocument` writes `tags: record.tags.filter(typeof === 'string').map(trim().toLowerCase()).filter(Boolean)` into `SearchContentDocument`. Skips banned authors and empty content.
+- **Edge duplicate** — [supabase/functions/_shared/searchMapper.ts](supabase/functions/_shared/searchMapper.ts) carries the **same** logic; keep in sync (see [Known drift](#known-drift)).
+- **Index settings** — [lib/meilisearchIndexSettings.ts](lib/meilisearchIndexSettings.ts) `CONTENT_FILTERABLE_ATTRIBUTES = ['type', 'department', 'tags', 'announcementStatus']`. `ensureContentIndexSettings(client, indexUid?)` creates the index lazily (`primaryKey: 'id'`) and pushes filterable attrs. **Required** before any `tags = "..."` filter — Meili otherwise responds with `attribute not filterable`.
+- **Webhook** — [api/sync-search.ts](api/sync-search.ts) calls `ensureContentIndexSettings` once per cold start before upserting.
+
+### Resync scripts (operational)
+
+- **[scripts/resync-search-final.ts](scripts/resync-search-final.ts)** — self-contained re-sync (no `lib/` / `src/` imports, inlined mapper + `extractPostTags`). Idempotent upsert to `ujverse_content` keyed by `id`. Falls back to extracting tags from `content` when `posts.tags` is empty so old rows still gain searchable tags without a DB backfill. Reads `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` with fallbacks to `VITE_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Run: `npx tsx scripts/resync-search-final.ts`.
+- **[scripts/force-resync.ts](scripts/force-resync.ts)** — destructive variant: `deleteAllDocuments()` on `ujverse_content` and `ujverse_users`, then full rebuild for posts + announcements + profiles. Same DB-tags-or-extract fallback for posts. Use only when index is corrupted.
+- **[scripts/backfill-tags.ts](scripts/backfill-tags.ts)** — backfill the `posts.tags` **column** itself by re-parsing `content` for rows where `tags = '{}'`. Run before the resync scripts if you want the column populated in Postgres too.
+
+### Search query path
+
+- **Parser** — [src/lib/postTags.ts](src/lib/postTags.ts) `parseTagSearchQuery(q)` → `{ tag, textQuery }`. Matches exact `^#[a-zA-Z0-9_]+$`; mixed queries (`ankieta #foo`) fall through as plain text.
+- **Hooks** — [src/hooks/useContentSearch.ts](src/hooks/useContentSearch.ts) (search page) and [src/hooks/useOmniSearch.ts](src/hooks/useOmniSearch.ts) (Ctrl+K) both feed `tag: parsed.tag ?? undefined` into `SearchService.searchUnified`. When `tag` is present they force `includeUsers: false`.
+- **Service** — [src/services/SearchService.ts](src/services/SearchService.ts) `UnifiedSearchOpts.tag?: string` → emits Meili filter `tags = "${escapedTag}"` on `ujverse_content`; empties `q` when no `textQuery` accompanies the tag.
+- **UI** — [src/components/PostCard.tsx](src/components/PostCard.tsx) renders tags as `<button>` pills (`border-brand-gold/30`, hover variant) that call `useNavigate()(\`/search?q=%23${encodeURIComponent(tag)}\`)` directly — no callback prop. [src/components/SearchPageView.tsx](src/components/SearchPageView.tsx) parses URL `?q=` via `parseTagSearchQuery`, shows a "Filtr tagu: #..." chip, auto-selects the `Posty` filter, and seeds the input with the raw query (hash preserved).
+
+### Invariants when editing
+
+1. **Keep three normalisation paths in sync** — `extractPostTags` (insert), `mapPostToSearchDocument` (Meili), `normalizePostTags`/adapter filter (UI read). Diverging cases (e.g. allowed character classes) will silently lose tags.
+2. **Never query Meili filter without `ensureContentIndexSettings`** for a fresh index.
+3. **Edge mapper duplicate** — when changing tags logic in [lib/searchSyncMapper.ts](lib/searchSyncMapper.ts), mirror it into [supabase/functions/_shared/searchMapper.ts](supabase/functions/_shared/searchMapper.ts).
+4. **No `any` in tag pipelines** — use `(t): t is string => typeof t === 'string'` type-guards.
 
 ---
 
@@ -243,8 +310,9 @@ Dense per-file summary (execute order = filename). Tables referenced but **not c
 |-----------|------|
 | [BaseCard](src/components/ui/BaseCard.tsx) | All card shells; token-driven variants (`default` / `inner` / `premium`). |
 | [UserAvatar](src/components/UserAvatar.tsx) | Shared avatar discipline across feed, profile, modals. |
-| [PostCard](src/components/PostCard.tsx) | Post layout + interaction bar contract with App-owned state. |
+| [PostCard](src/components/PostCard.tsx) | Post layout + interaction bar contract with App-owned state; **owns** tag-pill navigation via `useNavigate` (no `onTagClick` prop). |
 | [FeedView](src/components/FeedView.tsx) | Feed composition, compose, department filter. |
+| [SearchPageView](src/components/SearchPageView.tsx) | `/search` view; parses `?q=` (text or `#tag`), drives `useContentSearch`, renders filter chips + full `PostCard` for post hits. |
 | [Profile page](src/pages/Profile.tsx) | Profile orchestration; uses `useProfileData`, `useProfileSocialData`, `FollowListsModal`. |
 | [Header](src/components/Header.tsx) / [BottomNav](src/components/BottomNav.tsx) | Global navigation; `myProfile` / view callbacks. |
 | [ComposeBox](src/components/ComposeBox.tsx) | Create post; storage upload path from App. |

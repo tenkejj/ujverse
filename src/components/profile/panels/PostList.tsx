@@ -66,13 +66,13 @@ export default function PostList({
     commentsCountByPost,
   })
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-card">
+    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-950/50 divide-y divide-zinc-200 dark:divide-white/10">
       {unifiedList.map((uc, idx) => {
         const postId = uc.id
         return (
-          <div key={postId} className="border-b border-white/10 last:border-b-0">
+          <div key={postId}>
             <PostCard
-              variant="stacked"
+              variant="feed"
               content={uc}
               index={idx}
               currentUserId={currentUserId}

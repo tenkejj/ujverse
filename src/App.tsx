@@ -31,7 +31,15 @@ import { canonicalDepartment } from './lib/departments'
 import { extractPostTags } from './lib/postTags'
 import { Analytics } from '@vercel/analytics/react'
 import { DataService } from './services/DataService'
+import { PostService } from './services/PostService'
 import SearchPageView from './components/SearchPageView'
+import GroupView from './components/GroupView'
+import {
+  DEFAULT_GROUP_SLUG,
+  groupPathForSlug,
+  isGroupIndexPath,
+  slugFromGroupPath,
+} from './lib/groupPaths'
 
 type AppShellView =
   | 'feed'
@@ -42,6 +50,7 @@ type AppShellView =
   | 'post'
   | 'userProfile'
   | 'settings'
+  | 'group'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -98,6 +107,13 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/search') {
     return { kind: 'ok', view: 'search', profileHandle: null, postId: null }
+  }
+  if (isGroupIndexPath(normalizedPath)) {
+    return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
+  }
+  const groupSlug = slugFromGroupPath(normalizedPath)
+  if (groupSlug) {
+    return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
   }
   if (normalizedPath === '/') {
     return { kind: 'ok', view: 'feed', profileHandle: null, postId: null }
@@ -213,6 +229,12 @@ function App() {
     return h ? h.toLowerCase() : null
   }, [normalizedPath])
   const routeThreadPostId = useMemo(() => threadPostIdFromPath(normalizedPath), [normalizedPath])
+  const routeGroupSlug = useMemo(() => {
+    const slug = slugFromGroupPath(normalizedPath)
+    if (slug) return slug
+    if (isGroupIndexPath(normalizedPath)) return DEFAULT_GROUP_SLUG
+    return null
+  }, [normalizedPath])
   const routeSnapshot = useMemo(() => parseAppRoute(normalizedPath), [normalizedPath])
   const effectiveActiveView: AppShellView = useMemo(() => {
     if (routeSnapshot.kind === 'unknown') return 'feed'
@@ -223,6 +245,10 @@ function App() {
   useEffect(() => {
     if (isResetPasswordPath(location.pathname)) return
     if (!session) return
+    if (isGroupIndexPath(normalizedPath)) {
+      navigate(groupPathForSlug(DEFAULT_GROUP_SLUG), { replace: true })
+      return
+    }
     const parsed = parseAppRoute(normalizedPath)
     if (parsed.kind === 'unknown') {
       navigate('/', { replace: true })
@@ -507,9 +533,12 @@ function App() {
 
     const postContent = content || ''
     const tags = extractPostTags(postContent)
-    const { error } = await supabase
-      .from('posts')
-      .insert([{ content: postContent, image_url: imageUrl, user_id: userId, tags }])
+    const { error } = await PostService.createPost({
+      userId,
+      content: postContent,
+      imageUrl,
+      tags,
+    })
     if (error) {
       setCreateError(error.message)
       toast.error('Nie udało się opublikować wpisu.')
@@ -607,6 +636,15 @@ function App() {
   const goBackInHistory = useCallback(() => {
     navigate(-1)
   }, [navigate])
+
+  const handleGroupPostsLoaded = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return
+      void fetchLikesForPosts(ids)
+      void fetchCommentsCount(ids)
+    },
+    [fetchLikesForPosts, fetchCommentsCount],
+  )
 
   const navigateToUserFromNotificationsPanel = useCallback(async (userId: string) => {
     setNotificationsPanelOpen(false)
@@ -1007,7 +1045,8 @@ function App() {
   const navActiveView =
     effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
       ? 'feed'
-      : effectiveActiveView === 'search'
+      : effectiveActiveView === 'search' ||
+          effectiveActiveView === 'group'
         ? 'feed'
       : effectiveActiveView === 'settings'
         ? 'profile'
@@ -1139,6 +1178,17 @@ function App() {
             }}
           />
         )
+      case 'group':
+        if (!routeGroupSlug) return null
+        return (
+          <GroupView
+            groupSlug={routeGroupSlug}
+            {...sharedPostProps}
+            onNavigateToPost={navigateToPost}
+            onNavigateToUser={navigateToUser}
+            onPostsLoaded={handleGroupPostsLoaded}
+          />
+        )
       case 'post':
         if (!routeThreadPostId) return null
         return (
@@ -1263,7 +1313,8 @@ function App() {
         <main
           className={`mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
             effectiveActiveView === 'feed' || effectiveActiveView === 'events' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
-            || effectiveActiveView === 'search'
+            || effectiveActiveView === 'search' ||
+              effectiveActiveView === 'group'
               ? 'max-w-7xl px-4 lg:px-6'
               : effectiveActiveView === 'settings'
                 ? 'max-w-2xl px-4 space-y-0'

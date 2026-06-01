@@ -111,7 +111,10 @@ export function mapPostToSearchDocument(record: PostRecord, profile: PostProfile
   const author = profile?.full_name?.trim() || profile?.username?.trim() || 'Użytkownik'
 
   const tags = Array.isArray(record.tags)
-    ? record.tags.map((t) => String(t).trim().toLowerCase()).filter(Boolean)
+    ? record.tags
+        .filter((t): t is string => typeof t === 'string')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean)
     : []
 
   return {
