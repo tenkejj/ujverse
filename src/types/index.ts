@@ -17,7 +17,7 @@ export type Profile = {
 export type Post = {
   id?: string
   content?: string
-  image_url?: string | null
+  image_url: string | null
   tags?: string[] | null
   created_at?: string
   user_id?: string

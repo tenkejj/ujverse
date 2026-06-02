@@ -299,6 +299,24 @@ export default function PostCard({
                 </p>
               )}
 
+              {post.image_url && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-black/10 dark:border-white/10 bg-black/2 dark:bg-white/3">
+                  <img
+                    src={post.image_url}
+                    alt="Post attachment"
+                    className="w-full h-auto object-cover"
+                    loading="lazy"
+                    onError={(event) => {
+                      console.error('[PostCard] image load error', {
+                        postId: post.id,
+                        imageUrl: post.image_url,
+                        currentSrc: event.currentTarget.currentSrc,
+                      })
+                    }}
+                  />
+                </div>
+              )}
+
             </div>
 
             <div className={`${INTERACTION_BAR_ROW} mt-2.5 -mx-1 pr-2`}>

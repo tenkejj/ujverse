@@ -20,6 +20,13 @@ export type PostEnrichment = {
 class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
   readonly type = 'post' as const
 
+  private mapPost(row: Post): Post {
+    return {
+      ...row,
+      image_url: typeof row.image_url === 'string' ? row.image_url : null,
+    }
+  }
+
   toUnified(raw: Post, enrichment?: PostEnrichment): UnifiedContent<PostMeta> | null {
     if (!raw.id) return null
     const profile: Profile | null = raw.profiles ?? null
@@ -74,7 +81,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
       .single()
 
     if (error || !data) return null
-    return data as Post
+    return this.mapPost(data as Post)
   }
 
   /**
@@ -97,7 +104,9 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
       .in('id', numericIds)
 
     if (error || !data) return []
-    return (data as Post[]).filter((row) => row.profiles?.is_banned !== true)
+    return (data as Post[])
+      .map((row) => this.mapPost(row))
+      .filter((row) => row.profiles?.is_banned !== true)
   }
 
   /** Batch mapowanie posta + enrichment indeksowany po `post.id`. */
