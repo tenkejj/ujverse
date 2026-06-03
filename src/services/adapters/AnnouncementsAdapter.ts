@@ -1,5 +1,6 @@
 import { supabase } from '../../supabaseClient'
 import { UjverseSanitizer } from '../../lib/sanitizer'
+import { activeAnnouncementCutoff } from '../../lib/announcementRecency'
 import type {
   AnnouncementMeta,
   AnnouncementStatus,
@@ -58,11 +59,17 @@ class AnnouncementsAdapterImpl
   readonly type = 'announcement' as const
 
   async fetch(): Promise<AnnouncementRow[]> {
+    // Sync cutoff z desktopowym `AcademicAnnouncementsWidget` (mobile `AnnouncementPills`
+    // wcześniej widział pełną historię). `activeAnnouncementCutoff()` używa
+    // `ACTIVE_ANNOUNCEMENT_DAYS` z `lib/announcementRecency.ts` jako jedynego
+    // źródła prawdy — zmiana okna w jednym miejscu propaguje się do query.
+    const since = activeAnnouncementCutoff().toISOString()
     const { data, error } = await supabase
       .from('announcements')
       .select(
         'id, body_fingerprint, department, source, lecturer_name, body, status, created_at',
       )
+      .gte('created_at', since)
       .order('created_at', { ascending: false })
 
     if (error) {

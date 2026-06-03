@@ -42,7 +42,7 @@ export default function GroupView({ groupSlug, ...postHandlers }: Props) {
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:gap-4">
       <div className="lg:col-span-6 lg:col-start-4 flex min-w-0 w-full max-w-full flex-col gap-4">
         <div className="lg:hidden">
-          <GroupNav variant="rail" mode="trending" />
+          <GroupNav variant="rail" mode="trending" limit={9} />
         </div>
         <GroupCard groupSlug={groupSlug} {...postHandlers} />
       </div>
@@ -50,7 +50,7 @@ export default function GroupView({ groupSlug, ...postHandlers }: Props) {
       <aside
         className={`hidden lg:flex lg:col-span-3 flex-col ${unifiedCardGapCls} sticky top-20 self-start`}
       >
-        <GroupNav variant="panel" mode="all" className="shrink-0" />
+        <GroupNav variant="panel" mode="all" limit={9} className="shrink-0" />
       </aside>
     </div>
   )

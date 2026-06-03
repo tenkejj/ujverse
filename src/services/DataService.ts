@@ -80,6 +80,20 @@ class DataServiceImpl {
     return PostsAdapter.fetchById(id)
   }
 
+  /**
+   * N najnowszych postów jako `UnifiedContent<PostMeta>[]` — używane wyłącznie
+   * przez warstwę AI (RAG-Lite). Enrichment (likes/comments) celowo pomijamy:
+   * model nie potrzebuje liczników, a oszczędzamy round-tripów do Supabase.
+   */
+  async listRecentPosts(limit = 10): Promise<UnifiedContent<PostMeta>[]> {
+    const posts = await PostsAdapter.listRecent(limit)
+    return PostsAdapter.toUnifiedList(posts, {
+      likesCountByPost: {},
+      likedPostIds: {},
+      commentsCountByPost: {},
+    })
+  }
+
   /* Batch fetch dla list ID — wyszukiwarka łączy hity Meili z pełnym Post[]. */
   async fetchPostsByIds(ids: ReadonlyArray<string>): Promise<Post[]> {
     return PostsAdapter.fetchByIds(ids)

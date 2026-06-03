@@ -23,6 +23,7 @@ export default function DepartmentFilter({ selected, onChange }: Props) {
       watchDeps={[selected]}
       scrollLeftLabel="Przewiń wydziały w lewo"
       scrollRightLabel="Przewiń wydziały w prawo"
+      withMobileEdgeSpacer={false}
     >
       <button
         type="button"

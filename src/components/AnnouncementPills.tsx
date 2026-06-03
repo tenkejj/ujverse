@@ -40,49 +40,66 @@ type Props = {
   /** Komunikaty już przefiltrowane po wydziale i posortowane (DataService). */
   announcements: UnifiedContent<AnnouncementMeta>[]
   loading: boolean
+  /**
+   * Render jako fragment (pills + portal drawer) — bez własnego scroll trackera
+   * i wrappera `md:hidden`. Pozwala osadzić pigułki w istniejącym `flex` railu
+   * (np. `MobileDashboard`). Empty state nie renderuje nic poza drawerem.
+   */
+  inline?: boolean
 }
 
-export default function AnnouncementPills({ announcements, loading }: Props) {
+export default function AnnouncementPills({ announcements, loading, inline = false }: Props) {
   const [openAnn, setOpenAnn] = useState<UnifiedContent<AnnouncementMeta> | null>(null)
 
   const pills = useMemo(() => dedupe(announcements).slice(0, MAX_PILLS), [announcements])
+
+  const skeletonNodes = [1, 2, 3, 4, 5].map((k) => (
+    <div
+      key={`skel-${k}`}
+      className="h-9 min-h-[34px] w-24 shrink-0 animate-pulse rounded-full bg-zinc-200/80 dark:bg-white/10"
+    />
+  ))
+
+  const pillNodes = pills.map((ann) => {
+    const pillLabel = formatLecturerPillLabel(ann.author.displayName)
+    return (
+      <button
+        key={ann.metadata.bodyFingerprint?.trim() ? ann.metadata.bodyFingerprint! : ann.id}
+        type="button"
+        onClick={() => setOpenAnn(ann)}
+        className={pillBtn}
+        title={ann.author.displayName}
+      >
+        <span
+          className={`inline-block size-2 shrink-0 rounded-full ${STATUS_DOT[ann.metadata.status]}`}
+          aria-hidden
+        />
+        <span>{pillLabel}</span>
+      </button>
+    )
+  })
+
+  if (inline) {
+    return (
+      <>
+        {loading ? skeletonNodes : pillNodes}
+        <AnnouncementDrawer announcement={openAnn} onClose={() => setOpenAnn(null)} />
+      </>
+    )
+  }
 
   return (
     <>
       <div className="relative m-0 w-full min-w-0 md:hidden">
         <div className={scrollTrackCls}>
           {loading ? (
-            <>
-              {[1, 2, 3, 4, 5].map((k) => (
-                <div
-                  key={k}
-                  className="h-9 min-h-[34px] w-24 shrink-0 animate-pulse rounded-full bg-zinc-200/80 dark:bg-white/10"
-                />
-              ))}
-            </>
+            skeletonNodes
           ) : pills.length === 0 ? (
             <span className="flex h-9 min-h-[34px] items-center text-sm text-zinc-500">
               Brak komunikatów
             </span>
           ) : (
-            pills.map((ann) => {
-              const pillLabel = formatLecturerPillLabel(ann.author.displayName)
-              return (
-                <button
-                  key={ann.metadata.bodyFingerprint?.trim() ? ann.metadata.bodyFingerprint! : ann.id}
-                  type="button"
-                  onClick={() => setOpenAnn(ann)}
-                  className={pillBtn}
-                  title={ann.author.displayName}
-                >
-                  <span
-                    className={`inline-block size-2 shrink-0 rounded-full ${STATUS_DOT[ann.metadata.status]}`}
-                    aria-hidden
-                  />
-                  <span>{pillLabel}</span>
-                </button>
-              )
-            })
+            pillNodes
           )}
         </div>
       </div>

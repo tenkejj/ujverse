@@ -4,6 +4,7 @@ import axios from 'axios'
 import { load, type CheerioAPI } from 'cheerio'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'node:crypto'
+import { GroqProvider, GroqProviderError } from './_lib/GroqProvider'
 
 /** Zgodne z triggerem DB `md5(body)` — jawny klucz dla `upsert(..., onConflict: 'body_fingerprint')`. */
 function bodyFingerprintHex(body: string): string {
@@ -19,14 +20,28 @@ const ANNOUNCEMENT_SOURCE = 'ISI UJ'
 /** Tekst zastępczy gdy nie uda się wyciągnąć wykładowcy. */
 const FALLBACK_LECTURER_NAME = 'Komunikat ISI / WZiKS'
 
-const GROQ_CHAT_COMPLETIONS_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.1-8b-instant'
-
+/**
+ * Strict-mode parser nazwisk: świadomie BEZ wstrzyknięcia `UJVERSE_SYSTEM_PROMPT`.
+ * Scraper wywołuje `GroqProvider.completeJson` bezpośrednio (z pominięciem
+ * `llmService`), żeby uniknąć kolizji dwóch system-promptów — akademicka
+ * persona robiłaby modelowi preambuły zamiast czystego mianownika.
+ */
 const LECTURER_NOMINATIVE_SYSTEM_PROMPT =
   'Jesteś precyzyjnym parserem. Otrzymasz imię i nazwisko w różnych przypadkach. Twoim JEDYNYM zadaniem jest zwrócić to imię i nazwisko w mianowniku. Nie dodawaj wyjaśnień, nie używaj strzałek, nie pokazuj procesu zamiany. Zwróć tylko wynikowy ciąg znaków.'
 
-type OpenAIChatCompletionResponse = {
-  choices?: Array<{ message?: { content?: string | null } }>
+/**
+ * Singleton instancja `GroqProvider` per cold-start funkcji.
+ * Inicjalizowana lazy, żeby brak `GROQ_API_KEY` nie wywalał całego scrapera
+ * przy imporcie modułu (nazwy nazwisk to feature opcjonalny — bez Groqa
+ * scraper i tak zapisuje surowe nazwiska).
+ */
+let groqProviderInstance: GroqProvider | null = null
+function getGroqProvider(): GroqProvider | null {
+  if (groqProviderInstance) return groqProviderInstance
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) return null
+  groqProviderInstance = new GroqProvider(apiKey)
+  return groqProviderInstance
 }
 
 function normalizeAuthorOutput(input: string): string {
@@ -56,48 +71,52 @@ function sanitizeNominativeModelOutput(text: string, fallback: string): string {
   return firstLine.replace(/\.$/, '').trim()
 }
 
+/**
+ * Wywołanie Groq z graceful degradation per-iteracja:
+ *
+ * - 429 (rate limit / quota): logujemy z prefixem `[scrape-wziks] Groq 429`,
+ *   zwracamy surowe nazwisko `{ value: raw, cacheable: false }` — scraper
+ *   leci dalej, nie zapisuje wątpliwego rezultatu do cache'u, kolejna
+ *   iteracja cron-jobu spróbuje ponownie.
+ * - inne błędy HTTP / sieć / pusty content: ten sam fallback, ale bez
+ *   specjalnego logu.
+ *
+ * Nigdy nie rzuca — to świadomy "best-effort" w cron-jobie, błąd jednego
+ * nazwiska nie może wywalić całego upsertu komunikatów.
+ */
 async function fetchGroqNominative(raw: string): Promise<{ value: string; cacheable: boolean }> {
-  const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return { value: raw, cacheable: false }
+  const provider = getGroqProvider()
+  if (!provider) return { value: raw, cacheable: false }
 
   try {
-    const body = {
-      model: GROQ_MODEL,
-      messages: [
+    const modelOutput = await provider.completeJson(
+      [
         { role: 'system', content: LECTURER_NOMINATIVE_SYSTEM_PROMPT },
         { role: 'user', content: raw },
       ],
-      temperature: 0.0,
-    }
+      { temperature: 0.0 },
+    )
 
-    const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Groq HTTP status ${response.status}`)
-    }
-
-    const data = (await response.json()) as OpenAIChatCompletionResponse
-    const modelOutput = data?.choices?.[0]?.message?.content
-    const rawLlamaOutput = modelOutput?.trim() ?? ''
+    const rawLlamaOutput = modelOutput.trim()
     const processedAuthor = normalizeAuthorOutput(rawLlamaOutput)
-    const nominativeName = processedAuthor
-    if (!nominativeName) {
-      throw new Error('Groq zwrócił pustą odpowiedź dla lecturerNameToNominative')
+    if (!processedAuthor) {
+      console.warn('[scrape-wziks] Groq returned empty content for:', raw)
+      return { value: raw, cacheable: false }
     }
-    const result = sanitizeNominativeModelOutput(nominativeName, raw)
+    const result = sanitizeNominativeModelOutput(processedAuthor, raw)
     console.log('Poprawiono:', raw, '->', result)
     return { value: result, cacheable: true }
   } catch (error) {
-    if (error instanceof Error && error.message.includes('pustą odpowiedź')) {
-      throw error
+    if (error instanceof GroqProviderError && error.status === 429) {
+      console.error(
+        '[scrape-wziks] Groq 429 (rate limit) for lecturer name:',
+        raw,
+        '— skipping nominative correction for this iteration',
+      )
+      return { value: raw, cacheable: false }
     }
+    const msg = error instanceof Error ? error.message : String(error)
+    console.warn('[scrape-wziks] Groq error for', raw, '—', msg, '(falling back to raw)')
     return { value: raw, cacheable: false }
   }
 }

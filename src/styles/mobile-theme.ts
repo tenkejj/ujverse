@@ -22,7 +22,7 @@ export const ICONS_MOBILE = {
 } as const
 
 export const HEADER_MOBILE = {
-  containerClass: 'h-16 gap-2 px-4',
+  containerClass: 'h-14 md:h-16 gap-2 px-4',
   sideSectionClass: 'w-[100px] min-w-[100px] md:w-24 md:min-w-24',
   logoClass:
     'h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2.25px] translate-x-[1.75px] md:translate-x-0',
