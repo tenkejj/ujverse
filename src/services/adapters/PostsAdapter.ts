@@ -20,6 +20,13 @@ export type PostEnrichment = {
 class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
   readonly type = 'post' as const
 
+  private mapPost(row: Post): Post {
+    return {
+      ...row,
+      image_url: typeof row.image_url === 'string' ? row.image_url : null,
+    }
+  }
+
   toUnified(raw: Post, enrichment?: PostEnrichment): UnifiedContent<PostMeta> | null {
     if (!raw.id) return null
     const profile: Profile | null = raw.profiles ?? null
@@ -74,7 +81,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
       .single()
 
     if (error || !data) return null
-    return data as Post
+    return this.mapPost(data as Post)
   }
 
   /**
@@ -85,6 +92,27 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
    * gwarantowana — sortowanie do kolejności wejściowej leży po stronie
    * konsumenta (Search zachowuje kolejność trafień).
    */
+  /**
+   * Pobranie N najnowszych postów — używane przez `ContextInjectedBielikAdapter`,
+   * żeby zbudować system-prompt dla Bielika. Bez enrichmentu (likes/comments) i
+   * bez paginacji: dla RAG-Lite wystarczy `limit` (typowo 10). Filtruje
+   * `is_banned`-autorów, tak samo jak `fetchByIds` — model nie powinien dostawać
+   * treści od kont zbanowanych.
+   */
+  async listRecent(limit: number): Promise<Post[]> {
+    if (!Number.isFinite(limit) || limit <= 0) return []
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*, profiles(id, full_name, avatar_url, department, is_banned)')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error || !data) return []
+    return (data as Post[])
+      .map((row) => this.mapPost(row))
+      .filter((row) => row.profiles?.is_banned !== true)
+  }
+
   async fetchByIds(ids: ReadonlyArray<string>): Promise<Post[]> {
     const numericIds = ids
       .map((id) => Number(id))
@@ -97,7 +125,9 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
       .in('id', numericIds)
 
     if (error || !data) return []
-    return (data as Post[]).filter((row) => row.profiles?.is_banned !== true)
+    return (data as Post[])
+      .map((row) => this.mapPost(row))
+      .filter((row) => row.profiles?.is_banned !== true)
   }
 
   /** Batch mapowanie posta + enrichment indeksowany po `post.id`. */

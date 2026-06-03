@@ -1,0 +1,129 @@
+/**
+ * Tool: `get_latest_announcements`
+ *
+ * Zwraca 10 najnowszych komunikatów z `public.announcements` wzbogaconych
+ * o mianownik nazwiska (z `public.lecturer_names_cache`, jeśli istnieje wpis).
+ *
+ * Dlaczego dwie kwerendy zamiast PostgREST embeddingu:
+ *   `announcements.lecturer_name` -> `lecturer_names_cache.original_name`
+ *   to NIE jest FK (różne typy semantyczne, brak constraintu w migracjach
+ *   `20260412120000_announcements.sql` / `20260415120000_lecturer_names_cache.sql`).
+ *   PostgREST embedding wymaga FK lub computed FK — żadnego nie mamy. Stąd
+ *   `select(announcements)` + `in('original_name', uniqueLecturerNames)` na
+ *   cache i merge w pamięci.
+ *
+ * Format wyjściowy zwięzły (`id`, `lecturer_name_nominative`, `body`, `status`,
+ * `department`, `source`, `created_at`) — model konsumuje to jako kontekst,
+ * nie surowy JSON do prezentacji UI. Zbyt wiele pól = niepotrzebne tokeny.
+ */
+
+import { registerTool, type ToolContext } from './registry'
+
+const MAX_ROWS = 10
+
+type AnnouncementRow = {
+  id: string
+  lecturer_name: string
+  body: string
+  status: 'cancelled' | 'remote' | 'duty'
+  department: string | null
+  source: string | null
+  created_at: string
+}
+
+type LecturerCacheRow = {
+  original_name: string
+  nominative_name: string
+}
+
+export type GetLatestAnnouncementsResult = {
+  ok: true
+  count: number
+  items: Array<{
+    id: string
+    lecturer_name_nominative: string
+    body: string
+    status: AnnouncementRow['status']
+    department: string | null
+    source: string | null
+    created_at: string
+  }>
+}
+
+export type GetLatestAnnouncementsError = {
+  ok: false
+  error: string
+}
+
+async function execute(
+  _args: Record<string, never>,
+  ctx: ToolContext,
+): Promise<GetLatestAnnouncementsResult | GetLatestAnnouncementsError> {
+  const { data, error } = await ctx.supabaseAdmin
+    .from('announcements')
+    .select('id, lecturer_name, body, status, department, source, created_at')
+    .order('created_at', { ascending: false })
+    .limit(MAX_ROWS)
+
+  if (error) {
+    console.error('[get_latest_announcements] db error:', error.message)
+    return { ok: false, error: error.message }
+  }
+
+  const rows = (data ?? []) as AnnouncementRow[]
+  if (rows.length === 0) {
+    return { ok: true, count: 0, items: [] }
+  }
+
+  const uniqueNames = Array.from(
+    new Set(rows.map((r) => r.lecturer_name).filter((n) => n && n.length > 0)),
+  )
+
+  let cacheMap = new Map<string, string>()
+  if (uniqueNames.length > 0) {
+    const { data: cacheRows, error: cacheErr } = await ctx.supabaseAdmin
+      .from('lecturer_names_cache')
+      .select('original_name, nominative_name')
+      .in('original_name', uniqueNames)
+
+    if (cacheErr) {
+      console.warn(
+        '[get_latest_announcements] lecturer_names_cache lookup failed:',
+        cacheErr.message,
+      )
+    } else if (cacheRows) {
+      cacheMap = new Map(
+        (cacheRows as LecturerCacheRow[]).map((r) => [r.original_name, r.nominative_name]),
+      )
+    }
+  }
+
+  const items = rows.map((r) => ({
+    id: r.id,
+    lecturer_name_nominative: cacheMap.get(r.lecturer_name) ?? r.lecturer_name,
+    body: r.body,
+    status: r.status,
+    department: r.department,
+    source: r.source,
+    created_at: r.created_at,
+  }))
+
+  return { ok: true, count: items.length, items }
+}
+
+registerTool<Record<string, never>, GetLatestAnnouncementsResult | GetLatestAnnouncementsError>({
+  tool: {
+    name: 'get_latest_announcements',
+    description:
+      'Pobiera 10 najnowszych ogłoszeń akademickich (komunikaty wydziałowe ' +
+      'z ISI UJ — odwołane zajęcia, dyżury, tryb zdalny). Używaj, gdy ' +
+      'użytkownik pyta o ogłoszenia, komunikaty, odwołane zajęcia, dyżury ' +
+      'wykładowców lub aktualności wydziałowe.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  execute,
+})

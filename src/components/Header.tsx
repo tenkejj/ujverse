@@ -7,6 +7,7 @@ import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import ClubsModal from './ClubsModal'
 import OmniSearchHub from './OmniSearchHub'
+import SearchModal from './SearchModal'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
@@ -66,6 +67,8 @@ export default function Header({
   const { theme: colorMode, toggleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const [clubsModalOpen, setClubsModalOpen] = useState(false)
+  /** Mobile-only full-screen search overlay (`<md`). Desktop wciąż używa OmniSearchHub. */
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const { clubs, loading: clubsLoading, error: clubsError, reload: reloadClubs } = useClubs()
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
 
@@ -126,9 +129,15 @@ export default function Header({
         <div className="block md:hidden">
           <button
             type="button"
-            onClick={() => onNavigateToSearch()}
-            className="w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
+            onClick={() => {
+              setMenuOpen(false)
+              onCloseNotificationsPanel()
+              setIsSearchOpen(true)
+            }}
+            aria-haspopup="dialog"
+            aria-expanded={isSearchOpen}
             aria-label="Szukaj"
+            className="w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
           >
             <Search
               size={ICONS_MOBILE.bottomNavIconSize}
@@ -284,13 +293,13 @@ export default function Header({
             />
             {myProfile?.department && (
               <span
-                className={`hidden sm:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border border-zinc-700 dark:border-white/20 rounded-full leading-none shrink-0 transition-colors duration-150 ease-in-out`}
+                className={`hidden md:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border border-zinc-700 dark:border-white/20 rounded-full leading-none shrink-0 transition-colors duration-150 ease-in-out`}
               >
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
             <span
-              className={`hidden sm:inline text-zinc-800 dark:text-zinc-400 text-sm font-medium ${HEADER_MOBILE.userNameMaxWidthClass} truncate transition-colors duration-150 ease-in-out group-hover:text-zinc-900 dark:group-hover:text-zinc-100`}
+              className={`hidden md:inline text-zinc-800 dark:text-zinc-400 text-sm font-medium ${HEADER_MOBILE.userNameMaxWidthClass} truncate transition-colors duration-150 ease-in-out group-hover:text-zinc-900 dark:group-hover:text-zinc-100`}
             >
               {displayName}
             </span>
@@ -371,6 +380,12 @@ export default function Header({
       loading={clubsLoading}
       error={clubsError}
       onRetry={() => void reloadClubs()}
+    />
+
+    <SearchModal
+      isOpen={isSearchOpen}
+      onClose={() => setIsSearchOpen(false)}
+      onSubmit={(q) => onNavigateToSearch(q)}
     />
 
     </>

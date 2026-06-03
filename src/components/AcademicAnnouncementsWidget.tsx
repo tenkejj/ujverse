@@ -1,7 +1,7 @@
 import { Megaphone } from 'lucide-react'
-import { useLayoutEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ACTIVE_ANNOUNCEMENT_DAYS, isActiveAnnouncementTimestamp } from '../lib/announcementRecency'
+import { ACTIVE_ANNOUNCEMENT_DAYS } from '../lib/announcementRecency'
 import {
   sectionTitleCls,
   sideMutedCls,
@@ -39,25 +39,11 @@ export default function AcademicAnnouncementsWidget({
 }: Props) {
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({})
 
-  const { visible, totalFiltered, olderCount } = useMemo(() => {
-    const recent = announcements.filter((ann) => isActiveAnnouncementTimestamp(ann.timestamp))
-
-    return {
-      visible: recent,
-      totalFiltered: announcements.length,
-      olderCount: announcements.length - recent.length,
-    }
-  }, [announcements])
-
-  useLayoutEffect(() => {
-    if (import.meta.env.PROD) return
-    console.debug('[AcademicAnnouncementsWidget] dataset check', {
-      totalIncoming: announcements.length,
-      totalFiltered,
-      visibleCount: visible.length,
-      olderCount,
-    })
-  }, [announcements.length, totalFiltered, visible, olderCount])
+  // Recency cutoff jest teraz wymuszony przez `AnnouncementsAdapter`
+  // (.gte('created_at', activeAnnouncementCutoff())), więc tu nie filtrujemy
+  // ponownie — dane przychodzą już ograniczone do ostatnich
+  // ACTIVE_ANNOUNCEMENT_DAYS dni i identyczne dla desktopu i mobila.
+  const visible = announcements
 
   return (
     <BaseCard variant="default" className="p-4 flex h-[600px] flex-col gap-4 overflow-hidden">

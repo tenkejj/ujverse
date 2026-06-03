@@ -1,16 +1,27 @@
 import { useCallback, useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-const SCROLL_STEP_PX = 220
+/**
+ * Reużywane przez konsumentów, którzy chcą zbudować identyczną strzałkę
+ * (look + krok scrolla + maskujący gradient) we własnej strukturze JSX.
+ * Patrz `MobileDashboard` — używa `OVERLAY_RIGHT_CLS` + `ABSOLUTE_ARROW_BTN_CLS`
+ * w identycznym dwupoziomowym nestingu jak `FeedFilters` → `HorizontalPillScroller`.
+ */
+export const SCROLL_STEP_PX = 220
 
-const overlayLeftCls =
+export const ARROW_BTN_VISUAL_CLS =
+  'inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 ' +
+  'bg-white/10 text-[#1e293b] backdrop-blur-md transition-colors hover:bg-white/20 ' +
+  'dark:border-white/10 dark:bg-zinc-800/40 dark:text-white dark:hover:bg-zinc-700/60'
+
+export const OVERLAY_LEFT_CLS =
   'absolute left-0 top-0 z-10 flex h-full w-10 bg-gradient-to-r from-white to-transparent pointer-events-none dark:from-black/20 sm:w-12'
 
-const overlayRightCls =
+export const OVERLAY_RIGHT_CLS =
   'absolute right-0 top-0 z-10 flex h-full w-10 bg-gradient-to-l from-white to-transparent pointer-events-none dark:from-black/20 sm:w-12'
 
-const arrowBtnCls =
-  'pointer-events-auto absolute top-1/2 z-20 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-[#1e293b] backdrop-blur-md transition-colors hover:bg-white/20 dark:border-white/10 dark:bg-zinc-800/40 dark:text-white dark:hover:bg-zinc-700/60'
+export const ABSOLUTE_ARROW_BTN_CLS =
+  `pointer-events-auto absolute top-1/2 z-20 -translate-y-1/2 ${ARROW_BTN_VISUAL_CLS}`
 
 /**
  * Spacery — realne flex items po obu stronach listy (tylko mobile).
@@ -40,6 +51,14 @@ type Props = {
   scrollRightLabel?: string
   /** Atrybuty na przewijanym tracku (np. role="tablist"). */
   scrollProps?: HTMLAttributes<HTMLDivElement>
+  /**
+   * Mobile-only flex spacer po obu stronach listy.
+   * `true` (default) — chroni pierwszy/ostatni element przed zasłonięciem
+   * przez chevrony nawigacji.
+   * `false` — wyłącza spacer; przydatne gdy pigułki mają być flush z lewą
+   * krawędzią (np. `DepartmentFilter` w sticky filter barze).
+   */
+  withMobileEdgeSpacer?: boolean
 }
 
 export default function HorizontalPillScroller({
@@ -50,6 +69,7 @@ export default function HorizontalPillScroller({
   scrollLeftLabel = 'Przewiń w lewo',
   scrollRightLabel = 'Przewiń w prawo',
   scrollProps,
+  withMobileEdgeSpacer = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -90,29 +110,33 @@ export default function HorizontalPillScroller({
         className={`${scrollClassName} md:px-0`.trim()}
         {...scrollProps}
       >
-        <div aria-hidden role="presentation" className={spacerCls} />
+        {withMobileEdgeSpacer && (
+          <div aria-hidden role="presentation" className={spacerCls} />
+        )}
         {children}
-        <div aria-hidden role="presentation" className={spacerCls} />
+        {withMobileEdgeSpacer && (
+          <div aria-hidden role="presentation" className={spacerCls} />
+        )}
       </div>
       {canScrollLeft && (
-        <div className={overlayLeftCls}>
+        <div className={OVERLAY_LEFT_CLS}>
           <button
             type="button"
             onClick={scrollLeft}
             aria-label={scrollLeftLabel}
-            className={`${arrowBtnCls} left-1`}
+            className={`${ABSOLUTE_ARROW_BTN_CLS} left-1`}
           >
             <ChevronLeft size={14} />
           </button>
         </div>
       )}
       {canScrollRight && (
-        <div className={overlayRightCls}>
+        <div className={OVERLAY_RIGHT_CLS}>
           <button
             type="button"
             onClick={scrollRight}
             aria-label={scrollRightLabel}
-            className={`${arrowBtnCls} right-1`}
+            className={`${ABSOLUTE_ARROW_BTN_CLS} right-1`}
           >
             <ChevronRight size={14} />
           </button>

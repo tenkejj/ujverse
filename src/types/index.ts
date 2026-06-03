@@ -53,4 +53,15 @@ export type AppNotification = {
  * Typy związane z komunikatami akademickimi żyją w `src/types/content.ts`
  * (`AnnouncementMeta`, `AnnouncementStatus`, `UnifiedContent`) — ten plik
  * zostawiamy dla legacy Profile/Post/Comment/AppNotification.
+ *
+ * Typy modułu AI (efemeryczny czat) żyją w `src/types/ai.ts`.
+ * Re-eksport poniżej zapewnia spójny entrypoint `from '../types'`.
  */
+export type {
+  ChatRole,
+  ChatMessage,
+  ChatConfig,
+  LLMProvider,
+  ChatRequestMessage,
+  ChatRequestBody,
+} from './ai'

@@ -4,7 +4,6 @@ import {
   CalendarDays,
   ClipboardList,
   HelpCircle,
-  Layers,
   Megaphone,
   Radio,
 } from 'lucide-react'
@@ -19,16 +18,22 @@ export const CHANNELS_SECTION_LABEL = STREFY_SECTION_LABEL
 
 const CHANNEL_ICONS: Record<string, LucideIcon> = {
   ankieta: ClipboardList,
+  ankiety: ClipboardList,
   ogloszenie: Megaphone,
+  ogloszenia: Megaphone,
   wydarzenie: CalendarDays,
+  wydarzenia: CalendarDays,
   pomoc: HelpCircle,
   praca: Briefcase,
 }
 
 const CHANNEL_DESCRIPTIONS: Record<string, string> = {
   ankieta: 'Ankiety i głosowania wśród studentów UJ.',
+  ankiety: 'Ankiety i głosowania wśród studentów UJ.',
   ogloszenie: 'Ogłoszenia i informacje z życia uczelni.',
+  ogloszenia: 'Ogłoszenia i informacje z życia uczelni.',
   wydarzenie: 'Wydarzenia, spotkania i inicjatywy społeczności.',
+  wydarzenia: 'Wydarzenia, spotkania i inicjatywy społeczności.',
   pomoc: 'Prośby o pomoc i wsparcie w sprawach studenckich.',
   praca: 'Oferty pracy, staży i współpracy.',
 }

@@ -21,8 +21,6 @@ import {
   likeActionButtonClass,
   heartLikedIconClass,
 } from '../lib/interactionBar'
-import { groupPathForSlug } from '../lib/groupPaths'
-
 const HASHTAG_REGEX = /#\w+/g
 
 function renderBodyWithHashtags(body: string): ReactNode[] {
@@ -43,7 +41,7 @@ function renderBodyWithHashtags(body: string): ReactNode[] {
     parts.push(
       <Link
         key={`${normalizedTag}-${startIndex}`}
-        to={groupPathForSlug(normalizedTag)}
+        to={`/search?q=${encodeURIComponent(normalizedTag)}`}
         onClick={(event) => event.stopPropagation()}
         className="text-zinc-600 font-medium hover:underline hover:text-zinc-700 dark:text-brand-gold-bright dark:hover:text-brand-gold-bright/80 transition-colors"
       >
@@ -131,6 +129,10 @@ export default function PostCard({
 
   const postId = content.id || `fallback-${index}`
   const body = content.body
+  const post = {
+    id: postId,
+    image_url: content.metadata.imageUrl?.trim() || null,
+  }
   const hasBody = Boolean(body.trim())
   const { likeCount, commentCount, isLiked, authorUserId, department } =
     content.metadata
@@ -296,6 +298,25 @@ export default function PostCard({
                   {renderBodyWithHashtags(body)}
                 </p>
               )}
+
+              {post.image_url && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-black/10 dark:border-white/10 bg-black/2 dark:bg-white/3">
+                  <img
+                    src={post.image_url}
+                    alt="Post attachment"
+                    className="w-full h-auto object-cover"
+                    loading="lazy"
+                    onError={(event) => {
+                      console.error('[PostCard] image load error', {
+                        postId: post.id,
+                        imageUrl: post.image_url,
+                        currentSrc: event.currentTarget.currentSrc,
+                      })
+                    }}
+                  />
+                </div>
+              )}
+
             </div>
 
             <div className={`${INTERACTION_BAR_ROW} mt-2.5 -mx-1 pr-2`}>
@@ -408,6 +429,8 @@ export default function PostCard({
       />
     </>
   )
+
+  console.log('[PostCard] post payload', post)
 
   if (isFlat || isFeed) {
     // Feed / flat używają kontenerów nadrzędnych (divide-y), BaseCard nie pasuje —

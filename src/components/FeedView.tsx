@@ -1,5 +1,5 @@
-import { BookOpen, CalendarDays, Filter, GraduationCap, Link2 as LinkIcon, Mail, MessageCircle } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { CalendarDays, Filter, MessageCircle } from 'lucide-react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
 import type { UJEvent } from '../data/mockEvents'
@@ -9,14 +9,13 @@ import ComposeBox from './ComposeBox'
 import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
 import PostCard from './PostCard'
-import DepartmentFilter from './DepartmentFilter'
+import FeedFilters from './FeedFilters'
 import AcademicAnnouncementsWidget from './AcademicAnnouncementsWidget'
 import GroupNav from './GroupNav'
 import CompactEventRow from './CompactEventRow'
 import EmptyState from './EmptyState'
-import AnnouncementPills from './AnnouncementPills'
-import MobileQuickAccessBar from './MobileQuickAccessBar'
-import UserAvatar from './UserAvatar'
+import Niezbednik from './Niezbednik'
+import MobileDashboard from './mobile/MobileDashboard'
 import BaseCard from './ui/BaseCard'
 import {
   sectionTitleCls,
@@ -25,6 +24,8 @@ import {
   sidePanelHoverFocus,
   widgetGoldCls,
 } from '../lib/sidePanelStyles'
+
+const ChatAssistant = lazy(() => import('./chat/ChatAssistant'))
 
 type Props = {
   myProfile: Profile | null
@@ -81,15 +82,7 @@ type Props = {
   onNavigateToPost: (postId: string) => void
   onNavigateToUser?: (userId: string) => void
   onNavigateToEvents: () => void
-  /** Mobile: otwiera arkusz compose (FAB). */
-  onMobileComposeTap?: () => void
 }
-
-const UJ_ESSENTIAL_LINKS = [
-  { label: 'USOSweb', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap, tag: 'Studia' },
-  { label: 'Platforma PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen, tag: 'E-learning' },
-  { label: 'Poczta studencka', href: 'https://outlook.office.com/mail/', Icon: Mail, tag: 'Poczta' },
-] as const
 
 const unifiedCardGapCls = 'gap-4'
 
@@ -136,7 +129,6 @@ export default function FeedView({
   onNavigateToPost,
   onNavigateToUser,
   onNavigateToEvents,
-  onMobileComposeTap,
 }: Props) {
   const { events, toggleRsvp, updateEvent } = useEvents()
   const {
@@ -252,45 +244,14 @@ export default function FeedView({
           loading={academicAnnouncementsLoading}
           error={academicAnnouncementsError}
         />
+        <Suspense fallback={null}>
+          <ChatAssistant />
+        </Suspense>
       </aside>
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
       <div className="lg:col-span-6 flex min-w-0 w-full max-w-full flex-col items-stretch gap-4">
-        <div className="mx-auto w-full max-w-2xl space-y-0 px-0 pt-5 md:space-y-0 md:px-0 md:pt-0">
-          <div className="md:hidden">
-            <button
-              type="button"
-              onClick={() => onMobileComposeTap?.()}
-              className="m-0 flex w-full min-w-0 items-center gap-3 rounded-xl px-0 py-2 text-left transition-colors hover:bg-black/[0.03] active:bg-black/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/20 dark:hover:bg-white/[0.04] dark:active:bg-white/[0.06] dark:focus-visible:ring-brand-gold/25"
-            >
-              <UserAvatar
-                profile={myProfile}
-                name={displayName}
-                className="h-9 w-9 shrink-0"
-                textSize="text-xs"
-              />
-              <span className="min-w-0 flex-1 text-[15px] font-normal text-zinc-500 dark:text-zinc-400">
-                Co słychać na uczelni?
-              </span>
-            </button>
-            <div className="mt-4 space-y-3">
-              <MobileQuickAccessBar
-                items={[
-                  { label: 'USOS', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap },
-                  { label: 'PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen },
-                  { label: 'POCZTA', href: 'https://outlook.office.com/mail/', Icon: Mail },
-                ]}
-              />
-              <AnnouncementPills
-                announcements={academicAnnouncements}
-                loading={academicAnnouncementsLoading}
-              />
-              <div className="lg:hidden -mx-0.5">
-                <GroupNav variant="rail" />
-              </div>
-            </div>
-          </div>
-
+        <div className="mx-auto w-full max-w-2xl px-0">
           <div className="hidden md:flex w-full flex-col border border-zinc-200 dark:border-white/10 rounded-xl bg-white dark:bg-zinc-950/50 overflow-hidden shadow-sm p-0">
             <ComposeBox
               myProfile={myProfile}
@@ -310,7 +271,10 @@ export default function FeedView({
             />
             <div className="h-[1px] w-full bg-zinc-200 dark:bg-white/10" />
             <div className="w-full py-3 bg-transparent dark:bg-black/20 border-x-0">
-              <DepartmentFilter selected={selectedDepartment} onChange={onDepartmentChange} />
+              <FeedFilters
+                selectedDepartment={selectedDepartment}
+                onDepartmentChange={onDepartmentChange}
+              />
             </div>
             <div className="h-[1px] w-full bg-zinc-200 dark:bg-white/10" />
             <div className="w-full">
@@ -318,10 +282,16 @@ export default function FeedView({
             </div>
           </div>
 
-          <div className="mt-4 w-full md:hidden">
-            <div className="mb-3 w-full">
-              <DepartmentFilter selected={selectedDepartment} onChange={onDepartmentChange} />
-            </div>
+          <div className="w-full md:hidden">
+            <MobileDashboard
+              announcements={academicAnnouncements}
+              announcementsLoading={academicAnnouncementsLoading}
+            />
+            <FeedFilters
+              sticky
+              selectedDepartment={selectedDepartment}
+              onDepartmentChange={onDepartmentChange}
+            />
             {feedContent}
           </div>
         </div>
@@ -331,45 +301,9 @@ export default function FeedView({
       <aside
         className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky top-20 self-start pt-0`}
       >
-        {/* Niezbędnik UJ — szybkie linki */}
-        <BaseCard variant="default" className="p-4 flex flex-col gap-4 shrink-0">
-          <div className="flex items-center gap-2 mb-3">
-            <LinkIcon size={13} className="text-[#1e293b] dark:text-[#D4AF37] shrink-0" strokeWidth={2} />
-            <span className={sectionTitleCls}>
-              Niezbędnik UJ
-            </span>
-          </div>
-          <div className="space-y-3">
-            {UJ_ESSENTIAL_LINKS.map(({ label, href, Icon, tag }) => (
-              <BaseCard
-                key={label}
-                as="a"
-                variant="inner"
-                flush
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`group m-0 w-full flex cursor-pointer items-start gap-2 p-2.5 shadow-none ${sidePanelHoverFocus}`}
-              >
-                <div className="shrink-0 flex w-12 items-center justify-center min-h-[36px]">
-                  <Icon
-                    size={18}
-                    className="text-[#1e293b] dark:text-brand-gold-bright shrink-0 group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright"
-                    strokeWidth={2}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug truncate">
-                    {label}
-                  </p>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{tag}</span>
-                </div>
-              </BaseCard>
-            ))}
-          </div>
-        </BaseCard>
+        <Niezbednik />
 
-        <GroupNav variant="panel" className="shrink-0" />
+        <GroupNav limit={3} className="shrink-0" />
 
         {/* Wydarzenia UJ */}
         <BaseCard variant="default" className="p-4 flex flex-col gap-4 shrink-0">

@@ -1,0 +1,240 @@
+/**
+ * `ChatAssistantFab` — mobilny FAB + bottom-sheet (90 vh) z czatem Bielik-11B.
+ *
+ * Powierzchnia komplementarna do desktopowej wyspy `ChatAssistant`:
+ * - Wyspa: widoczna w lewym `<aside>` `FeedView` na `lg+`.
+ * - FAB:   renderowany globalnie w `App.tsx`, klasa `lg:hidden` ukrywa go
+ *   na desktopie (mobile + tablet) — zero zdublowanej powierzchni jednocześnie.
+ *
+ * Stan czatu (`messages`, `isTyping`, `isOpen`) i streaming (`useChatSend`)
+ * są współdzielone — historia z mobilki widoczna na desktopie i odwrotnie.
+ *
+ * Glassmorphism zgodny ze sheetem compose w `App.tsx`:
+ * spring `damping: 28, stiffness: 300`, backdrop blur, border-t.
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Send, Sparkles, Trash2, X } from 'lucide-react'
+import { theme } from '../../styles/theme'
+import { useChatStore } from '../../store/useChatStore'
+import { useChatSend } from '../../hooks/useChatSend'
+import MessageList from './MessageList'
+
+type Props = {
+  /** Gdy `true` — komponent nic nie renderuje (kolizja z innym sheetem). */
+  hidden?: boolean
+}
+
+/**
+ * Glassmorphism złożone z tokenów `theme.colors.*` (jedno źródło prawdy z
+ * `BaseCard variant="default"`); `border-t` zamiast pełnego `border` bo
+ * sheet jest dosunięty do dolnej krawędzi viewportu.
+ */
+const SHEET_GLASS_CLS = [
+  theme.colors.surface.base,
+  theme.colors.surface.glass,
+  theme.colors.border.base,
+  'border-t',
+].join(' ')
+
+export default function ChatAssistantFab({ hidden = false }: Props) {
+  const messages = useChatStore((s) => s.messages)
+  const isTyping = useChatStore((s) => s.isTyping)
+  const isOpen = useChatStore((s) => s.isOpen)
+  const setOpen = useChatStore((s) => s.setOpen)
+  const clearHistory = useChatStore((s) => s.clearHistory)
+  const { sendMessage, cancel } = useChatSend()
+
+  const [draft, setDraft] = useState('')
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !isOpen) return
+    el.scrollTop = el.scrollHeight
+  }, [messages, isTyping, isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, setOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const t = window.setTimeout(() => inputRef.current?.focus(), 80)
+    return () => window.clearTimeout(t)
+  }, [isOpen])
+
+  const handleClear = useCallback(() => {
+    cancel()
+    clearHistory()
+  }, [cancel, clearHistory])
+
+  const handleClose = useCallback(() => {
+    setOpen(false)
+  }, [setOpen])
+
+  const handleSend = useCallback(
+    async (content: string) => {
+      const trimmed = content.trim()
+      if (!trimmed || isTyping) return
+      setDraft('')
+      await sendMessage(trimmed)
+    },
+    [isTyping, sendMessage],
+  )
+
+  const onSubmitForm = useCallback(
+    (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault()
+      void handleSend(draft)
+    },
+    [draft, handleSend],
+  )
+
+  const onKeyDownTextarea = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        void handleSend(draft)
+      }
+    },
+    [draft, handleSend],
+  )
+
+  const canClear = messages.length > 0 || isTyping
+
+  if (hidden) return null
+
+  const fab = (
+    <motion.button
+      key="chat-fab"
+      type="button"
+      onClick={() => setOpen(true)}
+      aria-label="Otwórz asystenta AI"
+      className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-[#1e293b] text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950"
+      style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.85 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.94 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+    >
+      <Sparkles size={22} strokeWidth={2} />
+    </motion.button>
+  )
+
+  const sheet = (
+    <motion.div
+      key="chat-overlay"
+      className="fixed inset-0 z-320 flex flex-col justify-end lg:hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div
+        className="flex-1 bg-black/55 backdrop-blur-[2px]"
+        aria-hidden
+        onClick={handleClose}
+      />
+      <motion.section
+        role="dialog"
+        aria-modal="true"
+        aria-label="Asystent UJ"
+        className={`flex max-h-[90vh] flex-col overflow-hidden rounded-t-3xl shadow-[0_-12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${SHEET_GLASS_CLS}`}
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+
+        <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-1">
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950">
+              <Sparkles size={16} strokeWidth={2.2} />
+            </span>
+            <div className="flex flex-col leading-tight">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                Asystent UJ
+              </h2>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                Bielik 11B · sesja ulotna
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleClear}
+              aria-label="Wyczyść historię"
+              disabled={!canClear}
+              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+            >
+              <Trash2 size={18} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Zamknij asystenta"
+              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+            >
+              <X size={20} strokeWidth={2} />
+            </button>
+          </div>
+        </header>
+
+        <MessageList
+          ref={scrollRef}
+          messages={messages}
+          isTyping={isTyping}
+          variant="roomy"
+          className="px-4 py-3"
+        />
+
+        <form
+          onSubmit={onSubmitForm}
+          className={`flex items-end gap-2 border-t px-3 py-3 ${theme.colors.border.base}`}
+        >
+          <textarea
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={onKeyDownTextarea}
+            placeholder="Napisz wiadomość..."
+            rows={1}
+            disabled={isTyping}
+            className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-[#1e293b] focus:ring-2 focus:ring-[#1e293b]/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
+          />
+          <button
+            type="submit"
+            aria-label="Wyślij wiadomość"
+            disabled={isTyping || draft.trim().length === 0}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e293b] text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+          >
+            <Send size={17} strokeWidth={2} />
+          </button>
+        </form>
+      </motion.section>
+    </motion.div>
+  )
+
+  return createPortal(
+    <>
+      <AnimatePresence>{!isOpen && fab}</AnimatePresence>
+      <AnimatePresence>{isOpen && sheet}</AnimatePresence>
+    </>,
+    document.body,
+  )
+}

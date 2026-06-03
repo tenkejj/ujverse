@@ -9,6 +9,7 @@ const CHROME_LIKE_UA =
 const ALLOWED_INGEST_HOSTS = new Set(['www.uj.edu.pl', 'uj.edu.pl', 'wziks.uj.edu.pl'])
 
 export default defineConfig({
+  assetsInclude: ['**/*.html'],
   plugins: [
     react(),
     tailwindcss(),

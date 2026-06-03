@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -34,12 +36,13 @@ import { DataService } from './services/DataService'
 import { PostService } from './services/PostService'
 import SearchPageView from './components/SearchPageView'
 import GroupView from './components/GroupView'
+import GroupsIndexView from './components/GroupsIndexView'
 import {
-  DEFAULT_GROUP_SLUG,
-  groupPathForSlug,
   isGroupIndexPath,
   slugFromGroupPath,
 } from './lib/groupPaths'
+
+const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
 
 type AppShellView =
   | 'feed'
@@ -229,12 +232,10 @@ function App() {
     return h ? h.toLowerCase() : null
   }, [normalizedPath])
   const routeThreadPostId = useMemo(() => threadPostIdFromPath(normalizedPath), [normalizedPath])
-  const routeGroupSlug = useMemo(() => {
-    const slug = slugFromGroupPath(normalizedPath)
-    if (slug) return slug
-    if (isGroupIndexPath(normalizedPath)) return DEFAULT_GROUP_SLUG
-    return null
-  }, [normalizedPath])
+  const routeGroupSlug = useMemo(
+    () => slugFromGroupPath(normalizedPath),
+    [normalizedPath],
+  )
   const routeSnapshot = useMemo(() => parseAppRoute(normalizedPath), [normalizedPath])
   const effectiveActiveView: AppShellView = useMemo(() => {
     if (routeSnapshot.kind === 'unknown') return 'feed'
@@ -245,10 +246,6 @@ function App() {
   useEffect(() => {
     if (isResetPasswordPath(location.pathname)) return
     if (!session) return
-    if (isGroupIndexPath(normalizedPath)) {
-      navigate(groupPathForSlug(DEFAULT_GROUP_SLUG), { replace: true })
-      return
-    }
     const parsed = parseAppRoute(normalizedPath)
     if (parsed.kind === 'unknown') {
       navigate('/', { replace: true })
@@ -1112,10 +1109,6 @@ function App() {
             onNavigateToPost={navigateToPost}
             onNavigateToUser={navigateToUser}
             onNavigateToEvents={() => navigateToMainView('events')}
-            onMobileComposeTap={() => {
-              setCreateError(null)
-              setIsMobileComposeOpen(true)
-            }}
           />
         )
       case 'events':
@@ -1179,7 +1172,7 @@ function App() {
           />
         )
       case 'group':
-        if (!routeGroupSlug) return null
+        if (!routeGroupSlug) return <GroupsIndexView />
         return (
           <GroupView
             groupSlug={routeGroupSlug}
@@ -1359,6 +1352,17 @@ function App() {
         onNavigateToUser={navigateToUserFromNotificationsPanel}
         anchorRef={notificationsAnchorRef}
       />
+
+      <Suspense fallback={null}>
+        <ChatAssistantFab
+          hidden={
+            isMobileComposeOpen ||
+            profileModalOpen ||
+            notificationsPanelOpen ||
+            menuOpen
+          }
+        />
+      </Suspense>
     </>
     </EventsProvider>
   )
