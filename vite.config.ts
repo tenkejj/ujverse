@@ -9,7 +9,18 @@ const CHROME_LIKE_UA =
 const ALLOWED_INGEST_HOSTS = new Set(['www.uj.edu.pl', 'uj.edu.pl', 'wziks.uj.edu.pl'])
 
 export default defineConfig({
-  assetsInclude: ['**/*.html'],
+  // Wymuszony root — gwarantuje, że Vite traktuje `./index.html` jako entry
+  // HTML (a nie statyczny asset). Wcześniej była tu dyrektywa
+  // `assetsInclude: ['**/*.html']`, która powodowała emisję `dist/index.html`
+  // jako JS modułu `export default "<!doctype html>..."` — stąd „surowy
+  // string zamiast strony" na Vercelu. Świadomie usunięta.
+  root: './',
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: './index.html',
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
