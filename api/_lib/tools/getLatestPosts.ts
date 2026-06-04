@@ -27,7 +27,7 @@
  * w orchestratorze (przy budowaniu `tool` message) nie wybuchnie.
  */
 
-import { registerTool, type ToolContext } from './registry'
+import { registerTool, type ToolContext } from './registry.js'
 
 const MAX_ROWS = 10
 const MAX_BODY_CHARS = 600

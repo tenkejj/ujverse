@@ -27,18 +27,18 @@
  * - **CORS**: preflight `OPTIONS` + `Access-Control-*` na każdej odpowiedzi.
  */
 
-import { GroqProvider, GroqProviderError } from './_lib/GroqProvider'
-import { extractRequestUser } from './_lib/auth'
-import { withPersona } from './_lib/llmService'
-import { getSupabaseAdmin } from './_lib/supabaseAdmin'
-import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools'
-import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage'
+import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
+import { extractRequestUser } from './_lib/auth.js'
+import { withPersona } from './_lib/llmService.js'
+import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
+import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools/index.js'
+import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage.js'
 import type {
   ChatRole,
   GroqAssistantMessage,
   GroqMessage,
   GroqToolCall,
-} from './_lib/types'
+} from './_lib/types.js'
 
 export const config = {
   runtime: 'edge',
@@ -46,6 +46,14 @@ export const config = {
 
 const MAX_MESSAGES = 20
 const MAX_CONTENT_CHARS = 4000
+/**
+ * Token Budgeting: twardy limit historii rozmowy wysyłanej do Groqa.
+ * Gdy klient prześle > `MAX_HISTORY_MESSAGES` wiadomości, przycinamy do
+ * ostatnich N (zachowujemy najnowsze tury — system prompt i tak jest
+ * doklejany przez `withPersona`, więc nie liczy się do tego budżetu).
+ * Cel: ograniczyć koszt tokenów na żądanie i ryzyko 429 z Groqa.
+ */
+const MAX_HISTORY_MESSAGES = 10
 /**
  * Twardy limit pętli — chroni przed zapętleniem (model który ciągle wywołuje
  * narzędzia). Obniżone z 4 do 3 w ramach budżetu tokenów: każdy obrót pętli
@@ -251,7 +259,16 @@ export default async function handler(req: Request): Promise<Response> {
     supabaseAdmin: getSupabaseAdmin(),
   }
 
-  const conversation: GroqMessage[] = withPersona(inboundMessages)
+  // Token Budgeting: przytnij historię do ostatnich `MAX_HISTORY_MESSAGES`
+  // wiadomości, zanim trafi do `withPersona` / `GroqProvider`. System prompt
+  // jest dosztukowywany potem, więc tnie się czysta historia user/assistant.
+  const trimmedHistory: GroqMessage[] =
+    inboundMessages.length > MAX_HISTORY_MESSAGES
+      ? inboundMessages.slice(-MAX_HISTORY_MESSAGES)
+      : inboundMessages
+  console.log(`[Token Check] History size: ${trimmedHistory.length}`)
+
+  const conversation: GroqMessage[] = withPersona(trimmedHistory)
 
   let finalContent = ''
   /**

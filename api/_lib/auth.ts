@@ -16,7 +16,7 @@
  * (b) ewentualnego scope'owania w przyszłych narzędziach (np. notifications).
  */
 
-import { getSupabaseAdmin } from './supabaseAdmin'
+import { getSupabaseAdmin } from './supabaseAdmin.js'
 
 export type RequestUser = {
   /** Supabase user id (UUID). `null` gdy anonim lub token niepoprawny. */

@@ -32,7 +32,7 @@ import {
   TTLMemoryCache,
   TOOL_CACHE_TTL_MS,
   ttlForTool,
-} from '../cache'
+} from '../cache.js'
 
 /**
  * Minimalne JSON Schema akceptowane przez Groq w polu `tools[*].function.parameters`.

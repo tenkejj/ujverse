@@ -17,7 +17,7 @@
  * nie surowy JSON do prezentacji UI. Zbyt wiele pól = niepotrzebne tokeny.
  */
 
-import { registerTool, type ToolContext } from './registry'
+import { registerTool, type ToolContext } from './registry.js'
 
 const MAX_ROWS = 10
 

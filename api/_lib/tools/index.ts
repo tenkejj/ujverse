@@ -5,16 +5,16 @@
  * `toGroqToolsArray()` zwróciło komplet definicji.
  *
  * Konsumenci (np. `api/chat.ts`) importują:
- *   import { toGroqToolsArray, getToolEntry } from './_lib/tools'
+ *   import { toGroqToolsArray, getToolEntry } from './_lib/tools/index.js'
  *
  * a następnie:
  *   const tools = toGroqToolsArray()
  *   const entry = getToolEntry(toolCall.function.name)
  */
 
-import './getLatestAnnouncements'
-import './searchEvents'
-import './getLatestPosts'
+import './getLatestAnnouncements.js'
+import './searchEvents.js'
+import './getLatestPosts.js'
 
 export {
   type Tool,
@@ -29,4 +29,4 @@ export {
   listToolNames,
   toGroqToolsArray,
   clearToolCache,
-} from './registry'
+} from './registry.js'

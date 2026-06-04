@@ -16,7 +16,7 @@
  * `console.warn` i milczymy — żaden błąd nie może uszkodzić ścieżki czatu.
  */
 
-import { getSupabaseAdmin } from './supabaseAdmin'
+import { getSupabaseAdmin } from './supabaseAdmin.js'
 
 export type TokenUsageRecord = {
   /** `null` gdy request anonimowy. */

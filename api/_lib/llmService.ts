@@ -14,8 +14,8 @@
  * Eksportujemy gotową instancję `llmService` — `api/chat.ts` jej używa.
  */
 
-import { GroqProvider } from './GroqProvider'
-import type { ChatRequestMessage, GroqMessage, LLMProvider } from './types'
+import { GroqProvider } from './GroqProvider.js'
+import type { ChatRequestMessage, GroqMessage, LLMProvider } from './types.js'
 
 /**
  * Akademicka persona UJverse — wstrzykiwana JAKO PIERWSZY `system`-message

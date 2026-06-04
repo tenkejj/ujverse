@@ -7,15 +7,17 @@
  * wyszukiwania widziana przez asystenta pokrywała się z wyszukiwarką w UI.
  *
  * Zwracane pola są zwężone (`id, title, description, location, date,
- * faculty, is_official`) — model nie potrzebuje `attendee_avatars` ani
- * `external_id` do udzielenia odpowiedzi.
+ * is_official`) — model nie potrzebuje `attendee_avatars` ani
+ * `external_id` do udzielenia odpowiedzi. Kolumna `faculty` nie istnieje
+ * w obecnym schemacie `public.events`, więc nie jest selectowana (zapytanie
+ * z nią rzucałoby PostgREST 42703 i wywracało całe wyszukiwanie).
  *
  * Limit: 10. Nie filtrujemy po dacie — jeśli użytkownik pyta o przeszłe
  * wydarzenia ("co było w marcu na WZiKS?"), powinniśmy je znaleźć. Świeżość
  * (czy wydarzenie minęło) ocenia model na bazie `date` w wyniku.
  */
 
-import { registerTool, type ToolContext } from './registry'
+import { registerTool, type ToolContext } from './registry.js'
 
 const MAX_ROWS = 10
 const MIN_QUERY_LEN = 2
@@ -30,7 +32,6 @@ type EventRow = {
   description: string | null
   location: string | null
   date: string | null
-  faculty: string | null
   is_official: boolean | null
 }
 
@@ -47,7 +48,6 @@ export type SearchEventsResult = {
     description: string
     location: string
     date: string | null
-    faculty: string | null
     is_official: boolean
   }>
 }
@@ -77,7 +77,7 @@ async function execute(
 
   const { data, error } = await ctx.supabaseAdmin
     .from('events')
-    .select('id, title, description, location, date, faculty, is_official')
+    .select('id, title, description, location, date, is_official')
     .or(orFilter)
     .order('date', { ascending: false })
     .limit(MAX_ROWS)
@@ -94,7 +94,6 @@ async function execute(
     description: r.description ?? '',
     location: r.location ?? '',
     date: r.date,
-    faculty: r.faculty,
     is_official: Boolean(r.is_official),
   }))
 
