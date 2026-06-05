@@ -1266,7 +1266,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-screen w-full max-w-full bg-zinc-50 dark:bg-bg-app">
+      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
         <Header
           myProfile={myProfile}
           displayName={displayName}

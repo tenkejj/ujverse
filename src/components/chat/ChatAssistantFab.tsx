@@ -136,14 +136,14 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
   const sheet = (
     <motion.div
       key="chat-overlay"
-      className="fixed inset-0 z-320 flex flex-col justify-end lg:hidden"
+      className="fixed inset-x-0 top-0 z-320 flex h-[100dvh] flex-col justify-end lg:hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
     >
       <div
-        className="flex-1 bg-black/55 backdrop-blur-[2px]"
+        className="min-h-0 flex-1 bg-black/55 backdrop-blur-[2px]"
         aria-hidden
         onClick={handleClose}
       />
@@ -151,7 +151,7 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="Asystent UJ"
-        className={`flex max-h-[90vh] flex-col overflow-hidden rounded-t-3xl shadow-[0_-12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${SHEET_GLASS_CLS}`}
+        className={`flex max-h-[90dvh] min-h-0 flex-col overflow-hidden rounded-t-3xl shadow-[0_-12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${SHEET_GLASS_CLS}`}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}

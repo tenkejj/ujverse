@@ -74,7 +74,7 @@ export default function ResetPassword() {
 
   if (!sessionReady) {
     return (
-      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black p-4">
+      <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black p-4">
         <p className="text-sm text-white/70">Ładowanie…</p>
       </div>
     )
@@ -82,7 +82,7 @@ export default function ResetPassword() {
 
   if (!hasUser) {
     return (
-      <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
+      <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
         <div
           className="pointer-events-none absolute -left-1/4 top-1/4 h-[min(50vw,28rem)] w-[min(50vw,28rem)] rounded-full bg-amber-600/15 blur-[100px]"
           aria-hidden
@@ -105,7 +105,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
+    <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
       <div
         className="pointer-events-none absolute -left-1/4 top-1/4 h-[min(50vw,28rem)] w-[min(50vw,28rem)] rounded-full bg-amber-600/15 blur-[100px]"
         aria-hidden
