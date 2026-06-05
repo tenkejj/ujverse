@@ -17,19 +17,39 @@
  * nie surowy JSON do prezentacji UI. Zbyt wiele pól = niepotrzebne tokeny.
  */
 
+import { z } from 'zod'
 import { registerTool, type ToolContext } from './registry.js'
 
 const MAX_ROWS = 10
 
-type AnnouncementRow = {
-  id: string
-  lecturer_name: string
-  body: string
-  status: 'cancelled' | 'remote' | 'duty'
-  department: string | null
-  source: string | null
-  created_at: string
-}
+/**
+ * Komunikat zwracany do modelu gdy zapytanie nie znalazło wyników. Format
+ * surowego string-a (zamiast pustego `{ ok: true, items: [] }`) świadomy —
+ * model llama-3.1-8b-instant lepiej radzi sobie z literalnym tekstem przy
+ * syntezie odpowiedzi "brak danych" niż z pustą tablicą JSON.
+ */
+const EMPTY_RESULT_MESSAGE = 'Brak danych w bazie dla tego zapytania'
+
+/**
+ * Zod schema dla wiersza `announcements` zwracanego przez Supabase. Pełni
+ * rolę runtime "return type check" — jeśli schemat tabeli się rozjedzie albo
+ * Postgres zwróci nieoczekiwane typy, `safeParse` to wyłapie i nie pozwoli
+ * wpuścić śmieci do wyniku narzędzia. Status musi być jedną z trzech wartości
+ * domeny (`cancelled` | `remote` | `duty`).
+ */
+const AnnouncementRowSchema = z.object({
+  id: z.string(),
+  lecturer_name: z.string(),
+  body: z.string(),
+  status: z.enum(['cancelled', 'remote', 'duty']),
+  department: z.string().nullable(),
+  source: z.string().nullable(),
+  created_at: z.string(),
+})
+
+const AnnouncementRowsSchema = z.array(AnnouncementRowSchema)
+
+type AnnouncementRow = z.infer<typeof AnnouncementRowSchema>
 
 type LecturerCacheRow = {
   original_name: string
@@ -58,7 +78,7 @@ export type GetLatestAnnouncementsError = {
 async function execute(
   _args: Record<string, never>,
   ctx: ToolContext,
-): Promise<GetLatestAnnouncementsResult | GetLatestAnnouncementsError> {
+): Promise<GetLatestAnnouncementsResult | GetLatestAnnouncementsError | string> {
   const { data, error } = await ctx.supabaseAdmin
     .from('announcements')
     .select('id, lecturer_name, body, status, department, source, created_at')
@@ -70,9 +90,18 @@ async function execute(
     return { ok: false, error: error.message }
   }
 
-  const rows = (data ?? []) as AnnouncementRow[]
+  const parsed = AnnouncementRowsSchema.safeParse(data ?? [])
+  if (!parsed.success) {
+    console.error(
+      '[get_latest_announcements] zod validation failed:',
+      parsed.error.issues,
+    )
+    return { ok: false, error: 'invalid announcements row shape from database' }
+  }
+
+  const rows: AnnouncementRow[] = parsed.data
   if (rows.length === 0) {
-    return { ok: true, count: 0, items: [] }
+    return EMPTY_RESULT_MESSAGE
   }
 
   const uniqueNames = Array.from(
@@ -111,7 +140,10 @@ async function execute(
   return { ok: true, count: items.length, items }
 }
 
-registerTool<Record<string, never>, GetLatestAnnouncementsResult | GetLatestAnnouncementsError>({
+registerTool<
+  Record<string, never>,
+  GetLatestAnnouncementsResult | GetLatestAnnouncementsError | string
+>({
   tool: {
     name: 'get_latest_announcements',
     description:

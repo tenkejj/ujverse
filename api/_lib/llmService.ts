@@ -14,8 +14,107 @@
  * Eksportujemy gotową instancję `llmService` — `api/chat.ts` jej używa.
  */
 
-import { GroqProvider } from './GroqProvider.js'
+import { GroqProvider, GroqProviderError } from './GroqProvider.js'
 import type { ChatRequestMessage, GroqMessage, LLMProvider } from './types.js'
+
+/**
+ * Polityka retry dla wywołań Groq API.
+ *
+ * - `GROQ_RETRY_ATTEMPTS` = 3: łącznie do trzech prób (1 oryginalna + 2 retry).
+ * - `GROQ_RETRY_DELAY_MS` = 500: stały backoff między próbami. Świadomie BEZ
+ *   exponential — Groq przy 429 i 5xx zwykle wraca w <2s, a w Edge runtime
+ *   nie chcemy ciągnąć request handlera w nieskończoność.
+ *
+ * Retry obejmuje:
+ * - 429 (rate limit / quota — Groq czasem zwraca po krótkiej chwili),
+ * - 5xx (przejściowe błędy infry Groqa),
+ * - błędy transportu z `fetch` (DNS, ECONNRESET, abort), tj. wszystko co
+ *   NIE jest `GroqProviderError` z 4xx innym niż 429.
+ *
+ * Retry NIE obejmuje:
+ * - 4xx innych niż 429 — to błędy żądania (bad auth, bad model, bad body),
+ *   ponawianie ich tylko marnuje czas i kwotę.
+ */
+const GROQ_RETRY_ATTEMPTS = 3
+const GROQ_RETRY_DELAY_MS = 500
+
+/**
+ * Błąd warstwy `LLMService` — zawsze mapuje się na HTTP 500 po stronie API.
+ *
+ * Używany po wyczerpaniu retry lub gdy wystąpił nieoczekiwany wyjątek
+ * spoza `GroqProviderError`. Caller (`api/*.ts`) może wykryć ten typ i
+ * zwrócić Response z `status: 500`, niezależnie od oryginalnego błędu Groqa.
+ */
+export class LlmServiceError extends Error {
+  readonly status = 500
+  readonly cause?: unknown
+
+  constructor(message: string, cause?: unknown) {
+    super(message)
+    this.name = 'LlmServiceError'
+    this.cause = cause
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isRetryableGroqError(err: unknown): boolean {
+  if (err instanceof GroqProviderError) {
+    const status = err.status
+    if (status === null) return true
+    if (status === 429) return true
+    if (status >= 500 && status < 600) return true
+    return false
+  }
+  return true
+}
+
+/**
+ * Retry helper dla wywołań Groq API (chat completions / stream).
+ *
+ * Wzorzec: try-catch wokół `groq.chat.completions.create` (tu reprezentowane
+ * przez `GroqProvider.sendMessage` / `completeWithTools`). Po wyczerpaniu prób
+ * lub przy 4xx-nie-429 rzucamy `LlmServiceError`, który caller mapuje na HTTP 500.
+ *
+ * Zachowanie zgodne z OpenAI SDK retry semantics: nie retry'ujemy 4xx (poza
+ * 429), retry'ujemy 5xx + transport errors + 429.
+ */
+export async function withGroqRetry<T>(
+  fn: () => Promise<T>,
+  attempts: number = GROQ_RETRY_ATTEMPTS,
+  delayMs: number = GROQ_RETRY_DELAY_MS,
+): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastError = err
+      const retryable = isRetryableGroqError(err)
+      const isLast = attempt >= attempts
+      console.warn(
+        '[LLMService] Groq call failed (attempt',
+        attempt,
+        'of',
+        attempts,
+        ') retryable:',
+        retryable,
+        '— err:',
+        err instanceof Error ? err.message : String(err),
+      )
+      if (!retryable || isLast) break
+      await sleep(delayMs)
+    }
+  }
+  throw new LlmServiceError(
+    lastError instanceof Error
+      ? `Groq API call failed after ${attempts} attempts: ${lastError.message}`
+      : `Groq API call failed after ${attempts} attempts`,
+    lastError,
+  )
+}
 
 /**
  * Akademicka persona UJverse — wstrzykiwana JAKO PIERWSZY `system`-message
@@ -94,7 +193,7 @@ class LLMService implements LLMProvider {
     this.provider = apiKey ? new GroqProvider(apiKey) : new MockProvider()
   }
 
-  sendMessage(
+  async sendMessage(
     messages: ChatRequestMessage[],
   ): Promise<ReadableStream<Uint8Array>> {
     // Persona zawsze idzie na pozycji 0. Klient (`ContextInjectedBielikAdapter`
@@ -106,7 +205,19 @@ class LLMService implements LLMProvider {
       { role: 'system', content: UJVERSE_SYSTEM_PROMPT },
       ...messages,
     ]
-    return this.provider.sendMessage(withPersona)
+    // try-catch wokół wywołania Groqa (analogiczne do
+    // `groq.chat.completions.create` w oficjalnym SDK) z retry (3 próby, 500ms).
+    // Po wyczerpaniu prób / przy 4xx-nie-429 dostajemy `LlmServiceError`
+    // mapujące na HTTP 500 w caller-zie.
+    try {
+      return await withGroqRetry(() => this.provider.sendMessage(withPersona))
+    } catch (err) {
+      if (err instanceof LlmServiceError) throw err
+      throw new LlmServiceError(
+        err instanceof Error ? err.message : 'Unknown LLM provider error',
+        err,
+      )
+    }
   }
 }
 

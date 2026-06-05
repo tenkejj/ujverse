@@ -17,23 +17,42 @@
  * (czy wydarzenie minęło) ocenia model na bazie `date` w wyniku.
  */
 
+import { z } from 'zod'
 import { registerTool, type ToolContext } from './registry.js'
 
 const MAX_ROWS = 10
 const MIN_QUERY_LEN = 2
 
+/**
+ * Komunikat zwracany do modelu gdy zapytanie nie znalazło wyników. Format
+ * surowego string-a (zamiast pustego `{ ok: true, items: [] }`) świadomy —
+ * model llama-3.1-8b-instant lepiej radzi sobie z literalnym tekstem przy
+ * syntezie odpowiedzi "brak danych" niż z pustą tablicą JSON.
+ */
+const EMPTY_RESULT_MESSAGE = 'Brak danych w bazie dla tego zapytania'
+
 function escapeIlikePattern(term: string): string {
   return term.replace(/[%_\\]/g, '\\$&')
 }
 
-type EventRow = {
-  id: string | number
-  title: string | null
-  description: string | null
-  location: string | null
-  date: string | null
-  is_official: boolean | null
-}
+/**
+ * Zod schema dla wiersza `events` zwracanego przez Supabase. Pełni rolę
+ * runtime "return type check" — jeśli schemat tabeli się rozjedzie albo
+ * Postgres zwróci nieoczekiwane typy (np. `date` jako liczba), `safeParse`
+ * to wyłapie i nie pozwoli wpuścić śmieci do wyniku narzędzia.
+ */
+const EventRowSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  title: z.string().nullable(),
+  description: z.string().nullable(),
+  location: z.string().nullable(),
+  date: z.string().nullable(),
+  is_official: z.boolean().nullable(),
+})
+
+const EventRowsSchema = z.array(EventRowSchema)
+
+type EventRow = z.infer<typeof EventRowSchema>
 
 export type SearchEventsArgs = {
   query: string
@@ -60,7 +79,7 @@ export type SearchEventsError = {
 async function execute(
   args: SearchEventsArgs,
   ctx: ToolContext,
-): Promise<SearchEventsResult | SearchEventsError> {
+): Promise<SearchEventsResult | SearchEventsError | string> {
   const rawQuery = typeof args?.query === 'string' ? args.query.trim() : ''
   if (rawQuery.length < MIN_QUERY_LEN) {
     return {
@@ -87,7 +106,20 @@ async function execute(
     return { ok: false, error: error.message }
   }
 
-  const rows = (data ?? []) as EventRow[]
+  const parsed = EventRowsSchema.safeParse(data ?? [])
+  if (!parsed.success) {
+    console.error(
+      '[search_events] zod validation failed:',
+      parsed.error.issues,
+    )
+    return { ok: false, error: 'invalid events row shape from database' }
+  }
+
+  const rows: EventRow[] = parsed.data
+  if (rows.length === 0) {
+    return EMPTY_RESULT_MESSAGE
+  }
+
   const items = rows.map((r) => ({
     id: String(r.id),
     title: r.title ?? '',
@@ -100,7 +132,7 @@ async function execute(
   return { ok: true, count: items.length, items }
 }
 
-registerTool<SearchEventsArgs, SearchEventsResult | SearchEventsError>({
+registerTool<SearchEventsArgs, SearchEventsResult | SearchEventsError | string>({
   tool: {
     name: 'search_events',
     description:

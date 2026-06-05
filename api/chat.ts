@@ -118,6 +118,20 @@ function synthesizeSSEStream(content: string): ReadableStream<Uint8Array> {
 }
 
 /**
+ * Token Budgeting helper — przycina historię konwersacji do ostatnich
+ * `MAX_HISTORY_MESSAGES` wiadomości. Wyodrębnione jako osobna funkcja
+ * (z explicit return) żeby było łatwe do testowania w izolacji oraz
+ * żeby orchestrator pozostał czytelny w hot path.
+ *
+ * System prompt nie liczy się do tego budżetu — `withPersona` dokleja
+ * personę po przycięciu, więc tnie się czysta historia user/assistant.
+ */
+export function pruneHistory(messages: GroqMessage[]): GroqMessage[] {
+  if (messages.length <= MAX_HISTORY_MESSAGES) return messages
+  return messages.slice(-MAX_HISTORY_MESSAGES)
+}
+
+/**
  * Bezpieczne parsowanie `tool_call.function.arguments` (Groq wysyła JSON
  * jako string). Niepoprawny JSON → pusty obiekt + warning w logu; egzekutor
  * sam zdecyduje, czy to wystarczy do uruchomienia (np. `get_latest_*` nie
@@ -262,13 +276,10 @@ export default async function handler(req: Request): Promise<Response> {
   // Token Budgeting: przytnij historię do ostatnich `MAX_HISTORY_MESSAGES`
   // wiadomości, zanim trafi do `withPersona` / `GroqProvider`. System prompt
   // jest dosztukowywany potem, więc tnie się czysta historia user/assistant.
-  const trimmedHistory: GroqMessage[] =
-    inboundMessages.length > MAX_HISTORY_MESSAGES
-      ? inboundMessages.slice(-MAX_HISTORY_MESSAGES)
-      : inboundMessages
-  console.log(`[Token Check] History size: ${trimmedHistory.length}`)
+  const pruned = pruneHistory(inboundMessages)
+  console.log('[Token Check] History size:', pruned.length)
 
-  const conversation: GroqMessage[] = withPersona(trimmedHistory)
+  const conversation: GroqMessage[] = withPersona(pruned)
 
   let finalContent = ''
   /**
