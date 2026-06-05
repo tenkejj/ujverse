@@ -132,6 +132,85 @@ export function pruneHistory(messages: GroqMessage[]): GroqMessage[] {
 }
 
 /**
+ * Small-talk detector — wzorce intencji NIE wymagających danych z bazy.
+ *
+ * Cel: ograniczyć liczbę wywołań Groqa (i ekspozycję na 429), gdy użytkownik
+ * pisze "cześć" / "dzięki" / "ok". W takich przypadkach:
+ * - nie wysyłamy schematów `tools` do modelu (oszczędność tokenów na wejściu),
+ * - model nie odpala `tool_calls` (brak round-tripów Supabase + brak kolejnej
+ *   iteracji pętli = jeden request do Groqa zamiast dwóch).
+ *
+ * Heurystyka jest CELOWO konserwatywna — matchujemy tylko czyste przywitania
+ * i krótkie potwierdzenia. Dłuższe wypowiedzi (nawet zaczynające się od
+ * „cześć, kiedy juwenalia?") nie pasują do wzorca i lecą zwykłą ścieżką
+ * z `tools=auto`. Lepsze fałszywe pozytywy (czasem niepotrzebnie odpalimy
+ * tools) niż fałszywe negatywy (model nie ma dostępu do bazy gdy powinien).
+ */
+const SMALLTALK_PATTERNS: readonly RegExp[] = [
+  /^cześć[\s!.?,]*$/i,
+  /^cześć wam[\s!.?,]*$/i,
+  /^hej[\s!.?,]*$/i,
+  /^siema[\s!.?,]*$/i,
+  /^witaj[\s!.?,]*$/i,
+  /^witam[\s!.?,]*$/i,
+  /^dzień dobry[\s!.?,]*$/i,
+  /^dobry wieczór[\s!.?,]*$/i,
+  /^dobranoc[\s!.?,]*$/i,
+  /^hi[\s!.?,]*$/i,
+  /^hello[\s!.?,]*$/i,
+  /^hey[\s!.?,]*$/i,
+  /^yo[\s!.?,]*$/i,
+  /^elo[\s!.?,]*$/i,
+  /^halo[\s!.?,]*$/i,
+  /^dzięki[\s!.?,]*$/i,
+  /^dziękuję[\s!.?,]*$/i,
+  /^dziekuje[\s!.?,]*$/i,
+  /^thanks[\s!.?,]*$/i,
+  /^thank you[\s!.?,]*$/i,
+  /^ok[\s!.?,]*$/i,
+  /^okej[\s!.?,]*$/i,
+  /^okay[\s!.?,]*$/i,
+  /^tak[\s!.?,]*$/i,
+  /^nie[\s!.?,]*$/i,
+  /^spoko[\s!.?,]*$/i,
+  /^test[\s!.?,]*$/i,
+  /^pa[\s!.?,]*$/i,
+  /^pa pa[\s!.?,]*$/i,
+] as const
+
+/**
+ * Maks długość treści użytkownika, dla której uruchamiamy detektor small-talku.
+ * Powyżej tego progu zakładamy że jest jakieś merytoryczne pytanie i narzędzia
+ * MOGĄ być potrzebne — kierujemy do default tool-aware path.
+ */
+const SMALLTALK_MAX_LENGTH = 24
+
+/** Zwraca treść ostatniej wiadomości `role: 'user'` z historii (lub `''`). */
+function lastUserMessageContent(messages: GroqMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m.role === 'user') return m.content
+  }
+  return ''
+}
+
+/**
+ * Decyzja "czy wpuszczać tools" dla bieżącego requestu. Zwraca `false` dla
+ * czystych przywitań / podziękowań / krótkich potwierdzeń — w tej ścieżce do
+ * Groqa idziemy BEZ `tools` (mniej tokenów na wejściu, brak ryzyka że model
+ * zawoła Supabase dla "cześć", oszczędność jednego round-tripu pętli).
+ */
+export function shouldUseTools(userMessage: string): boolean {
+  const trimmed = userMessage.trim()
+  if (trimmed.length === 0) return false
+  if (trimmed.length > SMALLTALK_MAX_LENGTH) return true
+  for (const pattern of SMALLTALK_PATTERNS) {
+    if (pattern.test(trimmed)) return false
+  }
+  return true
+}
+
+/**
  * Bezpieczne parsowanie `tool_call.function.arguments` (Groq wysyła JSON
  * jako string). Niepoprawny JSON → pusty obiekt + warning w logu; egzekutor
  * sam zdecyduje, czy to wystarczy do uruchomienia (np. `get_latest_*` nie
@@ -277,9 +356,48 @@ export default async function handler(req: Request): Promise<Response> {
   // wiadomości, zanim trafi do `withPersona` / `GroqProvider`. System prompt
   // jest dosztukowywany potem, więc tnie się czysta historia user/assistant.
   const pruned = pruneHistory(inboundMessages)
+  const droppedCount = inboundMessages.length - pruned.length
+  if (droppedCount > 0) {
+    console.warn(
+      '[Token Check] history pruned:',
+      droppedCount,
+      'message(s) dropped — keeping last',
+      MAX_HISTORY_MESSAGES,
+    )
+  }
   console.log('[Token Check] History size:', pruned.length)
+  // Twarda asercja na inwariant token-budgetu: post-prune NIGDY nie może
+  // przekroczyć `MAX_HISTORY_MESSAGES`. Gdyby `pruneHistory` kiedyś zwróciło
+  // dłuższą tablicę (np. po refaktorze), Groq dostawałby napompowaną historię
+  // i kolejne 429. Lepiej wywrócić request niż cicho marnować tokeny.
+  if (pruned.length > MAX_HISTORY_MESSAGES) {
+    console.error(
+      '[Token Check] INVARIANT VIOLATION: pruned.length =',
+      pruned.length,
+      '> MAX_HISTORY_MESSAGES =',
+      MAX_HISTORY_MESSAGES,
+    )
+    return jsonError(500, 'Internal token-budget invariant violated')
+  }
 
   const conversation: GroqMessage[] = withPersona(pruned)
+
+  // Tool-call throttling: czy ostatnia wiadomość użytkownika WYMAGA dostępu
+  // do bazy? Dla małej rozmowy ("cześć", "dzięki", "ok") puszczamy zapytanie
+  // BEZ schematów `tools`, oszczędzając tokeny wejściowe i eliminując jedną
+  // iterację pętli (model nie ma co odpalić). To bezpośredni hit w częstotliwość
+  // wywołań Groqa, więc obniża szansę na 429.
+  const lastUserText = lastUserMessageContent(inboundMessages)
+  const useTools = shouldUseTools(lastUserText)
+  const effectiveTools = useTools ? tools : []
+  console.log(
+    '[Tool Throttle] last user (first 60ch):',
+    JSON.stringify(lastUserText.slice(0, 60)),
+    '| useTools:',
+    useTools,
+    '| toolsSent:',
+    effectiveTools.length,
+  )
 
   let finalContent = ''
   /**
@@ -302,7 +420,7 @@ export default async function handler(req: Request): Promise<Response> {
     for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
       let completion: Awaited<ReturnType<GroqProvider['completeWithTools']>>
       try {
-        completion = await provider.completeWithTools(conversation, tools)
+        completion = await provider.completeWithTools(conversation, effectiveTools)
       } catch (err) {
         if (err instanceof GroqProviderError && err.status === 429) {
           console.warn('[api/chat] Groq 429 (rate limit) — graceful degrade for user')

@@ -21,9 +21,14 @@ import type { ChatRequestMessage, GroqMessage, LLMProvider } from './types.js'
  * Polityka retry dla wywołań Groq API.
  *
  * - `GROQ_RETRY_ATTEMPTS` = 3: łącznie do trzech prób (1 oryginalna + 2 retry).
- * - `GROQ_RETRY_DELAY_MS` = 500: stały backoff między próbami. Świadomie BEZ
- *   exponential — Groq przy 429 i 5xx zwykle wraca w <2s, a w Edge runtime
- *   nie chcemy ciągnąć request handlera w nieskończoność.
+ * - `GROQ_RETRY_DELAY_MS` = 500: bazowy delay, mnożony wykładniczo dla 429
+ *   i 5xx (`delay = baseDelay * 2^attempt`). Stały delay nie wystarczał przy
+ *   limicie zapytań NA MINUTĘ — Groq potrafi zwracać kolejne 429 w odstępach
+ *   <500ms, a nasze retry tylko zwiększało nacisk. Exponential + jitter
+ *   rozprasza próbki w czasie i daje kwocie szansę się odbudować.
+ * - `GROQ_RETRY_MAX_DELAY_MS` = 8000: hard-cap pojedynczego sleep-u. Edge
+ *   functions na Vercelu mają limit ~10–25s na request — wyjście poza ten
+ *   budżet pojedynczym backoff-em zabija UX bardziej niż samo 429.
  *
  * Retry obejmuje:
  * - 429 (rate limit / quota — Groq czasem zwraca po krótkiej chwili),
@@ -37,6 +42,7 @@ import type { ChatRequestMessage, GroqMessage, LLMProvider } from './types.js'
  */
 const GROQ_RETRY_ATTEMPTS = 3
 const GROQ_RETRY_DELAY_MS = 500
+const GROQ_RETRY_MAX_DELAY_MS = 8000
 
 /**
  * Błąd warstwy `LLMService` — zawsze mapuje się na HTTP 500 po stronie API.
@@ -72,11 +78,42 @@ function isRetryableGroqError(err: unknown): boolean {
 }
 
 /**
+ * Wylicza delay między próbami z formułą exponential backoff + jitter.
+ *
+ *   base = delayMs * 2^attempt              (np. 500ms → 1000ms → 2000ms → 4000ms)
+ *   capped = min(base, GROQ_RETRY_MAX_DELAY_MS)
+ *   final = capped * (0.5 + Math.random())  (jitter w przedziale [0.5×, 1.5×))
+ *
+ * Jitter rozprasza retry-e w czasie — bez niego N równolegle uruchomionych
+ * requestów wszystkie czekałyby ten sam czas i waliłyby Groqa zsynchronizowanie,
+ * pogłębiając rate limit (klasyczny "thundering herd"). Z jitterem każdy z
+ * tych requestów wraca w innym momencie i kwota Groqa zdąży się odbudować.
+ *
+ * `attempt` (1, 2, 3, ...) to numer próby która właśnie się NIE powiodła —
+ * delay wyznacza ile poczekać PRZED kolejną próbą.
+ */
+export function computeBackoffDelay(
+  delayMs: number,
+  attempt: number,
+  maxDelayMs: number = GROQ_RETRY_MAX_DELAY_MS,
+): number {
+  const exponential = delayMs * Math.pow(2, attempt)
+  const capped = Math.min(exponential, maxDelayMs)
+  const jittered = capped * (0.5 + Math.random())
+  return Math.max(0, Math.floor(jittered))
+}
+
+/**
  * Retry helper dla wywołań Groq API (chat completions / stream).
  *
  * Wzorzec: try-catch wokół `groq.chat.completions.create` (tu reprezentowane
  * przez `GroqProvider.sendMessage` / `completeWithTools`). Po wyczerpaniu prób
  * lub przy 4xx-nie-429 rzucamy `LlmServiceError`, który caller mapuje na HTTP 500.
+ *
+ * Strategia backoff: exponential (`delayMs * 2^attempt`) z jitterem
+ * (`× (0.5 + Math.random())`) — patrz `computeBackoffDelay`. Stosujemy to
+ * dla WSZYSTKICH retryowalnych błędów (nie tylko 429), bo 5xx również często
+ * pojawiają się w seriach i ten sam mechanizm działa jako rozpraszacz.
  *
  * Zachowanie zgodne z OpenAI SDK retry semantics: nie retry'ujemy 4xx (poza
  * 429), retry'ujemy 5xx + transport errors + 429.
@@ -94,18 +131,29 @@ export async function withGroqRetry<T>(
       lastError = err
       const retryable = isRetryableGroqError(err)
       const isLast = attempt >= attempts
+      const status = err instanceof GroqProviderError ? err.status : null
       console.warn(
         '[LLMService] Groq call failed (attempt',
         attempt,
         'of',
         attempts,
-        ') retryable:',
+        ') status:',
+        status,
+        'retryable:',
         retryable,
         '— err:',
         err instanceof Error ? err.message : String(err),
       )
       if (!retryable || isLast) break
-      await sleep(delayMs)
+      const backoffMs = computeBackoffDelay(delayMs, attempt)
+      console.warn(
+        '[LLMService] backoff (exponential + jitter):',
+        backoffMs,
+        'ms before retry',
+        attempt + 1,
+        status === 429 ? '(429 rate-limit recovery)' : '',
+      )
+      await sleep(backoffMs)
     }
   }
   throw new LlmServiceError(
