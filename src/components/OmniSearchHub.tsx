@@ -81,7 +81,7 @@ export default function OmniSearchHub(props: Props) {
   return (
     <div ref={containerRef} className="relative hidden md:flex">
       <div className={T.inputCapsuleWrap}>
-        <Search size={16} strokeWidth={2} className={T.inputLeadingIcon} aria-hidden />
+        <Search strokeWidth={2} className={T.inputLeadingIcon} aria-hidden />
         {o.parsed.mode !== 'all' && (
           <span className={T.modeBadge} aria-label={`Tryb: ${o.parsed.mode}`}>
             {o.parsed.mode === 'profiles' ? '/p' : '/k'}
@@ -114,7 +114,7 @@ export default function OmniSearchHub(props: Props) {
               o.setQuery('')
               inputRef.current?.focus({ preventScroll: true })
             }}
-            className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-white/5 transition-all shrink-0 ml-1.5 mr-0.5"
+            className="shrink-0 p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-white/5 transition-all"
             title="Wyczyść tekst"
             aria-label="Wyczyść tekst"
           >

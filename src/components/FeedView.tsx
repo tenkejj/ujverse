@@ -235,9 +235,21 @@ export default function FeedView({
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:items-start lg:gap-4">
 
-      {/* ── LEFT SIDEBAR (desktop only) ─────────────────────────────── */}
+      {/*
+        ── LEFT SIDEBAR (desktop only) ───────────────────────────────
+        Sticky-Follow: `bottom-4` + `self-end` tworzą „goniącą wyspę".
+        Wyspa spływa naturalnie z feedem do momentu, w którym jej dolna
+        krawędź zrówna się z `bottom: 1rem` viewportu — wtedy sticky
+        przykleja ją do dołu okna i goni użytkownika podczas scrolla w dół.
+        Przy scrollu w górę odkleja się i wraca do natural-flow position
+        wyznaczonego przez `self-end` (dno komórki gridu).
+        Outer grid trzyma `items-start`, więc inne kolumny nie zmieniają
+        alignmentu; tylko ten aside (`self-*` override) kotwiczy się do dołu.
+        Brak `max-h` / `overflow-y-auto` — sticky jest jedynym mechanizmem
+        pozycjonowania pionowego.
+      */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] h-fit flex-col ${unifiedCardGapCls} sticky top-20 self-start custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
+        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky bottom-4 self-end custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
       >
         <AcademicAnnouncementsWidget
           announcements={academicAnnouncements}
@@ -297,9 +309,15 @@ export default function FeedView({
         </div>
       </div>
 
-      {/* ── RIGHT SIDEBAR (desktop) — sticky bez scrolla kolumny; scroll tylko w liście Stref ── */}
+      {/*
+        ── RIGHT SIDEBAR (desktop) ───────────────────────────────────
+        Sticky-Follow: identyczna polityka jak left rail — `bottom-4` +
+        `self-end`. Brak `max-h` / `overflow-y-auto`. Wyspa zakotwicza się
+        do dolnej krawędzi viewportu (z 1 rem oddechu) i „goni" użytkownika
+        w dół, a po scrollu w górę wraca na dno swojej kolumny gridu.
+      */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky top-20 self-start pt-0`}
+        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky bottom-4 self-end pt-0`}
       >
         <Niezbednik />
 

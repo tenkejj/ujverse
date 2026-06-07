@@ -126,7 +126,11 @@ export default function Header({
       }`}
     >
       <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
-        <div className="block md:hidden">
+        {/* Ikona-lupa otwiera `SearchModal` — pokazywana na wszystkich
+         *  `<xl` (mobile + md + lg). Pełna kapsuła `OmniSearchHub`
+         *  pojawia się dopiero od `xl:flex` (patrz `OMNI_DESKTOP.inputCapsuleWrap`),
+         *  bo wcześniej prawa strona nagłówka wchodziła w obszar wyśrodkowanego logo. */}
+        <div className="block xl:hidden">
           <button
             type="button"
             onClick={() => {

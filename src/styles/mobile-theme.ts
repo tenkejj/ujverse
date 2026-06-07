@@ -180,18 +180,35 @@ export const PROFILE_MOBILE = {
  * wiersza (System 2 — klawiatura) używa `rowActive` zamiast samego hovera.
  */
 export const OMNI_DESKTOP = {
+  // Kapsuła wyszukiwarki: `flex items-center gap-2` w kontenerze; spacing
+  // między ikoną, opcjonalnym `modeBadge`, inputem i przyciskiem `X` jest
+  // egzekwowane przez `gap-2`, nie przez `mr-*` na dzieciach.
+  //
+  // Widoczność `hidden xl:flex` (≥ 1280 px): poniżej tego progu prawa
+  // strona headera (capsule + 3 przyciski + user-menu) wchodzi w obszar
+  // wyśrodkowanego logo. Zamiast capsule pokazujemy wtedy ikonę-lupę
+  // (`SearchModal`) w lewej sekcji — patrz `Header.tsx` (`block xl:hidden`).
+  // Szerokość `w-72 2xl:w-80` (288/320 px) trzyma capsule poza środkiem
+  // viewportu przy każdym aktywnym breakpoincie (xl 1280, 2xl 1536).
+  //
+  // Glassmorphism zachowany: `backdrop-blur-md backdrop-saturate-150` +
+  // półprzezroczyste tło (`bg-white/80 dark:bg-bg-card/80`).
   inputCapsuleWrap:
-    'relative hidden md:flex h-9 lg:h-10 w-64 lg:w-80 xl:w-96 shrink-0 items-center rounded-2xl px-3.5 ' +
+    'relative hidden xl:flex h-10 w-72 2xl:w-80 shrink-0 items-center gap-2 rounded-2xl px-3.5 ' +
     'backdrop-blur-md backdrop-saturate-150 border border-zinc-200 bg-white/80 ' +
     'transition-colors duration-200 focus-within:border-[#1e293b]/40 ' +
     'dark:border-white/10 dark:bg-bg-card/80 dark:focus-within:border-brand-gold-bright/45',
+  // Input: `flex-1` rozpycha się na dostępną przestrzeń, `min-w-0` chroni
+  // przed wypchnięciem rodzeństwa (ikony / `X`) gdy zawartość rośnie.
   inputInner:
-    'h-full w-full bg-transparent text-sm text-zinc-800 outline-none placeholder:text-zinc-500 ' +
+    'h-full w-full min-w-0 flex-1 bg-transparent text-sm text-zinc-800 outline-none placeholder:text-zinc-500 ' +
     'caret-[#1e293b] dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:caret-brand-gold-bright',
+  // Ikona: `shrink-0` (`flex-shrink-0`) + `size-5` (`w-5 h-5` = 1.25 rem).
+  // Brak `mr-*` — odstęp daje `gap-2` rodzica.
   inputLeadingIcon:
-    'mr-2.5 shrink-0 text-[#1e293b] dark:text-zinc-400',
+    'shrink-0 size-5 text-[#1e293b] dark:text-zinc-400',
   modeBadge:
-    'mr-2 inline-flex items-center gap-1 rounded-md border border-[#1e293b]/30 bg-[#1e293b]/10 px-1.5 py-0.5 ' +
+    'inline-flex shrink-0 items-center gap-1 rounded-md border border-[#1e293b]/30 bg-[#1e293b]/10 px-1.5 py-0.5 ' +
     'text-[10px] font-bold uppercase tracking-wider text-[#1e293b] ' +
     'dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright',
   panel:

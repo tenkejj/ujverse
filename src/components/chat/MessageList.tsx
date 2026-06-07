@@ -142,17 +142,19 @@ function MessageBubble({
   )
 }
 
+const WAVEFORM_BAR_DELAYS_MS = [0, 90, 180, 270, 360] as const
+
 function TypingIndicator({ variant }: { variant: MessageListVariant }) {
   const tokens = VARIANT_TOKENS[variant]
   return (
-    <div className="flex justify-start">
+    <div className="flex justify-start" aria-live="polite" aria-label="Asystent pisze">
       <div
-        className={`flex items-center gap-1 rounded-xl rounded-bl-md bg-zinc-100/90 ${tokens.pad} dark:bg-zinc-900/70`}
+        className={`flex items-end gap-1 rounded-xl rounded-bl-md bg-zinc-100/90 ${tokens.pad} text-[#1e293b] dark:bg-zinc-900/70 dark:text-brand-gold-bright`}
       >
-        {[0, 150, 300].map((delay) => (
+        {WAVEFORM_BAR_DELAYS_MS.map((delay) => (
           <span
             key={delay}
-            className="h-1.5 w-1.5 animate-pulse rounded-full bg-zinc-500 dark:bg-zinc-400"
+            className="waveform-bar"
             style={{ animationDelay: `${delay}ms` }}
           />
         ))}

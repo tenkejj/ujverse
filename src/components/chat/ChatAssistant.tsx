@@ -74,10 +74,15 @@ export default function ChatAssistant() {
   return (
     <BaseCard
       variant="default"
-      className="flex h-[460px] flex-col gap-3 overflow-hidden p-4"
+      className="animate-glow-halo flex h-[460px] flex-col gap-3 overflow-hidden p-4"
+      data-active={isTyping ? 'true' : undefined}
     >
       <div className="flex items-center gap-2">
-        <Sparkles size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
+        <Sparkles
+          size={13}
+          strokeWidth={2}
+          className={`${widgetGoldCls} shrink-0 ${isTyping ? 'animate-sparkle-breathe' : ''}`}
+        />
         <span className={`${sectionTitleCls} flex-1 min-w-0`}>Asystent UJ</span>
         <button
           type="button"
