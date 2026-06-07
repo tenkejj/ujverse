@@ -8,17 +8,37 @@
  * - Streaming SSE i `AbortController` opakowane w `useChatSend` (DRY z FAB-em).
  * - Renderowanie wiadomości przez wspólny `MessageList` (wariant `compact`).
  *
+ * Header parity z innymi wyspami: zero akcji ikonowych po prawej stronie
+ * (wszystkie sąsiednie widgety — Komunikaty, Niezbędnik, Koła — mają „czysty"
+ * nagłówek). Czyszczenie historii dostępne jako tekstowy link „Nowa rozmowa"
+ * w stopce, analogicznie do „Zobacz wszystkie" w `StudentClubsWidget`.
+ *
+ * Quick prompts: 3 perystentne chipsy nad MessageList → klik wysyła
+ * od razu (pattern ChatGPT/Claude). Trzymane lokalnie, świadomie nie
+ * w `src/lib/`, żeby nie podkusiły do zaciągnięcia w mobilny FAB.
+ *
  * Komponent samowystarczalny — żadnego prop-drillingu (reguła #6 spec).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
-import { Send, Sparkles, Trash2 } from 'lucide-react'
+import { Bot, Send } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
-import { sectionTitleCls, widgetGoldCls } from '../../lib/sidePanelStyles'
+import {
+  sectionTitleCls,
+  sideMutedCls,
+  widgetGoldCls,
+} from '../../lib/sidePanelStyles'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import MessageList from './MessageList'
+
+const QUICK_PROMPTS = [
+  'Co dziś z WZiKS?',
+  'Wydarzenia w weekend',
+  'Co nowego na feedzie?',
+  'Zasady wpisów',
+] as const
 
 export default function ChatAssistant() {
   const messages = useChatStore((s) => s.messages)
@@ -74,25 +94,32 @@ export default function ChatAssistant() {
   return (
     <BaseCard
       variant="default"
-      className="animate-glow-halo flex h-[460px] flex-col gap-3 overflow-hidden p-4"
-      data-active={isTyping ? 'true' : undefined}
+      className="flex h-[460px] flex-col gap-3 overflow-hidden p-4"
     >
       <div className="flex items-center gap-2">
-        <Sparkles
+        <Bot
           size={13}
           strokeWidth={2}
           className={`${widgetGoldCls} shrink-0 ${isTyping ? 'animate-sparkle-breathe' : ''}`}
         />
-        <span className={`${sectionTitleCls} flex-1 min-w-0`}>Asystent UJ</span>
-        <button
-          type="button"
-          onClick={handleClear}
-          aria-label="Wyczyść historię czatu"
-          disabled={!canClear}
-          className="rounded-full p-1.5 text-zinc-500 transition-colors hover:bg-black/4 hover:text-zinc-800 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/4 dark:hover:text-zinc-100"
-        >
-          <Trash2 size={14} strokeWidth={2} />
-        </button>
+        <div className="flex min-w-0 flex-1 flex-col leading-tight">
+          <span className={sectionTitleCls}>Asystent UJ</span>
+          <span className={`text-[10px] ${sideMutedCls}`}>Qwen3 32B</span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Szybkie pytania">
+        {QUICK_PROMPTS.map((prompt) => (
+          <button
+            key={prompt}
+            type="button"
+            onClick={() => void handleSend(prompt)}
+            disabled={isTyping}
+            className="rounded-full border border-zinc-200 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
+          >
+            {prompt}
+          </button>
+        ))}
       </div>
 
       <MessageList
@@ -102,6 +129,18 @@ export default function ChatAssistant() {
         variant="compact"
         className="scrollbar-thin scrollbar-thumb-zinc-800"
       />
+
+      {canClear && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-[11px] font-medium text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            Nowa rozmowa
+          </button>
+        </div>
+      )}
 
       <form
         onSubmit={onSubmitForm}
@@ -121,7 +160,7 @@ export default function ChatAssistant() {
           type="submit"
           aria-label="Wyślij wiadomość"
           disabled={isTyping || draft.trim().length === 0}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1e293b] text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
         >
           <Send size={14} strokeWidth={2} />
         </button>

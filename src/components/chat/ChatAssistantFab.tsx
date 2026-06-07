@@ -1,5 +1,6 @@
 /**
- * `ChatAssistantFab` — mobilny FAB + bottom-sheet (90 vh) z czatem Bielik-11B.
+ * `ChatAssistantFab` — mobilny FAB + bottom-sheet (90 vh) z asystentem AI
+ * (`DEFAULT_GROQ_MODEL` z `api/_lib/llmService.ts`, obecnie `qwen/qwen3-32b`).
  *
  * Powierzchnia komplementarna do desktopowej wyspy `ChatAssistant`:
  * - Wyspa: widoczna w lewym `<aside>` `FeedView` na `lg+`.
@@ -17,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Send, Sparkles, Trash2, X } from 'lucide-react'
+import { Bot, Send, X } from 'lucide-react'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
@@ -45,8 +46,7 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
   const isTyping = useChatStore((s) => s.isTyping)
   const isOpen = useChatStore((s) => s.isOpen)
   const setOpen = useChatStore((s) => s.setOpen)
-  const clearHistory = useChatStore((s) => s.clearHistory)
-  const { sendMessage, cancel } = useChatSend()
+  const { sendMessage } = useChatSend()
 
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -72,11 +72,6 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
     const t = window.setTimeout(() => inputRef.current?.focus(), 80)
     return () => window.clearTimeout(t)
   }, [isOpen])
-
-  const handleClear = useCallback(() => {
-    cancel()
-    clearHistory()
-  }, [cancel, clearHistory])
 
   const handleClose = useCallback(() => {
     setOpen(false)
@@ -110,8 +105,6 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
     [draft, handleSend],
   )
 
-  const canClear = messages.length > 0 || isTyping
-
   if (hidden) return null
 
   const fab = (
@@ -129,7 +122,7 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
       whileTap={{ scale: 0.94 }}
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
     >
-      <Sparkles size={22} strokeWidth={2} />
+      <Bot size={22} strokeWidth={2} />
     </motion.button>
   )
 
@@ -163,36 +156,23 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
         <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-1">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950">
-              <Sparkles size={16} strokeWidth={2.2} />
+              <Bot size={16} strokeWidth={2.2} />
             </span>
             <div className="flex flex-col leading-tight">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                 Asystent UJ
               </h2>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Bielik 11B · sesja ulotna
-              </p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Qwen3 32B</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleClear}
-              aria-label="Wyczyść historię"
-              disabled={!canClear}
-              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-            >
-              <Trash2 size={18} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={handleClose}
-              aria-label="Zamknij asystenta"
-              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-            >
-              <X size={20} strokeWidth={2} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Zamknij asystenta"
+            className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+          >
+            <X size={20} strokeWidth={2} />
+          </button>
         </header>
 
         <MessageList

@@ -14,7 +14,7 @@ import { forwardRef, type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Sparkles } from 'lucide-react'
+import { Bot } from 'lucide-react'
 import type { ChatMessage } from '../../types/ai'
 
 export type MessageListVariant = 'compact' | 'roomy'
@@ -124,8 +124,8 @@ function MessageBubble({
       <div
         className={
           isUser
-            ? `${userMax} rounded-xl rounded-br-md bg-[#1e293b] ${tokens.pad} ${tokens.text} text-white shadow-sm dark:bg-brand-gold-bright dark:text-zinc-950`
-            : `${tokens.bubbleMax} rounded-xl rounded-bl-md bg-zinc-100/90 ${tokens.pad} ${tokens.text} text-zinc-900 shadow-sm dark:bg-zinc-900/70 dark:text-zinc-100`
+            ? `${userMax} rounded-xl rounded-br-md border border-[#1e293b]/30 bg-[#1e293b]/80 ${tokens.pad} ${tokens.text} text-white shadow-sm backdrop-blur-md dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/85 dark:text-zinc-950`
+            : `${tokens.bubbleMax} rounded-xl rounded-bl-md border border-zinc-200/70 bg-white/60 ${tokens.pad} ${tokens.text} text-zinc-900 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-zinc-100`
         }
       >
         {isUser ? (
@@ -142,19 +142,19 @@ function MessageBubble({
   )
 }
 
-const WAVEFORM_BAR_DELAYS_MS = [0, 90, 180, 270, 360] as const
+const TYPING_DOT_DELAYS_MS = [0, 150, 300] as const
 
 function TypingIndicator({ variant }: { variant: MessageListVariant }) {
   const tokens = VARIANT_TOKENS[variant]
   return (
     <div className="flex justify-start" aria-live="polite" aria-label="Asystent pisze">
       <div
-        className={`flex items-end gap-1 rounded-xl rounded-bl-md bg-zinc-100/90 ${tokens.pad} text-[#1e293b] dark:bg-zinc-900/70 dark:text-brand-gold-bright`}
+        className={`flex items-center gap-1 rounded-xl rounded-bl-md border border-zinc-200/70 bg-white/60 ${tokens.pad} text-[#1e293b] shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-brand-gold-bright`}
       >
-        {WAVEFORM_BAR_DELAYS_MS.map((delay) => (
+        {TYPING_DOT_DELAYS_MS.map((delay) => (
           <span
             key={delay}
-            className="waveform-bar"
+            className="h-1.5 w-1.5 animate-pulse rounded-full bg-current opacity-60"
             style={{ animationDelay: `${delay}ms` }}
           />
         ))}
@@ -168,16 +168,16 @@ function DefaultEmptyState({ variant }: { variant: MessageListVariant }) {
   const subtitle = variant === 'compact' ? 'text-[11px]' : 'text-xs'
   return (
     <div className="flex h-full flex-col items-center justify-center gap-1.5 px-3 text-center">
-      <Sparkles
-        size={variant === 'compact' ? 20 : 24}
-        strokeWidth={1.8}
+      <Bot
+        size={variant === 'compact' ? 32 : 40}
+        strokeWidth={1.6}
         className="text-[#1e293b] dark:text-brand-gold-bright"
       />
       <p className={`${title} font-medium text-zinc-700 dark:text-zinc-200`}>
         Cześć! W czym mogę pomóc?
       </p>
       <p className={`${subtitle} leading-snug text-zinc-500 dark:text-zinc-400`}>
-        Pytaj o terminy, regulaminy, podpowiedzi nauki — sesja ulotna.
+        Pytaj o terminy, regulaminy, podpowiedzi nauki.
       </p>
     </div>
   )
