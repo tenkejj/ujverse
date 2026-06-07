@@ -11,11 +11,9 @@
  */
 
 import { forwardRef, type ReactNode } from 'react'
-import ReactMarkdown from 'react-markdown'
-import type { Components } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { Bot } from 'lucide-react'
 import type { ChatMessage } from '../../types/ai'
+import TypewriterMarkdown from './TypewriterMarkdown'
 
 export type MessageListVariant = 'compact' | 'roomy'
 
@@ -25,72 +23,6 @@ type Props = {
   variant?: MessageListVariant
   emptyState?: ReactNode
   className?: string
-}
-
-const MARKDOWN_COMPONENTS: Components = {
-  p: ({ children }) => <p className="my-1 wrap-break-word">{children}</p>,
-  ul: ({ children }) => (
-    <ul className="my-1 list-disc space-y-0.5 pl-4">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="my-1 list-decimal space-y-0.5 pl-4">{children}</ol>
-  ),
-  li: ({ children }) => <li className="leading-snug">{children}</li>,
-  h1: ({ children }) => (
-    <h3 className="mt-1.5 mb-1 text-sm font-semibold">{children}</h3>
-  ),
-  h2: ({ children }) => (
-    <h4 className="mt-1.5 mb-1 text-xs font-semibold">{children}</h4>
-  ),
-  h3: ({ children }) => (
-    <h5 className="mt-1.5 mb-1 text-xs font-semibold">{children}</h5>
-  ),
-  a: ({ children, href }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-[#1e293b] underline underline-offset-2 hover:opacity-80 dark:text-brand-gold-bright"
-    >
-      {children}
-    </a>
-  ),
-  code: ({ children, className }) => {
-    const isInline = !className
-    if (isInline) {
-      return (
-        <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-[0.8em] dark:bg-white/10">
-          {children}
-        </code>
-      )
-    }
-    return <code className={`${className ?? ''} font-mono`}>{children}</code>
-  },
-  pre: ({ children }) => (
-    <pre className="my-2 overflow-x-auto rounded-lg bg-zinc-950/85 p-2.5 text-[11px] text-zinc-100">
-      {children}
-    </pre>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="my-1 border-l-2 border-zinc-300 pl-2.5 italic text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
-      {children}
-    </blockquote>
-  ),
-  table: ({ children }) => (
-    <div className="my-2 overflow-x-auto">
-      <table className="w-full border-collapse text-[11px]">{children}</table>
-    </div>
-  ),
-  th: ({ children }) => (
-    <th className="border border-zinc-300 px-1.5 py-1 text-left font-semibold dark:border-zinc-700">
-      {children}
-    </th>
-  ),
-  td: ({ children }) => (
-    <td className="border border-zinc-300 px-1.5 py-1 dark:border-zinc-700">
-      {children}
-    </td>
-  ),
 }
 
 type VariantTokens = {
@@ -107,9 +39,11 @@ const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
 function MessageBubble({
   message,
   variant,
+  isStreaming,
 }: {
   message: ChatMessage
   variant: MessageListVariant
+  isStreaming: boolean
 }) {
   const isUser = message.role === 'user'
   const isEmptyAssistant =
@@ -132,9 +66,10 @@ function MessageBubble({
           <p className="whitespace-pre-wrap wrap-break-word">{message.content}</p>
         ) : (
           <div className="space-y-1 leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
-              {message.content}
-            </ReactMarkdown>
+            <TypewriterMarkdown
+              content={message.content}
+              isStreaming={isStreaming}
+            />
           </div>
         )}
       </div>
@@ -196,9 +131,18 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
       {visible.length === 0 ? (
         (emptyState ?? <DefaultEmptyState variant={variant} />)
       ) : (
-        visible.map((m) => (
-          <MessageBubble key={m.id} message={m} variant={variant} />
-        ))
+        visible.map((m, idx) => {
+          const isLastAssistant =
+            m.role === 'assistant' && idx === visible.length - 1
+          return (
+            <MessageBubble
+              key={m.id}
+              message={m}
+              variant={variant}
+              isStreaming={isLastAssistant && isTyping}
+            />
+          )
+        })
       )}
       {isTyping && <TypingIndicator variant={variant} />}
     </div>
