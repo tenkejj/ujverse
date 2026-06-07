@@ -1,7 +1,11 @@
 /**
  * GroqProvider — `LLMProvider` używający Groq Cloud (OpenAI-compatible API).
  *
- * - Model: `llama-3.1-8b-instant` (najtańszy/najszybszy w katalogu Groq).
+ * - Model: konfigurowalny przez argument konstruktora (`model`). Domyślny
+ *   fallback `llama-3.1-8b-instant` pozostawiony dla backward-compat (testy
+ *   i `scrape-wziks.ts` które same nie podają modelu). Produkcyjna ścieżka
+ *   wstrzykuje `DEFAULT_GROQ_MODEL` z `llmService.ts` — patrz tam po
+ *   uzasadnienie wyboru pod kątem RPM/RPD.
  * - Streaming: `stream: true` → Groq zwraca SSE w formacie OpenAI
  *   (`data: { choices: [{ delta: { content } }] }`), kompatybilnym z
  *   parserem klienta (`BielikAdapter.parseSSEStream`). Stąd brak konwersji
@@ -24,7 +28,12 @@ import type {
 } from './types.js'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const MODEL = 'llama-3.1-8b-instant'
+/**
+ * Fallback dla starych call-site'ów które nie podają jawnie modelu w
+ * konstruktorze (np. testy, scraper). Główna ścieżka chatu wstrzykuje
+ * `DEFAULT_GROQ_MODEL` z `llmService.ts`.
+ */
+const FALLBACK_MODEL = 'llama-3.1-8b-instant'
 const DEFAULT_TEMPERATURE = 0.7
 
 /**
@@ -106,12 +115,14 @@ export type GroqCompleteWithToolsOptions = {
 
 export class GroqProvider implements LLMProvider {
   private readonly apiKey: string
+  private readonly model: string
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model: string = FALLBACK_MODEL) {
     if (!apiKey) {
       throw new Error('GroqProvider: apiKey is required')
     }
     this.apiKey = apiKey
+    this.model = model
   }
 
   async sendMessage(
@@ -124,7 +135,7 @@ export class GroqProvider implements LLMProvider {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: this.model,
         messages,
         stream: true,
         temperature: DEFAULT_TEMPERATURE,
@@ -161,7 +172,7 @@ export class GroqProvider implements LLMProvider {
     opts: GroqCompleteOptions = {},
   ): Promise<string> {
     const response = await this.postJson({
-      model: MODEL,
+      model: this.model,
       messages,
       stream: false,
       temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
@@ -197,7 +208,7 @@ export class GroqProvider implements LLMProvider {
     opts: GroqCompleteWithToolsOptions = {},
   ): Promise<GroqCompleteWithToolsResult> {
     const body: Record<string, unknown> = {
-      model: MODEL,
+      model: this.model,
       messages,
       stream: false,
       temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
@@ -218,7 +229,7 @@ export class GroqProvider implements LLMProvider {
     return {
       message,
       usage: data?.usage ?? null,
-      model: data?.model ?? MODEL,
+      model: data?.model ?? this.model,
     }
   }
 

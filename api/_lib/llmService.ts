@@ -18,6 +18,28 @@ import { GroqProvider, GroqProviderError } from './GroqProvider.js'
 import type { ChatRequestMessage, GroqMessage, LLMProvider } from './types.js'
 
 /**
+ * Domyślny model Groqa dla całej platformy. Świadomy wybór pod kątem
+ * **RPM** na free tier (źródło: console.groq.com/docs/rate-limits, czerwiec 2026):
+ *
+ * | Model                       | RPM | RPD    | TPM   |
+ * | --------------------------- | --- | ------ | ----- |
+ * | llama-3.1-8b-instant (stary)|  30 | 14 400 |  6 K  |
+ * | qwen/qwen3-32b (nowy)       |  60 |  1 000 |  6 K  |
+ * | moonshotai/kimi-k2-instruct |  60 |  1 000 | 10 K  |
+ *
+ * Wybieramy `qwen/qwen3-32b` — dwa razy wyższy RPM, dla UJverse RPD nie jest
+ * bottleneckiem (oczekiwany ruch znacznie poniżej 1K zapytań/dobę). Burst
+ * 60 RPM bezpośrednio obniża szansę na 429 podczas typowego użycia z kilkoma
+ * równoczesnymi userami.
+ *
+ * Override przez `process.env.GROQ_MODEL` (np. szybki rollback na llama-8b
+ * gdy zaobserwujemy regres jakości / problem z Function Calling) — żeby nie
+ * trzeba było wdrażać kodu, tylko zmienić env w panelu Vercela.
+ */
+export const DEFAULT_GROQ_MODEL: string =
+  process.env.GROQ_MODEL ?? 'qwen/qwen3-32b'
+
+/**
  * Polityka retry dla wywołań Groq API.
  *
  * - `GROQ_RETRY_ATTEMPTS` = 3: łącznie do trzech prób (1 oryginalna + 2 retry).
@@ -232,13 +254,15 @@ class LLMService implements LLMProvider {
           'LLMService: GROQ_API_KEY is required when NODE_ENV=production',
         )
       }
-      this.provider = new GroqProvider(apiKey)
+      this.provider = new GroqProvider(apiKey, DEFAULT_GROQ_MODEL)
       return
     }
 
     // dev / test / undefined — preferuj realny provider gdy klucz jest,
     // w przeciwnym razie zjedź na mocka (offline, brak klucza w `.env.local`).
-    this.provider = apiKey ? new GroqProvider(apiKey) : new MockProvider()
+    this.provider = apiKey
+      ? new GroqProvider(apiKey, DEFAULT_GROQ_MODEL)
+      : new MockProvider()
   }
 
   async sendMessage(

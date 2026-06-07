@@ -29,10 +29,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   buildToolCacheKey,
-  TTLMemoryCache,
-  TOOL_CACHE_TTL_MS,
   ttlForTool,
 } from '../cache.js'
+import { kvGetSafe, kvSetSafe } from '../kvCache.js'
 
 /**
  * Minimalne JSON Schema akceptowane przez Groq w polu `tools[*].function.parameters`.
@@ -85,9 +84,12 @@ export type GroqToolDescriptor = {
 const registry = new Map<string, ToolEntry>()
 
 /**
- * Cache wyników narzędzi — klucz = `<toolName>::<fnv1a(args)>::<len>`,
+ * Cache wyników narzędzi — Vercel KV (Upstash Redis przez REST).
+ *
+ * Klucz = `<toolName>::<fnv1a(args)>::<len>` (z `buildToolCacheKey`).
  * TTL pobierany per narzędzie z `TOOL_TTL_MS` w `cache.ts`
- * (60s announcements / 300s events / 30s posts; default 60s).
+ * (60s announcements / 300s events / 30s posts; default 60s) — wartości
+ * w ms konwertujemy na sekundy przy zapisie do KV (`{ ex: N }`).
  *
  * Cache działa jako DEKORATOR wokół `execute` — owijanie odbywa się raz, w
  * `registerTool`. Konsumenci (`api/chat.ts`) wołają po prostu `entry.execute`
@@ -97,8 +99,11 @@ const registry = new Map<string, ToolEntry>()
  * Cache'ujemy WYŁĄCZNIE wyniki sukcesu (`ok: true` lub dowolna inna wartość
  * truthy). Błędy (`ok: false`, rzuty wyjątków) NIE trafiają do cache'u —
  * następne wywołanie powinno spróbować ponownie.
+ *
+ * Fallback: jeśli KV nie działa (brak konfiguracji, sieć, 5xx) — `kvGetSafe`
+ * zwraca `undefined` (treat as MISS), `kvSetSafe` loguje warn i przechodzi
+ * dalej. Narzędzie się wykona, użytkownik dostanie świeży wynik z Supabase'a.
  */
-const toolResultCache = new TTLMemoryCache<unknown>(TOOL_CACHE_TTL_MS)
 
 /** Argumenty `registerTool` — `ttlMs` opcjonalny; bez niego sięga `ttlForTool(name)`. */
 export type RegisterToolArgs<TArgs, TResult> = {
@@ -131,42 +136,50 @@ export function listToolNames(): string[] {
 }
 
 /**
- * Decorator: opakowuje `execute` w warstwę cache'u TTL.
+ * Decorator: opakowuje `execute` w warstwę cache'u TTL na Vercel KV.
  *
- * - HIT: zwraca wartość z `TTLMemoryCache` bez wołania egzekutora ([log] `[Tool Cache] HIT`).
+ * - HIT: zwraca wartość z KV bez wołania egzekutora ([log] `[Tool Cache] HIT`).
  * - MISS: woła egzekutor; jeśli wynik nadaje się do cache'owania (`isCacheable`),
- *   wkłada do cache'u na `ttlMs`.
+ *   wkłada do KV na `ttlMs` (skonwertowane na sekundy).
+ * - KV-error: traktujemy jak MISS i odpalamy egzekutor — request się nie wywraca.
  *
  * Funkcja jest generyczna w args/result, ale do `Map<ToolEntry>` trafia jako
  * unknown-args (`ToolExecutor<Record<string, unknown>, unknown>`) — to celowe,
  * dziedziczone po pierwotnym kontrakcie registry.
+ *
+ * Uwaga o serializacji: `@vercel/kv` automatycznie `JSON.stringify`-uje wartość
+ * przy `set` i parsuje przy `get`. Nasze wyniki narzędzi to plain obiekty
+ * lub stringi (np. `EMPTY_RESULT_MESSAGE`) — round-trip jest stratny tylko
+ * dla `Date`/`Map`/`Set`/`BigInt`. Tools świadomie zwracają string ISO dla
+ * dat (np. `created_at`) i prymitywy, więc serializacja jest niezauważalna.
  */
 function withCache<TArgs, TResult>(
   toolName: string,
   execute: ToolExecutor<TArgs, TResult>,
   ttlMs: number,
 ): ToolExecutor<TArgs, TResult> {
+  const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000))
   return async (args, ctx) => {
     const cacheKey = buildToolCacheKey(
       toolName,
       args as unknown as Record<string, unknown>,
     )
-    const cached = toolResultCache.get(cacheKey)
+    const cached = await kvGetSafe<TResult>(cacheKey)
     if (cached !== undefined) {
       console.log('[Tool Cache] HIT', toolName, 'key:', cacheKey)
-      return cached as TResult
+      return cached
     }
 
     const result = await execute(args, ctx)
     if (isCacheable(result)) {
-      toolResultCache.set(cacheKey, result, ttlMs)
+      await kvSetSafe(cacheKey, result, ttlSeconds)
       console.log(
         '[Tool Cache] MISS -> set',
         toolName,
         'key:',
         cacheKey,
-        'ttlMs:',
-        ttlMs,
+        'ttlSec:',
+        ttlSeconds,
       )
     } else {
       console.log('[Tool Cache] MISS -> skip (error result)', toolName)
@@ -183,9 +196,19 @@ function isCacheable(value: unknown): boolean {
   return true
 }
 
-/** Tylko dla testów / debug — nie używać w hot path. */
+/**
+ * Tylko dla testów / debug — nie używać w hot path.
+ *
+ * UWAGA po migracji na KV: nie wycieramy całego KV (jeden namespace jest
+ * dzielony z innymi cache'ami i odpowiedziami chatu). Funkcja zostaje jako
+ * no-op, żeby caller-y nie wybuchły. Jeśli testy potrzebują wycieru,
+ * powinny używać dedykowanych KV-namespace'ów albo `kv.del(key)` per klucz.
+ */
 export function clearToolCache(): void {
-  toolResultCache.clear()
+  console.warn(
+    '[Tool Cache] clearToolCache() is a no-op after KV migration — ' +
+      'use kv.del(key) per key, or scope tests to a separate KV namespace.',
+  )
 }
 
 /**
