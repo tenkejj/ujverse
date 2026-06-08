@@ -394,6 +394,59 @@ export const SEARCH_DASHBOARD = {
   },
 } as const
 
+/**
+ * FILTER_PILL — jednolita pigułka filtra dla całej apki.
+ *
+ * Używany przez:
+ *  - `DepartmentFilter` (skróty wydziałów)
+ *  - `EventsView` (Wszystkie / Moje / Oficjalne / kategorie)
+ *  - `AnnouncementPills` (mobilny rail komunikatów)
+ *
+ * Wzorzec: `transparent + border` z akcentem `#1e293b` (light) /
+ * `#D4AF37` ≈ `brand-gold-bright` (dark). Active = pogrubienie + accent border.
+ */
+export const FILTER_PILL = {
+  base:
+    'shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full text-sm ' +
+    'whitespace-nowrap transition-colors duration-150 focus:outline-none ' +
+    'focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 min-h-[34px] md:min-h-0 border',
+  inactive:
+    'font-medium bg-transparent border-zinc-200 text-zinc-600 ' +
+    'hover:border-zinc-300 hover:text-zinc-700 ' +
+    'dark:bg-transparent dark:border-white/10 dark:text-zinc-100 dark:hover:border-white/20',
+  active:
+    'font-semibold bg-transparent border-[#1e293b] text-[#1e293b] ' +
+    'dark:text-[#D4AF37] dark:border-[#D4AF37]',
+} as const
+
+/**
+ * EVENTS_TOOLBAR — pasek nad siatką wydarzeń.
+ *
+ * Search input celowo używa dokładnie tej samej kapsuły co `OMNI_DESKTOP`,
+ * żeby „wydarzenia" wizualnie współgrały z headerową paletą wyszukiwania.
+ */
+export const EVENTS_TOOLBAR = {
+  liveBadge:
+    'hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 ' +
+    'text-[10px] font-bold uppercase tracking-wide ' +
+    'border-zinc-200 bg-white/70 text-slate-600 ' +
+    'dark:border-white/10 dark:bg-black/25 dark:text-slate-400',
+  searchWrap:
+    'relative flex h-10 min-w-[160px] flex-1 max-w-xs sm:max-w-[240px] items-center gap-2 rounded-2xl px-3.5 ' +
+    'backdrop-blur-md backdrop-saturate-150 border border-zinc-200 bg-white/80 ' +
+    'transition-colors duration-200 focus-within:border-[#1e293b]/40 ' +
+    'dark:border-white/10 dark:bg-bg-card/80 dark:focus-within:border-brand-gold-bright/45',
+  searchLeadingIcon: 'shrink-0 size-5 text-[#1e293b] dark:text-zinc-400',
+  searchInner:
+    'h-full w-full min-w-0 flex-1 bg-transparent text-sm text-zinc-800 outline-none ' +
+    'placeholder:text-zinc-500 caret-[#1e293b] ' +
+    'dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:caret-brand-gold-bright',
+  createBtn:
+    'shrink-0 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ' +
+    'border-[#1e293b]/40 text-[#1e293b] transition-colors hover:bg-[#1e293b]/5 ' +
+    'dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10',
+} as const
+
 export const BOTTOM_NAV_MOBILE = {
   scrollThreshold: 10,
   navBaseClass: 'md:hidden fixed bottom-0 left-0 right-0 z-50 border-t',

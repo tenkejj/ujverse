@@ -1,9 +1,11 @@
-import { Shield, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { formatEventDateParts } from '../../data/mockEvents'
+import { theme } from '../../styles/theme'
 import type { Profile } from '../../types'
 import type { EventMeta, UnifiedContent } from '../../types/content'
 import UserAvatar from '../UserAvatar'
 import BaseCard from '../ui/BaseCard'
+import OfficialBadge from '../ui/OfficialBadge'
 
 function facultyTag(content: UnifiedContent<EventMeta>): string | null {
   if (!content.metadata.isOfficial) return null
@@ -17,6 +19,8 @@ type Props = {
   content: UnifiedContent<EventMeta>
   onSelect: (id: string) => void
 }
+
+const goldMuted = theme.text.goldMuted
 
 export default function EventCard({ content, onSelect }: Props) {
   const eventDate = new Date(content.metadata.date)
@@ -34,36 +38,26 @@ export default function EventCard({ content, onSelect }: Props) {
   const body = (
     <div className="relative z-[2] flex items-start gap-3">
       <div className="min-w-[40px] shrink-0 text-center">
-        <span
-          className="block text-[10px] font-bold uppercase leading-none tracking-wide text-[#1e293b] dark:text-brand-gold-bright"
-        >
+        <span className={`block text-[10px] font-bold uppercase leading-none tracking-wide ${goldMuted}`}>
           {monthLabel}
         </span>
         <span className="block text-lg font-extrabold leading-tight text-fg-primary">{dayNum}</span>
       </div>
       <div className="min-w-0 flex-1">
         {official && tag ? (
-          <span className="mb-1 inline-flex rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-fg-primary dark:text-brand-gold-bright">
+          <span className={`mb-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border-[#1e293b]/35 bg-[#1e293b]/[0.06] ${goldMuted} dark:border-brand-gold/40 dark:bg-brand-gold/10`}>
             {tag}
           </span>
         ) : null}
         <div className="flex items-start justify-between gap-2">
           <p
-            className={`min-w-0 text-sm leading-snug ${
-              official ? 'font-extrabold text-fg-primary' : 'font-semibold text-fg-primary'
+            className={`min-w-0 text-sm leading-snug text-fg-primary ${
+              official ? 'font-extrabold' : 'font-semibold'
             }`}
           >
             {content.title}
           </p>
-          {official ? (
-            <span
-              className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-brand-gold/45 bg-black/[0.04] px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-fg-primary dark:bg-black/30 dark:text-brand-gold-bright"
-              title={content.metadata.sourceName ? `Źródło: ${content.metadata.sourceName}` : undefined}
-            >
-              <Shield size={11} className="text-accent-gold" strokeWidth={2.5} aria-hidden />
-              OFICJALNE UJ
-            </span>
-          ) : null}
+          {official ? <OfficialBadge size="sm" variant="inline" className="shrink-0" /> : null}
         </div>
         <p className="mt-1 line-clamp-2 text-xs text-fg-secondary">
           {content.metadata.location}
@@ -80,39 +74,22 @@ export default function EventCard({ content, onSelect }: Props) {
           </span>
         </div>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-fg-secondary">
-          <Users size={16} strokeWidth={2} className="shrink-0 text-[#1e293b]/70 dark:text-brand-gold-bright" aria-hidden />
+          <Users size={16} strokeWidth={2} className={`shrink-0 ${goldMuted}`} aria-hidden />
           <span>{content.metadata.attendees} uczestników</span>
         </p>
       </div>
     </div>
   )
 
-  if (official) {
-    return (
-      <BaseCard
-        as="button"
-        variant="premium"
-        interactive
-        flush
-        type="button"
-        onClick={() => onSelect(content.id)}
-        className="official-card-premium relative w-full cursor-pointer overflow-hidden bg-gradient-to-br from-gray-100 via-[#1e293b]/[0.04] to-gray-100 text-left dark:from-[#1a1508]/90 dark:via-brand-gold/[0.07] dark:to-transparent"
-      >
-        {posterUrl ? (
-          <div className="aspect-video w-full overflow-hidden">
-            <img src={posterUrl} alt={content.title} className="h-full w-full object-cover" />
-          </div>
-        ) : null}
-        <div className="p-4">{body}</div>
-      </BaseCard>
-    )
-  }
-
   return (
-    <button
+    <BaseCard
+      as="button"
       type="button"
+      variant={official ? 'premium' : 'default'}
+      interactive
+      flush
       onClick={() => onSelect(content.id)}
-      className="relative w-full cursor-pointer overflow-hidden rounded-2xl border border-border-app bg-bg-card text-left transition-colors hover:bg-white/80 dark:hover:bg-white/5"
+      className={`relative w-full overflow-hidden text-left ${official ? 'official-card-premium' : ''}`}
     >
       {posterUrl ? (
         <div className="aspect-video w-full overflow-hidden">
@@ -120,6 +97,6 @@ export default function EventCard({ content, onSelect }: Props) {
         </div>
       ) : null}
       <div className="p-4">{body}</div>
-    </button>
+    </BaseCard>
   )
 }

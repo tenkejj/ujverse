@@ -58,10 +58,13 @@ function variantClasses(variant: BaseCardVariant): string {
       return [
         radius.card,
         'border',
-        colors.border.gold,
-        'bg-gradient-to-br from-[#1a1508]/90 via-[#D4AF37]/[0.06] to-transparent',
+        // Light: navy outline + delikatny kremowy gradient (spójny z paletą logotypu).
+        // Dark:  złoty ring + ciemny gradient z prześwitem `brand-gold/[0.07]`.
+        'border-[#1e293b]/30 dark:border-[#D4AF37]/45',
+        'bg-gradient-to-br from-zinc-50 via-[#1e293b]/[0.04] to-white ' +
+          'dark:from-[#1a1508]/90 dark:via-[#D4AF37]/[0.07] dark:to-transparent',
         shadow.premium,
-        'ring-1 ring-[#D4AF37]/20',
+        'ring-1 ring-[#1e293b]/10 dark:ring-[#D4AF37]/20',
         colors.surface.glass,
       ].join(' ')
     case 'default':
@@ -83,7 +86,8 @@ function interactiveClasses(variant: BaseCardVariant): string {
   }
   const base = `${theme.transition.base} hover:border-[#D4AF37]/45 hover:${theme.shadow.goldGlow} cursor-pointer`
   if (variant === 'premium') {
-    return `${theme.transition.base} hover:ring-[#D4AF37]/40 hover:border-[#D4AF37]/60 cursor-pointer`
+    // Hover spójny w obu trybach — w light wzmacnia navy ring, w dark złoty ring.
+    return `${theme.transition.base} cursor-pointer hover:border-[#1e293b]/55 hover:ring-[#1e293b]/20 dark:hover:border-[#D4AF37]/60 dark:hover:ring-[#D4AF37]/40`
   }
   return base
 }

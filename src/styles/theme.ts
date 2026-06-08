@@ -53,6 +53,36 @@ export const theme = {
     goldMuted: 'text-[#1e293b] dark:text-brand-gold-bright',
     sectionHeader: 'text-[#1e293b] dark:text-brand-gold-bright',
   },
+  button: {
+    /**
+     * Wypełniony CTA – jedyne źródło prawdy dla „głównej akcji" w kartach,
+     * modalach i karuzelach (RSVP, „Otwórz w portalu UJ", „Zapisz").
+     * Light: navy fill, biały tekst. Dark: brand-gold fill, czarny tekst.
+     */
+    primary:
+      'inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] text-white ' +
+      'font-bold transition-colors hover:bg-[#1e293b]/90 ' +
+      'dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85',
+    /**
+     * Obrysowany CTA – „akcja drugorzędna" (Udostępnij, Anuluj, „Bierzesz udział").
+     */
+    outline:
+      'inline-flex items-center justify-center gap-2 rounded-xl border bg-transparent ' +
+      'border-[#1e293b]/45 text-[#1e293b] font-semibold transition-colors hover:bg-[#1e293b]/5 ' +
+      'dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10',
+    /**
+     * Pływający przycisk-ikona nad plakatem (modal toolbar, hero karuzela).
+     * Symetryczny: jasne tło na jasnym layoucie, ciemne na ciemnym.
+     */
+    floatingIcon:
+      'inline-flex items-center justify-center rounded-full p-2 backdrop-blur-sm transition-colors ' +
+      'border border-[#1e293b]/25 bg-white/75 text-[#1e293b] hover:bg-white/95 ' +
+      'dark:border-brand-gold/35 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/55',
+    floatingIconDanger:
+      'inline-flex items-center justify-center rounded-full p-2 backdrop-blur-sm transition-colors ' +
+      'border border-red-500/35 bg-white/75 text-red-600 hover:bg-white/95 ' +
+      'dark:border-red-500/45 dark:bg-black/40 dark:text-red-400 dark:hover:bg-black/55 dark:hover:text-red-300',
+  },
 } as const
 
 export type Theme = typeof theme

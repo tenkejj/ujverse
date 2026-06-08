@@ -5,6 +5,7 @@ import { type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
 import { DataService } from '../services/DataService'
 import { useUnifiedEvents } from '../hooks/useContent'
+import { EVENTS_TOOLBAR, FILTER_PILL } from '../styles/mobile-theme'
 import type { EventMeta, UnifiedContent } from '../types/content'
 import CreateEventModal from './CreateEventModal'
 import EventModal from './EventModal'
@@ -105,28 +106,27 @@ export default function EventsView({ currentUserId }: Props) {
 
       <div className="lg:col-span-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-app pb-4">
-          <div className="flex flex-wrap gap-2">
-            {FILTERS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm transition-colors ${
-                  filter === key
-                    ? 'font-bold text-[#1e293b] dark:text-brand-gold-bright'
-                    : 'text-slate-600 hover:text-fg-primary font-medium dark:text-slate-400 dark:hover:text-slate-200'
-                }`}
-              >
-                {key === 'mine' ? (
-                  <User size={16} strokeWidth={2} className="shrink-0 opacity-90" aria-hidden />
-                ) : null}
-                {label}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-1.5">
+            {FILTERS.map(({ key, label }) => {
+              const active = filter === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`${FILTER_PILL.base} ${active ? FILTER_PILL.active : FILTER_PILL.inactive}`}
+                >
+                  {key === 'mine' ? (
+                    <User size={14} strokeWidth={2} className="shrink-0 opacity-90" aria-hidden />
+                  ) : null}
+                  {label}
+                </button>
+              )
+            })}
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
             <span
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 dark:border-border-app dark:bg-black/25 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400"
+              className={EVENTS_TOOLBAR.liveBadge}
               role="status"
               aria-label={ingestFromStaticFallback ? 'Źródło: archiwum i polecane' : 'Źródło: dane na żywo z UJ'}
             >
@@ -146,11 +146,10 @@ export default function EventsView({ currentUserId }: Props) {
                 </>
               )}
             </span>
-            <div className="relative flex-1 min-w-[160px] max-w-xs sm:max-w-[220px]">
+            <div className={EVENTS_TOOLBAR.searchWrap}>
               <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
                 strokeWidth={2}
+                className={EVENTS_TOOLBAR.searchLeadingIcon}
                 aria-hidden
               />
               <input
@@ -158,7 +157,7 @@ export default function EventsView({ currentUserId }: Props) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Szukaj po nazwie…"
-                className="w-full rounded-xl border border-gray-200 bg-gray-100 py-2 pl-9 pr-3 text-sm text-fg-primary placeholder:text-slate-500 focus:border-[#1e293b] focus:outline-none dark:border-border-app dark:bg-black/20 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-brand-gold-bright"
+                className={EVENTS_TOOLBAR.searchInner}
                 aria-label="Szukaj wydarzeń po nazwie"
               />
             </div>
@@ -168,7 +167,7 @@ export default function EventsView({ currentUserId }: Props) {
                 setEditTarget(null)
                 setIsCreateOpen(true)
               }}
-              className="shrink-0 flex items-center gap-2 rounded-xl border border-[#1e293b]/40 px-4 py-2 text-sm font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/5 dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10"
+              className={EVENTS_TOOLBAR.createBtn}
             >
               <Plus size={18} strokeWidth={2} aria-hidden />
               Dodaj wydarzenie
