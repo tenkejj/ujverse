@@ -1,3 +1,8 @@
+/**
+ * UJverse — ISI UJ communiqués scraper (Vercel serverless cron endpoint).
+ * Copyright © 2026 Franciszek Dranka. All rights reserved.
+ * License: Proprietary — see LICENSE in repo root.
+ */
 // Serverless cron endpoint: scrapes ISI UJ communiqués → upserts into announcements.
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import axios from 'axios'

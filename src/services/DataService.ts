@@ -1,3 +1,8 @@
+/**
+ * UJverse — DataService facade for unified content (posts/events/clubs/announcements).
+ * Copyright © 2026 Franciszek Dranka. All rights reserved.
+ * License: Proprietary — see LICENSE in repo root.
+ */
 import type { Post } from '../types'
 import type {
   AnnouncementMeta,

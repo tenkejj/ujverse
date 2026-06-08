@@ -17,6 +17,10 @@ type Props = {
 export default function ProfileFab({ kind, onClick, loading }: Props) {
   const show = useShowFab()
 
+  // FAB edycji profilu jest ukryty na mobile, żeby nie nakładał się
+  // na FAB asystenta (chat). Inline button w hero nadal działa.
+  if (kind === 'edit') return null
+
   return (
     <AnimatePresence mode="popLayout">
       {show ? (

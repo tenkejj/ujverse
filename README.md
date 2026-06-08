@@ -1,5 +1,7 @@
 # UJverse
 
+> Author: **Franciszek Dranka** &nbsp;·&nbsp; Contact: [franciszek.dranka@student.uj.edu.pl](mailto:franciszek.dranka@student.uj.edu.pl) &nbsp;·&nbsp; Copyright © 2026 — All Rights Reserved (see [LICENSE](./LICENSE)).
+
 UJverse is a modern, real-time social platform designed exclusively for the academic community. It provides students and academic staff with a dedicated space to share updates, exchange knowledge, and stay connected through a fluid, highly responsive user interface. 
 
 The application is built with a strong focus on performance, real-time data synchronization, and a premium user experience, bridging the gap between outdated university forums and noisy mainstream social media.
@@ -78,3 +80,22 @@ As the platform grows, the architecture is prepared to support several advanced 
 * Direct messaging (1-on-1 real-time chat) between community members.
 * Advanced content discovery via clickable hashtags and a dedicated search infrastructure.
 * Content bookmarking for saving important academic notes and schedules.
+
+## Author
+
+UJverse was designed, architected, and implemented by **Franciszek Dranka** (Uniwersytet Jagielloński, Kraków). The project is a personal, independent work — it is not affiliated with, endorsed by, or sponsored by Uniwersytet Jagielloński, despite carrying the "UJ" prefix in its community-facing name.
+
+- Author: Franciszek Dranka
+- Email: [franciszek.dranka@student.uj.edu.pl](mailto:franciszek.dranka@student.uj.edu.pl)
+- Repository: [github.com/tenkejj/ujverse](https://github.com/tenkejj/ujverse)
+- Production: [ujverse.pl](https://ujverse.pl)
+
+For commercial licensing, white-label deployments, partnerships, or any usage beyond personal source-review (see [LICENSE §2](./LICENSE)), please contact the author directly.
+
+## License
+
+Copyright © 2026 Franciszek Dranka. **All rights reserved.**
+
+This software is released under a proprietary license. You may **view** the source for personal, non-commercial code-review purposes, but you may **not** copy, fork, mirror, deploy, modify, or use it (in whole or in part) to train AI/ML systems without prior written permission from the author. The full terms are in [LICENSE](./LICENSE).
+
+The name **"UJverse"** and the UJverse logo are unregistered trademarks of Franciszek Dranka.

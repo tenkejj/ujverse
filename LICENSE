@@ -1,0 +1,77 @@
+UJverse — Proprietary License
+Copyright © 2026 Franciszek Dranka. All rights reserved.
+
+Author:  Franciszek Dranka
+Contact: franciszek.dranka@student.uj.edu.pl
+Source:  https://github.com/tenkejj/ujverse
+
+THIS SOFTWARE AND ITS SOURCE CODE ARE THE EXCLUSIVE INTELLECTUAL
+PROPERTY OF FRANCISZEK DRANKA ("the Author"). They are protected by
+Polish copyright law (Ustawa z dnia 4 lutego 1994 r. o prawie
+autorskim i prawach pokrewnych, Dz.U. 1994 nr 24 poz. 83) and by
+international copyright treaties (Berne Convention, WIPO Copyright
+Treaty).
+
+1. GRANT OF RIGHTS
+   No license, express or implied, is granted under this notice.
+   All rights — including the rights to copy, modify, distribute,
+   sublicense, publicly perform, publicly display, host, deploy,
+   sell, or create derivative works of this software, in whole or
+   in part — are reserved exclusively to the Author.
+
+2. PERMITTED USE
+   Viewing the source code via the public Git repository hosted at
+   the URL above is permitted for personal, non-commercial,
+   read-only purposes (code review, education, evaluation). Any
+   other use requires prior written permission from the Author.
+
+3. PROHIBITED USE
+   Without prior written permission from the Author, you may NOT:
+   (a) copy, fork, mirror, or republish the source code or any
+       substantial portion of it;
+   (b) deploy a hosted instance of this software or a derivative
+       of it on any public or private infrastructure;
+   (c) use the source code, in whole or in part, to train, fine-tune,
+       evaluate, or benchmark any machine learning or AI system;
+   (d) remove, alter, or obscure any copyright, authorship,
+       attribution, or license notice contained in any file;
+   (e) represent yourself or any third party as the author,
+       co-author, or original creator of this software.
+
+4. ATTRIBUTION
+   Every copy of the source code (authorized or otherwise) must
+   retain this LICENSE file unchanged and must preserve all
+   "Copyright © 2026 Franciszek Dranka" notices appearing in
+   individual source files, the package manifest, the HTML head,
+   and the in-application credits.
+
+5. TRADEMARKS
+   "UJverse" and the UJverse logo are unregistered trademarks of
+   the Author. Use of the name or logo to identify a derivative or
+   third-party product is prohibited.
+
+6. DISCLAIMER OF WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NONINFRINGEMENT.
+
+7. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES,
+   OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+   OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. CONTACT FOR LICENSING
+   For commercial licensing, white-label deployment, partnership
+   inquiries, or any usage not permitted under §2, contact:
+       franciszek.dranka@student.uj.edu.pl
+
+   The Author may, at sole discretion, grant individual licenses
+   on negotiated terms.
+
+UJverse is an independent, unofficial community platform for
+Uniwersytet Jagielloński. It is not endorsed by, affiliated with,
+or sponsored by Uniwersytet Jagielloński.
+
+— Franciszek Dranka, Kraków, 2026

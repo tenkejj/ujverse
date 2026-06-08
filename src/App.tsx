@@ -1,3 +1,8 @@
+/**
+ * UJverse — root application component (session, routing, feed orchestration).
+ * Copyright © 2026 Franciszek Dranka. All rights reserved.
+ * License: Proprietary — see LICENSE in repo root.
+ */
 import {
   lazy,
   Suspense,

@@ -1,1 +1,0 @@
-DROP FUNCTION IF EXISTS public.http_sync_to_meilisearch() CASCADE;

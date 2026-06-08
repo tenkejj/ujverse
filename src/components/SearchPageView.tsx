@@ -127,7 +127,11 @@ export default function SearchPageView({
   const [pendingFilter, setPendingFilter] = useState<ContentFilter | null>(null)
   const [searchHistory, setSearchHistory] = useState<string[]>(loadSearchHistory)
   const { content, users, events, isLoading, error } = useContentSearch(activeQuery)
-  const [fullPostsById, setFullPostsById] = useState<Record<string, Post>>({})
+  // `Post` = fetched + author żywy / niezbanowany.
+  // `null` = fetch zakończony, ale wiersza brak (post usunięty z DB lub autor zbanowany)
+  //          → hit z Meili jest nieaktualny i NIE powinien się renderować jako skeleton.
+  // brak klucza = fetch w toku → pokazujemy skeleton.
+  const [fullPostsById, setFullPostsById] = useState<Record<string, Post | null>>({})
 
   const queryFromUrl = useMemo(
     () => new URLSearchParams(location.search).get('q')?.trim() ?? '',
@@ -163,15 +167,15 @@ export default function SearchPageView({
   }, [activeQuery, activeTagFilter, pendingFilter])
 
   const safeUsers = Array.isArray(users) ? users : []
-  const safeContent = Array.isArray(content) ? content : []
+  const rawContent = Array.isArray(content) ? content : []
   const safeEvents = Array.isArray(events) ? events : []
 
   const postHitIds = useMemo<string[]>(
     () =>
-      safeContent
+      rawContent
         .filter((hit) => hit.type === 'post' && Boolean(hit.sourceId))
         .map((hit) => hit.sourceId),
-    [safeContent],
+    [rawContent],
   )
 
   // Batch dofetch pełnych Post[] dla post-hitów Meilisearch (search index zawiera
@@ -184,10 +188,21 @@ export default function SearchPageView({
     let cancelled = false
     void DataService.fetchPostsByIds(missing).then((rows) => {
       if (cancelled) return
+      const found = new Set<string>()
+      for (const row of rows) {
+        if (row.id) found.add(String(row.id))
+      }
       setFullPostsById((previous) => {
         const next = { ...previous }
+        // Najpierw zaznaczamy WSZYSTKIE zapytane ID jako "rozstrzygnięte" (null = brak),
+        // dopiero potem nadpisujemy te, które faktycznie wróciły z Supabase.
+        // Dzięki temu nieaktualne wpisy w Meili (np. usunięty post / zbanowany autor)
+        // nie utkną w stanie nieskończonego skeletonu.
+        for (const id of missing) {
+          if (!(id in next)) next[id] = null
+        }
         for (const row of rows) {
-          if (row.id) next[String(row.id)] = row
+          if (row.id && found.has(String(row.id))) next[String(row.id)] = row
         }
         return next
       })
@@ -197,11 +212,34 @@ export default function SearchPageView({
     }
   }, [postHitIds, fullPostsById])
 
+  // Zbiór ID hitów posta z Meili, których brak w DB (post usunięty / autor zbanowany).
+  // Używany do odfiltrowania martwych hitów ZANIM zbudujemy `safeContent` / liczniki.
+  const missingPostIds = useMemo<Set<string>>(() => {
+    const s = new Set<string>()
+    for (const [id, value] of Object.entries(fullPostsById)) {
+      if (value === null) s.add(id)
+    }
+    return s
+  }, [fullPostsById])
+
+  // `safeContent` = wynik Meili z usuniętymi już rozstrzygniętymi "duchami" (post-hity
+  // bez pasującego wiersza w `posts`). To eliminuje placeholdery-skeletony, które
+  // pozostawały w UI po usunięciu posta z bazy.
+  const safeContent = useMemo<SearchHit[]>(
+    () =>
+      rawContent.filter(
+        (hit) => !(hit.type === 'post' && missingPostIds.has(hit.sourceId)),
+      ),
+    [rawContent, missingPostIds],
+  )
+
   const unifiedPostsBySourceId = useMemo(() => {
     const map: Record<string, ReturnType<typeof DataService.toUnifiedPosts>[number]> = {}
     const fetched: Post[] = []
     for (const id of postHitIds) {
       const row = fullPostsById[id]
+      // `null` = post znikł z DB (deleted / autor zbanowany); pomiń, hit zostanie
+      // odfiltrowany przez `safeContent`/`missingPostIds`.
       if (row) fetched.push(row)
     }
     if (fetched.length === 0) return map

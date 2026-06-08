@@ -1,3 +1,10 @@
+/**
+ * UJverse — nieoficjalna platforma społeczności Uniwersytetu Jagiellońskiego.
+ * Copyright © 2026 Franciszek Dranka. All rights reserved.
+ * Author:  Franciszek Dranka <franciszek.dranka@student.uj.edu.pl>
+ * License: Proprietary — see LICENSE in repo root.
+ * Source:  https://github.com/tenkejj/ujverse
+ */
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -11,6 +18,22 @@ import {
   subscribePreferences,
 } from './lib/userPreferences.ts'
 import './index.css'
+
+// Stempel autora w DevTools — minifier produkcyjny zachowuje stringi
+// w `console.log`, więc to zostaje widoczne też w buildzie. Cel: ktoś, kto
+// otwiera DevTools na ujverse.pl, od razu widzi kto stoi za projektem.
+if (typeof window !== 'undefined') {
+  try {
+    console.log(
+      '%cUJverse%c  ·  © 2026 Franciszek Dranka  ·  All rights reserved\n%cContact: franciszek.dranka@student.uj.edu.pl\nSource:  https://github.com/tenkejj/ujverse\nLicense: proprietary — see /LICENSE',
+      'font-size:18px;font-weight:800;color:#e8c84a;letter-spacing:0.04em',
+      'font-size:12px;color:#94a3b8',
+      'font-size:11px;color:#64748b;line-height:1.6',
+    )
+  } catch {
+    // noop — niektóre starsze przeglądarki / sandbox crashują na styled %c
+  }
+}
 
 // Aplikuj kliencko-zapamiętane preferencje (gęstość UI, redukcja animacji)
 // zanim React zamontuje drzewo, żeby uniknąć FOUC po przeładowaniu.

@@ -79,22 +79,22 @@ export default function AuthShell({ children, maxWidthClass = 'max-w-md' }: Prop
         />
 
         {/*
-          Karta auth — frosted glass:
-          - bg-white/55 (light) / bg-zinc-950/55 (dark) — średnia transparentność,
-            kolor `bg-bg-app` przebija się subtelnie
-          - backdrop-blur-2xl + saturate-150 — gęsty blur w stylu iOS materials
-          - ring-inset ring-white/50 — wewnętrzny "edge light"
-          - top-highlight gradient (overlay) — biały odblask na górnej krawędzi
+          Karta auth — frosted glass (subtelny):
+          - bg-white/45 (light) / bg-zinc-950/45 (dark) — lekka transparentność,
+            kolor `bg-bg-app` przebija się wyraźniej (mniej "ostry" kontrast)
+          - backdrop-blur-xl + saturate-125 — łagodniejszy blur w stylu iOS materials
+          - border + ring zminimalizowane — bez "twardej" krawędzi
+          - top-highlight gradient (overlay) — delikatny biały odblask na górze
         */}
         <div
           className={
             'relative w-full overflow-hidden rounded-3xl border ' +
-            'border-white/60 bg-white/55 ' +
-            'dark:border-white/10 dark:bg-zinc-950/55 ' +
-            'backdrop-blur-2xl backdrop-saturate-150 ' +
-            'ring-1 ring-inset ring-white/50 dark:ring-white/8 ' +
-            'shadow-[0_24px_70px_-28px_rgba(15,23,42,0.25),inset_0_1px_0_rgba(255,255,255,0.6)] ' +
-            'dark:shadow-[0_24px_70px_-24px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.06)] ' +
+            'border-white/35 bg-white/45 ' +
+            'dark:border-white/8 dark:bg-zinc-950/45 ' +
+            'backdrop-blur-xl backdrop-saturate-125 ' +
+            'ring-1 ring-inset ring-white/25 dark:ring-white/5 ' +
+            'shadow-[0_20px_60px_-30px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.35)] ' +
+            'dark:shadow-[0_20px_60px_-26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.04)] ' +
             'p-5 sm:p-7'
           }
         >
@@ -102,8 +102,8 @@ export default function AuthShell({ children, maxWidthClass = 'max-w-md' }: Prop
             aria-hidden
             className={
               'pointer-events-none absolute inset-x-0 top-0 h-28 ' +
-              'bg-linear-to-b from-white/45 via-white/8 to-transparent ' +
-              'dark:from-white/8 dark:via-white/2 dark:to-transparent'
+              'bg-linear-to-b from-white/25 via-white/5 to-transparent ' +
+              'dark:from-white/5 dark:via-white/1 dark:to-transparent'
             }
           />
           <div className="relative">{children}</div>

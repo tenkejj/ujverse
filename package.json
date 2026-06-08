@@ -3,6 +3,20 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "description": "UJverse — nieoficjalna platforma społeczności Uniwersytetu Jagiellońskiego.",
+  "author": {
+    "name": "Franciszek Dranka",
+    "email": "franciszek.dranka@student.uj.edu.pl"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://ujverse.pl",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tenkejj/ujverse.git"
+  },
+  "bugs": {
+    "email": "franciszek.dranka@student.uj.edu.pl"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

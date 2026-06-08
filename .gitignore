@@ -22,7 +22,29 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Env files (keep .env.example tracked)
 .env
-.vercel
-.env*.local
 .env*
+.env*.local
+.vercel
+!.env.example
+
+# Internal docs / planning
+AGENT_KANBAN.md
+PRESENTATION.md
+
+# Cursor internals (keep .cursor/rules tracked — agent guidance)
+.cursor/agents/
+.cursor/plans/
+
+# Local Meilisearch data (Docker volume)
+meili_data/
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+supabase/snippets/
+
+# Seed/dev scripts with secrets (rewrite to env vars before re-tracking)
+seed-search.js

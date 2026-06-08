@@ -1,0 +1,27 @@
+/* TEAM */
+    Author:       Franciszek Dranka
+    Role:         Architect, designer, full-stack engineer
+    Contact:      franciszek.dranka [at] student.uj.edu.pl
+    From:         Kraków, Poland
+    Affiliation:  Uniwersytet Jagielloński (student)
+
+/* THANKS */
+    The UJ community for feedback and stress-testing.
+
+/* SITE */
+    Project:      UJverse — nieoficjalna platforma społeczności UJ
+    Last update:  2026-06-08
+    Standards:    HTML5, CSS3, ES2022, TypeScript 5
+    Components:   React 19, Vite 7, Tailwind CSS 4, Framer Motion, Supabase, Meilisearch
+    Software:     VS Code / Cursor
+
+/* COPYRIGHT */
+    Copyright © 2026 Franciszek Dranka. All rights reserved.
+    Proprietary license — see /LICENSE in the source repository.
+
+                                     _
+   _   _      __ _   _____ _ __ ___ ___
+  | | | |    / /| | / / _ \ '__/ __/ _ \
+  | |_| |  // | |/ /  __/ |  \__ \  __/
+   \__,_| / /  |___/\___|_|  |___/\___|
+        / /

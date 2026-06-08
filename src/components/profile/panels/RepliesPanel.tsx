@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Heart, Image as ImageIcon, MessageCircle, MoreHorizontal, X } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -10,6 +10,193 @@ import EmptyState from '../../EmptyState'
 import type { Profile } from '../../../types'
 import type { Database, TablesInsert } from '../../../types/database'
 import { useProfileData } from '../../../hooks/useProfileData'
+
+const AVATAR_BASE =
+  'rounded-full shrink-0 relative border border-zinc-200 bg-zinc-100 object-cover object-center dark:border-white/10 dark:bg-zinc-900'
+
+type AvatarSize = 'w-10 h-10' | 'w-8 h-8'
+
+type ReplyAvatarProps = {
+  avatarUrl: string | null | undefined
+  fallback: string
+  sizeClass?: AvatarSize
+}
+
+const ReplyAvatar = memo(function ReplyAvatar({
+  avatarUrl,
+  fallback,
+  sizeClass = 'w-10 h-10',
+}: ReplyAvatarProps) {
+  const first = fallback.trim().charAt(0).toUpperCase() || '?'
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={fallback}
+        className={`${AVATAR_BASE} ${sizeClass}`}
+        decoding="async"
+        draggable={false}
+      />
+    )
+  }
+  return (
+    <div
+      className={`${AVATAR_BASE} ${sizeClass} flex items-center justify-center text-sm font-bold text-zinc-900 dark:text-brand-gold-bright`}
+    >
+      {first}
+    </div>
+  )
+})
+
+type CommentItemProps = {
+  showActions?: boolean
+  replyToLabel?: React.ReactNode
+  commentsActive?: boolean
+  authorDisplay: string
+  handleLabel: string | null
+  timestamp: string
+  profileHref: string | null
+  avatarUrl: string | null
+  avatarFallback: string
+  content: string | null
+  media: string[]
+  commentsCount: number
+  likesCount: number
+  isLiked: boolean
+  likeDisabled?: boolean
+  onCommentClick: (e: React.MouseEvent) => void
+  onLikeClick: (e: React.MouseEvent) => void
+  trailing?: React.ReactNode
+  railBottom?: boolean
+  renderMedia: (media: string[]) => React.ReactNode
+}
+
+const CommentItem = memo(function CommentItem({
+  showActions = true,
+  authorDisplay,
+  handleLabel,
+  timestamp,
+  profileHref,
+  avatarUrl,
+  avatarFallback,
+  content,
+  media,
+  commentsCount,
+  likesCount,
+  isLiked,
+  likeDisabled,
+  onCommentClick,
+  onLikeClick,
+  trailing,
+  replyToLabel,
+  commentsActive = false,
+  railBottom = false,
+  renderMedia,
+}: CommentItemProps) {
+  return (
+    <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
+      <div className="relative mx-auto flex w-10 items-start justify-center">
+        {railBottom ? (
+          <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-zinc-900/25 dark:bg-brand-gold-bright/35" />
+        ) : null}
+        {profileHref ? (
+          <Link
+            to={profileHref}
+            className="relative z-10 inline-flex w-10 h-10 rounded-full shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ReplyAvatar avatarUrl={avatarUrl} fallback={avatarFallback} sizeClass="w-10 h-10" />
+          </Link>
+        ) : (
+          <div className="relative z-10">
+            <ReplyAvatar avatarUrl={avatarUrl} fallback={avatarFallback} sizeClass="w-10 h-10" />
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex flex-col space-y-1.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-[15px] flex items-center min-w-0 overflow-hidden">
+            {profileHref ? (
+              <Link
+                to={profileHref}
+                className="font-bold text-zinc-900 dark:text-zinc-100 hover:underline truncate"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {authorDisplay}
+              </Link>
+            ) : (
+              <p className="font-bold text-zinc-900 dark:text-zinc-100 truncate">{authorDisplay}</p>
+            )}
+            {handleLabel ? (
+              <span className="text-zinc-500 dark:text-zinc-400 ml-1 truncate">{handleLabel}</span>
+            ) : null}
+            <span className="text-zinc-500 dark:text-zinc-400 ml-1">·</span>
+            <span className="text-zinc-500 dark:text-zinc-400 ml-1">{timestamp}</span>
+          </div>
+          <button
+            type="button"
+            className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Więcej opcji"
+          >
+            <MoreHorizontal size={18} />
+          </button>
+        </div>
+        {replyToLabel ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{replyToLabel}</p>
+        ) : null}
+        {content ? (
+          <p className="whitespace-pre-line text-[15px] text-zinc-900 dark:text-zinc-100 leading-normal">
+            {content}
+          </p>
+        ) : null}
+        {renderMedia(media)}
+        {showActions ? (
+          <div className="mt-2 flex items-center gap-x-4 text-zinc-500 dark:text-zinc-400 text-[13px]">
+            <button
+              type="button"
+              className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
+                isLiked
+                  ? 'text-zinc-900 dark:text-brand-gold-bright'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-brand-gold-bright/90'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onLikeClick(e)
+              }}
+              aria-label="Polubienia"
+              disabled={likeDisabled}
+            >
+              <Heart size={18} className={isLiked ? 'fill-current' : undefined} />
+              <span className={isLiked ? 'text-zinc-900 dark:text-brand-gold-bright' : undefined}>
+                {formatXNumber(likesCount)}
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
+                commentsActive
+                  ? 'text-zinc-900 dark:text-brand-gold-bright'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-brand-gold-bright/90'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onCommentClick(e)
+              }}
+              aria-label="Komentarze"
+            >
+              <MessageCircle size={18} />
+              <span className={commentsActive ? 'text-zinc-900 dark:text-brand-gold-bright' : undefined}>
+                {formatXNumber(commentsCount)}
+              </span>
+            </button>
+          </div>
+        ) : null}
+        {trailing}
+      </div>
+    </div>
+  )
+})
 
 type ThreadAuthor = {
   display_name: string
@@ -271,29 +458,6 @@ export default function RepliesPanel({
       return
     }
     navigate(`/post/${postId}`)
-  }
-
-  const avatarBase =
-    'rounded-full shrink-0 relative border border-zinc-200 bg-zinc-100 object-cover object-center dark:border-white/10 dark:bg-zinc-900'
-
-  const renderAvatar = (
-    avatarUrl: string | null | undefined,
-    fallback: string,
-    sizeClass: 'w-10 h-10' | 'w-8 h-8' = 'w-10 h-10',
-  ) => {
-    const first = fallback.trim().charAt(0).toUpperCase() || '?'
-    return avatarUrl ? (
-      <img
-        src={avatarUrl}
-        alt={fallback}
-        className={`${avatarBase} ${sizeClass}`}
-        loading="lazy"
-      />
-    ) : (
-      <div className={`${avatarBase} ${sizeClass} flex items-center justify-center text-sm font-bold text-zinc-900 dark:text-brand-gold-bright`}>
-        {first}
-      </div>
-    )
   }
 
   const toMediaUrls = (value: unknown): string[] => {
@@ -1021,7 +1185,7 @@ export default function RepliesPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const renderMedia = (media: string[]) => {
+  const renderMedia = useCallback((media: string[]) => {
     if (!media.length) return null
     if (media.length === 1) {
       return (
@@ -1030,6 +1194,7 @@ export default function RepliesPanel({
             src={media[0]}
             alt=""
             loading="lazy"
+            decoding="async"
             className="w-full max-h-[420px] object-contain"
           />
         </div>
@@ -1047,159 +1212,14 @@ export default function RepliesPanel({
               src={url}
               alt=""
               loading="lazy"
+              decoding="async"
               className="h-40 w-full object-cover"
             />
           </div>
         ))}
       </div>
     )
-  }
-
-  type CommentItemProps = {
-    showActions?: boolean
-    replyToLabel?: React.ReactNode
-    commentsActive?: boolean
-    authorDisplay: string
-    handleLabel: string | null
-    timestamp: string
-    profileHref: string | null
-    avatarUrl: string | null
-    avatarFallback: string
-    content: string | null
-    media: string[]
-    commentsCount: number
-    likesCount: number
-    isLiked: boolean
-    likeDisabled?: boolean
-    onCommentClick: (e: React.MouseEvent) => void
-    onLikeClick: (e: React.MouseEvent) => void
-    trailing?: React.ReactNode
-    railBottom?: boolean
-  }
-
-  const CommentItem = ({
-    showActions = true,
-    authorDisplay,
-    handleLabel,
-    timestamp,
-    profileHref,
-    avatarUrl,
-    avatarFallback,
-    content,
-    media,
-    commentsCount,
-    likesCount,
-    isLiked,
-    likeDisabled,
-    onCommentClick,
-    onLikeClick,
-    trailing,
-    replyToLabel,
-    commentsActive = false,
-    railBottom = false,
-  }: CommentItemProps) => {
-    return (
-      <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
-        <div className="relative mx-auto flex w-10 items-start justify-center">
-          {railBottom ? (
-            <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-zinc-900/25 dark:bg-brand-gold-bright/35" />
-          ) : null}
-          {profileHref ? (
-            <Link
-              to={profileHref}
-              className="relative z-10 inline-flex w-10 h-10 rounded-full shrink-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {renderAvatar(avatarUrl, avatarFallback, 'w-10 h-10')}
-            </Link>
-          ) : (
-            <div className="relative z-10">{renderAvatar(avatarUrl, avatarFallback, 'w-10 h-10')}</div>
-          )}
-        </div>
-        <div className="min-w-0 flex flex-col space-y-1.5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="text-[15px] flex items-center min-w-0 overflow-hidden">
-              {profileHref ? (
-                <Link
-                  to={profileHref}
-                  className="font-bold text-zinc-900 dark:text-zinc-100 hover:underline truncate"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {authorDisplay}
-                </Link>
-              ) : (
-                <p className="font-bold text-zinc-900 dark:text-zinc-100 truncate">{authorDisplay}</p>
-              )}
-              {handleLabel ? (
-                <span className="text-zinc-500 dark:text-zinc-400 ml-1 truncate">{handleLabel}</span>
-              ) : null}
-              <span className="text-zinc-500 dark:text-zinc-400 ml-1">·</span>
-              <span className="text-zinc-500 dark:text-zinc-400 ml-1">{timestamp}</span>
-            </div>
-            <button
-              type="button"
-              className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Więcej opcji"
-            >
-              <MoreHorizontal size={18} />
-            </button>
-          </div>
-          {replyToLabel ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{replyToLabel}</p>
-          ) : null}
-          {content ? (
-            <p className="whitespace-pre-line text-[15px] text-zinc-900 dark:text-zinc-100 leading-normal">
-              {content}
-            </p>
-          ) : null}
-          {renderMedia(media)}
-          {showActions ? (
-            <div className="mt-2 flex items-center gap-x-4 text-zinc-500 dark:text-zinc-400 text-[13px]">
-              <button
-                type="button"
-                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
-                  isLiked
-                    ? 'text-zinc-900 dark:text-brand-gold-bright'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-brand-gold-bright/90'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onLikeClick(e)
-                }}
-                aria-label="Polubienia"
-                disabled={likeDisabled}
-              >
-                <Heart size={18} className={isLiked ? 'fill-current' : undefined} />
-                <span className={isLiked ? 'text-zinc-900 dark:text-brand-gold-bright' : undefined}>
-                  {formatXNumber(likesCount)}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
-                  commentsActive
-                    ? 'text-zinc-900 dark:text-brand-gold-bright'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-brand-gold-bright/90'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCommentClick(e)
-                }}
-                aria-label="Komentarze"
-              >
-                <MessageCircle size={18} />
-                <span className={commentsActive ? 'text-zinc-900 dark:text-brand-gold-bright' : undefined}>
-                  {formatXNumber(commentsCount)}
-                </span>
-              </button>
-            </div>
-          ) : null}
-          {trailing}
-        </div>
-      </div>
-    )
-  }
+  }, [])
 
   if (loading) {
     return (
@@ -1340,6 +1360,7 @@ export default function RepliesPanel({
                         }
                         onLikeClick={(e) => onTogglePostLike(e, item.row)}
                         railBottom={hasNextItem(index)}
+                        renderMedia={renderMedia}
                       />
                     </div>
                   )
@@ -1388,6 +1409,7 @@ export default function RepliesPanel({
                         }
                         onLikeClick={(e) => onToggleReplyLike(e, item.row)}
                         railBottom={hasNextItem(index)}
+                        renderMedia={renderMedia}
                       />
                     </div>
                   )
@@ -1425,6 +1447,7 @@ export default function RepliesPanel({
                         }
                         onLikeClick={(e) => e.stopPropagation()}
                         railBottom={hasNextItem(index)}
+                        renderMedia={renderMedia}
                       />
                     </div>
                   )
@@ -1461,10 +1484,18 @@ export default function RepliesPanel({
                             className="inline-flex w-10 h-10 rounded-full shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {renderAvatar(composerAvatar, composerHandle, 'w-10 h-10')}
+                            <ReplyAvatar
+                              avatarUrl={composerAvatar}
+                              fallback={composerHandle}
+                              sizeClass="w-10 h-10"
+                            />
                           </Link>
                         ) : (
-                          renderAvatar(composerAvatar, composerDisplayName, 'w-10 h-10')
+                          <ReplyAvatar
+                            avatarUrl={composerAvatar}
+                            fallback={composerDisplayName}
+                            sizeClass="w-10 h-10"
+                          />
                         )}
                       </div>
                       <div className="min-w-0 flex flex-col">
