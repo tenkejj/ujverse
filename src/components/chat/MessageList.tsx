@@ -154,7 +154,7 @@ function MessageBubble({
   if (isUser) {
     const userName = myProfile?.full_name ?? displayName ?? 'Ty'
     return (
-      <div className={`flex items-start justify-end ${tokens.rowGap}`}>
+      <div className={`flex items-center justify-end ${tokens.rowGap}`}>
         <div
           className={`${tokens.userMax} ${USER_BUBBLE_CLS} ${tokens.userPad} ${tokens.text}`}
         >
@@ -163,7 +163,7 @@ function MessageBubble({
         <UserAvatar
           profile={myProfile}
           name={userName}
-          className={`${tokens.avatar} mt-0.5`}
+          className={`${tokens.avatar} self-center`}
           textSize={tokens.avatarText}
         />
       </div>

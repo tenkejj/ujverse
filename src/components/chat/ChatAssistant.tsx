@@ -41,11 +41,30 @@ import MessageList from './MessageList'
 
 const OPEN_HUB_BTN_CLS = `shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium ${sideHeaderLinkCls} ${sidePanelHoverFocus}`
 
+/**
+ * Quick prompts dobrane tak, żeby KAŻDY 1:1 mapował na konkretne
+ * narzędzie z `api/_lib/tools/` z deterministycznym wynikiem, bez
+ * wprowadzania modelu w błąd (np. pytanie o WZiKS dla narzędzia bez
+ * filtra wydziału prowadziło do halucynacji „mam ogłoszenia z WZiKS"
+ * mimo że tool zwraca top 10 bez filtra).
+ *
+ * Mapowanie:
+ * - „Co nowego na feedzie?" → `get_latest_posts`
+ * - „Najnowsze ogłoszenia"  → `get_latest_announcements`
+ * - „Pokaż konferencje"     → `search_events("konferencj")` (5+ trafień
+ *   w `official_events` — dobrany pod realny stan bazy 06.2026, gdzie
+ *   „juwenalia" nie istnieje, ale konferencji UJ jest sporo)
+ * - „Wydarzenia naukowe"    → `search_events("nauk")` (ilike szeroko trafia)
+ *
+ * KEEP IN SYNC z `ChatHubView.QUICK_PROMPTS` i listą w
+ * `scripts/prewarm-chat-cache.ts` (response-cache key normalizuje
+ * tekst, więc dosłowna zgodność daje cross-surface cache hit).
+ */
 const QUICK_PROMPTS = [
-  'Co dziś z WZiKS?',
-  'Wydarzenia w weekend',
   'Co nowego na feedzie?',
-  'Zasady wpisów',
+  'Najnowsze ogłoszenia',
+  'Pokaż konferencje',
+  'Wydarzenia naukowe',
 ] as const
 
 type Props = {
@@ -133,7 +152,7 @@ export default function ChatAssistant({ myProfile, displayName }: Props = {}) {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Szybkie pytania">
+      <div className="flex flex-wrap items-center justify-center gap-1.5" role="group" aria-label="Szybkie pytania">
         {QUICK_PROMPTS.map((prompt) => (
           <button
             key={prompt}

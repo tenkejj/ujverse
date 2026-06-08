@@ -32,11 +32,23 @@ import { useChatSend } from '../../hooks/useChatSend'
 import AnimatedBot from './AnimatedBot'
 import MessageList from './MessageList'
 
+/**
+ * Quick prompts — IDENTYCZNE z `ChatAssistant.QUICK_PROMPTS`.
+ *
+ * Świadomie zduplikowane (nie wyciągamy do `src/lib/`), bo obie
+ * powierzchnie mają suwerenne prawo do własnej listy (np. mobile
+ * mógłby kiedyś dostać krótsze pytania). Dziś trzymamy je w sync,
+ * żeby cache response (`buildResponseCacheKey` normalizuje tekst)
+ * był współdzielony między desktopem a mobile.
+ *
+ * Każdy prompt mapuje 1:1 na narzędzie z deterministycznym wynikiem
+ * — patrz docstring w `ChatAssistant.QUICK_PROMPTS`.
+ */
 const QUICK_PROMPTS = [
-  'Pokaż wydarzenia na weekend',
-  'Streszcz nowości z WZiKS',
-  'Co popularne na feedzie?',
-  'Wyjaśnij zasady platformy',
+  'Co nowego na feedzie?',
+  'Najnowsze ogłoszenia',
+  'Pokaż konferencje',
+  'Wydarzenia naukowe',
 ] as const
 
 type Props = {
@@ -237,18 +249,12 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
             >
               W czym mogę dziś pomóc?
             </motion.p>
-          </div>
-        </div>
-      )}
 
-      <div className="shrink-0 border-t border-zinc-200/70 bg-zinc-50/85 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/85">
-        <div className="mx-auto w-full max-w-3xl px-4 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4">
-          {!hasMessages && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-3 flex flex-wrap items-center justify-center gap-1.5 md:gap-2"
+              className="mt-6 grid w-full max-w-md grid-cols-2 gap-1.5 md:gap-2"
               role="list"
               aria-label="Sugerowane pytania"
             >
@@ -259,14 +265,18 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
                   role="listitem"
                   onClick={() => void handleSend(prompt)}
                   disabled={isTyping}
-                  className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-zinc-600 backdrop-blur-md transition-colors hover:border-logo-navy/30 hover:bg-zinc-50 hover:text-logo-navy disabled:cursor-not-allowed disabled:opacity-40 md:text-sm dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-300 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70 dark:hover:text-brand-gold-bright"
+                  className="w-full rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-center text-xs font-medium text-zinc-600 backdrop-blur-md transition-colors hover:border-logo-navy/30 hover:bg-zinc-50 hover:text-logo-navy disabled:cursor-not-allowed disabled:opacity-40 md:text-sm dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-300 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70 dark:hover:text-brand-gold-bright"
                 >
                   {prompt}
                 </button>
               ))}
             </motion.div>
-          )}
+          </div>
+        </div>
+      )}
 
+      <div className="shrink-0 border-t border-zinc-200/70 bg-zinc-50/85 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/85">
+        <div className="mx-auto w-full max-w-3xl px-4 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4">
           <form onSubmit={onSubmitForm} className="flex items-end gap-2">
             <textarea
               ref={inputRef}

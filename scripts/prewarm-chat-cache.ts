@@ -39,27 +39,38 @@ const ENDPOINT = `${BASE_URL.replace(/\/$/, '')}/api/chat`
 
 /**
  * Lista pytań do warmowania. Świadomie pokrywa:
- * - 4 quick prompts z `ChatAssistant.tsx` (KEEP IN SYNC),
- * - typowe pytania o ogłoszenia / wydarzenia / posty,
+ * - 4 quick prompts z `ChatAssistant.tsx` / `ChatHubView.tsx`
+ *   (KEEP IN SYNC z tamtymi `QUICK_PROMPTS`),
+ * - typowe rozszerzenia (większa szansa na cache-hit dla pytań które
+ *   ludzie wpiszą sami, blisko brzmiące do chipsów),
  * - jedno krótkie small-talk ("cześć") — small-talk path też trafia do
  *   response cache (`useTools=false` to inny klucz niż merytoryczne).
+ *
+ * UWAGA: response-cache key normalizuje tekst (`trim+lower+collapse-whitespace`),
+ * więc „Najnowsze ogłoszenia" pokryje też „najnowsze ogłoszenia" i
+ * „  Najnowsze   Ogłoszenia ". Ale NIE pokryje „Pokaż ogłoszenia" —
+ * to inny tekst → inny klucz. Stąd kilka wariantów per intent.
  *
  * Kolejność: małe pytania najpierw (najmniej tokenów), żeby skrypt szybko
  * zaczął zwracać sukcesy w logu i było widać że coś się dzieje.
  */
 const QUESTIONS: readonly string[] = [
+  // small-talk path (useTools=false, własny cache key)
   'cześć',
-  'Co dziś z WZiKS?',
-  'Wydarzenia w weekend',
+
+  // 4 quick prompts — DOSŁOWNIE jak w UI (KEEP IN SYNC)
   'Co nowego na feedzie?',
-  'Zasady wpisów',
-  'Kiedy juwenalia?',
   'Najnowsze ogłoszenia',
+  'Pokaż konferencje',
+  'Wydarzenia naukowe',
+
+  // bliskie warianty — duża szansa że user wpisze coś takiego sam
   'Najnowsze posty',
-  'Jakie wydarzenia w tym tygodniu?',
+  'Pokaż ogłoszenia',
   'Co się dzieje na UJ?',
-  'Pokaż ogłoszenia z WZiKS',
-  'Najnowsze posty studentów',
+  'Warsztaty na UJ',
+  'Klub książki UJ',
+  'Co w Auditorium Maximum?',
 ] as const
 
 /** Pauza między requestami — ~1.2s rozprasza serię tak, żeby skrypt sam
