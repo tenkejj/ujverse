@@ -1,15 +1,20 @@
 /**
- * Silnik pobierania i normalizacji oficjalnych wydarzeń z serwisów UJ (WZiKS, kalendarz UJ).
- * Używa cache w localStorage (TTL 15 min) oraz proxy (Vite dev / allorigins) przy CORS.
+ * Źródło oficjalnych wydarzeń UJ.
+ *
+ * Architektura (po refactorze): scraping jest wykonywany po stronie serwera
+ * przez `api/scrape-uj-events.ts` (Vercel cron) i zapisywany do
+ * `public.official_events`. Front czyta wyłącznie z Supabase. Lokalny cache
+ * w `localStorage` (TTL 15 min) służy do natychmiastowego pierwszego rendera
+ * i działania offline.
+ *
+ * Stąd nie ma już:
+ *  - łańcucha proxy (vite-proxy → corsproxy.io → allorigins),
+ *  - DOM-parsera HTML w przeglądarce,
+ *  - błędów `ENOTFOUND wziks.uj.edu.pl` w devie.
  */
-
 import type { UJEvent } from '../data/mockEvents'
 import { materializeOfficialFallbackEvents } from '../data/officialFallbackEvents'
-
-export const WZIKS_NEWS_URL = 'https://wziks.uj.edu.pl/wiadomosci/aktualnosci'
-/** Główne, stabilne źródło listy wiadomości UJ. */
-export const UJ_NEWS_HUB_URL = 'https://www.uj.edu.pl/wiadomosci'
-export const UJ_CALENDAR_URL = 'https://www.uj.edu.pl/wiadomosci/kalendarz'
+import { supabase } from '../supabaseClient'
 
 const OFFICIAL_CACHE_KEY = 'ujverse_official_ingest_v1'
 export const OFFICIAL_CACHE_TTL_MS = 15 * 60 * 1000
@@ -18,171 +23,49 @@ let syncPromise: Promise<IngestSyncResult> | null = null
 
 const CATEGORY_OFFICIAL = 'Oficjalne'
 
-const FETCH_CHAIN_BUDGET_MS = 5000
-const PER_ATTEMPT_MAX_MS = 5000
-
-function ingestDebug(): boolean {
-  try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem('ujverse_ingest_debug') === '1'
-  } catch {
-    return false
-  }
-}
-
-const BROWSER_HEADERS: HeadersInit = {
-  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
-  'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-}
-
 export type IngestSyncResult = {
   events: UJEvent[]
-  /** True gdy użyto zestawu awaryjnego (sieć niedostępna). */
+  /** True gdy użyto zestawu awaryjnego (sieć/Supabase niedostępne, brak cache). */
   fromStaticFallback: boolean
-}
-
-const PL_MONTH_RE =
-  /(\d{1,2})\s+(stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|wrzesnia|października|pazdziernika|listopada|grudnia)\s+(\d{4})/i
-
-const MONTH_MAP: Record<string, number> = {
-  stycznia: 0,
-  lutego: 1,
-  marca: 2,
-  kwietnia: 3,
-  maja: 4,
-  czerwca: 5,
-  lipca: 6,
-  sierpnia: 7,
-  września: 8,
-  wrzesnia: 8,
-  października: 9,
-  pazdziernika: 9,
-  listopada: 10,
-  grudnia: 11,
 }
 
 export type IngestFaculty = 'WZiKS' | 'Uniwersytet Jagielloński'
 
-type RawItem = {
-  href: string
+type OfficialEventRow = {
+  id: string
+  external_id: string
   title: string
-  description: string
-  imageUrl?: string
-  date: Date
-  faculty: IngestFaculty
+  date: string
+  category: string | null
+  location: string | null
+  description: string | null
+  faculty: string
+  source_name: string
+  event_url: string
+  image_url: string | null
 }
 
-function normalizeTitle(s: string): string {
-  return s.replace(/\s+/g, ' ').trim()
-}
+function rowToUjEvent(row: OfficialEventRow): UJEvent | null {
+  if (!row.id || !row.title || !row.date) return null
+  const date = new Date(row.date)
+  if (Number.isNaN(date.getTime())) return null
+  const faculty: IngestFaculty =
+    row.faculty === 'WZiKS' ? 'WZiKS' : 'Uniwersytet Jagielloński'
 
-function parsePolishOrNumericDate(text: string): Date | null {
-  const pl = text.match(PL_MONTH_RE)
-  if (pl) {
-    const day = parseInt(pl[1], 10)
-    const mon = MONTH_MAP[pl[2].toLowerCase()]
-    const year = parseInt(pl[3], 10)
-    if (mon !== undefined && !Number.isNaN(day) && !Number.isNaN(year)) {
-      return new Date(year, mon, day, 12, 0, 0, 0)
-    }
-  }
-  const num = text.match(/\b(\d{1,2})[./](\d{1,2})[./](\d{4})\b/)
-  if (num) {
-    const d = parseInt(num[1], 10)
-    const m = parseInt(num[2], 10) - 1
-    const y = parseInt(num[3], 10)
-    return new Date(y, m, d, 12, 0, 0, 0)
-  }
-  return null
-}
-
-function walkAncestorsDate(el: Element | null, maxDepth: number): Date | null {
-  let cur: Element | null = el
-  for (let i = 0; i < maxDepth && cur; i++) {
-    const t = cur.textContent || ''
-    const d = parsePolishOrNumericDate(t)
-    if (d && !Number.isNaN(d.getTime())) return d
-    const timeEl = cur.querySelector('time[datetime]')
-    if (timeEl) {
-      const dt = timeEl.getAttribute('datetime')
-      if (dt) {
-        const parsed = new Date(dt)
-        if (!Number.isNaN(parsed.getTime())) return parsed
-      }
-    }
-    cur = cur.parentElement
-  }
-  return null
-}
-
-function findImageNear(el: Element | null, baseUrl: string, maxDepth: number): string | undefined {
-  let cur: Element | null = el
-  for (let i = 0; i < maxDepth && cur; i++) {
-    const img = cur.querySelector('img[src]')
-    if (img) {
-      const src = img.getAttribute('src')
-      if (src && !src.includes('data:') && !/icon|logo|sprite|pixel/i.test(src)) {
-        try {
-          return new URL(src, baseUrl).href
-        } catch {
-          return src
-        }
-      }
-    }
-    cur = cur.parentElement
-  }
-  return undefined
-}
-
-function isLikelyArticleLink(absUrl: string): boolean {
-  try {
-    const u = new URL(absUrl)
-    if (!u.hostname.endsWith('uj.edu.pl') && !u.hostname.endsWith('wziks.uj.edu.pl')) return false
-    if (!u.pathname.includes('/wiadomosci')) return false
-    if (/\/wiadomosci\/?$/i.test(u.pathname)) return false
-    if (/\/wiadomosci\/(aktualnosci|kalendarz)\/?$/i.test(u.pathname)) return false
-    if (u.pathname.includes('/kategorie/')) return false
-    if (/\/-\/|artykul|journal_content/i.test(u.pathname)) return true
-    const seg = u.pathname.split('/').filter(Boolean).length
-    if (seg < 4) return false
-    if (/login|kandydaci/i.test(absUrl)) return false
-    return true
-  } catch {
-    return false
-  }
-}
-
-function externalIdFromUrl(absUrl: string, faculty: IngestFaculty): string {
-  try {
-    const u = new URL(absUrl)
-    const path = u.pathname.replace(/\/+$/, '')
-    const seg = path.split('/').filter(Boolean)
-    const tail = seg.slice(-3).join('/') || path
-    const prefix = faculty === 'WZiKS' ? 'wziks' : 'uj'
-    return `${prefix}:${tail}`.slice(0, 220)
-  } catch {
-    return `${faculty}:${absUrl.slice(0, 120)}`
-  }
-}
-
-function rawToUjEvent(raw: RawItem, ingestFromFallback = false): UJEvent {
-  const ext = externalIdFromUrl(raw.href, raw.faculty)
   return {
-    id: `ext:ingest:${ext.replace(/[^a-zA-Z0-9:_-]/g, '_')}`,
-    external_id: ext,
-    title: raw.title,
-    date: raw.date,
-    category: CATEGORY_OFFICIAL,
-    location: raw.faculty === 'WZiKS' ? 'WZiKS UJ, Kraków' : 'Uniwersytet Jagielloński, Kraków',
-    description: raw.description || 'Treść z oficjalnego serwisu UJ.',
+    id: `ext:ingest:${row.external_id.replace(/[^a-zA-Z0-9:_-]/g, '_')}`,
+    external_id: row.external_id,
+    title: row.title,
+    date,
+    category: row.category ?? CATEGORY_OFFICIAL,
+    location: row.location ?? '',
+    description: row.description ?? 'Treść z oficjalnego serwisu UJ.',
     attendees: 0,
     is_official: true,
-    faculty: raw.faculty,
-    source_name: raw.faculty === 'WZiKS' ? 'WZiKS UJ' : 'Uniwersytet Jagielloński',
-    event_url: raw.href,
-    imageUrl: raw.imageUrl,
-    ingest_from_fallback: ingestFromFallback || undefined,
+    faculty,
+    source_name: row.source_name,
+    event_url: row.event_url,
+    imageUrl: row.image_url ?? undefined,
   }
 }
 
@@ -195,214 +78,8 @@ function dedupeByExternalId(items: UJEvent[]): UJEvent[] {
   return [...map.values()]
 }
 
-async function fetchWithTimeout(
-  resource: string,
-  init: RequestInit,
-  timeoutMs: number,
-): Promise<Response> {
-  const c = new AbortController()
-  const t = window.setTimeout(() => c.abort(), timeoutMs)
-  try {
-    return await fetch(resource, { ...init, signal: c.signal })
-  } finally {
-    window.clearTimeout(t)
-  }
-}
-
-function isUnusableHtml(body: string): boolean {
-  const s = body.slice(0, 800).toLowerCase()
-  if (body.length < 200) return true
-  if (s.includes('<title>status</title>')) return true
-  if (/error code:\s*52\d/.test(s)) return true
-  if (s.includes('502 bad gateway') || s.includes('bad gateway')) return true
-  if (s.includes('520:') || s.includes('522:')) return true
-  if (s.includes('cloudflare') && s.includes('error')) return true
-  return false
-}
-
-/**
- * Pobiera HTML: łańcuch proxy (Vite → corsproxy.io → allorigins), limit czasu na całość łańcucha.
- */
-export async function fetchHtml(url: string): Promise<string> {
-  const deadline = Date.now() + FETCH_CHAIN_BUDGET_MS
-  const timeLeft = () => Math.max(200, deadline - Date.now())
-
-  type Attempt = { label: string; buildUrl: () => string; sameOrigin?: boolean }
-  const attempts: Attempt[] = []
-
-  if (import.meta.env.DEV) {
-    if (url === WZIKS_NEWS_URL) {
-      attempts.push({ label: 'vite-proxy /api/ingest-wziks', buildUrl: () => '/api/ingest-wziks', sameOrigin: true })
-    }
-    if (url === UJ_NEWS_HUB_URL) {
-      attempts.push({
-        label: 'vite-proxy /api/ingest-uj-wiadomosci',
-        buildUrl: () => '/api/ingest-uj-wiadomosci',
-        sameOrigin: true,
-      })
-    }
-    if (url === UJ_CALENDAR_URL) {
-      attempts.push({
-        label: 'vite-proxy /api/ingest-uj-cal',
-        buildUrl: () => '/api/ingest-uj-cal',
-        sameOrigin: true,
-      })
-    }
-    attempts.push({
-      label: 'vite-query /api/ingest?url=',
-      buildUrl: () => `/api/ingest?url=${encodeURIComponent(url)}`,
-      sameOrigin: true,
-    })
-  }
-
-  attempts.push({
-    label: 'corsproxy.io',
-    buildUrl: () => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  })
-  attempts.push({
-    label: 'allorigins',
-    buildUrl: () => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  })
-
-  let lastErr: unknown = null
-  const dbg = ingestDebug()
-  for (const { label, buildUrl, sameOrigin } of attempts) {
-    const ms = Math.min(PER_ATTEMPT_MAX_MS, timeLeft())
-    if (ms < 250) {
-      if (dbg) console.warn('[Ingestor] Limit 5s — przerywam kolejne próby dla', url)
-      break
-    }
-    if (dbg) console.log(`[Ingestor] Próba przez ${label}…`)
-    try {
-      const r = await fetchWithTimeout(
-        buildUrl(),
-        {
-          credentials: 'omit',
-          mode: sameOrigin ? 'same-origin' : 'cors',
-          headers: BROWSER_HEADERS,
-        },
-        ms,
-      )
-      if (!r.ok) {
-        lastErr = new Error(`${label} HTTP ${r.status}`)
-        continue
-      }
-      const t = await r.text()
-      if (t.startsWith('error code:')) {
-        lastErr = new Error(`${label}: ${t.slice(0, 60)}`)
-        continue
-      }
-      if (isUnusableHtml(t)) {
-        lastErr = new Error(`${label}: nieprawidłowa treść (502/520/status)`)
-        continue
-      }
-      return t
-    } catch (e) {
-      lastErr = e
-      if (dbg) console.warn(`[Ingestor] Błąd sieci (${label}):`, e)
-    }
-  }
-
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr))
-}
-
-/** Zestaw awaryjny — stałe, bogate wpisy (Etap 1), gdy sieć / DNS zawiedzie. */
 export function getStaticFallbackOfficialEvents(): UJEvent[] {
   return dedupeByExternalId(materializeOfficialFallbackEvents())
-}
-
-function parseNewsListing(html: string, pageUrl: string, faculty: IngestFaculty): RawItem[] {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const baseUrl = new URL(pageUrl).origin
-  const anchors = doc.querySelectorAll<HTMLAnchorElement>('a[href]')
-  const seen = new Set<string>()
-  const out: RawItem[] = []
-
-  for (const a of anchors) {
-    const href = a.getAttribute('href')
-    if (!href || href === '#') continue
-    let abs: string
-    try {
-      abs = new URL(href, pageUrl).href
-    } catch {
-      continue
-    }
-    if (!isLikelyArticleLink(abs)) continue
-    if (seen.has(abs)) continue
-
-    const title = normalizeTitle(a.textContent || '')
-    if (title.length < 8 || title.length > 220) continue
-    if (/^(czytaj więcej|więcej|zobacz|pdf|tutaj)$/i.test(title)) continue
-
-    seen.add(abs)
-
-    const date = walkAncestorsDate(a, 10) ?? new Date()
-    const imageUrl = findImageNear(a, baseUrl, 8)
-    let description = ''
-    let p = a.parentElement
-    for (let i = 0; i < 5 && p; i++) {
-      const ps = p.querySelector('p')
-      if (ps?.textContent && ps.textContent.trim().length > 40) {
-        description = normalizeTitle(ps.textContent).slice(0, 500)
-        break
-      }
-      p = p.parentElement
-    }
-
-    out.push({
-      href: abs,
-      title,
-      description,
-      imageUrl,
-      date,
-      faculty,
-    })
-  }
-
-  return out.slice(0, 40)
-}
-
-async function enrichWithOgMeta(items: RawItem[], max = 8, concurrency = 2): Promise<RawItem[]> {
-  const head = items.slice(0, max)
-  const tail = items.slice(max)
-  const result: RawItem[] = []
-
-  for (let i = 0; i < head.length; i += concurrency) {
-    const chunk = head.slice(i, i + concurrency)
-    const done = await Promise.all(
-      chunk.map(async (item) => {
-        try {
-          const html = await fetchHtml(item.href)
-          const doc = new DOMParser().parseFromString(html, 'text/html')
-          const ogI = doc.querySelector('meta[property="og:image"]')?.getAttribute('content')
-          const ogD =
-            doc.querySelector('meta[property="og:description"]')?.getAttribute('content') ??
-            doc.querySelector('meta[name="description"]')?.getAttribute('content')
-          let imageUrl = item.imageUrl
-          if (ogI) {
-            try {
-              imageUrl = new URL(ogI, item.href).href
-            } catch {
-              imageUrl = ogI
-            }
-          }
-          const description = (ogD || item.description || '').trim().slice(0, 650)
-          const t = doc.querySelector('time[datetime]')?.getAttribute('datetime')
-          let date = item.date
-          if (t) {
-            const parsed = new Date(t)
-            if (!Number.isNaN(parsed.getTime())) date = parsed
-          }
-          return { ...item, imageUrl, description, date }
-        } catch {
-          return item
-        }
-      }),
-    )
-    result.push(...done)
-  }
-
-  return [...result, ...tail]
 }
 
 type CachedPayload = {
@@ -421,11 +98,7 @@ function reviveFromCache(raw: Record<string, unknown>): UJEvent | null {
   if (typeof raw.id !== 'string' || typeof raw.title !== 'string') return null
   const d = raw.date
   const date =
-    typeof d === 'string'
-      ? new Date(d)
-      : d instanceof Date
-        ? d
-        : null
+    typeof d === 'string' ? new Date(d) : d instanceof Date ? d : null
   if (!date || Number.isNaN(date.getTime())) return null
   const ev: UJEvent = {
     id: raw.id,
@@ -442,11 +115,12 @@ function reviveFromCache(raw: Record<string, unknown>): UJEvent | null {
   if (typeof raw.event_url === 'string') ev.event_url = raw.event_url
   if (typeof raw.imageUrl === 'string') ev.imageUrl = raw.imageUrl
   if (typeof raw.faculty === 'string') ev.faculty = raw.faculty as UJEvent['faculty']
-  if (typeof raw.ingest_from_fallback === 'boolean') ev.ingest_from_fallback = raw.ingest_from_fallback
+  if (typeof raw.ingest_from_fallback === 'boolean') {
+    ev.ingest_from_fallback = raw.ingest_from_fallback
+  }
   return ev
 }
 
-/** Odczyt ważnego cache (do inicjalizacji stanu przed siecią). */
 export function readOfficialEventsFromCache(): UJEvent[] {
   if (typeof window === 'undefined') return []
   try {
@@ -471,72 +145,77 @@ function writeOfficialCache(events: UJEvent[]) {
     }
     localStorage.setItem(OFFICIAL_CACHE_KEY, JSON.stringify(payload))
   } catch {
-    /* quota */
+    /* quota / private mode */
   }
 }
 
-/**
- * Synchronizacja z WZiKS + kalendarzem UJ. Szanuje cache 15 min (chyba że force).
- */
+function readStaleOfficialFromStorage(): UJEvent[] {
+  try {
+    const raw = localStorage.getItem(OFFICIAL_CACHE_KEY)
+    if (!raw) return []
+    const data = JSON.parse(raw) as CachedPayload
+    if (!Array.isArray(data.events)) return []
+    return data.events
+      .map((o) => reviveFromCache(o))
+      .filter((e): e is UJEvent => e !== null)
+  } catch {
+    return []
+  }
+}
+
+/** Ostatni znany zestaw oficjalnych (świeży cache lub przeterminowany — pod pierwszy render). */
+export function hydrateOfficialEventsFromStorage(): UJEvent[] {
+  const fresh = readOfficialEventsFromCache()
+  if (fresh.length > 0) return fresh
+  return readStaleOfficialFromStorage()
+}
+
+async function fetchOfficialFromSupabase(): Promise<UJEvent[]> {
+  const { data, error } = await supabase
+    .from('official_events')
+    .select(
+      'id, external_id, title, date, category, location, description, faculty, source_name, event_url, image_url',
+    )
+    .order('date', { ascending: true })
+
+  if (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[EventIngestor] official_events select error:', error.message)
+    }
+    throw new Error(error.message)
+  }
+
+  const rows = (data ?? []) as OfficialEventRow[]
+  return rows
+    .map((row) => rowToUjEvent(row))
+    .filter((e): e is UJEvent => e !== null)
+}
+
 async function runSyncExternal(force: boolean): Promise<IngestSyncResult> {
   if (!force) {
-    try {
-      const raw = localStorage.getItem(OFFICIAL_CACHE_KEY)
-      if (raw) {
-        const data = JSON.parse(raw) as CachedPayload
-        if (typeof data.ts === 'number' && Date.now() - data.ts < OFFICIAL_CACHE_TTL_MS) {
-          const revived = data.events
-            .map((o) => reviveFromCache(o))
-            .filter((e): e is UJEvent => e !== null)
-          if (revived.length > 0) {
-            return { events: dedupeByExternalId(revived), fromStaticFallback: false }
-          }
-        }
-      }
-    } catch {
-      /* fetch fresh */
+    const fresh = readOfficialEventsFromCache()
+    if (fresh.length > 0) {
+      return { events: dedupeByExternalId(fresh), fromStaticFallback: false }
     }
   }
-
-  let wziksItems: RawItem[] = []
-  let ujNewsItems: RawItem[] = []
-  let ujCalItems: RawItem[] = []
 
   try {
-    const [hubHtml, wzHtml, calHtml] = await Promise.all([
-      fetchHtml(UJ_NEWS_HUB_URL).catch(() => ''),
-      fetchHtml(WZIKS_NEWS_URL).catch(() => ''),
-      fetchHtml(UJ_CALENDAR_URL).catch(() => ''),
-    ])
-    if (hubHtml) ujNewsItems = parseNewsListing(hubHtml, UJ_NEWS_HUB_URL, 'Uniwersytet Jagielloński')
-    if (wzHtml) wziksItems = parseNewsListing(wzHtml, WZIKS_NEWS_URL, 'WZiKS')
-    if (calHtml) ujCalItems = parseNewsListing(calHtml, UJ_CALENDAR_URL, 'Uniwersytet Jagielloński')
+    const events = await fetchOfficialFromSupabase()
+    if (events.length > 0) {
+      const deduped = dedupeByExternalId(events)
+      writeOfficialCache(deduped)
+      return { events: deduped, fromStaticFallback: false }
+    }
   } catch {
-    /* cicho — poniżej łączymy to, co udało się pobrać */
+    /* spróbujemy stale cache poniżej */
   }
 
-  let combined = [...ujNewsItems, ...wziksItems, ...ujCalItems]
-  if (combined.length > 0) {
-    try {
-      combined = await enrichWithOgMeta(combined, 8, 2)
-    } catch {
-      /* wzbogacenie opcjonalne */
-    }
+  const stale = readStaleOfficialFromStorage()
+  if (stale.length > 0) {
+    return { events: dedupeByExternalId(stale), fromStaticFallback: false }
   }
 
-  let events = dedupeByExternalId(combined.map((r) => rawToUjEvent(r, false)))
-
-  if (events.length === 0) {
-    const stale = readStaleOfficialFromStorage()
-    if (stale.length > 0) {
-      return { events: dedupeByExternalId(stale), fromStaticFallback: false }
-    }
-    return { events: getStaticFallbackOfficialEvents(), fromStaticFallback: true }
-  }
-
-  events.sort((a, b) => a.date.getTime() - b.date.getTime())
-  writeOfficialCache(events)
-  return { events, fromStaticFallback: false }
+  return { events: getStaticFallbackOfficialEvents(), fromStaticFallback: true }
 }
 
 export async function syncExternalEvents(force = false): Promise<IngestSyncResult> {
@@ -556,26 +235,4 @@ export async function syncExternalEvents(force = false): Promise<IngestSyncResul
   })()
 
   return syncPromise
-}
-
-/** Odczyt ostatniego zapisanego cache niezależnie od TTL (fallback przy błędzie sieci). */
-function readStaleOfficialFromStorage(): UJEvent[] {
-  try {
-    const raw = localStorage.getItem(OFFICIAL_CACHE_KEY)
-    if (!raw) return []
-    const data = JSON.parse(raw) as CachedPayload
-    if (!Array.isArray(data.events)) return []
-    return data.events
-      .map((o) => reviveFromCache(o))
-      .filter((e): e is UJEvent => e !== null)
-  } catch {
-    return []
-  }
-}
-
-/** Ostatni znany zestaw oficjalnych (świeży cache lub przeterminowany — na pierwszy render). */
-export function hydrateOfficialEventsFromStorage(): UJEvent[] {
-  const fresh = readOfficialEventsFromCache()
-  if (fresh.length > 0) return fresh
-  return readStaleOfficialFromStorage()
 }

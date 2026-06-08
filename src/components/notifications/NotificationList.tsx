@@ -80,10 +80,9 @@ export default function NotificationList({
                   animate={motionPresets.itemEnter.animate}
                   exit={motionPresets.itemEnter.exit}
                   transition={{
-                    layout: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
-                    opacity: { duration: shouldReduceMotion ? 0.12 : 0.26, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger },
-                    y: { duration: shouldReduceMotion ? 0.12 : 0.3, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger, ease: [0.16, 1, 0.3, 1] },
-                    filter: { duration: shouldReduceMotion ? 0.12 : 0.3, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger },
+                    layout: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: shouldReduceMotion ? 0.12 : 0.22, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger },
+                    y: { duration: shouldReduceMotion ? 0.12 : 0.26, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger, ease: [0.22, 1, 0.36, 1] },
                   }}
                 >
                   <NotificationItem
@@ -115,10 +114,9 @@ export default function NotificationList({
                   animate={motionPresets.itemEnter.animate}
                   exit={motionPresets.itemEnter.exit}
                   transition={{
-                    layout: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
-                    opacity: { duration: shouldReduceMotion ? 0.12 : 0.26, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger },
-                    y: { duration: shouldReduceMotion ? 0.12 : 0.3, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger, ease: [0.16, 1, 0.3, 1] },
-                    filter: { duration: shouldReduceMotion ? 0.12 : 0.3, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger },
+                    layout: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: shouldReduceMotion ? 0.12 : 0.22, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger },
+                    y: { duration: shouldReduceMotion ? 0.12 : 0.26, delay: shouldReduceMotion ? 0 : index * motionPresets.itemStagger, ease: [0.22, 1, 0.36, 1] },
                   }}
                 >
                   <NotificationItem

@@ -43,6 +43,7 @@ import {
 } from './lib/groupPaths'
 
 const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
+const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 
 type AppShellView =
   | 'feed'
@@ -54,6 +55,7 @@ type AppShellView =
   | 'userProfile'
   | 'settings'
   | 'group'
+  | 'chat'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -110,6 +112,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/search') {
     return { kind: 'ok', view: 'search', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/chat') {
+    return { kind: 'ok', view: 'chat', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -589,6 +594,10 @@ function App() {
       if (p !== '/search') navigate('/search')
       return
     }
+    if (view === 'chat') {
+      if (p !== '/chat') navigate('/chat')
+      return
+    }
     if (view === 'settings') {
       if (p !== '/settings') navigate('/settings')
       return
@@ -1043,7 +1052,8 @@ function App() {
     effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
       ? 'feed'
       : effectiveActiveView === 'search' ||
-          effectiveActiveView === 'group'
+          effectiveActiveView === 'group' ||
+          effectiveActiveView === 'chat'
         ? 'feed'
       : effectiveActiveView === 'settings'
         ? 'profile'
@@ -1201,6 +1211,12 @@ function App() {
             />
           </ViewErrorBoundary>
         )
+      case 'chat':
+        return (
+          <Suspense fallback={null}>
+            <ChatHubView displayName={displayName} />
+          </Suspense>
+        )
       default:
         return null
     }
@@ -1304,15 +1320,19 @@ function App() {
         />
 
         <main
-          className={`mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
-            effectiveActiveView === 'feed' || effectiveActiveView === 'events' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
-            || effectiveActiveView === 'search' ||
-              effectiveActiveView === 'group'
-              ? 'max-w-7xl px-4 lg:px-6'
-              : effectiveActiveView === 'settings'
-                ? 'max-w-2xl px-4 space-y-0'
-                : 'max-w-2xl space-y-3 px-4'
-          } ${effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile' ? 'space-y-4' : ''}`}
+          className={
+            effectiveActiveView === 'chat'
+              ? 'w-full'
+              : `mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
+                  effectiveActiveView === 'feed' || effectiveActiveView === 'events' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
+                  || effectiveActiveView === 'search' ||
+                    effectiveActiveView === 'group'
+                    ? 'max-w-7xl px-4 lg:px-6'
+                    : effectiveActiveView === 'settings'
+                      ? 'max-w-2xl px-4 space-y-0'
+                      : 'max-w-2xl space-y-3 px-4'
+                } ${effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile' ? 'space-y-4' : ''}`
+          }
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -1359,7 +1379,8 @@ function App() {
             isMobileComposeOpen ||
             profileModalOpen ||
             notificationsPanelOpen ||
-            menuOpen
+            menuOpen ||
+            effectiveActiveView === 'chat'
           }
         />
       </Suspense>

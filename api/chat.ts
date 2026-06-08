@@ -95,6 +95,30 @@ const ALLOWED_ROLES = new Set<ChatRole>(['system', 'user', 'assistant'])
  */
 const RESPONSE_CACHE_TTL_SECONDS = 300
 
+/**
+ * Strip Qwen3 / DeepSeek-R1 style chain-of-thought ze stringa.
+ *
+ * Modele reasoning emitują wewnętrzne rozumowanie owinięte w
+ * `<think>...</think>` PRZED finalną odpowiedzią (tzw. "thought leak").
+ * Primary fix idzie przez `reasoning_format: 'hidden'` w `GroqProvider`
+ * — Groq strip-uje to po swojej stronie. Ta funkcja to defensive last
+ * line: pokrywa scenariusze gdy:
+ *   - flaga `reasoning_format` nie jest honorowana dla danego modelu,
+ *   - przyszły provider OpenAI-compat ignoruje ten parametr,
+ *   - model emituje `<think>` mid-stream bez zamknięcia (cut connection).
+ *
+ * Strategia: usuwamy KAŻDY domknięty blok `<think>...</think>`
+ * (non-greedy, multi-block), a następnie tnijemy orphan opening
+ * `<think>` (i wszystko za nim) — bo brak zamknięcia oznacza, że
+ * model nie zaczął jeszcze właściwej odpowiedzi.
+ */
+export function stripThinkingTags(text: string): string {
+  if (!text) return text
+  let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '')
+  cleaned = cleaned.replace(/<think>[\s\S]*$/i, '')
+  return cleaned.trim()
+}
+
 type ProxyMessage = { role: string; content: string }
 
 function isProxyMessage(value: unknown): value is ProxyMessage {
@@ -700,14 +724,18 @@ export default async function handler(req: Request): Promise<Response> {
   const responseCacheKey = buildResponseCacheKey(lastUserText, useTools)
   const cachedReply = await kvGetSafe<string>(responseCacheKey)
   if (cachedReply) {
+    // Self-healing: stare wpisy w KV (sprzed `stripThinkingTags`) mogą zawierać
+    // `<think>`. Strip-ujemy też na READ — gwarancja, że user nigdy nie zobaczy
+    // wycieku, nawet z 5-minutowego cache'u sprzed deploya.
+    const cleanedCached = stripThinkingTags(cachedReply)
     console.log(
       '[Response Cache] HIT key:',
       responseCacheKey,
       '| len:',
-      cachedReply.length,
+      cleanedCached.length,
       '— skipping Groq AND Supabase',
     )
-    return streamFinalContent(cachedReply)
+    return streamFinalContent(cleanedCached)
   }
   console.log('[Response Cache] MISS key:', responseCacheKey)
 
@@ -750,8 +778,19 @@ export default async function handler(req: Request): Promise<Response> {
 
       if (toolCalls.length === 0) {
         // Ścieżka A: model sam wygenerował odpowiedź (np. small-talk, brak
-        // sensownego narzędzia). Jego content idzie 1:1 do usera.
-        finalContent = assistantMessage.content ?? ''
+        // sensownego narzędzia). Jego content idzie 1:1 do usera, po
+        // defensywnym strip-ie `<think>` (drugie zabezpieczenie na wypadek
+        // gdyby Groq nie uszanował `reasoning_format: 'hidden'`).
+        const rawContent = assistantMessage.content ?? ''
+        finalContent = stripThinkingTags(rawContent)
+        if (finalContent.length !== rawContent.length) {
+          console.warn(
+            '[Thought Strip] removed <think> tags from model content. raw len:',
+            rawContent.length,
+            '| cleaned len:',
+            finalContent.length,
+          )
+        }
         console.log(
           '[Tool Flow] no tool_calls — using model content directly | len:',
           finalContent.length,
