@@ -37,6 +37,28 @@ const FALLBACK_MODEL = 'llama-3.1-8b-instant'
 const DEFAULT_TEMPERATURE = 0.7
 
 /**
+ * Modele "reasoning" — w trakcie generacji emitują chain-of-thought
+ * w blokach `<think>...</think>` PRZED finalną odpowiedzią. Domyślnie
+ * Groq zwraca te bloki inline w `choices[0].message.content`, co dla
+ * naszego chatu = "thought leak" widoczny dla użytkownika.
+ *
+ * Dla tych modeli wysyłamy `reasoning_format: 'hidden'` — Groq strip-uje
+ * reasoning po swojej stronie i `content` zawiera już samą odpowiedź.
+ * Dla modeli bez reasoning (llama-3.1-8b) ten parametr nie jest potrzebny
+ * i z ostrożności go nie wysyłamy (Groq go ignoruje, ale niektóre
+ * OpenAI-compat klony mogłyby się zachłysnąć).
+ */
+function supportsReasoningFormat(model: string): boolean {
+  const m = model.toLowerCase()
+  return (
+    m.includes('qwen3') ||
+    m.includes('qwen-3') ||
+    m.includes('deepseek-r1') ||
+    m.includes('deepseek/r1')
+  )
+}
+
+/**
  * Format `tools` przekazywany do Groqa (OpenAI-compatible) — `Tool` jako
  * unknown w typie, bo nie chcemy w tym module zależeć od `api/_lib/tools/`.
  * `chat.ts` (orchestrator) podaje gotową tablicę z `toGroqToolsArray()`.
@@ -128,18 +150,22 @@ export class GroqProvider implements LLMProvider {
   async sendMessage(
     messages: ChatRequestMessage[],
   ): Promise<ReadableStream<Uint8Array>> {
+    const body: Record<string, unknown> = {
+      model: this.model,
+      messages,
+      stream: true,
+      temperature: DEFAULT_TEMPERATURE,
+    }
+    if (supportsReasoningFormat(this.model)) {
+      body.reasoning_format = 'hidden'
+    }
     const response = await fetch(GROQ_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        stream: true,
-        temperature: DEFAULT_TEMPERATURE,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -171,12 +197,16 @@ export class GroqProvider implements LLMProvider {
     messages: ChatRequestMessage[],
     opts: GroqCompleteOptions = {},
   ): Promise<string> {
-    const response = await this.postJson({
+    const body: Record<string, unknown> = {
       model: this.model,
       messages,
       stream: false,
       temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
-    })
+    }
+    if (supportsReasoningFormat(this.model)) {
+      body.reasoning_format = 'hidden'
+    }
+    const response = await this.postJson(body)
 
     const data = (await response.json().catch(() => null)) as GroqChatCompletionResponse | null
     const content = data?.choices?.[0]?.message?.content
@@ -216,6 +246,9 @@ export class GroqProvider implements LLMProvider {
     if (tools.length > 0) {
       body.tools = tools
       body.tool_choice = opts.toolChoice ?? 'auto'
+    }
+    if (supportsReasoningFormat(this.model)) {
+      body.reasoning_format = 'hidden'
     }
 
     const response = await this.postJson(body)

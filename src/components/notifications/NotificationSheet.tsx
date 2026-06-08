@@ -26,14 +26,24 @@ export default function NotificationSheet({
   const shouldReduceMotion = useReducedMotion()
 
   useEffect(() => {
-    const prevBody = document.body.style.overflow
-    const prevHtml = document.documentElement.style.overflow
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
+    const html = document.documentElement
+    const body = document.body
+    const scrollbarWidth = window.innerWidth - html.clientWidth
+
+    const prevBodyOverflow = body.style.overflow
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyPaddingRight = body.style.paddingRight
+
+    body.style.overflow = 'hidden'
+    html.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`
+    }
 
     return () => {
-      document.body.style.overflow = prevBody
-      document.documentElement.style.overflow = prevHtml
+      body.style.overflow = prevBodyOverflow
+      html.style.overflow = prevHtmlOverflow
+      body.style.paddingRight = prevBodyPaddingRight
     }
   }, [])
 
@@ -55,11 +65,11 @@ export default function NotificationSheet({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
 
       <motion.div
-        className={`absolute inset-x-0 bottom-0 z-220 flex max-h-[75vh] flex-col ${notificationGlass.sheet}`}
+        className={`absolute inset-x-0 bottom-0 z-220 flex max-h-[75vh] flex-col will-change-transform ${notificationGlass.sheet}`}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={shouldReduceMotion ? { duration: 0.14 } : motionPresets.sheetSpring}
+        exit={{ y: '100%', transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
+        transition={shouldReduceMotion ? { duration: 0.16 } : motionPresets.sheetSpring}
         drag="y"
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0.18}

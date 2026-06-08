@@ -14,6 +14,7 @@ import AcademicAnnouncementsWidget from './AcademicAnnouncementsWidget'
 import GroupNav from './GroupNav'
 import CompactEventRow from './CompactEventRow'
 import EmptyState from './EmptyState'
+import FeedSkeleton from './FeedSkeleton'
 import Niezbednik from './Niezbednik'
 import MobileDashboard from './mobile/MobileDashboard'
 import BaseCard from './ui/BaseCard'
@@ -159,11 +160,7 @@ export default function FeedView({
       )}
 
       <div className="overflow-visible bg-transparent">
-        {postsLoading && (
-          <div className="flex justify-center py-16">
-            <div className="h-8 w-8 rounded-full border-[3px] border-uj-blue border-t-transparent animate-spin" />
-          </div>
-        )}
+        {postsLoading && <FeedSkeleton count={4} />}
 
         {!postsLoading && !postsError && posts.length === 0 && (
           selectedDepartment ? (
@@ -233,23 +230,22 @@ export default function FeedView({
   )
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12 lg:items-start lg:gap-4">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(250px,350px)_minmax(0,800px)_minmax(250px,350px)] lg:items-start lg:justify-center lg:gap-6">
 
       {/*
         ── LEFT SIDEBAR (desktop only) ───────────────────────────────
-        Sticky-Follow: `bottom-4` + `self-end` tworzą „goniącą wyspę".
-        Wyspa spływa naturalnie z feedem do momentu, w którym jej dolna
-        krawędź zrówna się z `bottom: 1rem` viewportu — wtedy sticky
-        przykleja ją do dołu okna i goni użytkownika podczas scrolla w dół.
-        Przy scrollu w górę odkleja się i wraca do natural-flow position
-        wyznaczonego przez `self-end` (dno komórki gridu).
-        Outer grid trzyma `items-start`, więc inne kolumny nie zmieniają
-        alignmentu; tylko ten aside (`self-*` override) kotwiczy się do dołu.
-        Brak `max-h` / `overflow-y-auto` — sticky jest jedynym mechanizmem
-        pozycjonowania pionowego.
+        Top-anchored sticky: `top-4` + `self-start` przyklejają wyspę do
+        górnej krawędzi viewportu (z 1 rem oddechu). Aside jest widoczny
+        od razu po wejściu na stronę i podąża z górnym brzegiem podczas
+        scrolla — bez „zjeżdżania" do dna na wysokich viewportach (2K+).
+        `max-h-[calc(100vh-2rem)] overflow-y-auto` zabezpiecza przed
+        wystawieniem dłuższego contentu poza viewport (małe laptopy):
+        wewnętrzny scroll, gdy aside jest wyższy niż okno.
+        Outer grid trzyma `items-start`, więc `self-start` jest zgodny
+        z domyślnym alignmentem — `self-*` zostawione jawnie dla czytelności.
       */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky bottom-4 self-end custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
+        className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
       >
         <AcademicAnnouncementsWidget
           announcements={academicAnnouncements}
@@ -262,7 +258,7 @@ export default function FeedView({
       </aside>
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
-      <div className="lg:col-span-6 flex min-w-0 w-full max-w-full flex-col items-stretch gap-4">
+      <div className="flex min-w-0 w-full max-w-full flex-col items-stretch gap-4">
         <div className="mx-auto w-full max-w-2xl px-0">
           <div className="hidden md:flex w-full flex-col border border-zinc-200 dark:border-white/10 rounded-xl bg-white dark:bg-zinc-950/50 overflow-hidden shadow-sm p-0">
             <ComposeBox
@@ -311,13 +307,13 @@ export default function FeedView({
 
       {/*
         ── RIGHT SIDEBAR (desktop) ───────────────────────────────────
-        Sticky-Follow: identyczna polityka jak left rail — `bottom-4` +
-        `self-end`. Brak `max-h` / `overflow-y-auto`. Wyspa zakotwicza się
-        do dolnej krawędzi viewportu (z 1 rem oddechu) i „goni" użytkownika
-        w dół, a po scrollu w górę wraca na dno swojej kolumny gridu.
+        Top-anchored sticky: identyczna polityka jak left rail — `top-4` +
+        `self-start` + wewnętrzny `overflow-y-auto`. Wyspa kotwiczy się do
+        górnej krawędzi viewportu i podąża z scrollem; nie zjeżdża do dna
+        komórki gridu na wysokich viewportach.
       */}
       <aside
-        className={`hidden lg:flex lg:col-span-3 lg:min-w-[13rem] flex-col ${unifiedCardGapCls} sticky bottom-4 self-end pt-0`}
+        className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pt-0`}
       >
         <Niezbednik />
 

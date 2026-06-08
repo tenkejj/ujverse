@@ -1,5 +1,8 @@
 {
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/scrape-uj-events", "schedule": "0 */6 * * *" }
   ]
 }

@@ -9,13 +9,13 @@ export const notificationGlass = {
 } as const
 
 export const motionPresets = {
-  sheetSpring: { type: 'spring' as const, stiffness: 320, damping: 30 },
-  panelSpring: { type: 'spring' as const, stiffness: 360, damping: 28 },
-  backdropFade: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
-  itemStagger: 0.04,
+  sheetSpring: { type: 'spring' as const, stiffness: 420, damping: 38, mass: 0.9 },
+  panelSpring: { type: 'spring' as const, stiffness: 520, damping: 36, mass: 0.7 },
+  backdropFade: { duration: 0.16, ease: [0.22, 1, 0.36, 1] as const },
+  itemStagger: 0.035,
   itemEnter: {
-    initial: { opacity: 0, y: 8, filter: 'blur(4px)' },
-    animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+    initial: { opacity: 0, y: 6 },
+    animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, x: -12, transition: { duration: 0.18 } },
   },
 } as const

@@ -22,16 +22,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bot, Send } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
 import {
   sectionTitleCls,
+  sideHeaderLinkCls,
   sideMutedCls,
+  sidePanelHoverFocus,
   widgetGoldCls,
 } from '../../lib/sidePanelStyles'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import MessageList from './MessageList'
+
+const OPEN_HUB_BTN_CLS = `shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium ${sideHeaderLinkCls} ${sidePanelHoverFocus}`
 
 const QUICK_PROMPTS = [
   'Co dziś z WZiKS?',
@@ -41,6 +46,7 @@ const QUICK_PROMPTS = [
 ] as const
 
 export default function ChatAssistant() {
+  const navigate = useNavigate()
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
   const clearHistory = useChatStore((s) => s.clearHistory)
@@ -106,6 +112,14 @@ export default function ChatAssistant() {
           <span className={sectionTitleCls}>Asystent UJ</span>
           <span className={`text-[10px] ${sideMutedCls}`}>Qwen3 32B</span>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate('/chat')}
+          className={OPEN_HUB_BTN_CLS}
+          aria-label="Otwórz pełny widok rozmowy z asystentem"
+        >
+          Otwórz pełny czat →
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Szybkie pytania">
