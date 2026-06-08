@@ -1,16 +1,26 @@
 /**
  * Tool: `search_events`
  *
- * Wyszukuje wydarzenia w `public.events` po fragmencie tekstu (`title`,
- * `description`, `location`). Wzorzec `or(...ilike...)` jest 1:1 z
- * `EventsAdapter.searchDb` po stronie klienta — celowo, żeby semantyka
+ * Wyszukuje wydarzenia po fragmencie tekstu (`title`, `description`,
+ * `location`) w DWÓCH tabelach jednocześnie:
+ *  - `public.events` — wydarzenia tworzone przez użytkowników UJverse,
+ *  - `public.official_events` — oficjalne UJ scrapowane przez serverless
+ *    cron (`api/scrape-uj-events.ts`, migracja `20260608170000`).
+ *
+ * Wzorzec `or(...ilike...)` jest 1:1 z `EventsAdapter.search()` po stronie
+ * klienta (DB events + cache oficjalnych) — celowo, żeby semantyka
  * wyszukiwania widziana przez asystenta pokrywała się z wyszukiwarką w UI.
  *
- * Zwracane pola są zwężone (`id, title, description, location, date,
- * is_official`) — model nie potrzebuje `attendee_avatars` ani
- * `external_id` do udzielenia odpowiedzi. Kolumna `faculty` nie istnieje
- * w obecnym schemacie `public.events`, więc nie jest selectowana (zapytanie
- * z nią rzucałoby PostgREST 42703 i wywracało całe wyszukiwanie).
+ * Flag `is_official` JEST polem wyniku, ale NIE jest selectowane z DB —
+ * `events` po prostu nie ma takiej kolumny (PostgREST 42703), a w
+ * `official_events` „oficjalność" jest immanentna (cała tabela). Stąd
+ * mapping syntetyczny: `events → false`, `official_events → true`.
+ *
+ * Strategia merge: każde query pobiera do `MAX_ROWS` wyników, łączymy,
+ * sortujemy malejąco po dacie, przycinamy do `MAX_ROWS` całości. Jeśli
+ * jedna z tabel rzuci błąd, zwracamy częściowe wyniki z drugiej (degradacja
+ * funkcjonalna lepsza niż pełne `ok: false`); jeśli obie failują —
+ * `ok: false` z agregatem komunikatów.
  *
  * Limit: 10. Nie filtrujemy po dacie — jeśli użytkownik pyta o przeszłe
  * wydarzenia ("co było w marcu na WZiKS?"), powinniśmy je znaleźć. Świeżość
@@ -36,10 +46,12 @@ function escapeIlikePattern(term: string): string {
 }
 
 /**
- * Zod schema dla wiersza `events` zwracanego przez Supabase. Pełni rolę
- * runtime "return type check" — jeśli schemat tabeli się rozjedzie albo
- * Postgres zwróci nieoczekiwane typy (np. `date` jako liczba), `safeParse`
- * to wyłapie i nie pozwoli wpuścić śmieci do wyniku narzędzia.
+ * Zod schema dla wiersza zwracanego przez Supabase z dowolnej z dwóch tabel
+ * eventowych. Wspólny wąski podzbiór kolumn — `events.id` jest UUID/string,
+ * `official_events.id` to UUID; oba lądują jako string w wyniku po
+ * `String(r.id)`. Pełni rolę runtime "return type check" — jeśli schemat
+ * się rozjedzie albo Postgres zwróci nieoczekiwane typy (np. `date` jako
+ * liczba), `safeParse` wyłapie i nie pozwoli wpuścić śmieci.
  */
 const EventRowSchema = z.object({
   id: z.union([z.string(), z.number()]),
@@ -47,33 +59,73 @@ const EventRowSchema = z.object({
   description: z.string().nullable(),
   location: z.string().nullable(),
   date: z.string().nullable(),
-  is_official: z.boolean().nullable(),
 })
 
 const EventRowsSchema = z.array(EventRowSchema)
 
 type EventRow = z.infer<typeof EventRowSchema>
 
+const TABLE_SELECT = 'id, title, description, location, date'
+
 export type SearchEventsArgs = {
   query: string
+}
+
+type ResultItem = {
+  id: string
+  title: string
+  description: string
+  location: string
+  date: string | null
+  is_official: boolean
 }
 
 export type SearchEventsResult = {
   ok: true
   count: number
-  items: Array<{
-    id: string
-    title: string
-    description: string
-    location: string
-    date: string | null
-    is_official: boolean
-  }>
+  items: ResultItem[]
 }
 
 export type SearchEventsError = {
   ok: false
   error: string
+}
+
+/**
+ * Wykonuje pojedyncze query do tabeli eventowej. Zwraca:
+ *  - `{ rows }` — sukces (może być pusty),
+ *  - `{ error }` — błąd Postgres / walidacji.
+ *
+ * Wyodrębnione, żeby orkiestracja `Promise.all` w `execute()` była czytelna
+ * i żeby błąd z jednej tabeli nie wywracał całej akcji.
+ */
+async function queryTable(
+  ctx: ToolContext,
+  table: 'events' | 'official_events',
+  orFilter: string,
+): Promise<{ rows: EventRow[] } | { error: string }> {
+  const { data, error } = await ctx.supabaseAdmin
+    .from(table)
+    .select(TABLE_SELECT)
+    .or(orFilter)
+    .order('date', { ascending: false })
+    .limit(MAX_ROWS)
+
+  if (error) {
+    console.error(`[search_events] db error on ${table}:`, error.message)
+    return { error: error.message }
+  }
+
+  const parsed = EventRowsSchema.safeParse(data ?? [])
+  if (!parsed.success) {
+    console.error(
+      `[search_events] zod validation failed on ${table}:`,
+      parsed.error.issues,
+    )
+    return { error: `invalid ${table} row shape from database` }
+  }
+
+  return { rows: parsed.data }
 }
 
 async function execute(
@@ -94,40 +146,53 @@ async function execute(
     `description.ilike.%${pattern}%,` +
     `location.ilike.%${pattern}%`
 
-  const { data, error } = await ctx.supabaseAdmin
-    .from('events')
-    .select('id, title, description, location, date, is_official')
-    .or(orFilter)
-    .order('date', { ascending: false })
-    .limit(MAX_ROWS)
+  const [userResult, officialResult] = await Promise.all([
+    queryTable(ctx, 'events', orFilter),
+    queryTable(ctx, 'official_events', orFilter),
+  ])
 
-  if (error) {
-    console.error('[search_events] db error:', error.message)
-    return { ok: false, error: error.message }
+  // Oba błędy → twardy fail. Jedno źródło OK → degradacja funkcjonalna.
+  if ('error' in userResult && 'error' in officialResult) {
+    return {
+      ok: false,
+      error: `events: ${userResult.error}; official_events: ${officialResult.error}`,
+    }
   }
 
-  const parsed = EventRowsSchema.safeParse(data ?? [])
-  if (!parsed.success) {
-    console.error(
-      '[search_events] zod validation failed:',
-      parsed.error.issues,
-    )
-    return { ok: false, error: 'invalid events row shape from database' }
-  }
+  const userRows = 'rows' in userResult ? userResult.rows : []
+  const officialRows = 'rows' in officialResult ? officialResult.rows : []
 
-  const rows: EventRow[] = parsed.data
-  if (rows.length === 0) {
+  const merged: ResultItem[] = [
+    ...userRows.map((r) => ({
+      id: String(r.id),
+      title: r.title ?? '',
+      description: r.description ?? '',
+      location: r.location ?? '',
+      date: r.date,
+      is_official: false,
+    })),
+    ...officialRows.map((r) => ({
+      id: String(r.id),
+      title: r.title ?? '',
+      description: r.description ?? '',
+      location: r.location ?? '',
+      date: r.date,
+      is_official: true,
+    })),
+  ]
+
+  if (merged.length === 0) {
     return EMPTY_RESULT_MESSAGE
   }
 
-  const items = rows.map((r) => ({
-    id: String(r.id),
-    title: r.title ?? '',
-    description: r.description ?? '',
-    location: r.location ?? '',
-    date: r.date,
-    is_official: Boolean(r.is_official),
-  }))
+  // Sort malejąco po dacie (null-y na koniec), tnijemy do MAX_ROWS.
+  merged.sort((a, b) => {
+    const da = a.date ? new Date(a.date).getTime() : -Infinity
+    const db = b.date ? new Date(b.date).getTime() : -Infinity
+    return db - da
+  })
+
+  const items = merged.slice(0, MAX_ROWS)
 
   return { ok: true, count: items.length, items }
 }

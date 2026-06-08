@@ -11,8 +11,9 @@
  */
 
 import { forwardRef, type ReactNode } from 'react'
-import { Bot } from 'lucide-react'
+import { motion } from 'framer-motion'
 import type { ChatMessage } from '../../types/ai'
+import AnimatedBot from './AnimatedBot'
 import TypewriterMarkdown from './TypewriterMarkdown'
 
 export type MessageListVariant = 'compact' | 'roomy'
@@ -32,8 +33,8 @@ type VariantTokens = {
 }
 
 const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
-  compact: { text: 'text-xs', pad: 'px-2.5 py-1.5', bubbleMax: 'max-w-[95%]' },
-  roomy: { text: 'text-sm', pad: 'px-3 py-2', bubbleMax: 'max-w-[85%]' },
+  compact: { text: 'text-sm', pad: 'px-3 py-2', bubbleMax: 'max-w-[95%]' },
+  roomy: { text: 'text-base', pad: 'px-4 py-2.5', bubbleMax: 'max-w-[85%]' },
 }
 
 function MessageBubble({
@@ -77,35 +78,65 @@ function MessageBubble({
   )
 }
 
-const TYPING_DOT_DELAYS_MS = [0, 150, 300] as const
+/**
+ * Typing indicator — ikonka Bota animowana w framer-motion + trzy mini-kropki
+ * pulsujące sekwencyjnie. Bez tekstu — sama animacja niesie informację, że
+ * asystent myśli (language-agnostic, kompaktowe).
+ *
+ * Animacja Bota: breathing scale (1 → 1.12 → 1) + delikatny wobble rotation
+ * (-4° → 4° → -4°) w 1.6s loop. Subtelny "thinking" gest — głowa robota
+ * lekko się kiwa, jakby rozważała odpowiedź.
+ *
+ * Trzy kropki: opacity 0.25 → 1 → 0.25 z delay 0/200/400ms — płynniej niż
+ * stary `animate-pulse` (framer-motion easing zamiast CSS keyframe ramp).
+ *
+ * `prefers-reduced-motion` — framer-motion automatycznie respektuje
+ * `MotionConfig`-ową heurystykę; dodatkowo dla pewności dajemy
+ * `aria-label="Asystent myśli"` żeby screen reader miał kontekst nawet
+ * gdy nie widzi animacji.
+ */
+const TYPING_DOT_DELAYS = [0, 0.2, 0.4] as const
 
 function TypingIndicator({ variant }: { variant: MessageListVariant }) {
   const tokens = VARIANT_TOKENS[variant]
+  const botSize = variant === 'compact' ? 18 : 22
   return (
-    <div className="flex justify-start" aria-live="polite" aria-label="Asystent pisze">
+    <div className="flex justify-start" aria-live="polite" aria-label="Asystent myśli">
       <div
-        className={`flex items-center gap-1 rounded-xl rounded-bl-md border border-zinc-200/70 bg-white/60 ${tokens.pad} text-[#1e293b] shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-brand-gold-bright`}
+        className={`inline-flex items-center gap-2.5 rounded-xl rounded-bl-md border border-zinc-200/70 bg-white/60 ${tokens.pad} text-[#1e293b] shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-brand-gold-bright`}
       >
-        {TYPING_DOT_DELAYS_MS.map((delay) => (
-          <span
-            key={delay}
-            className="h-1.5 w-1.5 animate-pulse rounded-full bg-current opacity-60"
-            style={{ animationDelay: `${delay}ms` }}
-          />
-        ))}
+        <AnimatedBot size={botSize} strokeWidth={2} intensity="active" className="shrink-0" />
+        <span aria-hidden className="flex items-center gap-1">
+          {TYPING_DOT_DELAYS.map((delay) => (
+            <motion.span
+              key={delay}
+              className="h-1.5 w-1.5 rounded-full bg-current"
+              animate={{ opacity: [0.25, 1, 0.25] }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay,
+              }}
+            />
+          ))}
+        </span>
       </div>
     </div>
   )
 }
 
 function DefaultEmptyState({ variant }: { variant: MessageListVariant }) {
-  const title = variant === 'compact' ? 'text-xs' : 'text-sm'
-  const subtitle = variant === 'compact' ? 'text-[11px]' : 'text-xs'
+  const isCompact = variant === 'compact'
+  const title = isCompact ? 'text-base' : 'text-lg'
+  const subtitle = isCompact ? 'text-xs' : 'text-sm'
+  const iconSize = isCompact ? 44 : 64
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-1.5 px-3 text-center">
-      <Bot
-        size={variant === 'compact' ? 32 : 40}
+    <div className="flex h-full flex-col items-center justify-center gap-2 px-3 text-center">
+      <AnimatedBot
+        size={iconSize}
         strokeWidth={1.6}
+        intensity="wave"
         className="text-[#1e293b] dark:text-brand-gold-bright"
       />
       <p className={`${title} font-medium text-zinc-700 dark:text-zinc-200`}>

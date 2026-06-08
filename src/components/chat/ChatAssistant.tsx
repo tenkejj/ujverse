@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bot, Send } from 'lucide-react'
+import { Send } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
 import {
   sectionTitleCls,
@@ -34,6 +34,7 @@ import {
 } from '../../lib/sidePanelStyles'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
+import AnimatedBot from './AnimatedBot'
 import MessageList from './MessageList'
 
 const OPEN_HUB_BTN_CLS = `shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium ${sideHeaderLinkCls} ${sidePanelHoverFocus}`
@@ -103,10 +104,11 @@ export default function ChatAssistant() {
       className="flex h-[460px] flex-col gap-3 overflow-hidden p-4"
     >
       <div className="flex items-center gap-2">
-        <Bot
-          size={13}
+        <AnimatedBot
+          size={16}
           strokeWidth={2}
-          className={`${widgetGoldCls} shrink-0 ${isTyping ? 'animate-sparkle-breathe' : ''}`}
+          intensity={isTyping ? 'active' : 'idle'}
+          className={`${widgetGoldCls} shrink-0`}
         />
         <div className="flex min-w-0 flex-1 flex-col leading-tight">
           <span className={sectionTitleCls}>Asystent UJ</span>

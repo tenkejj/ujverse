@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Shield,
   X,
   Calendar,
   CalendarPlus,
@@ -15,6 +14,8 @@ import {
 import { motion } from 'framer-motion'
 import { formatEventDateLong, generateGoogleCalendarLink, type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
+import { theme } from '../styles/theme'
+import OfficialBadge from './ui/OfficialBadge'
 
 type Props = {
   event: UJEvent | null
@@ -28,12 +29,13 @@ type Props = {
 const AVATAR_CAP = 4
 
 const dialogPanelCls =
-  'relative w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-200 bg-white/80 shadow-none backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/90'
+  'relative w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-200 bg-white/95 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/90'
 
-const goldIconCls = 'text-[#1e293b] dark:text-brand-gold-bright'
+const goldIconCls = theme.text.goldMuted
 
-const actionBtnCls =
-  'z-10 rounded-full border border-brand-gold/30 bg-black/40 p-2 text-brand-gold backdrop-blur-sm transition-colors hover:bg-black/55 dark:text-brand-gold-bright'
+const actionBtnCls = `z-10 ${theme.button.floatingIcon}`
+
+const actionBtnDangerCls = `z-10 ${theme.button.floatingIconDanger}`
 
 function formatOthersLine(count: number): string {
   if (count === 0) return '+ 0 innych'
@@ -73,7 +75,7 @@ function ModalToolbar({
         <button
           type="button"
           onClick={onDeleteClick}
-          className="z-10 rounded-full border border-red-500/40 bg-black/40 p-2 text-red-500 backdrop-blur-sm transition-colors hover:bg-black/55 hover:text-red-400"
+          className={actionBtnDangerCls}
           aria-label="Usuń wydarzenie"
         >
           <Trash2 size={18} strokeWidth={2} />
@@ -187,10 +189,8 @@ function EventModalContent({
           <button
             type="button"
             onClick={() => onToggleRsvp(event.id)}
-            className={`min-w-[120px] flex-1 rounded-xl py-3 font-bold transition-colors ${
-              isAttending
-                ? 'border border-[#1e293b]/45 bg-transparent text-[#1e293b] hover:bg-[#1e293b]/5 dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10'
-                : 'bg-[#1e293b] text-white hover:bg-[#1e293b]/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85'
+            className={`min-w-[120px] flex-1 py-3 text-sm ${
+              isAttending ? theme.button.outline : theme.button.primary
             }`}
           >
             {isAttending ? '✓ Bierzesz udział' : 'Wezmę udział'}
@@ -198,10 +198,10 @@ function EventModalContent({
           <button
             type="button"
             onClick={onShare}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[#1e293b]/35 bg-[#1e293b]/[0.03] px-4 py-3 text-sm font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/[0.06] dark:border-brand-gold/50 dark:bg-brand-gold/5 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10"
+            className={`shrink-0 px-4 py-3 text-sm ${theme.button.outline}`}
             aria-label="Udostępnij wydarzenie"
           >
-            <Share2 size={18} strokeWidth={2} className={goldIconCls} aria-hidden />
+            <Share2 size={18} strokeWidth={2} aria-hidden />
             Udostępnij
           </button>
           <div className="flex min-w-[180px] flex-1 flex-wrap items-center justify-end gap-3">
@@ -270,10 +270,9 @@ function EventModalContent({
           onClose={handleClose}
         />
         {official ? (
-          <span className="absolute left-4 top-16 z-[6] inline-flex items-center gap-1 rounded-full border border-[#c9a227]/55 bg-black/50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-brand-gold backdrop-blur-sm dark:text-brand-gold-bright">
-            <Shield size={12} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.5} aria-hidden />
-            OFICJALNE UJ
-          </span>
+          <div className="absolute left-4 top-16 z-[6]">
+            <OfficialBadge size="md" variant="floating" />
+          </div>
         ) : null}
         <h2
           id="event-modal-title"
@@ -360,7 +359,7 @@ export default function EventModal({ event, currentUserId, onClose, onToggleRsvp
       {shareToast ? (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-[10025] max-w-[90vw] -translate-x-1/2 rounded-2xl border border-zinc-200 bg-white/80 px-5 py-3 text-sm font-medium text-slate-900 shadow-lg shadow-black/25 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/90 dark:text-white dark:shadow-black/40"
+          className="fixed bottom-6 left-1/2 z-[10025] max-w-[90vw] -translate-x-1/2 rounded-2xl border border-zinc-200 bg-white/95 px-5 py-3 text-sm font-medium text-slate-900 shadow-lg shadow-black/25 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/90 dark:text-white dark:shadow-black/40"
         >
           Link skopiowany do schowka! 🔗
         </div>

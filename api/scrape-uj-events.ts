@@ -27,14 +27,29 @@ const UJ_CALENDAR_URL = 'https://www.uj.edu.pl/kalendarz'
 
 /**
  * Slugi w `/kalendarz/<slug>` które NIE są wydarzeniami tylko kategoriami
- * / formularzami / widokami. Wykrywane wprost — nie ma sensu kombinować
- * regexem, bo lista jest krótka i stabilna.
+ * / formularzami / widokami. Pochodzą z sidebara portalu UJ:
+ *   Wiadomości, Kalendarz (Popularne wydarzenia / Konferencje / Wykłady /
+ *   Kultura / Konkursy), Nauka, Warto zobaczyć, Na skróty.
+ *
+ * Lista jest defense-in-depth — głęboki warunek niżej (`hasArchetype ||
+ * seg.length >= 3`) odsiewa też nowe kategorie, których jeszcze tu nie ma.
  */
 const CALENDAR_NON_EVENT_SLUGS = new Set([
   'popularne',
+  'popularne-wydarzenia',
   'konferencje',
   'konkursy',
   'konkurs',
+  'wyklady',
+  'wykłady',
+  'kultura',
+  'nauka',
+  'warto-zobaczyc',
+  'warto-zobaczyć',
+  'na-skroty',
+  'na-skróty',
+  'wiadomosci',
+  'wiadomości',
   'formularz',
   'dodaj',
   'archiwum',
@@ -124,7 +139,11 @@ function isLikelyArticleLink(absUrl: string): boolean {
       const after = seg[1] ?? ''
       if (!after) return false
       if (CALENDAR_NON_EVENT_SLUGS.has(after.toLowerCase())) return false
-      return seg.length >= 2
+      // Prawdziwe wydarzenia w Liferay UJ żyją głębiej niż 2 segmenty —
+      // albo mają archetyp `/-/` / `journal_content`, albo struktura
+      // `/kalendarz/<kategoria>/<slug>`. Index kategorii ZAWSZE ma głębokość 2.
+      const hasArchetype = /\/-\/|journal_content/i.test(u.pathname)
+      return hasArchetype || seg.length >= 3
     }
 
     // Mocne sygnały „to jest artykuł / wydarzenie" (Liferay journal_content, archetypy „/-/" itd.).

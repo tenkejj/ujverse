@@ -18,10 +18,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bot, Send, X } from 'lucide-react'
+import { Send, X } from 'lucide-react'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
+import AnimatedBot from './AnimatedBot'
 import MessageList from './MessageList'
 
 type Props = {
@@ -122,7 +123,7 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
       whileTap={{ scale: 0.94 }}
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
     >
-      <Bot size={22} strokeWidth={2} />
+      <AnimatedBot size={22} strokeWidth={2} intensity="idle" />
     </motion.button>
   )
 
@@ -156,7 +157,7 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
         <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-1">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950">
-              <Bot size={16} strokeWidth={2.2} />
+              <AnimatedBot size={16} strokeWidth={2.2} intensity={isTyping ? 'active' : 'idle'} />
             </span>
             <div className="flex flex-col leading-tight">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
