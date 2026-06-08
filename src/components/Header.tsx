@@ -382,6 +382,7 @@ export default function Header({
       isOpen={isSearchOpen}
       onClose={() => setIsSearchOpen(false)}
       onSubmit={(q) => onNavigateToSearch(q)}
+      onOpenHub={() => onNavigateToSearch()}
     />
 
     </>

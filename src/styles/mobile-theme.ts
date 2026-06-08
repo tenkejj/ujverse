@@ -192,11 +192,16 @@ export const OMNI_DESKTOP = {
   //
   // Glassmorphism zachowany: `backdrop-blur-md backdrop-saturate-150` +
   // półprzezroczyste tło (`bg-white/80 dark:bg-bg-card/80`).
+  // Light: niższa opacity (55%) + frosted-edge `border-white/55` + inner top highlight
+  // (`inset 0 1px 0 rgba(255,255,255,0.7)`) odsłaniają backdrop-blur ponad headerem.
+  // Dark: zostaje bez zmian (już dobrze widać glass dzięki `bg-bg-card/80` na ciemnym tle).
   inputCapsuleWrap:
     'relative hidden xl:flex h-10 w-72 2xl:w-80 shrink-0 items-center gap-2 rounded-2xl px-3.5 ' +
-    'backdrop-blur-md backdrop-saturate-150 border border-zinc-200 bg-white/80 ' +
+    'backdrop-blur-md backdrop-saturate-150 ' +
+    'border border-white/55 bg-white/55 ' +
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_8px_-3px_rgba(15,23,42,0.1)] ' +
     'transition-colors duration-200 focus-within:border-[#1e293b]/40 ' +
-    'dark:border-white/10 dark:bg-bg-card/80 dark:focus-within:border-brand-gold-bright/45',
+    'dark:border-white/10 dark:bg-bg-card/80 dark:shadow-none dark:focus-within:border-brand-gold-bright/45',
   // Input: `flex-1` rozpycha się na dostępną przestrzeń, `min-w-0` chroni
   // przed wypchnięciem rodzeństwa (ikony / `X`) gdy zawartość rośnie.
   inputInner:
@@ -210,12 +215,19 @@ export const OMNI_DESKTOP = {
     'inline-flex shrink-0 items-center gap-1 rounded-md border border-[#1e293b]/30 bg-[#1e293b]/10 px-1.5 py-0.5 ' +
     'text-[10px] font-bold uppercase tracking-wider text-[#1e293b] ' +
     'dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright',
+  // Light: dropdown jest nad treścią feedu (nie nad blurred-headerem), więc opacity 65 % +
+  // `backdrop-blur-2xl` realnie odsłania kolory karty pod spodem. Frosted-edge robi
+  // `border-white/60` i inner top highlight w `shadow-[…inset…]`.
+  // Dark: zachowane oryginalne tokeny, tylko shadow rozdzielony na własną drop-shadow,
+  // żeby nadpisanie z light nie wycięło efektu floatingu w trybie ciemnym.
   panel:
     'absolute right-0 top-[calc(100%+0.5rem)] z-[120] w-[min(28rem,calc(100vw-2rem))] ' +
     'origin-top-right overflow-hidden rounded-2xl ' +
-    'border border-zinc-200/80 bg-white/95 shadow-2xl shadow-black/15 ring-1 ring-black/[0.04] ' +
+    'border border-white/60 bg-white/65 ring-1 ring-zinc-900/[0.04] ' +
+    'shadow-[0_24px_60px_-20px_rgba(15,23,42,0.22),inset_0_1px_0_rgba(255,255,255,0.85)] ' +
     'backdrop-blur-2xl backdrop-saturate-150 ' +
-    'dark:border-white/10 dark:bg-black/80 dark:shadow-black/60 dark:ring-white/[0.06]',
+    'dark:border-white/10 dark:bg-black/80 dark:ring-white/[0.06] ' +
+    'dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)]',
   panelInner: 'max-h-[min(70vh,560px)] overflow-y-auto overflow-x-hidden overscroll-contain',
   sectionHeader:
     'flex items-center gap-2 px-4 pt-3 pb-1.5 ' +
@@ -464,7 +476,7 @@ export const EVENTS_HUB = {
     posterFallbackClass:
       'relative md:col-span-3 xl:col-span-7 min-h-[200px] md:min-h-[320px] flex items-center justify-center ' +
       'bg-gradient-to-br from-[#1e293b]/[0.08] via-zinc-100 to-white ' +
-      'dark:from-[#1a1508]/85 dark:via-zinc-900/60 dark:to-transparent',
+      'dark:from-zinc-900/70 dark:via-zinc-900/40 dark:to-transparent',
     /** Przyciemnienie u dołu plakatu — pod „Najbliższe wydarzenie" badge. */
     posterShadeClass:
       'pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/15 to-transparent ' +
@@ -520,13 +532,12 @@ export const EVENTS_HUB = {
     gridClass: 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4',
   },
 
-  // ── Sticky toolbar (filter pills + search + create) ──────────────────────
+  // ── Toolbar (filter pills + search + create) — STATYCZNY ─────────────────
+  // (wcześniej `sticky top-[64px]`; produktowo zdecydowane że pasek ma scrollować
+  // razem z resztą strony — eliminacja "podążającego" headera.)
   toolbar: {
-    /** Sticky pod headerem (top ~ 56-72 px zależnie od headera). */
     stickyWrapClass:
-      'sticky top-[64px] z-[15] -mx-2 sm:mx-0 px-2 sm:px-0 py-2 ' +
-      'backdrop-blur-xl backdrop-saturate-150 ' +
-      'bg-bg-app/85 dark:bg-bg-app/85 ' +
+      'relative -mx-2 sm:mx-0 px-2 sm:px-0 pb-3 ' +
       'border-b border-zinc-200/60 dark:border-white/[0.06]',
     rowClass: 'flex flex-wrap items-center justify-between gap-3',
     pillsWrapClass: 'flex flex-wrap gap-1.5 min-w-0',
@@ -536,7 +547,12 @@ export const EVENTS_HUB = {
 
   // ── Side rail (aside) ────────────────────────────────────────────────────
   rail: {
-    wrapClass: 'sticky top-[140px] flex flex-col gap-4',
+    /**
+     * Sticky `top-20` (80 px = header `h-16` 64 px + 16 px oddechu).
+     * Wcześniej `top-[140px]` żeby zostawić miejsce pod sticky-toolbar —
+     * po przejściu toolbara na statyczny, rail przykleja się pod headerem.
+     */
+    wrapClass: 'sticky top-20 flex flex-col gap-4',
     panelClass:
       'relative overflow-hidden rounded-2xl border p-4 ' +
       'border-zinc-200/70 bg-white/75 backdrop-blur-xl backdrop-saturate-150 ' +

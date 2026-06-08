@@ -297,7 +297,7 @@ export default function FollowListsModal({
           })}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
+        <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
           {loading ? (
             <div className="flex justify-center py-14">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1e293b] border-t-transparent dark:border-brand-gold-bright" />

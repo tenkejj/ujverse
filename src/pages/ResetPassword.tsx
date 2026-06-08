@@ -1,11 +1,21 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Eye, EyeOff, Loader2, Lock, ShieldAlert } from 'lucide-react'
 import { toast } from '../lib/appToast'
 import { supabase } from '../supabaseClient.ts'
+import AuthShell from '../components/auth/AuthShell'
 import { authInputCls } from '../components/auth/Login.tsx'
 
 const MIN_PASSWORD_LEN = 8
+
+const primaryBtnCls =
+  'inline-flex w-full items-center justify-center gap-2 rounded-xl py-3.5 ' +
+  'font-bold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 ' +
+  'bg-[#1e293b] text-white hover:bg-[#172033] active:scale-[0.99] ' +
+  'dark:bg-brand-gold-bright dark:text-black dark:hover:bg-[#f3d35f]'
+
+const inputWithIconCls = authInputCls.replace('px-3.5', 'pl-10 pr-11')
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -14,6 +24,9 @@ export default function ResetPassword() {
   const [hasUser, setHasUser] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [capsLockOn, setCapsLockOn] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -47,6 +60,10 @@ export default function ResetPassword() {
     }
   }, [])
 
+  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    setCapsLockOn(e.getModifierState?.('CapsLock') ?? false)
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!hasUser) return
@@ -74,123 +91,158 @@ export default function ResetPassword() {
 
   if (!sessionReady) {
     return (
-      <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black p-4">
-        <p className="text-sm text-white/70">Ładowanie…</p>
-      </div>
+      <AuthShell>
+        <div className="flex items-center justify-center gap-2 py-6">
+          <Loader2 size={18} className="animate-spin text-zinc-400 dark:text-white/40" />
+          <p className="text-sm text-zinc-500 dark:text-white/55">Ładowanie…</p>
+        </div>
+      </AuthShell>
     )
   }
 
   if (!hasUser) {
     return (
-      <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
-        <div
-          className="pointer-events-none absolute -left-1/4 top-1/4 h-[min(50vw,28rem)] w-[min(50vw,28rem)] rounded-full bg-amber-600/15 blur-[100px]"
-          aria-hidden
-        />
-        <div className="relative z-10 w-full max-w-md rounded-3xl border border-[#C5A059]/30 bg-white/5 p-8 text-center backdrop-blur-xl">
-          <h1 className="text-xl font-bold text-white">Link wygasł lub jest nieprawidłowy</h1>
-          <p className="mt-2 text-sm text-white/70">
+      <AuthShell>
+        <div className="text-center">
+          <h1 className="text-xl font-extrabold tracking-tight text-[#1e293b] dark:text-white">
+            Link wygasł lub jest nieprawidłowy
+          </h1>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-white/55">
             Poproś o nowy link resetujący na stronie logowania.
           </p>
           <button
             type="button"
             onClick={() => navigate('/', { replace: true })}
-            className="mt-6 w-full rounded-xl bg-[#C5A059] py-3 font-semibold text-neutral-950 transition-colors hover:bg-[#A6864A]"
+            className={primaryBtnCls + ' mt-6'}
           >
             Wróć do logowania
           </button>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
+  const passwordsMismatch =
+    confirmPassword.length > 0 && password !== confirmPassword
+  const passwordTooShort = password.length > 0 && password.length < MIN_PASSWORD_LEN
+
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-hidden bg-black bg-gradient-to-b from-black via-neutral-950 to-black pt-[15vh] p-4">
-      <div
-        className="pointer-events-none absolute -left-1/4 top-1/4 h-[min(50vw,28rem)] w-[min(50vw,28rem)] rounded-full bg-amber-600/15 blur-[100px]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -right-1/5 bottom-1/4 h-[min(45vw,24rem)] w-[min(45vw,24rem)] rounded-full bg-amber-900/25 blur-[100px]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-700/10 blur-3xl"
-        aria-hidden
-      />
+    <AuthShell>
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#1e293b] dark:text-white">
+          Ustaw nowe hasło
+        </h1>
+        <p className="mt-1.5 text-sm text-zinc-500 dark:text-white/55">
+          Wpisz dwa razy nowe hasło dla swojego konta.
+        </p>
+      </div>
 
-      <motion.div
-        className="relative z-10 flex w-full max-w-md flex-col items-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div
-          aria-hidden
-          style={{
-            maskImage: 'url(/logo.png)',
-            WebkitMaskImage: 'url(/logo.png)',
-            maskSize: 'contain',
-            WebkitMaskSize: 'contain',
-            maskRepeat: 'no-repeat',
-            WebkitMaskRepeat: 'no-repeat',
-            maskPosition: 'center',
-            WebkitMaskPosition: 'center',
-            width: '14.5rem',
-          }}
-          className="mb-12 h-40 shrink-0 bg-[#C5A059] drop-shadow-[0_0_28px_rgba(197,160,89,0.45)]"
-        />
-
-        <div className="w-full rounded-3xl border border-[#C5A059]/30 bg-white/5 p-8 text-center backdrop-blur-xl">
-          <h1 className="w-full text-center text-2xl font-extrabold tracking-tight text-white">
-            Nowe hasło
-          </h1>
-          <p className="mt-2 text-center text-sm text-white/80">
-            Ustaw nowe hasło dla swojego konta.
-          </p>
-
-          <form onSubmit={handleSubmit} className="mt-8 w-full text-left">
-            <label className="mb-1 block text-xs font-medium text-white/60" htmlFor="reset-new-password">
-              Nowe hasło
-            </label>
-            <input
-              id="reset-new-password"
-              type="password"
-              className={authInputCls}
-              placeholder={`Minimum ${MIN_PASSWORD_LEN} znaków`}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={MIN_PASSWORD_LEN}
-              autoComplete="new-password"
-            />
-
-            <label className="mb-1 block text-xs font-medium text-white/60" htmlFor="reset-confirm-password">
-              Potwierdź hasło
-            </label>
-            <input
-              id="reset-confirm-password"
-              type="password"
-              className={authInputCls}
-              placeholder="Powtórz hasło"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-            />
-
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={loading ? undefined : { y: -2 }}
-              whileTap={loading ? undefined : { scale: 0.98 }}
-              className="w-full rounded-xl bg-[#C5A059] py-4 font-bold text-neutral-950 shadow-none transition-colors duration-200 hover:bg-[#A6864A] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-[#C5A059]"
-            >
-              {loading ? 'Proszę czekać…' : 'Zapisz nowe hasło'}
-            </motion.button>
-          </form>
+      <form onSubmit={handleSubmit} className="text-left">
+        <label
+          htmlFor="reset-new-password"
+          className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-white/55"
+        >
+          Nowe hasło
+        </label>
+        <div className="relative mb-1.5">
+          <Lock
+            size={18}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-white/35"
+          />
+          <input
+            id="reset-new-password"
+            type={showPassword ? 'text' : 'password'}
+            className={inputWithIconCls}
+            placeholder={`Minimum ${MIN_PASSWORD_LEN} znaków`}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKey}
+            onKeyUp={handleKey}
+            required
+            minLength={MIN_PASSWORD_LEN}
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((s) => !s)}
+            aria-label={showPassword ? 'Ukryj hasło' : 'Pokaż hasło'}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 transition-colors hover:text-[#1e293b] dark:text-white/40 dark:hover:text-brand-gold-bright"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
         </div>
-      </motion.div>
-    </div>
+        <div className="mb-4 min-h-4 space-y-1">
+          {capsLockOn && (
+            <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+              <ShieldAlert size={12} className="shrink-0" />
+              Caps Lock jest włączony
+            </p>
+          )}
+          {passwordTooShort && (
+            <p className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-white/45">
+              <Lock size={12} className="shrink-0" />
+              Jeszcze {MIN_PASSWORD_LEN - password.length}{' '}
+              {MIN_PASSWORD_LEN - password.length === 1 ? 'znak' : 'znaków'} do minimum
+            </p>
+          )}
+        </div>
+
+        <label
+          htmlFor="reset-confirm-password"
+          className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-white/55"
+        >
+          Potwierdź hasło
+        </label>
+        <div className="relative mb-1.5">
+          <Lock
+            size={18}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-white/35"
+          />
+          <input
+            id="reset-confirm-password"
+            type={showConfirm ? 'text' : 'password'}
+            className={inputWithIconCls}
+            placeholder="Powtórz hasło"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirm((s) => !s)}
+            aria-label={showConfirm ? 'Ukryj hasło' : 'Pokaż hasło'}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 transition-colors hover:text-[#1e293b] dark:text-white/40 dark:hover:text-brand-gold-bright"
+          >
+            {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+        <div className="mb-6 min-h-4">
+          {passwordsMismatch && (
+            <p className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400">
+              <ShieldAlert size={12} className="shrink-0" />
+              Hasła muszą być takie same
+            </p>
+          )}
+        </div>
+
+        <motion.button
+          type="submit"
+          disabled={loading}
+          whileHover={loading ? undefined : { y: -1 }}
+          whileTap={loading ? undefined : { scale: 0.99 }}
+          className={primaryBtnCls}
+        >
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              <span>Proszę czekać…</span>
+            </>
+          ) : (
+            'Zapisz nowe hasło'
+          )}
+        </motion.button>
+      </form>
+    </AuthShell>
   )
 }

@@ -83,6 +83,8 @@ type Props = {
   onNavigateToPost: (postId: string) => void
   onNavigateToUser?: (userId: string) => void
   onNavigateToEvents: () => void
+  /** Otwiera profil po `username` (np. z modala uczestników wydarzenia). */
+  onNavigateToProfileHandle?: (handle: string) => void
 }
 
 const unifiedCardGapCls = 'gap-4'
@@ -130,6 +132,7 @@ export default function FeedView({
   onNavigateToPost,
   onNavigateToUser,
   onNavigateToEvents,
+  onNavigateToProfileHandle,
 }: Props) {
   const { events, toggleRsvp, updateEvent } = useEvents()
   const {
@@ -230,7 +233,7 @@ export default function FeedView({
   )
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(250px,350px)_minmax(0,800px)_minmax(250px,350px)] lg:items-start lg:justify-center lg:gap-6">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,920px)_minmax(240px,320px)] lg:items-start lg:justify-center lg:gap-6">
 
       {/*
         ── LEFT SIDEBAR (desktop only) ───────────────────────────────
@@ -259,7 +262,7 @@ export default function FeedView({
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
       <div className="flex min-w-0 w-full max-w-full flex-col items-stretch gap-4">
-        <div className="mx-auto w-full max-w-2xl px-0">
+        <div className="mx-auto w-full max-w-2xl md:max-w-3xl lg:max-w-[900px] px-0">
           <div className="hidden md:flex w-full flex-col border border-zinc-200 dark:border-white/10 rounded-xl bg-white dark:bg-zinc-950/50 overflow-hidden shadow-sm p-0">
             <ComposeBox
               myProfile={myProfile}
@@ -354,6 +357,14 @@ export default function FeedView({
           setEditTarget(e)
           setSelectedEventId(null)
         }}
+        onNavigateToProfileHandle={
+          onNavigateToProfileHandle
+            ? (handle) => {
+                setSelectedEventId(null)
+                onNavigateToProfileHandle(handle)
+              }
+            : undefined
+        }
       />
 
       <CreateEventModal

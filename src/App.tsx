@@ -1119,10 +1119,16 @@ function App() {
             onNavigateToPost={navigateToPost}
             onNavigateToUser={navigateToUser}
             onNavigateToEvents={() => navigateToMainView('events')}
+            onNavigateToProfileHandle={navigateToProfileByHandle}
           />
         )
       case 'events':
-        return <EventsView currentUserId={session.user.id} />
+        return (
+          <EventsView
+            currentUserId={session.user.id}
+            onNavigateToProfileHandle={navigateToProfileByHandle}
+          />
+        )
       case 'profile':
       case 'userProfile':
         if (effectiveActiveView === 'userProfile' && !viewedHandle) {

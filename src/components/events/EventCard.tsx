@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react'
+import { Check, Users } from 'lucide-react'
 import { formatEventDateParts } from '../../data/mockEvents'
 import { theme } from '../../styles/theme'
 import type { Profile } from '../../types'
@@ -29,6 +29,7 @@ export default function EventCard({ content, onSelect }: Props) {
   const official = content.metadata.isOfficial
   const tag = facultyTag(content)
   const posterUrl = content.metadata.imageUrl?.trim() || null
+  const isAttending = Boolean(content.metadata.isAttending)
   const authorProfile: Profile = {
     id: content.author.id,
     full_name: content.author.displayName,
@@ -55,6 +56,16 @@ export default function EventCard({ content, onSelect }: Props) {
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {isAttending ? (
+        <span
+          className="absolute right-3 top-3 z-3 inline-flex items-center gap-1 rounded-full border border-emerald-500/60 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 shadow-sm backdrop-blur-md dark:border-emerald-400/55 dark:bg-emerald-400/15 dark:text-emerald-300"
+          aria-label="Bierzesz udział"
+        >
+          <Check size={11} strokeWidth={3} aria-hidden />
+          Idziesz
+        </span>
       ) : null}
 
       <div className="relative z-[2] flex flex-1 flex-col gap-3 p-4">

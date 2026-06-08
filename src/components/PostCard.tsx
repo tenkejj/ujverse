@@ -11,6 +11,7 @@ import { toast } from '../lib/appToast'
 import UserAvatar from './UserAvatar'
 import CommentThread from './CommentThread'
 import ConfirmModal from './ConfirmModal'
+import ImageLightbox from './ImageLightbox'
 import ReportModal from './ReportModal'
 import BaseCard from './ui/BaseCard'
 import {
@@ -21,35 +22,69 @@ import {
   likeActionButtonClass,
   heartLikedIconClass,
 } from '../lib/interactionBar'
-const HASHTAG_REGEX = /#\w+/g
+/**
+ * Tokenizer for post body: wykrywa URL-e (http/https/www) ORAZ hashtagi w jednym przebiegu.
+ * URL-e mają priorytet alternacji, więc `#` wewnątrz URL nie zostanie omyłkowo potraktowany jako hashtag.
+ */
+const BODY_TOKEN_REGEX = /(https?:\/\/[^\s<>]+|www\.[^\s<>]+)|(#\w+)/gi
+/** Końcowa interpunkcja, której zwykle nie chcemy wciągać do linku ("zobacz https://x.com.") */
+const URL_TRAILING_PUNCT_REGEX = /[).,!?;:\]'"]+$/
+const LINK_HIGHLIGHT_CLASS =
+  'text-[#1e293b] font-medium hover:underline hover:text-[#1e293b]/80 dark:text-brand-gold-bright dark:hover:text-brand-gold-bright/80 transition-colors'
 
-function renderBodyWithHashtags(body: string): ReactNode[] {
+function renderBodyContent(body: string): ReactNode[] {
   const parts: ReactNode[] = []
   let lastIndex = 0
 
-  for (const match of body.matchAll(HASHTAG_REGEX)) {
-    const hashtag = match[0]
+  for (const match of body.matchAll(BODY_TOKEN_REGEX)) {
     const startIndex = match.index ?? -1
     if (startIndex < 0) continue
-    if (startIndex > lastIndex) {
-      parts.push(body.slice(lastIndex, startIndex))
+    const [, urlMatch, hashtagMatch] = match
+
+    if (urlMatch) {
+      let token = urlMatch
+      const trim = token.match(URL_TRAILING_PUNCT_REGEX)
+      if (trim) token = token.slice(0, token.length - trim[0].length)
+      if (!token) continue
+
+      if (startIndex > lastIndex) parts.push(body.slice(lastIndex, startIndex))
+
+      const href = token.startsWith('www.') ? `https://${token}` : token
+      parts.push(
+        <a
+          key={`url-${startIndex}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+          className={`${LINK_HIGHLIGHT_CLASS} wrap-break-word`}
+        >
+          {token}
+        </a>,
+      )
+
+      lastIndex = startIndex + token.length
+      continue
     }
 
-    const rawTag = hashtag.slice(1)
-    const normalizedTag = rawTag.trim().toLowerCase()
+    if (hashtagMatch) {
+      if (startIndex > lastIndex) parts.push(body.slice(lastIndex, startIndex))
 
-    parts.push(
-      <Link
-        key={`${normalizedTag}-${startIndex}`}
-        to={`/search?q=${encodeURIComponent(normalizedTag)}`}
-        onClick={(event) => event.stopPropagation()}
-        className="text-zinc-600 font-medium hover:underline hover:text-zinc-700 dark:text-brand-gold-bright dark:hover:text-brand-gold-bright/80 transition-colors"
-      >
-        {hashtag}
-      </Link>,
-    )
+      const rawTag = hashtagMatch.slice(1)
+      const normalizedTag = rawTag.trim().toLowerCase()
+      parts.push(
+        <Link
+          key={`${normalizedTag}-${startIndex}`}
+          to={`/search?q=${encodeURIComponent(normalizedTag)}`}
+          onClick={(event) => event.stopPropagation()}
+          className={LINK_HIGHLIGHT_CLASS}
+        >
+          {hashtagMatch}
+        </Link>,
+      )
 
-    lastIndex = startIndex + hashtag.length
+      lastIndex = startIndex + hashtagMatch.length
+    }
   }
 
   if (lastIndex < body.length) {
@@ -125,6 +160,7 @@ export default function PostCard({
   const [isPostMenuOpen, setIsPostMenuOpen] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isReportSubmitting, setIsReportSubmitting] = useState(false)
+  const [isImageLightboxOpen, setIsImageLightboxOpen] = useState(false)
   const postMenuRef = useRef<HTMLDivElement | null>(null)
 
   const postId = content.id || `fallback-${index}`
@@ -295,25 +331,35 @@ export default function PostCard({
 
               {hasBody && (
                 <p className="mt-1.5 text-[15px] font-normal text-fg-primary dark:text-zinc-100 leading-relaxed whitespace-pre-line">
-                  {renderBodyWithHashtags(body)}
+                  {renderBodyContent(body)}
                 </p>
               )}
 
               {post.image_url && (
                 <div className="mt-3 overflow-hidden rounded-xl border border-black/10 dark:border-white/10 bg-black/2 dark:bg-white/3">
-                  <img
-                    src={post.image_url}
-                    alt="Post attachment"
-                    className="w-full h-auto object-cover"
-                    loading="lazy"
-                    onError={(event) => {
-                      console.error('[PostCard] image load error', {
-                        postId: post.id,
-                        imageUrl: post.image_url,
-                        currentSrc: event.currentTarget.currentSrc,
-                      })
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsImageLightboxOpen(true)
                     }}
-                  />
+                    aria-label="Otwórz pełny widok zdjęcia"
+                    className="block w-full cursor-zoom-in p-0 m-0 border-0 bg-transparent"
+                  >
+                    <img
+                      src={post.image_url}
+                      alt="Post attachment"
+                      className="w-full h-auto object-cover"
+                      loading="lazy"
+                      onError={(event) => {
+                        console.error('[PostCard] image load error', {
+                          postId: post.id,
+                          imageUrl: post.image_url,
+                          currentSrc: event.currentTarget.currentSrc,
+                        })
+                      }}
+                    />
+                  </button>
                 </div>
               )}
 
@@ -427,6 +473,15 @@ export default function PostCard({
         confirmLabel="Zgłoś"
         isSubmitting={isReportSubmitting}
       />
+
+      {post.image_url && (
+        <ImageLightbox
+          src={post.image_url}
+          alt="Zdjęcie z posta"
+          open={isImageLightboxOpen}
+          onClose={() => setIsImageLightboxOpen(false)}
+        />
+      )}
     </>
   )
 

@@ -16,6 +16,7 @@ import { formatEventDateLong, generateGoogleCalendarLink, type UJEvent } from '.
 import { useEvents } from '../hooks/useEvents'
 import { theme } from '../styles/theme'
 import OfficialBadge from './ui/OfficialBadge'
+import EventAttendeesModal from './events/EventAttendeesModal'
 
 type Props = {
   event: UJEvent | null
@@ -24,6 +25,8 @@ type Props = {
   onToggleRsvp: (eventId: string) => void
   /** Otwiera formularz edycji (np. zamknij szczegóły i ustaw `editEvent` w rodzicu). */
   onEditRequest?: (event: UJEvent) => void
+  /** Opcjonalna nawigacja do profilu (z modala uczestników po kliknięciu w wiersz). */
+  onNavigateToProfileHandle?: (handle: string) => void
 }
 
 const AVATAR_CAP = 4
@@ -97,6 +100,7 @@ type ContentProps = {
   onEditRequest?: (event: UJEvent) => void
   onDeleteClick: () => void
   onShare: () => void
+  onOpenAttendees: () => void
 }
 
 type BannerImageState = 'empty' | 'loading' | 'ok' | 'fail'
@@ -110,6 +114,7 @@ function EventModalContent({
   onEditRequest,
   onDeleteClick,
   onShare,
+  onOpenAttendees,
 }: ContentProps) {
   const trimmedBannerUrl = (event.imageUrl ?? '').trim()
   const [bannerImageState, setBannerImageState] = useState<BannerImageState>('empty')
@@ -204,7 +209,12 @@ function EventModalContent({
             <Share2 size={18} strokeWidth={2} aria-hidden />
             Udostępnij
           </button>
-          <div className="flex min-w-[180px] flex-1 flex-wrap items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onOpenAttendees}
+            aria-label={`Zobacz listę uczestników (${attendeeCount.toString()})`}
+            className="group flex min-w-[180px] flex-1 cursor-pointer flex-wrap items-center justify-end gap-3 rounded-xl px-2 py-1 transition-colors hover:bg-slate-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:hover:bg-white/6 dark:focus-visible:ring-brand-gold/40"
+          >
             <Users size={16} className={`shrink-0 ${goldIconCls}`} aria-hidden />
             {avatars.length > 0 && (
               <div className="-space-x-2 flex shrink-0">
@@ -219,10 +229,10 @@ function EventModalContent({
                 ))}
               </div>
             )}
-            <span className="shrink-0 text-right text-sm leading-snug text-slate-600 dark:text-slate-400">
+            <span className="shrink-0 text-right text-sm leading-snug text-slate-600 underline-offset-2 transition-colors group-hover:text-[#1e293b] group-hover:underline dark:text-slate-400 dark:group-hover:text-brand-gold-bright">
               {formatOthersLine(attendeeCount)}
             </span>
-          </div>
+          </button>
         </div>
         <a
           href={generateGoogleCalendarLink(event)}
@@ -293,10 +303,18 @@ function normalizeOwnerId(value: string | undefined | null): string | null {
   return trimmed.startsWith('user:') ? trimmed.slice(5) : trimmed
 }
 
-export default function EventModal({ event, currentUserId, onClose, onToggleRsvp, onEditRequest }: Props) {
+export default function EventModal({
+  event,
+  currentUserId,
+  onClose,
+  onToggleRsvp,
+  onEditRequest,
+  onNavigateToProfileHandle,
+}: Props) {
   const { deleteEvent } = useEvents()
   const [isClosing, setIsClosing] = useState(false)
   const [shareToast, setShareToast] = useState(false)
+  const [attendeesOpen, setAttendeesOpen] = useState(false)
   const toastTimerRef = useRef<number | null>(null)
   const ownerId = normalizeOwnerId(event?.user_id) ?? normalizeOwnerId(event?.author?.id)
   const canManage = Boolean(ownerId && ownerId === currentUserId && !event?.is_official)
@@ -349,7 +367,10 @@ export default function EventModal({ event, currentUserId, onClose, onToggleRsvp
   }, [event])
 
   useEffect(() => {
-    if (event) setIsClosing(false)
+    if (event) {
+      setIsClosing(false)
+      setAttendeesOpen(false)
+    }
   }, [event])
 
   if (!event) return null
@@ -385,8 +406,18 @@ export default function EventModal({ event, currentUserId, onClose, onToggleRsvp
           onEditRequest={canManage ? onEditRequest : undefined}
           onDeleteClick={handleDeleteClick}
           onShare={handleShare}
+          onOpenAttendees={() => setAttendeesOpen(true)}
         />
       </motion.div>
+
+      <EventAttendeesModal
+        open={attendeesOpen}
+        onClose={() => setAttendeesOpen(false)}
+        eventId={event.id}
+        eventTitle={event.title}
+        currentUserId={currentUserId}
+        onNavigateToProfileHandle={onNavigateToProfileHandle}
+      />
     </>,
     document.body,
   )

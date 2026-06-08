@@ -22,7 +22,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent } from 'react'
+import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Send } from 'lucide-react'
 import { useChatStore } from '../../store/useChatStore'
@@ -50,7 +50,6 @@ function firstNameFrom(displayName: string): string {
 export default function ChatHubView({ displayName }: Props) {
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
-  const clearHistory = useChatStore((s) => s.clearHistory)
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
@@ -84,13 +83,24 @@ export default function ChatHubView({ displayName }: Props) {
     [isTyping, sendMessage],
   )
 
-  const handleNewConversation = useCallback(() => {
-    cancel()
-    clearHistory()
-    setDraft('')
-    // Mały delay żeby focus przeskoczył po re-renderze pustego stanu.
-    window.setTimeout(() => inputRef.current?.focus(), 50)
-  }, [cancel, clearHistory])
+  const handleNewConversation = useCallback(
+    (e?: MouseEvent<HTMLButtonElement>) => {
+      // Defensive: zapobiega ewentualnemu „przelaniu" kliknięcia na rodziców
+      // (np. handler scrolla / focus capture na liście wiadomości), żeby
+      // przycisk niezawodnie clearował historię nawet podczas streamingu.
+      e?.preventDefault()
+      e?.stopPropagation()
+      cancel()
+      // Bierzemy `clearHistory` z `getState()` zamiast z subskrypcji selektora —
+      // gwarantuje to świeżą referencję funkcji nawet, gdyby callback został
+      // zamknięty na starym kontekście (np. po HMR / lazy chunk re-imporcie).
+      useChatStore.getState().clearHistory()
+      setDraft('')
+      // Mały delay żeby focus przeskoczył po re-renderze pustego stanu.
+      window.setTimeout(() => inputRef.current?.focus(), 50)
+    },
+    [cancel],
+  )
 
   const onSubmitForm = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
@@ -127,10 +137,10 @@ export default function ChatHubView({ displayName }: Props) {
               <button
                 type="button"
                 onClick={handleNewConversation}
-                className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-zinc-700 backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-white hover:text-[#1e293b] dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-200 dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-900/70 dark:hover:text-brand-gold-bright"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-zinc-200 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-zinc-700 backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-white hover:text-[#1e293b] active:scale-[0.97] dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-200 dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-900/70 dark:hover:text-brand-gold-bright"
                 aria-label="Rozpocznij nową rozmowę z asystentem"
               >
-                <Plus size={13} strokeWidth={2.4} aria-hidden />
+                <Plus size={14} strokeWidth={2.4} aria-hidden />
                 Nowa rozmowa
               </button>
             </div>

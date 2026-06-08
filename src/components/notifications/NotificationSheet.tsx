@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, type PanInfo, useReducedMotion } from 'framer-motion'
 import type { AppNotification } from '../../types'
 import NotificationList from './NotificationList'
@@ -24,6 +24,7 @@ export default function NotificationSheet({
   onClose,
 }: Props) {
   const shouldReduceMotion = useReducedMotion()
+  const [entered, setEntered] = useState(false)
 
   useEffect(() => {
     const html = document.documentElement
@@ -62,14 +63,15 @@ export default function NotificationSheet({
       exit={{ opacity: 0 }}
       transition={shouldReduceMotion ? { duration: 0.12 } : motionPresets.backdropFade}
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} aria-hidden />
 
       <motion.div
-        className={`absolute inset-x-0 bottom-0 z-220 flex max-h-[75vh] flex-col will-change-transform ${notificationGlass.sheet}`}
+        className={`absolute inset-x-0 bottom-0 z-220 flex max-h-[75vh] flex-col ${notificationGlass.sheetBase} ${entered ? notificationGlass.sheetBlur : ''}`}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%', transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
         transition={shouldReduceMotion ? { duration: 0.16 } : motionPresets.sheetSpring}
+        onAnimationComplete={() => setEntered(true)}
         drag="y"
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0.18}

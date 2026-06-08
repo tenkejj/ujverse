@@ -5,6 +5,7 @@ import type { AppNotification } from '../../types'
 import NotificationList from './NotificationList'
 import { motionPresets, notificationGlass } from './notification.theme'
 
+
 type Props = {
   notifications: AppNotification[]
   loading: boolean
@@ -42,6 +43,7 @@ export default function NotificationPanel({
 }: Props) {
   const shouldReduceMotion = useReducedMotion()
   const [position, setPosition] = useState<Position>(FALLBACK_POSITION)
+  const [entered, setEntered] = useState(false)
 
   useLayoutEffect(() => {
     const updatePosition = () => {
@@ -100,16 +102,16 @@ export default function NotificationPanel({
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
 
       <motion.div
-        className={`absolute flex w-[380px] max-h-[min(480px,calc(100vh-88px))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden will-change-transform ${notificationGlass.panel}`}
+        className={`absolute flex w-[380px] max-h-[min(480px,calc(100vh-88px))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden ${notificationGlass.panelBase} ${entered ? notificationGlass.panelBlur : ''}`}
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
-          transformOrigin: `${position.originX}% top`,
         }}
-        initial={{ opacity: 0, y: -6, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -4, scale: 0.97, transition: { duration: 0.14, ease: [0.4, 0, 1, 1] } }}
-        transition={shouldReduceMotion ? { duration: 0.14 } : motionPresets.panelSpring}
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } }}
+        transition={shouldReduceMotion ? { duration: 0.12 } : motionPresets.panelTween}
+        onAnimationComplete={() => setEntered(true)}
         onClick={(e) => e.stopPropagation()}
       >
         <div

@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -22,6 +23,7 @@ import {
   hydrateOfficialEventsFromStorage,
   syncExternalEvents as runOfficialIngest,
 } from '../services/EventIngestor'
+import { RsvpService } from '../services/RsvpService'
 
 const STORAGE_KEY = 'ujverse_events'
 
@@ -105,7 +107,11 @@ type EventsContextValue = {
   allEvents: UJEvent[]
   /** True dopóki pierwszy fetch zewnętrznych wydarzeń trwa (opcjonalnie pod UI). */
   externalEventsLoading: boolean
-  toggleRsvp: (eventId: string) => void
+  /**
+   * Toggle RSVP — INSERT/DELETE w `public.event_rsvps` + optimistic update lokalnie.
+   * Przy błędzie rollback do poprzedniego stanu (z console.error).
+   */
+  toggleRsvp: (eventId: string) => Promise<void>
   addEvent: (data: NewEventFormData) => void
   deleteEvent: (id: string) => void
   /** Klucz z wartością `undefined` usuwa opcjonalne pole (np. imageUrl, mapUrl). */
@@ -116,6 +122,8 @@ type EventsContextValue = {
   ingestFromStaticFallback: boolean
   /** Twarde odświeżenie listy wydarzeń z Supabase. */
   refetchDbEvents: () => Promise<void>
+  /** Twarde odświeżenie RSVP-shape (po dodaniu/usunięciu wydarzeń lub zmianie sesji). */
+  refreshRsvpState: () => Promise<void>
 }
 
 const EventsContext = createContext<EventsContextValue | null>(null)
@@ -127,12 +135,26 @@ function mergeInitialEvents(): UJEvent[] {
 }
 
 export function EventsProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState<UJEvent[]>(mergeInitialEvents)
+  const [rawEvents, setRawEvents] = useState<UJEvent[]>(mergeInitialEvents)
   const [dbEvents, setDbEvents] = useState<UJEvent[]>([])
   const [externalEventsLoading, setExternalEventsLoading] = useState(false)
   const [ingestFromStaticFallback, setIngestFromStaticFallback] = useState(() =>
     mergeInitialEvents().some((e) => e.ingest_from_fallback),
   )
+  /** Set event-ID, do których zalogowany user się zapisał (z `event_rsvps`). */
+  const [myRsvpIds, setMyRsvpIds] = useState<Set<string>>(() => new Set())
+  /** Server-side count uczestników po eventId. Brak klucza = używamy `attendees` z modelu (mock/seed). */
+  const [rsvpCounts, setRsvpCounts] = useState<Record<string, number>>({})
+  /**
+   * UID zalogowanego usera (do filtrowania self-echo z Realtime). Trzymany w
+   * ref, żeby realtime handler nie potrzebował reactywności na zmianę sesji.
+   */
+  const currentUserIdRef = useRef<string | null>(null)
+
+  // Wrapper, żeby reszta kodu (addEvent / deleteEvent / updateEvent / ingest sync /
+  // reviveFromStorage) nadal nazywała `setEvents`. Pisze do `rawEvents` —
+  // overlay RSVP zostaje doliczony przez `events = useMemo` poniżej.
+  const setEvents = setRawEvents
 
   const syncOfficialEvents = useCallback(async (force?: boolean) => {
     setExternalEventsLoading(true)
@@ -174,31 +196,177 @@ export function EventsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const official = hydrateOfficialEventsFromStorage()
     const localDrafts = loadUserEventsFromStorage()
-    setEvents(mergeEventLists([localDrafts, official, dbEvents]))
+    setRawEvents(mergeEventLists([localDrafts, official, dbEvents]))
   }, [dbEvents])
 
   useEffect(() => {
     try {
-      const userOnly = events.filter((e) => !e.is_official && e.id.startsWith('local-'))
+      const userOnly = rawEvents.filter((e) => !e.is_official && e.id.startsWith('local-'))
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userOnly))
     } catch {
       // quota / private mode — ignore
     }
-  }, [events])
+  }, [rawEvents])
 
-  const toggleRsvp = useCallback((eventId: string) => {
-    setEvents((prev) =>
-      prev.map((ev) => {
-        if (ev.id !== eventId) return ev
-        const nextAttending = !ev.isAttending
-        return {
-          ...ev,
-          isAttending: nextAttending,
-          attendees: Math.max(0, ev.attendees + (nextAttending ? 1 : -1)),
-        }
-      }),
-    )
+  /**
+   * Hydratacja stanu RSVP z bazy:
+   *   1. Set event-ID, do których zalogowany user się zapisał
+   *   2. Server-side count uczestników dla aktualnego zestawu eventów
+   *
+   * Wywoływana raz przy mount oraz manualnie po dodaniu/usunięciu eventu
+   * (żeby nowy event miał svój count, nawet jeśli to 0).
+   */
+  const refreshRsvpState = useCallback(async () => {
+    const ids = await RsvpService.getMyRsvpIds()
+    setMyRsvpIds(ids)
+    const eventIds = rawEvents.map((e) => e.id)
+    if (eventIds.length > 0) {
+      const counts = await RsvpService.getCountsByEventIds(eventIds)
+      setRsvpCounts(counts)
+    }
+  }, [rawEvents])
+
+  // Pierwsze ładowanie RSVP-IDs (tylko mount). Counts ładujemy w osobnym efekcie
+  // przy każdej zmianie zestawu eventów. Przy okazji łapiemy currentUserId do
+  // ref'a dla realtime self-echo filtra.
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.auth.getUser()
+      if (!cancelled) currentUserIdRef.current = data.user?.id ?? null
+      const ids = await RsvpService.getMyRsvpIds()
+      if (!cancelled) setMyRsvpIds(ids)
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  /**
+   * Realtime: subskrypcja `public.event_rsvps`. Inkrementuje/dekrementuje count
+   * lokalnie gdy KTOŚ INNY się zapisuje/wypisuje (self-echo z naszej akcji
+   * pomijamy — `toggleRsvp` już zrobił optimistic update + DB write).
+   *
+   * Wymaga `ALTER PUBLICATION supabase_realtime ADD TABLE public.event_rsvps`
+   * (zawarte w migracji).
+   */
+  useEffect(() => {
+    const channel = supabase
+      .channel('event_rsvps_global')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'event_rsvps' },
+        (payload) => {
+          const row = payload.eventType === 'DELETE' ? payload.old : payload.new
+          const eventId = typeof row?.event_id === 'string' ? row.event_id : null
+          const userId = typeof row?.user_id === 'string' ? row.user_id : null
+          if (!eventId) return
+
+          // Self-echo: optimistic update z `toggleRsvp` już zaktualizował stan.
+          // Ignoruj, żeby nie podwajać delty.
+          if (userId && userId === currentUserIdRef.current) return
+
+          const delta = payload.eventType === 'INSERT' ? 1 : -1
+          setRsvpCounts((prev) => ({
+            ...prev,
+            [eventId]: Math.max(0, (prev[eventId] ?? 0) + delta),
+          }))
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // Counts re-fetch przy każdej istotnej zmianie listy eventów (stabilny key
+  // żeby uniknąć fetcha przy reorderze).
+  const eventIdsKey = useMemo(
+    () =>
+      rawEvents
+        .map((e) => e.id)
+        .sort()
+        .join('|'),
+    [rawEvents],
+  )
+
+  useEffect(() => {
+    if (eventIdsKey.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const ids = eventIdsKey.split('|')
+      const counts = await RsvpService.getCountsByEventIds(ids)
+      if (!cancelled) setRsvpCounts(counts)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [eventIdsKey])
+
+  // Overlay RSVP-state (isAttending + attendees) na surowe wydarzenia.
+  // `attendees` z bazy ma pierwszeństwo; brak klucza = używamy seed/mock count.
+  const events = useMemo<UJEvent[]>(
+    () =>
+      rawEvents.map((ev) => {
+        const dbCount = rsvpCounts[ev.id]
+        const overlay: Partial<UJEvent> = {
+          isAttending: myRsvpIds.has(ev.id),
+        }
+        if (typeof dbCount === 'number') overlay.attendees = dbCount
+        return { ...ev, ...overlay }
+      }),
+    [rawEvents, myRsvpIds, rsvpCounts],
+  )
+
+  const toggleRsvp = useCallback(
+    async (eventId: string) => {
+      const { data: authData } = await supabase.auth.getUser()
+      if (!authData.user) {
+        console.warn('[useEvents] toggleRsvp: brak sesji')
+        return
+      }
+      const wasAttending = myRsvpIds.has(eventId)
+
+      // Optimistic update
+      setMyRsvpIds((prev) => {
+        const next = new Set(prev)
+        if (wasAttending) next.delete(eventId)
+        else next.add(eventId)
+        return next
+      })
+      setRsvpCounts((prev) => {
+        const current = prev[eventId] ?? 0
+        return {
+          ...prev,
+          [eventId]: Math.max(0, current + (wasAttending ? -1 : 1)),
+        }
+      })
+
+      const { error } = wasAttending
+        ? await RsvpService.cancelRsvp(eventId)
+        : await RsvpService.rsvp(eventId)
+
+      if (error) {
+        // Rollback
+        setMyRsvpIds((prev) => {
+          const next = new Set(prev)
+          if (wasAttending) next.add(eventId)
+          else next.delete(eventId)
+          return next
+        })
+        setRsvpCounts((prev) => {
+          const current = prev[eventId] ?? 0
+          return {
+            ...prev,
+            [eventId]: Math.max(0, current + (wasAttending ? 1 : -1)),
+          }
+        })
+        console.error('[useEvents] toggleRsvp error', error)
+      }
+    },
+    [myRsvpIds],
+  )
 
   const addEvent = useCallback((data: NewEventFormData) => {
     const run = async () => {
@@ -273,9 +441,12 @@ export function EventsProvider({ children }: { children: ReactNode }) {
         setEvents((prev) => mergeEventLists([prev, [insertedWithOptimisticAuthor]]))
       }
       void refetchDbEvents()
+      // Po dodaniu nowego eventu zerujemy ewentualny stale count overlay
+      // (eventIdsKey useEffect i tak doścignie, ale to gwarantuje natychmiastowy stan).
+      void refreshRsvpState()
     }
     void run()
-  }, [refetchDbEvents])
+  }, [refetchDbEvents, refreshRsvpState])
 
   const deleteEvent = useCallback((id: string) => {
     setEvents((prev) => {
@@ -332,6 +503,7 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     syncOfficialEvents,
     ingestFromStaticFallback,
     refetchDbEvents,
+    refreshRsvpState,
   }
 
   return createElement(EventsContext.Provider, { value }, children)

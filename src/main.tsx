@@ -4,7 +4,12 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from './lib/appToast'
 import App from './App.tsx'
 import { ThemeProvider } from './ThemeContext.tsx'
+import { applyVisualPreferences } from './lib/userPreferences.ts'
 import './index.css'
+
+// Aplikuj kliencko-zapamiętane preferencje (gęstość UI, redukcja animacji)
+// zanim React zamontuje drzewo, żeby uniknąć FOUC po przeładowaniu.
+applyVisualPreferences()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

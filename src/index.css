@@ -286,6 +286,28 @@ input[type="search"].ujverse-search-input::-moz-search-clear-button {
   }
 }
 
+/*
+ * Preferencje użytkownika (patrz: src/lib/userPreferences.ts).
+ * Atrybuty `data-reduced-motion` i `data-density` są wpisywane na <html>
+ * przez `applyVisualPreferences()` — globalne reguły poniżej eliminują
+ * potrzebę warunkowych klas w setkach miejsc.
+ */
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-density="compact"] {
+  --ui-density-scale: 0.92;
+}
+html[data-density="compact"] body {
+  font-size: 14.5px;
+}
+
 /* react-hot-toast: szklany pasek, spójny z motywem (bez „fabrycznego” niebieskiego + czerwonej ikony) */
 .ujverse-toast {
   background: color-mix(in srgb, var(--bg-app) 80%, transparent) !important;

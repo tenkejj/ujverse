@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Search, X } from 'lucide-react'
+import { ArrowUpRight, Search, X } from 'lucide-react'
 
 /**
  * SearchModal — pełnoekranowy overlay wyszukiwania (mobile-first).
@@ -25,6 +25,13 @@ type Props = {
   onClose: () => void
   /** Zwracane query po `Enter` / kliknięciu submitu. Modal sam się zamknie. */
   onSubmit?: (query: string) => void
+  /**
+   * CTA „Otwórz pełną wyszukiwarkę →" — analogicznie do `Otwórz pełny czat`
+   * w `ChatAssistant`. Jeśli podane, w body modala pojawia się przycisk
+   * prowadzący do `/search` (dashboard) niezależnie od `query`. Modal sam
+   * się zamknie po kliknięciu.
+   */
+  onOpenHub?: () => void
   initialQuery?: string
   placeholder?: string
 }
@@ -33,6 +40,7 @@ export default function SearchModal({
   isOpen,
   onClose,
   onSubmit,
+  onOpenHub,
   initialQuery = '',
   placeholder = 'Szukaj na UJverse...',
 }: Props) {
@@ -114,6 +122,20 @@ export default function SearchModal({
       </form>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 text-white/60">
+        {onOpenHub && (
+          <button
+            type="button"
+            onClick={() => {
+              onOpenHub()
+              onClose()
+            }}
+            className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-brand-gold-bright/40 bg-brand-gold-bright/10 px-3.5 py-1.5 text-xs font-semibold text-brand-gold-bright transition-colors hover:border-brand-gold-bright/60 hover:bg-brand-gold-bright/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold-bright/40"
+            aria-label="Otwórz pełną wyszukiwarkę"
+          >
+            Otwórz pełną wyszukiwarkę
+            <ArrowUpRight size={14} strokeWidth={2.25} aria-hidden />
+          </button>
+        )}
         {query.trim().length === 0 ? (
           <p className="text-sm">
             Zacznij pisać, żeby wyszukać posty, użytkowników, wydarzenia i więcej.

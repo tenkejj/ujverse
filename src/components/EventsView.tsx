@@ -41,9 +41,11 @@ const BUCKET_ICON: Record<EventTimeBucket, typeof Calendar> = {
 
 type Props = {
   currentUserId: string
+  /** Otwiera profil po `username` (np. z modala uczestników wydarzenia). */
+  onNavigateToProfileHandle?: (handle: string) => void
 }
 
-export default function EventsView({ currentUserId }: Props) {
+export default function EventsView({ currentUserId, onNavigateToProfileHandle }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const {
@@ -341,6 +343,14 @@ export default function EventsView({ currentUserId }: Props) {
           setEditTarget(e)
           setSelectedEventId(null)
         }}
+        onNavigateToProfileHandle={
+          onNavigateToProfileHandle
+            ? (handle) => {
+                setSelectedEventId(null)
+                onNavigateToProfileHandle(handle)
+              }
+            : undefined
+        }
       />
 
       <CreateEventModal

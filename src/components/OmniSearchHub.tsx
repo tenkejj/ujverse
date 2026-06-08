@@ -7,6 +7,7 @@ import {
   MapPin,
   MessageSquareText,
   Search,
+  SlidersHorizontal,
   Sparkles,
   UserRound,
   X,
@@ -121,6 +122,23 @@ export default function OmniSearchHub(props: Props) {
             <X size={14} strokeWidth={2.5} />
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            const trimmed = o.query.trim()
+            if (trimmed.length >= 2) {
+              o.submitFullSearch()
+              return
+            }
+            o.close()
+            props.onNavigateToSearch()
+          }}
+          className="shrink-0 p-1 rounded-md text-[#1e293b]/70 hover:text-[#1e293b] hover:bg-zinc-100 dark:text-brand-gold-bright/70 dark:hover:text-brand-gold-bright dark:hover:bg-white/5 transition-all"
+          title="Otwórz pełną wyszukiwarkę"
+          aria-label="Otwórz pełną wyszukiwarkę"
+        >
+          <SlidersHorizontal size={13} strokeWidth={2.25} />
+        </button>
       </div>
 
       <AnimatePresence>

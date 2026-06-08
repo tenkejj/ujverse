@@ -59,11 +59,13 @@ function variantClasses(variant: BaseCardVariant): string {
       return [
         radius.card,
         'border',
-        // Light: navy outline + delikatny kremowy gradient (spójny z paletą logotypu).
-        // Dark:  złoty ring + ciemny gradient z prześwitem `brand-gold/[0.07]`.
+        // Light: navy outline + delikatny gradient zinc (czyste, bez kremowości).
+        // Dark:  złoty ring + neutralna ciemna powierzchnia (bez brunatnego
+        //        `#1a1508` "sepia" tinta, który czytał się jak krem na ciemnym tle).
+        //        Premium-akcent niesie WYŁĄCZNIE border + ring + shadow.premium.
         'border-[#1e293b]/30 dark:border-[#D4AF37]/45',
         'bg-gradient-to-br from-zinc-50 via-[#1e293b]/[0.04] to-white ' +
-          'dark:from-[#1a1508]/90 dark:via-[#D4AF37]/[0.07] dark:to-transparent',
+          'dark:from-zinc-950/70 dark:via-zinc-950/55 dark:to-zinc-950/40',
         shadow.premium,
         'ring-1 ring-[#1e293b]/10 dark:ring-[#D4AF37]/20',
         colors.surface.glass,
