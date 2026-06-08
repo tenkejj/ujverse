@@ -256,7 +256,7 @@ export default function FeedView({
           error={academicAnnouncementsError}
         />
         <Suspense fallback={null}>
-          <ChatAssistant />
+          <ChatAssistant myProfile={myProfile} displayName={displayName} />
         </Suspense>
       </aside>
 

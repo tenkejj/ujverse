@@ -53,6 +53,8 @@ export type ProfileRecord = {
   department?: string | null
   avatar_url?: string | null
   is_banned?: boolean | null
+  /** Gdy `false`, profil NIE trafia do Meili (sync-search zwraca `null` → DELETE). */
+  is_searchable?: boolean | null
 }
 
 export type PostProfile = {
@@ -134,6 +136,9 @@ export function mapProfileToSearchDocument(record: ProfileRecord): SearchUserDoc
   const id = String(record.id ?? '').trim()
   if (!id) return null
   if (record.is_banned === true) return null
+  // Eksplicytne `false` — uszanuj prywatność. Brak wartości = traktuj jak `true`
+  // (kompatybilność wsteczna z wierszami sprzed migracji).
+  if (record.is_searchable === false) return null
 
   const username = record.username?.trim() || null
   const fullName = record.full_name?.trim() || null

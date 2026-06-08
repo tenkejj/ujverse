@@ -3,6 +3,10 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ACTIVE_ANNOUNCEMENT_DAYS } from '../lib/announcementRecency'
 import {
+  ACADEMIC_ISI_BADGE_LABEL,
+  ACADEMIC_ISI_BADGE_TITLE,
+} from '../lib/announcementBranding'
+import {
   sectionTitleCls,
   sideMutedCls,
   widgetGoldCls,
@@ -49,7 +53,15 @@ export default function AcademicAnnouncementsWidget({
     <BaseCard variant="default" className="p-4 flex h-[600px] flex-col gap-4 overflow-hidden">
       <div className="flex items-center gap-2 mb-3">
         <Megaphone size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
-        <span className={sectionTitleCls}>Komunikaty Akademickie</span>
+        <div className="flex min-w-0 flex-1 flex-col leading-tight">
+          <span className={sectionTitleCls}>Komunikaty Akademickie</span>
+          <span
+            className={`text-[10px] ${sideMutedCls}`}
+            title={ACADEMIC_ISI_BADGE_TITLE}
+          >
+            {ACADEMIC_ISI_BADGE_LABEL}
+          </span>
+        </div>
       </div>
 
       {loading && (

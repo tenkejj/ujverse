@@ -160,7 +160,7 @@ async function collectProfileDocuments(): Promise<SearchUserDocument[]> {
   while (true) {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url, department, is_banned')
+      .select('id, username, full_name, avatar_url, department, is_banned, is_searchable')
       .order('id', { ascending: true })
       .range(offset, offset + BATCH_SIZE - 1)
 

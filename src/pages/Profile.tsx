@@ -450,7 +450,7 @@ export default function Profile({
 
     const { data: postsData } = await supabase
       .from('posts')
-      .select('*, user_id, profiles(id, full_name, username, avatar_url, department)')
+      .select('*, user_id, profiles(id, full_name, username, avatar_url, department, show_department)')
       .eq('user_id', profileData.id)
       .order('created_at', { ascending: false })
 
@@ -513,7 +513,7 @@ export default function Profile({
     } else {
       const { data: postsData } = await supabase
         .from('posts')
-        .select('*, user_id, profiles(id, full_name, username, avatar_url, department)')
+        .select('*, user_id, profiles(id, full_name, username, avatar_url, department, show_department)')
         .eq('user_id', viewedId)
         .order('created_at', { ascending: false })
       setOtherPosts((postsData ?? []) as Post[])

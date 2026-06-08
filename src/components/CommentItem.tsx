@@ -227,7 +227,7 @@ export default function CommentItem({
                     <MoreHorizontal size={16} />
                   </button>
                   {isMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border-app bg-bg-card shadow-uj-soft dark:shadow-none z-50 p-1 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border border-zinc-200 bg-white/85 p-1 backdrop-blur-md backdrop-saturate-150 shadow-[0_30px_80px_-32px_rgba(15,23,42,0.35)] z-50 dark:border-white/10 dark:bg-bg-card/95 dark:shadow-[0_30px_80px_-32px_rgba(0,0,0,0.9)]">
                       {canReportComment && (
                         <button
                           type="button"

@@ -43,6 +43,10 @@
 import { buildToolCacheKey } from './_lib/cache.js'
 import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
 import { extractRequestUser } from './_lib/auth.js'
+import {
+  checkAndConsumeRateLimit,
+  extractClientIp,
+} from './_lib/ipRateLimit.js'
 import { kvGetSafe, kvSetSafe } from './_lib/kvCache.js'
 import { DEFAULT_GROQ_MODEL, withPersona } from './_lib/llmService.js'
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
@@ -395,6 +399,70 @@ function formatDateShort(iso: string | null | undefined): string {
   return `${yyyy}-${mm}-${dd} ${HH}:${MM}`
 }
 
+/**
+ * Formatuje datę jako tekst RELATYWNY do "teraz" — w stylu chatu /
+ * mediów społecznościowych ("3 godz. temu", "wczoraj", "2 dni temu").
+ * Stosowany w formatterach narzędzi dla feedu/ogłoszeń, gdzie data
+ * absolutna `2026-06-08 20:30` brzmi formalnie i zaśmieca odpowiedź.
+ *
+ * Granice:
+ * - < 60s → „przed chwilą"
+ * - < 60min → „N min temu"
+ * - < 24h → „N godz. temu"
+ * - < 48h → „wczoraj"
+ * - < 7 dni → „N dni temu"
+ * - >= 7 dni → `formatDateShort(iso)` (full ISO-like fallback)
+ *
+ * Świadomie BEZ `Intl.RelativeTimeFormat('pl', ...)` — Vercel Edge bywa
+ * zbudowany bez pełnego ICU, więc polskie formy gramatyczne są niepewne.
+ * Ręcznie dobrane formy "godz./dni" są dłuższe, ale stabilne na każdym runtime.
+ */
+function formatRelativeDate(iso: string | null | undefined): string {
+  if (!iso || typeof iso !== 'string') return 'brak daty'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return 'brak daty'
+  const diffMs = Date.now() - d.getTime()
+  if (diffMs < 0) return formatDateShort(iso)
+  const sec = Math.floor(diffMs / 1000)
+  if (sec < 60) return 'przed chwilą'
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min} min temu`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr} godz. temu`
+  const day = Math.floor(hr / 24)
+  if (day === 1) return 'wczoraj'
+  if (day < 7) return `${day} dni temu`
+  return formatDateShort(iso)
+}
+
+/**
+ * Heurystyka „post jest spamem / pusty" — używana w `formatPostsResult`
+ * żeby nie zaśmiecać odpowiedzi asystenta postami testowymi typu `#pomoc`,
+ * `#ankiet`, pojedynczymi linkami bez kontekstu albo postami <20 znaków.
+ *
+ * Reguły:
+ * - brak `body` / sama spacja → spam
+ * - body < 20 znaków NIE-tagowych (po wycięciu hashtagów) → spam
+ * - body to wyłącznie pojedynczy URL bez własnego tekstu → spam
+ *
+ * Świadomie NIE filtrujemy po słownikach wulgaryzmów / blacklist — to
+ * jest zadanie moderacji, nie formattera odpowiedzi. Tu chodzi tylko
+ * o jakość prezentacji w odpowiedzi asystenta.
+ */
+function isSpamPost(body: string, tags: string[]): boolean {
+  const trimmed = (body ?? '').trim()
+  if (trimmed.length === 0) return true
+  const withoutTags = trimmed.replace(/#[\p{L}\p{N}_-]+/gu, '').trim()
+  if (withoutTags.length < 20) {
+    if (tags.length > 0 && withoutTags.length === 0) return true
+    if (withoutTags.length === 0) return true
+    if (withoutTags.length < 10) return true
+  }
+  const urlOnly = /^https?:\/\/\S+$/i.test(withoutTags)
+  if (urlOnly) return true
+  return false
+}
+
 /** Mapowanie `announcements.status` enum → polskie nazwy widoczne dla usera. */
 const ANNOUNCEMENT_STATUS_PL: Record<string, string> = {
   cancelled: 'odwołane',
@@ -452,58 +520,225 @@ function pickStringArray(obj: unknown, key: string): string[] {
   return v.filter((s): s is string => typeof s === 'string' && s.length > 0)
 }
 
+/**
+ * Sufiks kontekstowy dla daty wydarzenia. W przeciwieństwie do
+ * `formatRelativeDate` (które patrzy WSTECZ — „2 godz. temu"), tu
+ * patrzymy W PRZÓD: „za 3 dni", „jutro", „dziś", „już minęło".
+ *
+ * Wynik to fragment do doklejenia w nawiasie obok absolutnej daty, np.:
+ *   `2026-06-12 18:00 (jutro)`
+ *   `2026-06-15 (za 7 dni)`
+ *   `2025-12-04 (już minęło)`
+ *
+ * Bez sufiksu (pusty string) gdy data jest > 30 dni do przodu — wtedy
+ * sama absolutna data jest wystarczająca i nie zaśmiecamy listy.
+ */
+function eventDateContext(iso: string | null | undefined): string {
+  if (!iso || typeof iso !== 'string') return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const diffMs = d.getTime() - Date.now()
+  if (diffMs < -24 * 3600_000) return 'już minęło'
+  if (diffMs < 0) return 'było dziś'
+  const hr = Math.floor(diffMs / 3600_000)
+  if (hr < 12) return 'dziś'
+  const day = Math.floor(diffMs / (24 * 3600_000))
+  if (day === 0) return 'dziś'
+  if (day === 1) return 'jutro'
+  if (day < 7) return `za ${day} dni`
+  if (day < 14) return 'za tydzień'
+  if (day < 30) return `za ${day} dni`
+  return ''
+}
+
+/** Maks liczba wydarzeń pokazywanych userowi. */
+const MAX_EVENTS_TO_SHOW = 6
+
+/**
+ * Formatuje wynik `search_events` na konwersacyjny markdown.
+ *
+ * Vs. poprzednia wersja:
+ * - lead w jednym zdaniu (uwzględnia liczbę),
+ * - cap `MAX_EVENTS_TO_SHOW=6` z licznikiem reszty,
+ * - daty z kontekstem czasowym („jutro", „za 3 dni", „już minęło")
+ *   doklejanym do absolutnej daty,
+ * - badge `oficjalne UJ` / `studenckie` zamiast tylko `oficjalne UJ`,
+ * - opis tylko gdy NIE powtarza title (proste dedup case-insensitive).
+ */
 function formatSearchEventsResult(result: unknown): string {
-  const items = getItemsArray(result)
-  if (!items || items.length === 0) {
-    return 'Nie znalazłem wydarzeń pasujących do zapytania.'
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Nie znalazłem wydarzeń pasujących do zapytania. Spróbuj innego hasła albo zerknij na zakładkę Wydarzenia.'
   }
-  const lines: string[] = [`Znalazłem ${items.length} wydarzeń:`, '']
-  items.forEach((item, idx) => {
+  const items = rawItems.slice(0, MAX_EVENTS_TO_SHOW)
+  const remaining = rawItems.length - items.length
+
+  const lead =
+    items.length === 1
+      ? 'Znalazłem jedno wydarzenie:'
+      : `Znalazłem ${items.length} wydarzeń:`
+  const lines: string[] = [lead, '']
+
+  items.forEach((item) => {
     const title = pickString(item, 'title') || '(bez tytułu)'
     const location = pickString(item, 'location')
     const date = pickStringOrNull(item, 'date')
     const description = pickString(item, 'description')
     const isOfficial = pickBool(item, 'is_official')
-    const officialMark = isOfficial ? ' _(oficjalne UJ)_' : ''
-    lines.push(`${idx + 1}. **${title}**${officialMark}`)
-    lines.push(`   - Data: ${formatDateShort(date)}`)
-    if (location) lines.push(`   - Miejsce: ${location}`)
-    if (description) lines.push(`   - ${clip(description, 240)}`)
-    lines.push('')
+    const badge = isOfficial ? ' _(oficjalne UJ)_' : ' _(studenckie)_'
+
+    const ctx = eventDateContext(date)
+    const dateLine = date
+      ? ctx
+        ? `${formatDateShort(date)} (${ctx})`
+        : formatDateShort(date)
+      : 'data nieustalona'
+
+    lines.push(`- **${title}**${badge} — ${dateLine}`)
+    if (location) lines.push(`  Miejsce: ${location}`)
+    if (description && description.trim().toLowerCase() !== title.toLowerCase()) {
+      lines.push(`  ${clip(description, 220)}`)
+    }
   })
+
+  if (remaining > 0) {
+    lines.push('')
+    lines.push(
+      `_(jest jeszcze ${remaining} ${remaining === 1 ? 'wydarzenie' : 'wydarzeń'} — sprawdź zakładkę Wydarzenia)_`,
+    )
+  }
+
   return lines.join('\n').trimEnd()
 }
 
+/** Maks liczba ogłoszeń pokazywanych userowi. */
+const MAX_ANNOUNCEMENTS_TO_SHOW = 6
+
+/**
+ * Formatuje wynik `get_latest_announcements` na konwersacyjny markdown.
+ *
+ * Vs. poprzednia wersja:
+ * - lead z liczbą i wydziałem w jednym zdaniu zamiast „Najnowsze ogłoszenia (10):",
+ * - cap `MAX_ANNOUNCEMENTS_TO_SHOW=6` z licznikiem reszty,
+ * - daty względne,
+ * - dedup wydziału (gdy wszystkie z jednego — pokazujemy w leadzie),
+ * - status z emoji-free badge stylem ("[odwołane]") zamiast „— odwołane".
+ */
 function formatAnnouncementsResult(result: unknown): string {
-  const items = getItemsArray(result)
-  if (!items || items.length === 0) {
-    return 'Brak aktualnych ogłoszeń.'
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Brak świeżych ogłoszeń z ISI UJ.'
   }
-  const lines: string[] = [`Najnowsze ogłoszenia (${items.length}):`, '']
-  items.forEach((item, idx) => {
+  const items = rawItems.slice(0, MAX_ANNOUNCEMENTS_TO_SHOW)
+  const remaining = rawItems.length - items.length
+
+  const departments = items
+    .map((item) => pickStringOrNull(item, 'department'))
+    .filter((d): d is string => !!d)
+  const allSameDept =
+    departments.length === items.length &&
+    departments.length > 1 &&
+    departments.every((d) => d === departments[0])
+  const sharedDept = allSameDept ? departments[0] : null
+
+  const leadSuffix = sharedDept ? ` z wydziału ${sharedDept}` : ''
+  const lead =
+    items.length === 1
+      ? `Najświeższe ogłoszenie${leadSuffix} z ISI UJ:`
+      : `Najświeższe ogłoszenia${leadSuffix} z ISI UJ (${items.length}):`
+  const lines: string[] = [lead, '']
+
+  items.forEach((item) => {
     const lecturer =
       pickString(item, 'lecturer_name_nominative') || '(nieznany wykładowca)'
     const statusKey = pickString(item, 'status')
-    const status = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey ?? 'komunikat'
+    const statusPl = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey
     const body = pickString(item, 'body')
     const department = pickStringOrNull(item, 'department')
     const createdAt = pickStringOrNull(item, 'created_at')
-    lines.push(`${idx + 1}. **${lecturer}** — ${status}`)
-    if (body) lines.push(`   - ${clip(body, 240)}`)
-    if (department) lines.push(`   - Wydział: ${department}`)
-    if (createdAt) lines.push(`   - Data: ${formatDateShort(createdAt)}`)
-    lines.push('')
+
+    const showDept = department && !sharedDept
+    const headerParts: string[] = [`**${lecturer}**`]
+    if (statusPl) headerParts.push(`— ${statusPl}`)
+    if (createdAt) headerParts.push(`· ${formatRelativeDate(createdAt)}`)
+    lines.push(`- ${headerParts.join(' ')}`)
+    if (body) lines.push(`  ${clip(body, 220)}`)
+    if (showDept) lines.push(`  _Wydział: ${department}_`)
   })
+
+  if (remaining > 0) {
+    lines.push('')
+    lines.push(
+      `_(jest jeszcze ${remaining} ${remaining === 1 ? 'komunikat' : 'komunikatów'} — wejdź na pełną listę)_`,
+    )
+  }
+
   return lines.join('\n').trimEnd()
 }
 
+/** Maks liczba postów pokazywanych userowi w jednej odpowiedzi.
+ *  Tool zwraca 10, ale w UI czatu lista 10 jest nieczytelna — wybieramy
+ *  najświeższe `MAX_POSTS_TO_SHOW` po odfiltrowaniu spamu. */
+const MAX_POSTS_TO_SHOW = 5
+
+/**
+ * Formatuje wynik `get_latest_posts` na konwersacyjny markdown.
+ *
+ * Vs. poprzednia wersja (mechaniczna lista 10×):
+ * - filtr `isSpamPost` (eliminuje test-posty z bazy typu `#pomoc` solo),
+ * - cap `MAX_POSTS_TO_SHOW=5` (czytelność > kompletność),
+ * - lead konwersacyjny zamiast nagłówka „Najnowsze posty społeczności (10):",
+ * - daty względne (`formatRelativeDate`) zamiast ISO,
+ * - dedup wydziału: jeśli wszyscy są z tego samego, pokazujemy w leadzie
+ *   raz, a per-item pomijamy (mniej szumu),
+ * - inline tagi tylko gdy NIE są już w treści posta (deduplikacja —
+ *   `Hejka… #studia #pomoc` nie potrzebuje osobnej linii `Tagi: #studia #pomoc`).
+ *
+ * Świadomie zachowujemy markdown — `react-markdown` w UI renderuje
+ * bullet pointy, pogrubienia i kursywę. Brak emoji (zgodnie ze stylem
+ * całego UJverse — patrz BaseCard).
+ */
 function formatPostsResult(result: unknown): string {
-  const items = getItemsArray(result)
-  if (!items || items.length === 0) {
-    return 'Brak postów do pokazania.'
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Cisza na feedzie — nikt nic dziś nie pisał.'
   }
-  const lines: string[] = [`Najnowsze posty społeczności (${items.length}):`, '']
-  items.forEach((item, idx) => {
+
+  const filtered = rawItems.filter((item) => {
+    const body = pickString(item, 'body')
+    const tags = pickStringArray(item, 'tags')
+    return !isSpamPost(body, tags)
+  })
+  if (filtered.length === 0) {
+    return 'Na feedzie są wpisy, ale wszystkie są na tyle krótkie, że nie ma co cytować. Zerknij sam na zakładkę Feed.'
+  }
+
+  const items = filtered.slice(0, MAX_POSTS_TO_SHOW)
+  const remaining = filtered.length - items.length
+
+  const departments = items
+    .map((item) => {
+      const author = (typeof item === 'object' && item !== null
+        ? (item as Record<string, unknown>).author
+        : null) as Record<string, unknown> | null
+      return (author && typeof author.department === 'string' && author.department) || null
+    })
+    .filter((d): d is string => !!d)
+  const allSameDept =
+    departments.length === items.length &&
+    departments.length > 1 &&
+    departments.every((d) => d === departments[0])
+  const sharedDept = allSameDept ? departments[0] : null
+
+  const leadSuffix = sharedDept
+    ? ` (głównie z wydziału ${sharedDept})`
+    : ''
+  const lines: string[] = [
+    `Oto co ostatnio krąży na feedzie${leadSuffix}:`,
+    '',
+  ]
+
+  items.forEach((item) => {
     const author = (typeof item === 'object' && item !== null
       ? (item as Record<string, unknown>).author
       : null) as Record<string, unknown> | null
@@ -515,16 +750,30 @@ function formatPostsResult(result: unknown): string {
     const body = pickString(item, 'body')
     const tags = pickStringArray(item, 'tags')
     const createdAt = pickStringOrNull(item, 'created_at')
-    const deptSuffix = department ? ` _(${department})_` : ''
-    lines.push(`${idx + 1}. **@${username}**${deptSuffix}`)
-    if (body) lines.push(`   - ${clip(body, 240)}`)
-    if (tags.length > 0) {
-      const tagLine = tags.map((t) => `#${t}`).join(' ')
-      lines.push(`   - Tagi: ${tagLine}`)
+
+    const showDept = department && !sharedDept
+    const headerParts: string[] = [`**@${username}**`]
+    if (showDept) headerParts.push(`_(${department})_`)
+    if (createdAt) headerParts.push(`· ${formatRelativeDate(createdAt)}`)
+    lines.push(`- ${headerParts.join(' ')}`)
+    if (body) {
+      lines.push(`  „${clip(body, 200)}"`)
     }
-    if (createdAt) lines.push(`   - Data: ${formatDateShort(createdAt)}`)
-    lines.push('')
+
+    const bodyLower = body.toLowerCase()
+    const tagsNotInBody = tags.filter((t) => !bodyLower.includes(`#${t.toLowerCase()}`))
+    if (tagsNotInBody.length > 0) {
+      lines.push(`  ${tagsNotInBody.map((t) => `#${t}`).join(' ')}`)
+    }
   })
+
+  if (remaining > 0) {
+    lines.push('')
+    lines.push(
+      `_(jest jeszcze ${remaining} ${remaining === 1 ? 'wpis' : 'wpisów'} — zerknij na zakładkę Feed)_`,
+    )
+  }
+
   return lines.join('\n').trimEnd()
 }
 
@@ -659,6 +908,35 @@ export default async function handler(req: Request): Promise<Response> {
     console.warn('[api/chat] extractRequestUser threw:', err instanceof Error ? err.message : err)
     user = { userId: null }
   }
+
+  // Per-key rate limit (defense-in-depth): zatrzymujemy spam Enterem od
+  // pojedynczego klienta, zanim w ogóle dotkniemy KV / Groqa. Klucz =
+  // `user:<uuid>` dla zalogowanych (NAT-friendly) lub `ip:<addr>` dla
+  // anonimów. Gdy limit przekroczony, zwracamy SYNTETYCZNY SSE z łagodną
+  // wiadomością — nie HTTP 429 — żeby klient (`BielikAdapter`) nie pokazał
+  // toastu „Asystent nie odpowiada" i UX wyglądał normalnie.
+  const rateLimitKey = user.userId
+    ? `user:${user.userId}`
+    : `ip:${extractClientIp(req)}`
+  const rateLimit = checkAndConsumeRateLimit(rateLimitKey)
+  if (!rateLimit.allowed) {
+    const retrySec = Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1000))
+    console.warn(
+      '[RateLimit] denied key:',
+      rateLimitKey,
+      '| retryAfterMs:',
+      rateLimit.retryAfterMs,
+    )
+    return streamFinalContent(
+      `Wolniej — pytasz szybciej niż zdążę odpowiedzieć. Spróbuj ponownie za ${retrySec}s.`,
+    )
+  }
+  console.log(
+    '[RateLimit] allowed key:',
+    rateLimitKey,
+    '| tokensRemaining:',
+    rateLimit.tokensRemaining,
+  )
 
   const provider = new GroqProvider(apiKey, DEFAULT_GROQ_MODEL)
   const tools = toGroqToolsArray()

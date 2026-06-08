@@ -11,13 +11,9 @@
  * reagować na zmiany bez globalnego store'a.
  */
 
-export type Density = 'comfortable' | 'compact'
-
 export type UserPreferences = {
   /** Ogranicza animacje / transitions w całej apce. */
   reducedMotion: boolean
-  /** Gęstość interfejsu: domyślnie wygodna, alternatywa kompaktowa. */
-  density: Density
   /** Globalny przełącznik dźwięku przy nowych powiadomieniach. */
   notificationSound: boolean
   /** Pokaż mój profil w wyszukiwarce (filtr klienta). */
@@ -30,7 +26,6 @@ const STORAGE_KEY = 'uj_user_prefs_v1'
 
 const DEFAULTS: UserPreferences = {
   reducedMotion: false,
-  density: 'comfortable',
   notificationSound: true,
   showProfileInSearch: true,
   showDepartmentOnPosts: true,
@@ -50,7 +45,6 @@ function safeRead(): UserPreferences {
     if (!parsed || typeof parsed !== 'object') return { ...DEFAULTS }
     return {
       reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULTS.reducedMotion,
-      density: parsed.density === 'compact' ? 'compact' : 'comfortable',
       notificationSound:
         typeof parsed.notificationSound === 'boolean' ? parsed.notificationSound : DEFAULTS.notificationSound,
       showProfileInSearch:
@@ -109,9 +103,8 @@ export function subscribePreferences(listener: Listener): () => void {
 
 /**
  * Wpisuje atrybuty data-* na <html> tak, żeby globalny CSS w `index.css`
- * (selektory `html[data-reduced-motion="true"]`, `html[data-density="compact"]`)
- * mógł wymusić odpowiednie reguły bez konieczności przepuszczania prefs przez
- * setki komponentów.
+ * (selektor `html[data-reduced-motion="true"]`) mógł wymusić odpowiednie
+ * reguły bez konieczności przepuszczania prefs przez setki komponentów.
  */
 export function applyVisualPreferences(prefs: UserPreferences = getUserPreferences()) {
   if (typeof document === 'undefined') return
@@ -121,5 +114,4 @@ export function applyVisualPreferences(prefs: UserPreferences = getUserPreferenc
   } else {
     root.removeAttribute('data-reduced-motion')
   }
-  root.setAttribute('data-density', prefs.density)
 }

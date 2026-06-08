@@ -3,10 +3,111 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <link rel="icon" type="image/png" href="/src/assets/logo.png" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="preload" as="image" href="/logo.png" />
+    <meta name="theme-color" content="#F9F7F2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="author" content="Franciszek Dranka" />
+    <meta name="description" content="UJverse — nieoficjalna platforma społeczności Uniwersytetu Jagiellońskiego. Autor: Franciszek Dranka." />
     <title>UJverse</title>
+
+    <!--
+      Inline theme detection — odpalane PRZED CSS, eliminuje FOUC.
+      Czyta `localStorage['uj-theme']` (zob. ThemeContext) lub `prefers-color-scheme`,
+      i dodaje klasę `dark` na <html> jeszcze zanim React się zhydratuje.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('uj-theme')
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          var isDark = stored === 'dark' || (!stored && prefersDark)
+          if (isDark) document.documentElement.classList.add('dark')
+        } catch (e) {}
+      })()
+    </script>
+
+    <!--
+      Inline reset + splash style — pokazany od pierwszego paint, żeby na
+      mobile/produkcji nie było białej dziury między HTML a załadowaniem React.
+      Tło dopasowane do motywu (ivory / black). Splash znika gdy main.tsx
+      doda `body.app-ready` po hydration (zob. main.tsx).
+    -->
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #F9F7F2;
+        color: #1e293b;
+        -webkit-font-smoothing: antialiased;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      html.dark, html.dark body {
+        background: #000000;
+        color: #f8fafc;
+      }
+
+      #ujverse-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.75rem;
+        background: inherit;
+        opacity: 1;
+        transition: opacity 240ms ease-out;
+        pointer-events: none;
+      }
+      body.app-ready #ujverse-splash {
+        opacity: 0;
+      }
+
+      #ujverse-splash .logo {
+        height: 9rem;
+        width: 12.5rem;
+        background-color: #1e293b;
+        -webkit-mask: url(/logo.png) center / contain no-repeat;
+        mask: url(/logo.png) center / contain no-repeat;
+        transition: background-color 150ms ease-out;
+      }
+      html.dark #ujverse-splash .logo {
+        background-color: #e8c84a;
+      }
+
+      #ujverse-splash .spin {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid rgba(15, 23, 42, 0.15);
+        border-top-color: #1e293b;
+        border-radius: 50%;
+        animation: ujverse-splash-spin 0.85s linear infinite;
+      }
+      html.dark #ujverse-splash .spin {
+        border-color: rgba(255, 255, 255, 0.08);
+        border-top-color: #e8c84a;
+      }
+
+      @keyframes ujverse-splash-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #ujverse-splash .spin { animation: none; }
+        #ujverse-splash { transition: none; }
+      }
+    </style>
   </head>
   <body>
+    <div id="ujverse-splash" aria-hidden="true">
+      <div class="logo" role="img" aria-label="UJverse"></div>
+      <div class="spin"></div>
+    </div>
+
     <div id="root"></div>
     <div id="lightbox-portal"></div>
     <script type="module" src="/src/main.tsx"></script>

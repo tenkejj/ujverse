@@ -12,6 +12,10 @@ export type Profile = {
   role?: string | null
   /** Globalny ban konta (moderacja). */
   is_banned?: boolean | null
+  /** Czy profil pojawia się w wyszukiwarce (Meili). Default `true`. Sterowane z `SettingsView`. */
+  is_searchable?: boolean | null
+  /** Czy badge wydziału jest pokazywany przy postach autora. Default `true`. */
+  show_department?: boolean | null
 }
 
 export type Post = {

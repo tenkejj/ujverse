@@ -34,6 +34,7 @@ import { extractPostTags } from './lib/postTags'
 import { Analytics } from '@vercel/analytics/react'
 import { DataService } from './services/DataService'
 import { PostService } from './services/PostService'
+import { playNotificationPing } from './lib/notificationSound'
 import SearchPageView from './components/SearchPageView'
 import GroupView from './components/GroupView'
 import GroupsIndexView from './components/GroupsIndexView'
@@ -301,7 +302,7 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned')
+      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned, is_searchable, show_department')
       .eq('id', userId)
       .single()
     if (data) {
@@ -440,7 +441,7 @@ function App() {
     setPostsError(null)
     const { data, error } = await supabase
       .from('posts')
-      .select('*, user_id, profiles(id, full_name, username, avatar_url, department, is_banned)')
+      .select('*, user_id, profiles(id, full_name, username, avatar_url, department, is_banned, show_department)')
       .order('created_at', { ascending: false })
     if (error) { setPostsError(error.message); setPosts([]); setPostsLoading(false); return }
     const next = ((data ?? []) as Post[]).filter((p) => p.profiles?.is_banned !== true)
@@ -496,6 +497,7 @@ function App() {
         filter: `user_id=eq.${session.user.id}`,
       }, () => {
         setBellRingTick((t) => t + 1)
+        playNotificationPing()
         void fetchNotifications({ silent: true })
       })
       .subscribe()
@@ -1213,6 +1215,10 @@ function App() {
           <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
             <SettingsView
               email={session.user?.email ?? undefined}
+              myProfile={myProfile}
+              onProfilePatch={(patch) =>
+                setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
+              }
               onBack={goBackInHistory}
             />
           </ViewErrorBoundary>
@@ -1220,7 +1226,7 @@ function App() {
       case 'chat':
         return (
           <Suspense fallback={null}>
-            <ChatHubView displayName={displayName} />
+            <ChatHubView displayName={displayName} myProfile={myProfile} />
           </Suspense>
         )
       default:
@@ -1394,6 +1400,8 @@ function App() {
             menuOpen ||
             effectiveActiveView === 'chat'
           }
+          myProfile={myProfile}
+          displayName={displayName}
         />
       </Suspense>
     </>

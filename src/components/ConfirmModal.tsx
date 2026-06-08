@@ -47,33 +47,35 @@ export default function ConfirmModal({
       onPointerDown={(e) => { if (e.target === e.currentTarget) handleClose() }}
     >
       <motion.div
-        className="w-full max-w-sm bg-zinc-950 rounded-2xl shadow-uj-soft dark:shadow-none border border-zinc-800 overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-border-app bg-bg-card shadow-uj-soft backdrop-blur-md backdrop-saturate-150 dark:shadow-[0_30px_80px_-32px_rgba(0,0,0,0.9)]"
         initial={{ opacity: 0, y: 12, scale: 0.97 }}
         animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 8 : 0, scale: isClosing ? 0.97 : 1 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 flex items-start gap-4">
-          <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0 mt-0.5">
-            <AlertTriangle size={18} className="text-red-500" />
+        <div className="flex items-start gap-4 px-6 pb-4 pt-6">
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-500/15">
+            <AlertTriangle size={18} className="text-rose-500 dark:text-rose-400" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-base font-bold text-slate-900 dark:text-blue-50 leading-snug">
+            <h3 className="text-base font-bold leading-snug text-fg-primary">
               {title}
             </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            <p className="mt-1 text-sm leading-relaxed text-fg-secondary">
               {message}
             </p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-5 flex justify-end gap-2.5">
+        <div className="flex justify-end gap-2.5 px-6 pb-5">
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="min-h-[40px] rounded-xl px-4 text-sm font-semibold text-fg-secondary transition-colors hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10"
           >
             Anuluj
           </button>
@@ -81,7 +83,7 @@ export default function ConfirmModal({
             type="button"
             onClick={handleConfirm}
             whileTap={{ scale: 0.94 }}
-            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors"
+            className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-bold text-white transition-colors hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 dark:bg-rose-500 dark:hover:bg-rose-400"
           >
             {confirmLabel}
           </motion.button>

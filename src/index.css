@@ -301,13 +301,6 @@ html[data-reduced-motion="true"] *::after {
   scroll-behavior: auto !important;
 }
 
-html[data-density="compact"] {
-  --ui-density-scale: 0.92;
-}
-html[data-density="compact"] body {
-  font-size: 14.5px;
-}
-
 /* react-hot-toast: szklany pasek, spójny z motywem (bez „fabrycznego” niebieskiego + czerwonej ikony) */
 .ujverse-toast {
   background: color-mix(in srgb, var(--bg-app) 80%, transparent) !important;

@@ -32,6 +32,8 @@ import {
   sidePanelHoverFocus,
   widgetGoldCls,
 } from '../../lib/sidePanelStyles'
+import type { Profile } from '../../types'
+import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import AnimatedBot from './AnimatedBot'
@@ -46,7 +48,14 @@ const QUICK_PROMPTS = [
   'Zasady wpisów',
 ] as const
 
-export default function ChatAssistant() {
+type Props = {
+  /** Profil zalogowanego użytkownika — awatar przy jego wiadomościach. */
+  myProfile?: Profile | null
+  /** Display name — fallback dla awatara (inicjał), gdy `myProfile` brak. */
+  displayName?: string
+}
+
+export default function ChatAssistant({ myProfile, displayName }: Props = {}) {
   const navigate = useNavigate()
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
@@ -111,8 +120,8 @@ export default function ChatAssistant() {
           className={`${widgetGoldCls} shrink-0`}
         />
         <div className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className={sectionTitleCls}>Asystent UJ</span>
-          <span className={`text-[10px] ${sideMutedCls}`}>Qwen3 32B</span>
+          <span className={sectionTitleCls}>Asystent UJverse</span>
+          <span className={`text-[10px] ${sideMutedCls}`}>{CHAT_MODEL_LABEL}</span>
         </div>
         <button
           type="button"
@@ -144,6 +153,8 @@ export default function ChatAssistant() {
         isTyping={isTyping}
         variant="compact"
         className="scrollbar-thin scrollbar-thumb-zinc-800"
+        myProfile={myProfile}
+        displayName={displayName}
       />
 
       {canClear && (

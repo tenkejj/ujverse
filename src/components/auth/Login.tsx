@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AtSign,
   Eye,
@@ -14,18 +14,24 @@ import { toast } from '../../lib/appToast'
 import { supabase } from '../../supabaseClient.ts'
 
 /**
- * Wspólny styl pola tekstowego — eksportowany dla `ResetPassword`,
- * żeby wszystkie ekrany auth dzieliły dokładnie ten sam look.
+ * Wspólny styl pola tekstowego — eksportowany dla `ResetPassword`.
  *
- * Token-based: navy focus w light, gold focus w dark — spójnie z
- * `theme.ts`. Bez utwardzonych kolorów typu `#C5A059` z poprzedniej wersji.
+ * Frosted glass: pół-przezroczyste tło + backdrop-blur, żeby pola
+ * były z tego samego materiału co karta AuthShell. Focus token-based:
+ * navy w light, gold w dark.
  */
 export const authInputCls =
-  'w-full rounded-xl border bg-white px-3.5 py-3 text-[15px] text-zinc-900 ' +
-  'placeholder:text-zinc-400 outline-none transition-colors duration-200 ' +
-  'border-zinc-200 focus:border-[#1e293b] caret-[#1e293b] ' +
-  'dark:border-white/10 dark:bg-white/[0.03] dark:text-white ' +
-  'dark:placeholder:text-white/30 dark:focus:border-brand-gold-bright ' +
+  'w-full rounded-xl border px-3.5 py-3 text-base text-zinc-900 ' +
+  'placeholder:text-zinc-400 outline-none transition-all duration-200 ' +
+  'bg-white/60 backdrop-blur-md ' +
+  'border-white/60 hover:border-zinc-300/70 ' +
+  'focus:border-[#1e293b] focus:bg-white/85 ' +
+  'caret-[#1e293b] ' +
+  'shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] ' +
+  'dark:border-white/10 dark:bg-white/[0.04] dark:text-white ' +
+  'dark:placeholder:text-white/30 dark:hover:border-white/15 ' +
+  'dark:focus:border-brand-gold-bright dark:focus:bg-white/[0.06] ' +
+  'dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ' +
   'dark:caret-brand-gold-bright'
 
 /** Wariant `authInputCls` z miejscem na ikonkę po lewej (pl-10). */
@@ -58,6 +64,7 @@ const subtitleByView: Record<AuthView, string> = {
 }
 
 export default function Login() {
+  const reducedMotion = useReducedMotion()
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<AuthView>('login')
 
@@ -165,9 +172,11 @@ export default function Login() {
       {view !== 'forgot' && (
         <div
           className={
-            'relative grid grid-cols-2 rounded-full p-1 mb-7 ' +
-            'bg-zinc-100/80 dark:bg-white/4 ' +
-            'border border-zinc-200/70 dark:border-white/5'
+            'relative grid grid-cols-2 rounded-full p-1 mb-6 ' +
+            'bg-white/45 backdrop-blur-md border border-white/60 ' +
+            'shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] ' +
+            'dark:bg-white/4 dark:border-white/5 ' +
+            'dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
           }
           role="tablist"
           aria-label="Tryb autoryzacji"
@@ -181,7 +190,7 @@ export default function Login() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setView(id)}
-                className="relative z-10 rounded-full py-2 text-sm font-semibold focus:outline-none"
+                className="relative z-10 rounded-full py-2.5 text-sm font-semibold focus:outline-none"
               >
                 {active && (
                   <motion.span
@@ -214,10 +223,10 @@ export default function Login() {
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={`hdr-${view}`}
-          initial={{ opacity: 0, y: 6 }}
+          initial={reducedMotion ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.18 }}
+          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+          transition={{ duration: reducedMotion ? 0 : 0.18 }}
           className="mb-6 text-center"
         >
           <h1 className="text-2xl font-extrabold tracking-tight text-[#1e293b] dark:text-white">
@@ -236,10 +245,10 @@ export default function Login() {
             key="form-forgot"
             onSubmit={handleForgot}
             className="text-left"
-            initial={{ opacity: 0, x: -8 }}
+            initial={reducedMotion ? false : { opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            transition={{ duration: 0.18 }}
+            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 8 }}
+            transition={{ duration: reducedMotion ? 0 : 0.18 }}
           >
             <FieldLabel htmlFor="reset-email">Adres e-mail</FieldLabel>
             <div className="relative mb-2">
@@ -286,10 +295,10 @@ export default function Login() {
             key={`form-${view}`}
             onSubmit={view === 'signup' ? handleSignUp : handleLogin}
             className="text-left"
-            initial={{ opacity: 0, x: 8 }}
+            initial={reducedMotion ? false : { opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            transition={{ duration: 0.18 }}
+            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -8 }}
+            transition={{ duration: reducedMotion ? 0 : 0.18 }}
           >
             <FieldLabel htmlFor="auth-username">Nazwa użytkownika</FieldLabel>
             <div className="relative mb-1.5">
@@ -327,20 +336,7 @@ export default function Login() {
                 : 'Niedozwolone znaki — użyj a-z, 0-9, kropki, myślnika lub podkreślnika'}
             </p>
 
-            <FieldLabel htmlFor="auth-password">
-              <span className="flex items-center justify-between gap-2">
-                <span>Hasło</span>
-                {view === 'login' && (
-                  <button
-                    type="button"
-                    onClick={() => setView('forgot')}
-                    className="text-xs font-medium text-zinc-500 underline-offset-4 transition-colors hover:text-[#1e293b] hover:underline dark:text-white/50 dark:hover:text-brand-gold-bright"
-                  >
-                    Zapomniałeś hasła?
-                  </button>
-                )}
-              </span>
-            </FieldLabel>
+            <FieldLabel htmlFor="auth-password">Hasło</FieldLabel>
             <div className="relative mb-1.5">
               <Lock
                 size={18}
@@ -349,7 +345,7 @@ export default function Login() {
               <input
                 id="auth-password"
                 type={showPassword ? 'text' : 'password'}
-                className={inputWithIconCls + ' pr-11'}
+                className={inputWithIconCls + ' pr-12'}
                 placeholder={
                   view === 'signup' ? 'Min. 8 znaków' : 'Twoje hasło'
                 }
@@ -368,7 +364,7 @@ export default function Login() {
                 onClick={() => setShowPassword((s) => !s)}
                 aria-label={showPassword ? 'Ukryj hasło' : 'Pokaż hasło'}
                 className={
-                  'absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 ' +
+                  'absolute right-1 top-1/2 -translate-y-1/2 rounded-lg p-2.5 ' +
                   'text-zinc-400 transition-colors hover:text-[#1e293b] ' +
                   'dark:text-white/40 dark:hover:text-brand-gold-bright'
                 }
@@ -377,28 +373,44 @@ export default function Login() {
               </button>
             </div>
 
-            {/* Hinty pod hasłem (caps lock / za krótkie hasło) */}
-            <div className="mb-5 min-h-4 space-y-1">
-              <AnimatePresence>
-                {capsLockOn && (
-                  <motion.p
-                    key="caps"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
-                  >
-                    <ShieldAlert size={12} className="shrink-0" />
-                    Caps Lock jest włączony
-                  </motion.p>
+            {/* Hinty pod hasłem (caps lock / za krótkie hasło / forgot link) */}
+            <div className="mb-5 flex min-h-4 items-start justify-between gap-3">
+              <div className="flex-1 space-y-1">
+                <AnimatePresence>
+                  {capsLockOn && (
+                    <motion.p
+                      key="caps"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+                    >
+                      <ShieldAlert size={12} className="shrink-0" />
+                      Caps Lock jest włączony
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                {passwordTooShort && (
+                  <p className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-white/45">
+                    <Lock size={12} className="shrink-0" />
+                    Jeszcze {8 - password.length}{' '}
+                    {8 - password.length === 1 ? 'znak' : 'znaków'} do minimum
+                  </p>
                 )}
-              </AnimatePresence>
-              {passwordTooShort && (
-                <p className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-white/45">
-                  <Lock size={12} className="shrink-0" />
-                  Jeszcze {8 - password.length}{' '}
-                  {8 - password.length === 1 ? 'znak' : 'znaków'} do minimum
-                </p>
+              </div>
+              {view === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => setView('forgot')}
+                  className={
+                    'shrink-0 -my-1.5 -mr-1.5 rounded-lg px-1.5 py-1.5 ' +
+                    'text-xs font-semibold text-zinc-500 transition-colors ' +
+                    'hover:text-[#1e293b] dark:text-white/55 ' +
+                    'dark:hover:text-brand-gold-bright'
+                  }
+                >
+                  Zapomniałeś hasła?
+                </button>
               )}
             </div>
 

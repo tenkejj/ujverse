@@ -35,7 +35,11 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
     ) || 'Użytkownik'
 
     const body = UjverseSanitizer.cleanBody(raw.content ?? '')
-    const department = profile?.department ?? null
+    // Brak `show_department` w profilu (np. dane sprzed migracji) traktujemy
+    // jako domyślne `true` — wstecznie kompatybilnie. Eksplicytne `false`
+    // ukrywa badge wydziału przy postach autora.
+    const department =
+      profile?.show_department === false ? null : (profile?.department ?? null)
 
     const rawTags = raw.tags ?? []
     const tags = Array.isArray(rawTags)
@@ -76,7 +80,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
   async fetchById(id: string): Promise<Post | null> {
     const { data, error } = await supabase
       .from('posts')
-      .select('*, profiles(id, full_name, avatar_url, department, is_banned)')
+      .select('*, profiles(id, full_name, avatar_url, department, is_banned, show_department)')
       .eq('id', Number(id))
       .single()
 
@@ -103,7 +107,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
     if (!Number.isFinite(limit) || limit <= 0) return []
     const { data, error } = await supabase
       .from('posts')
-      .select('*, profiles(id, full_name, avatar_url, department, is_banned)')
+      .select('*, profiles(id, full_name, avatar_url, department, is_banned, show_department)')
       .order('created_at', { ascending: false })
       .limit(limit)
 
@@ -121,7 +125,7 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
 
     const { data, error } = await supabase
       .from('posts')
-      .select('*, profiles(id, full_name, avatar_url, department, is_banned)')
+      .select('*, profiles(id, full_name, avatar_url, department, is_banned, show_department)')
       .in('id', numericIds)
 
     if (error || !data) return []

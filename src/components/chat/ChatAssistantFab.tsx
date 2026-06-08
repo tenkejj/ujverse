@@ -19,6 +19,8 @@ import type { FormEvent, KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Send, X } from 'lucide-react'
+import type { Profile } from '../../types'
+import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
@@ -28,6 +30,10 @@ import MessageList from './MessageList'
 type Props = {
   /** Gdy `true` — komponent nic nie renderuje (kolizja z innym sheetem). */
   hidden?: boolean
+  /** Profil zalogowanego użytkownika — awatar w wierszach jego wiadomości. */
+  myProfile?: Profile | null
+  /** Fallback inicjału awatara, gdy `myProfile` brak. */
+  displayName?: string
 }
 
 /**
@@ -42,7 +48,11 @@ const SHEET_GLASS_CLS = [
   'border-t',
 ].join(' ')
 
-export default function ChatAssistantFab({ hidden = false }: Props) {
+export default function ChatAssistantFab({
+  hidden = false,
+  myProfile,
+  displayName,
+}: Props) {
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
   const isOpen = useChatStore((s) => s.isOpen)
@@ -144,7 +154,7 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
       <motion.section
         role="dialog"
         aria-modal="true"
-        aria-label="Asystent UJ"
+        aria-label="Asystent UJverse"
         className={`flex max-h-[90dvh] min-h-0 flex-col overflow-hidden rounded-t-3xl shadow-[0_-12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${SHEET_GLASS_CLS}`}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
@@ -161,9 +171,9 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
             </span>
             <div className="flex flex-col leading-tight">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                Asystent UJ
+                Asystent UJverse
               </h2>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Qwen3 32B</p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{CHAT_MODEL_LABEL}</p>
             </div>
           </div>
           <button
@@ -182,6 +192,8 @@ export default function ChatAssistantFab({ hidden = false }: Props) {
           isTyping={isTyping}
           variant="roomy"
           className="px-4 py-3"
+          myProfile={myProfile}
+          displayName={displayName}
         />
 
         <form

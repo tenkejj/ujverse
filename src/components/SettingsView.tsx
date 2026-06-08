@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import { ArrowLeft, LogOut } from 'lucide-react'
 import {
   AcademicCapIcon,
+  AtSymbolIcon,
   BellAlertIcon,
   CheckCircleIcon,
   CircleStackIcon,
+  ClipboardDocumentIcon,
   ClockIcon,
-  DocumentTextIcon,
-  EnvelopeIcon,
   ExclamationTriangleIcon,
+  IdentificationIcon,
   InformationCircleIcon,
   KeyIcon,
   MagnifyingGlassIcon,
@@ -18,7 +19,6 @@ import {
   ShieldCheckIcon,
   SparklesIcon,
   SpeakerWaveIcon,
-  Squares2X2Icon,
   SunIcon,
   TrashIcon,
   UserCircleIcon,
@@ -31,7 +31,6 @@ import {
   getUserPreferences,
   setUserPreference,
   subscribePreferences,
-  type Density,
   type UserPreferences,
 } from '../lib/userPreferences'
 import {
@@ -39,10 +38,16 @@ import {
   clearAllHistory,
   loadSearchHistory,
 } from '../lib/searchHistory'
+import { playNotificationPing } from '../lib/notificationSound'
+import type { Profile } from '../types'
 import BaseCard from './ui/BaseCard'
+
+type ProfilePatch = Partial<Pick<Profile, 'is_searchable' | 'show_department'>>
 
 type Props = {
   email: string | undefined
+  myProfile: Profile | null
+  onProfilePatch: (patch: ProfilePatch) => void
   onBack: () => void
 }
 
@@ -83,6 +88,11 @@ const fieldCls =
   'placeholder:text-zinc-400 focus:border-[#1e293b] ' +
   'dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 ' +
   'dark:focus:border-brand-gold-bright'
+
+// Mail kontaktowy do "Zgłoś problem". Trzymany jako stała żeby było widać
+// w jednym miejscu i łatwo zaktualizować.
+const SUPPORT_EMAIL = 'franciszek.dranka@student.uj.edu.pl'
+const APP_AUTHOR = 'Franciszek Dranka'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -251,7 +261,7 @@ function clearLocalAppCache(): number {
 
 // ── Main component ────────────────────────────────────────────────────────
 
-export default function SettingsView({ email, onBack }: Props) {
+export default function SettingsView({ email, myProfile, onProfilePatch, onBack }: Props) {
   const { theme, toggleTheme } = useTheme()
   const prefs = useUserPrefs()
 
@@ -268,14 +278,22 @@ export default function SettingsView({ email, onBack }: Props) {
 
   const [searchHistoryCount, refreshSearchHistoryCount] = useSearchHistoryCount()
 
+  // Server-side privacy flags z `profiles` — domyślnie `true` żeby nie psuć
+  // wyświetlania zanim user ich nie ruszy (i dla wierszy sprzed migracji).
+  const profileSearchable = myProfile?.is_searchable !== false
+  const profileShowDept = myProfile?.show_department !== false
+
+  const [privacyBusy, setPrivacyBusy] = useState<{
+    is_searchable: boolean
+    show_department: boolean
+  }>({ is_searchable: false, show_department: false })
+
   // Po przyznaniu/odebraniu zezwolenia (np. via OS) — odśwież stan przy fokusie.
   useEffect(() => {
     const onFocus = () => setPushPermission(readPushPermission())
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [])
-
-  const displayEmail = useMemo(() => email?.trim() || 'test@uj.pl', [email])
 
   // ── Account ─────────────────────────────────────────────────────────────
 
@@ -340,9 +358,6 @@ export default function SettingsView({ email, onBack }: Props) {
   const setReducedMotion = (next: boolean) => {
     setUserPreference('reducedMotion', next)
   }
-  const setDensity = (next: Density) => {
-    setUserPreference('density', next)
-  }
 
   // ── Notifications ───────────────────────────────────────────────────────
 
@@ -390,15 +405,65 @@ export default function SettingsView({ email, onBack }: Props) {
 
   const setNotificationSound = (next: boolean) => {
     setUserPreference('notificationSound', next)
+    // Przy włączeniu odtwórz krótki preview, żeby user usłyszał jak brzmi
+    // (i jednocześnie odblokował AudioContext przy pierwszej interakcji).
+    if (next) {
+      // setTimeout 0 — oddziela od kliknięcia, dzięki czemu AudioContext
+      // ma już aktywne user-gesture w niektórych przeglądarkach.
+      window.setTimeout(() => playNotificationPing(), 0)
+    }
   }
 
-  // ── Privacy ─────────────────────────────────────────────────────────────
+  // ── Privacy (server-side) ───────────────────────────────────────────────
+
+  const updateProfileFlag = useCallback(
+    async (
+      key: 'is_searchable' | 'show_department',
+      next: boolean,
+      labels: { onSuccess: string; onError: string },
+    ) => {
+      if (!myProfile?.id) {
+        toast.error('Brak profilu — zaloguj się ponownie.')
+        return
+      }
+      if (privacyBusy[key]) return
+
+      const previous = myProfile[key] !== false
+      setPrivacyBusy((prev) => ({ ...prev, [key]: true }))
+      onProfilePatch({ [key]: next } as ProfilePatch)
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ [key]: next })
+        .eq('id', myProfile.id)
+
+      setPrivacyBusy((prev) => ({ ...prev, [key]: false }))
+
+      if (error) {
+        onProfilePatch({ [key]: previous } as ProfilePatch)
+        toast.error(error.message || labels.onError)
+        return
+      }
+      toast.success(labels.onSuccess)
+    },
+    [myProfile, onProfilePatch, privacyBusy],
+  )
 
   const setShowProfileInSearch = (next: boolean) => {
-    setUserPreference('showProfileInSearch', next)
+    void updateProfileFlag('is_searchable', next, {
+      onSuccess: next
+        ? 'Profil widoczny w wyszukiwarce.'
+        : 'Profil ukryty w wyszukiwarce.',
+      onError: 'Nie udało się zapisać preferencji.',
+    })
   }
   const setShowDepartmentOnPosts = (next: boolean) => {
-    setUserPreference('showDepartmentOnPosts', next)
+    void updateProfileFlag('show_department', next, {
+      onSuccess: next
+        ? 'Wydział jest pokazywany przy postach.'
+        : 'Wydział ukryty przy postach.',
+      onError: 'Nie udało się zapisać preferencji.',
+    })
   }
 
   // ── Data ────────────────────────────────────────────────────────────────
@@ -424,9 +489,32 @@ export default function SettingsView({ email, onBack }: Props) {
 
   const handleResetVisualPrefs = () => {
     setUserPreference('reducedMotion', false)
-    setUserPreference('density', 'comfortable')
     applyVisualPreferences()
     toast.success('Przywrócono domyślne ustawienia wyglądu.')
+  }
+
+  // ── Contact ─────────────────────────────────────────────────────────────
+
+  const handleCopySupportEmail = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(SUPPORT_EMAIL)
+      } else {
+        // Fallback dla starszych przeglądarek / bez secure context.
+        const textarea = document.createElement('textarea')
+        textarea.value = SUPPORT_EMAIL
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+      }
+      toast.success('Adres skopiowany do schowka.')
+    } catch {
+      toast.error('Nie udało się skopiować adresu.')
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -460,25 +548,6 @@ export default function SettingsView({ email, onBack }: Props) {
           icon={UserCircleIcon}
           description="Twój login w UJverse i dostęp do konta."
         >
-          <Row>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
-                E-mail
-              </p>
-              <p className="mt-1 flex items-center gap-2 truncate text-sm font-medium text-zinc-900 dark:text-white">
-                <EnvelopeIcon className={`h-4 w-4 ${accentIconCls}`} aria-hidden />
-                <span className="truncate">{displayEmail}</span>
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => toast('Zmiana adresu e-mail będzie dostępna wkrótce.')}
-              className={outlineBtnCls}
-            >
-              Zmień
-            </button>
-          </Row>
-
           <div>
             <Row>
               <RowLabel
@@ -609,15 +678,6 @@ export default function SettingsView({ email, onBack }: Props) {
               onChange={setReducedMotion}
             />
           </Row>
-
-          <Row>
-            <RowLabel
-              icon={Squares2X2Icon}
-              title="Gęstość interfejsu"
-              hint="Kompaktowa wersja zmniejsza odstępy i typografię."
-            />
-            <DensitySegmented value={prefs.density} onChange={setDensity} />
-          </Row>
         </SectionCard>
 
         {/* Powiadomienia ──────────────────────────────────────────────── */}
@@ -645,7 +705,7 @@ export default function SettingsView({ email, onBack }: Props) {
             <RowLabel
               icon={SpeakerWaveIcon}
               title="Dźwięk powiadomień"
-              hint="Krótki sygnał dźwiękowy przy nowych alertach w aplikacji."
+              hint="Krótki ton odtwarzany przy nowym powiadomieniu — kliknij, aby usłyszeć."
             />
             <SettingsToggle
               id="notification-sound"
@@ -666,12 +726,13 @@ export default function SettingsView({ email, onBack }: Props) {
             <RowLabel
               icon={MagnifyingGlassIcon}
               title="Pokaż mój profil w wyszukiwarce"
-              hint="Inni studenci znajdą Cię po loginie i imieniu."
+              hint="Po wyłączeniu znikasz z indeksu Meilisearch — inni nie znajdą Cię po loginie ani imieniu."
             />
             <SettingsToggle
               id="privacy-search"
               ariaLabel="Pokaż mój profil w wyszukiwarce"
-              enabled={prefs.showProfileInSearch}
+              enabled={profileSearchable}
+              disabled={privacyBusy.is_searchable || !myProfile?.id}
               onChange={setShowProfileInSearch}
             />
           </Row>
@@ -680,12 +741,13 @@ export default function SettingsView({ email, onBack }: Props) {
             <RowLabel
               icon={AcademicCapIcon}
               title="Pokaż wydział przy postach"
-              hint="Pod nazwą widoczny będzie skrót Twojego wydziału."
+              hint="Po wyłączeniu badge wydziału zniknie przy Twoich postach w feedzie i na profilu."
             />
             <SettingsToggle
               id="privacy-dept"
               ariaLabel="Pokaż wydział przy postach"
-              enabled={prefs.showDepartmentOnPosts}
+              enabled={profileShowDept}
+              disabled={privacyBusy.show_department || !myProfile?.id}
               onChange={setShowDepartmentOnPosts}
             />
           </Row>
@@ -750,98 +812,54 @@ export default function SettingsView({ email, onBack }: Props) {
         <SectionCard
           title="Informacje"
           icon={InformationCircleIcon}
-          description="Wersja, regulamin i polityka."
+          description="Wersja aplikacji, autor i adres kontaktowy."
         >
           <Row>
             <RowLabel icon={InformationCircleIcon} title="Wersja aplikacji" />
             <span className="font-mono text-sm font-semibold text-zinc-900 dark:text-white">
-              v1.0.4-beta
+              v1.0.0-alpha
             </span>
           </Row>
 
-          <button
-            type="button"
-            onClick={() => toast('Regulamin — treść wkrótce.')}
-            className="-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-xl px-2 py-3.5 text-left transition-colors hover:bg-[#1e293b]/[0.04] dark:hover:bg-white/[0.04]"
-          >
-            <span className="flex items-center gap-3">
-              <DocumentTextIcon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
-              <span className="text-sm font-semibold text-zinc-900 dark:text-white">Regulamin</span>
+          <Row>
+            <RowLabel
+              icon={IdentificationIcon}
+              title="Autor"
+              hint="Twórca i opiekun projektu UJverse."
+            />
+            <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+              {APP_AUTHOR}
             </span>
-            <span className="text-zinc-400 text-lg">›</span>
-          </button>
+          </Row>
 
-          <button
-            type="button"
-            onClick={() => toast('Polityka prywatności — treść wkrótce.')}
-            className="-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-xl px-2 py-3.5 text-left transition-colors hover:bg-[#1e293b]/[0.04] dark:hover:bg-white/[0.04]"
-          >
-            <span className="flex items-center gap-3">
-              <ShieldCheckIcon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
-              <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                Polityka prywatności
-              </span>
-            </span>
-            <span className="text-zinc-400 text-lg">›</span>
-          </button>
-
-          <Row className="items-start">
+          <div className="py-3.5">
             <RowLabel
               icon={ExclamationTriangleIcon}
-              title="Zgłoś problem"
-              hint="Wersja beta — daj znać jeśli coś nie działa."
+              title="Zgłoszenia błędów i sugestie"
+              hint="Aplikacja znajduje się w fazie alpha. Wszelkie napotkane usterki oraz uwagi prosimy zgłaszać na poniższy adres kontaktowy."
             />
-            <a
-              href="mailto:support@ujverse.test?subject=UJverse%20%E2%80%94%20zg%C5%82oszenie%20b%C5%82%C4%99du"
-              className={outlineBtnCls}
-            >
-              Napisz
-            </a>
-          </Row>
+            <div className="mt-3 ml-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="inline-flex min-w-0 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2 font-mono text-[13px] text-zinc-800 dark:border-white/10 dark:bg-white/[0.03] dark:text-zinc-100">
+                <AtSymbolIcon className={`h-4 w-4 ${accentIconCls}`} aria-hidden />
+                <span className="truncate">{SUPPORT_EMAIL}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleCopySupportEmail()}
+                className={outlineBtnCls}
+              >
+                <ClipboardDocumentIcon className="h-4 w-4" aria-hidden />
+                Kopiuj adres
+              </button>
+            </div>
+          </div>
         </SectionCard>
+
+        <p className="pt-1 text-center text-[11px] text-zinc-500 dark:text-zinc-500">
+          UJverse · {APP_AUTHOR} · v1.0.0-alpha
+        </p>
       </div>
     </div>
   )
 }
 
-// ── Density segmented control ─────────────────────────────────────────────
-
-function DensitySegmented({
-  value,
-  onChange,
-}: {
-  value: Density
-  onChange: (next: Density) => void
-}) {
-  const options: ReadonlyArray<{ id: Density; label: string }> = [
-    { id: 'comfortable', label: 'Wygodna' },
-    { id: 'compact', label: 'Kompaktowa' },
-  ]
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Gęstość interfejsu"
-      className="inline-flex shrink-0 items-center rounded-full border border-zinc-200 bg-zinc-100/70 p-0.5 text-xs font-semibold dark:border-white/10 dark:bg-white/[0.04]"
-    >
-      {options.map((opt) => {
-        const active = value === opt.id
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => onChange(opt.id)}
-            className={`min-w-[88px] rounded-full px-3 py-1.5 transition-colors ${
-              active
-                ? 'bg-[#1e293b] text-white shadow-sm dark:bg-brand-gold dark:text-black'
-                : 'text-zinc-600 hover:text-[#1e293b] dark:text-zinc-300 dark:hover:text-brand-gold-bright'
-            }`}
-          >
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}

@@ -1,9 +1,12 @@
 /**
- * `TypewriterMarkdown` — renderuje treść asystenta z lekkim efektem „pisania
+ * `TypewriterMarkdown` — renderuje treść asystenta z efektem „pisania
  * literka po literce", głównie po to, żeby start odpowiedzi nie był „bęc
- * całość" przy szybkim streamie z Groq-a (~150-300 t/s). Tempo bazowe celowo
- * dużo wyższe niż ChatGPT/Claude (~800 cps), bo użytkownik zgłosił, że
- * dotychczasowe ~200 cps było zbyt powolne dla krótkich odpowiedzi.
+ * całość" przy szybkim streamie z Groq-a (~150-300 t/s).
+ *
+ * Tempo: ~100 cps (czyli ChatGPT-territory — efekt jest wyraźnie widoczny,
+ * tekst „wjeżdża" w czytelnym tempie, ale nie blokuje. Historia tuningów
+ * w komencie wyżej: 200 cps → 800 cps (brak efektu, zbyt instant) → 100 cps
+ * (GPT-like, użytkownik chce wyraźne pisanie).
  *
  * Kontrakt:
  * - `content` — pełna treść (rośnie wraz z napływającymi SSE chunkami
@@ -52,10 +55,10 @@ type Props = {
   isStreaming: boolean
 }
 
-const BASE_CHARS_PER_TICK = 8
-const TICK_MS = 10
-const CATCHUP_BACKLOG_THRESHOLD = 40
-const CATCHUP_DIVISOR = 12
+const BASE_CHARS_PER_TICK = 2
+const TICK_MS = 20
+const CATCHUP_BACKLOG_THRESHOLD = 120
+const CATCHUP_DIVISOR = 10
 
 export default function TypewriterMarkdown({ content, isStreaming }: Props) {
   const [shown, setShown] = useState<number>(() =>
