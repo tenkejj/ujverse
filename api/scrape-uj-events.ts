@@ -14,9 +14,10 @@ import axios from 'axios'
 import { load, type CheerioAPI } from 'cheerio'
 import { createClient } from '@supabase/supabase-js'
 
-const WZIKS_NEWS_URL = 'https://wziks.uj.edu.pl/wiadomosci/aktualnosci'
+const WZIKS_NEWS_URL = 'https://wziks.uj.edu.pl/aktualnosci'
 const UJ_NEWS_HUB_URL = 'https://www.uj.edu.pl/wiadomosci'
-const UJ_CALENDAR_URL = 'https://www.uj.edu.pl/wiadomosci/kalendarz'
+/** Stary `/wiadomosci/kalendarz` zwraca 404 — aktualny URL kalendarza UJ. */
+const UJ_CALENDAR_URL = 'https://www.uj.edu.pl/kalendarz'
 
 const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -84,18 +85,46 @@ function isLikelyArticleLink(absUrl: string): boolean {
   try {
     const u = new URL(absUrl)
     if (!u.hostname.endsWith('uj.edu.pl') && !u.hostname.endsWith('wziks.uj.edu.pl')) return false
-    if (!u.pathname.includes('/wiadomosci')) return false
-    if (/\/wiadomosci\/?$/i.test(u.pathname)) return false
-    if (/\/wiadomosci\/(aktualnosci|kalendarz)\/?$/i.test(u.pathname)) return false
+
+    // Wyklucz strony-koncentratory i kategorie.
+    if (/^\/?(wiadomosci|kalendarz|aktualnosci)\/?$/i.test(u.pathname)) return false
+    if (/^\/wiadomosci\/(aktualnosci|kalendarz)\/?$/i.test(u.pathname)) return false
     if (u.pathname.includes('/kategorie/')) return false
-    if (/\/-\/|artykul|journal_content/i.test(u.pathname)) return true
-    const seg = u.pathname.split('/').filter(Boolean).length
-    if (seg < 4) return false
     if (/login|kandydaci/i.test(absUrl)) return false
-    return true
+
+    // Mocne sygnały „to jest artykuł / wydarzenie" (Liferay journal_content, archetypy „/-/" itd.).
+    if (/\/-\/|artykul|journal_content/i.test(u.pathname)) return true
+
+    // Stary szablon: artykuły siedzą w `/wiadomosci/<kategoria>/<slug>`.
+    if (u.pathname.includes('/wiadomosci/')) {
+      const seg = u.pathname.split('/').filter(Boolean).length
+      return seg >= 3
+    }
+
+    // Kalendarz UJ: wydarzenia mają path typu `/kalendarz/<id>/<slug>` lub `/kalendarz/wydarzenia/...`.
+    if (u.pathname.startsWith('/kalendarz/')) {
+      const seg = u.pathname.split('/').filter(Boolean).length
+      return seg >= 2
+    }
+
+    // WZiKS: `/aktualnosci/<slug>` lub `/aktualnosci/<id>/<slug>`.
+    if (u.pathname.startsWith('/aktualnosci/')) {
+      const seg = u.pathname.split('/').filter(Boolean).length
+      return seg >= 2
+    }
+
+    return false
   } catch {
     return false
   }
+}
+
+/** „więcej o XYZ" / „Read more about XYZ" itp. — wyciągnij właściwy tytuł. */
+function cleanAnchorTitle(raw: string): string {
+  const t = normalizeWhitespace(raw)
+  const m = t.match(/^(?:więcej o|wiecej o|czytaj więcej o|czytaj wiecej o|read more about)\s+(.+)$/i)
+  if (m && m[1]) return m[1].trim()
+  return t
 }
 
 function externalIdFromUrl(absUrl: string, faculty: Faculty): string {
@@ -194,8 +223,8 @@ function parseListing(html: string, pageUrl: string, faculty: Faculty): ScrapedI
     if (!isLikelyArticleLink(abs)) return
     if (seen.has(abs)) return
 
-    const title = normalizeWhitespace($a.text())
-    if (title.length < 8 || title.length > 220) return
+    const title = cleanAnchorTitle($a.text())
+    if (title.length < 8 || title.length > 300) return
     if (/^(czytaj więcej|więcej|zobacz|pdf|tutaj)$/i.test(title)) return
 
     seen.add(abs)
@@ -227,6 +256,16 @@ async function fetchHtml(url: string): Promise<string> {
       'User-Agent': BROWSER_USER_AGENT,
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Accept-Encoding': 'gzip, deflate, br',
+      // Dodatkowe nagłówki maskujące — niektóre WAFy (np. Cloudflare na wziks.uj.edu.pl)
+      // zwracają 503 gdy widzą czysto-serwerowy fingerprint bez Sec-Fetch-* itp.
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Sec-Fetch-User': '?1',
+      'Upgrade-Insecure-Requests': '1',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
     },
     timeout: 20000,
     responseType: 'text',
@@ -291,18 +330,71 @@ function dedupeByExternalId(items: ScrapedItem[]): ScrapedItem[] {
   return [...map.values()]
 }
 
+type ScrapeDiagnostic = {
+  url: string
+  faculty: Faculty
+  status: number | null
+  htmlBytes: number
+  parsed: number
+  /** Pierwsze ~160 znaków HTML — sygnatura WAF/Cloudflare/innej treści. */
+  htmlPreview: string
+  error: string | null
+}
+
+type ScrapeOutcome = { items: ScrapedItem[]; diag: ScrapeDiagnostic }
+
 /**
- * Po cichu loguje błąd jednego źródła i zwraca pustą listę — porażka jednego
- * scrape'a nie psuje pozostałych dwóch.
+ * Porażka jednego źródła nie psuje pozostałych. Zawsze zwraca diagnostykę
+ * (status HTTP, długość HTML, podgląd) — przydatne do debug curlem.
  */
-async function safeScrape(url: string, faculty: Faculty): Promise<ScrapedItem[]> {
+async function safeScrape(url: string, faculty: Faculty): Promise<ScrapeOutcome> {
+  const diag: ScrapeDiagnostic = {
+    url,
+    faculty,
+    status: null,
+    htmlBytes: 0,
+    parsed: 0,
+    htmlPreview: '',
+    error: null,
+  }
   try {
-    const html = await fetchHtml(url)
-    return parseListing(html, url, faculty)
+    const res = await axios.get<string>(url, {
+      headers: {
+        'User-Agent': BROWSER_USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+      timeout: 20000,
+      responseType: 'text',
+      transformResponse: [(d) => d],
+      validateStatus: () => true,
+    })
+    diag.status = res.status
+    const html = typeof res.data === 'string' ? res.data : ''
+    diag.htmlBytes = html.length
+    diag.htmlPreview = html.slice(0, 160).replace(/\s+/g, ' ').trim()
+
+    if (res.status >= 400 || html.length < 200) {
+      diag.error = `http ${res.status}, ${html.length} bytes`
+      return { items: [], diag }
+    }
+
+    const items = parseListing(html, url, faculty)
+    diag.parsed = items.length
+    return { items, diag }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    diag.error = msg
     console.warn(`[scrape-uj-events] ${faculty} ${url} failed:`, msg)
-    return []
+    return { items: [], diag }
   }
 }
 
@@ -348,20 +440,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY misconfigured (matches anon key)' })
   }
 
+  const debug = req.query.debug === '1' || req.query.debug === 'true'
+
   try {
-    const [wziks, ujNews, ujCal] = await Promise.all([
+    const [wziksOut, ujNewsOut, ujCalOut] = await Promise.all([
       safeScrape(WZIKS_NEWS_URL, 'WZiKS'),
       safeScrape(UJ_NEWS_HUB_URL, 'Uniwersytet Jagielloński'),
       safeScrape(UJ_CALENDAR_URL, 'Uniwersytet Jagielloński'),
     ])
 
-    const combined = dedupeByExternalId([...ujNews, ...wziks, ...ujCal])
+    const combined = dedupeByExternalId([
+      ...ujNewsOut.items,
+      ...wziksOut.items,
+      ...ujCalOut.items,
+    ])
+
+    const diagnostics = {
+      wziks: wziksOut.diag,
+      ujNews: ujNewsOut.diag,
+      ujCal: ujCalOut.diag,
+    }
+
     if (combined.length === 0) {
       return res.status(200).json({
         ok: true,
         upserted: 0,
         scanned: 0,
-        sources: { wziks: 0, ujNews: 0, ujCal: 0 },
+        sources: {
+          wziks: wziksOut.items.length,
+          ujNews: ujNewsOut.items.length,
+          ujCal: ujCalOut.items.length,
+        },
+        diagnostics,
         message: 'No items parsed from any source',
       })
     }
@@ -388,15 +498,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .upsert(rows, { onConflict: 'external_id' })
 
     if (error) {
-      return res.status(500).json({ error: error.message })
+      return res.status(500).json({ error: error.message, diagnostics })
     }
 
-    return res.status(200).json({
+    const response: Record<string, unknown> = {
       ok: true,
       upserted: rows.length,
       scanned: combined.length,
-      sources: { wziks: wziks.length, ujNews: ujNews.length, ujCal: ujCal.length },
-    })
+      sources: {
+        wziks: wziksOut.items.length,
+        ujNews: ujNewsOut.items.length,
+        ujCal: ujCalOut.items.length,
+      },
+      diagnostics,
+    }
+    if (debug) {
+      response.sampleTitles = combined.slice(0, 10).map((it) => ({
+        title: it.title,
+        faculty: it.faculty,
+        date: it.date,
+        url: it.event_url,
+      }))
+    }
+    return res.status(200).json(response)
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
     return res.status(500).json({ error: msg })
