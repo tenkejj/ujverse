@@ -14,10 +14,34 @@ import axios from 'axios'
 import { load, type CheerioAPI } from 'cheerio'
 import { createClient } from '@supabase/supabase-js'
 
-const WZIKS_NEWS_URL = 'https://wziks.uj.edu.pl/aktualnosci'
+/**
+ * Subdomena `wziks.uj.edu.pl` jest publicznie niedostępna (ENOTFOUND z każdego
+ * publicznego DNS-a, sprawdzone z Vercel iad1 + lokalnie z PL). UJ ją zwinął
+ * albo wystawia tylko przez split-DNS dla studentów. Wydarzenia WZiKS-u i tak
+ * pojawiają się w głównym kalendarzu `www.uj.edu.pl/kalendarz`, więc tracimy
+ * niewiele.
+ */
 const UJ_NEWS_HUB_URL = 'https://www.uj.edu.pl/wiadomosci'
 /** Stary `/wiadomosci/kalendarz` zwraca 404 — aktualny URL kalendarza UJ. */
 const UJ_CALENDAR_URL = 'https://www.uj.edu.pl/kalendarz'
+
+/**
+ * Slugi w `/kalendarz/<slug>` które NIE są wydarzeniami tylko kategoriami
+ * / formularzami / widokami. Wykrywane wprost — nie ma sensu kombinować
+ * regexem, bo lista jest krótka i stabilna.
+ */
+const CALENDAR_NON_EVENT_SLUGS = new Set([
+  'popularne',
+  'konferencje',
+  'konkursy',
+  'konkurs',
+  'formularz',
+  'dodaj',
+  'archiwum',
+  'wszystkie',
+  'kategorie',
+  'kategoria',
+])
 
 const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -84,13 +108,24 @@ function normalizeWhitespace(s: string): string {
 function isLikelyArticleLink(absUrl: string): boolean {
   try {
     const u = new URL(absUrl)
-    if (!u.hostname.endsWith('uj.edu.pl') && !u.hostname.endsWith('wziks.uj.edu.pl')) return false
 
-    // Wyklucz strony-koncentratory i kategorie.
+    // Tylko główny serwis UJ — wcag.uj.edu.pl, sso, panele itp. nie są wydarzeniami.
+    if (u.hostname !== 'www.uj.edu.pl' && u.hostname !== 'uj.edu.pl') return false
+
+    // Strony-koncentratory i ścieżki techniczne.
     if (/^\/?(wiadomosci|kalendarz|aktualnosci)\/?$/i.test(u.pathname)) return false
     if (/^\/wiadomosci\/(aktualnosci|kalendarz)\/?$/i.test(u.pathname)) return false
     if (u.pathname.includes('/kategorie/')) return false
     if (/login|kandydaci/i.test(absUrl)) return false
+
+    // Kalendarz UJ — odsiej kategorie / formularze (nie są to wydarzenia).
+    if (u.pathname.startsWith('/kalendarz/')) {
+      const seg = u.pathname.split('/').filter(Boolean)
+      const after = seg[1] ?? ''
+      if (!after) return false
+      if (CALENDAR_NON_EVENT_SLUGS.has(after.toLowerCase())) return false
+      return seg.length >= 2
+    }
 
     // Mocne sygnały „to jest artykuł / wydarzenie" (Liferay journal_content, archetypy „/-/" itd.).
     if (/\/-\/|artykul|journal_content/i.test(u.pathname)) return true
@@ -99,18 +134,6 @@ function isLikelyArticleLink(absUrl: string): boolean {
     if (u.pathname.includes('/wiadomosci/')) {
       const seg = u.pathname.split('/').filter(Boolean).length
       return seg >= 3
-    }
-
-    // Kalendarz UJ: wydarzenia mają path typu `/kalendarz/<id>/<slug>` lub `/kalendarz/wydarzenia/...`.
-    if (u.pathname.startsWith('/kalendarz/')) {
-      const seg = u.pathname.split('/').filter(Boolean).length
-      return seg >= 2
-    }
-
-    // WZiKS: `/aktualnosci/<slug>` lub `/aktualnosci/<id>/<slug>`.
-    if (u.pathname.startsWith('/aktualnosci/')) {
-      const seg = u.pathname.split('/').filter(Boolean).length
-      return seg >= 2
     }
 
     return false
@@ -443,20 +466,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const debug = req.query.debug === '1' || req.query.debug === 'true'
 
   try {
-    const [wziksOut, ujNewsOut, ujCalOut] = await Promise.all([
-      safeScrape(WZIKS_NEWS_URL, 'WZiKS'),
+    const [ujNewsOut, ujCalOut] = await Promise.all([
       safeScrape(UJ_NEWS_HUB_URL, 'Uniwersytet Jagielloński'),
       safeScrape(UJ_CALENDAR_URL, 'Uniwersytet Jagielloński'),
     ])
 
-    const combined = dedupeByExternalId([
-      ...ujNewsOut.items,
-      ...wziksOut.items,
-      ...ujCalOut.items,
-    ])
+    const combined = dedupeByExternalId([...ujNewsOut.items, ...ujCalOut.items])
 
     const diagnostics = {
-      wziks: wziksOut.diag,
       ujNews: ujNewsOut.diag,
       ujCal: ujCalOut.diag,
     }
@@ -467,7 +484,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         upserted: 0,
         scanned: 0,
         sources: {
-          wziks: wziksOut.items.length,
           ujNews: ujNewsOut.items.length,
           ujCal: ujCalOut.items.length,
         },
@@ -506,18 +522,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       upserted: rows.length,
       scanned: combined.length,
       sources: {
-        wziks: wziksOut.items.length,
         ujNews: ujNewsOut.items.length,
         ujCal: ujCalOut.items.length,
       },
       diagnostics,
     }
     if (debug) {
-      response.sampleTitles = combined.slice(0, 10).map((it) => ({
+      response.sampleTitles = enriched.slice(0, 30).map((it) => ({
         title: it.title,
         faculty: it.faculty,
         date: it.date,
         url: it.event_url,
+        imageUrl: it.image_url,
       }))
     }
     return res.status(200).json(response)
