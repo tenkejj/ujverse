@@ -8,13 +8,22 @@
  *
  * Renderowanie odpowiedzi asystenta przez `react-markdown` + `remark-gfm`
  * z własnym mapowaniem komponentów (UJverse nie ma `@tailwindcss/typography`).
+ *
+ * Auto-scroll: `ResizeObserver` na wewnętrznym wrapperze treści automatycznie
+ * dosuwa scroll do dołu, gdy zawartość rośnie (typewriter tickujący lokalnie
+ * w `TypewriterMarkdown` nie zmienia propsów rodzica, więc bez obserwera
+ * scroll zatrzymywałby się przy pierwszym chunku SSE i nie podążałby za
+ * dopisywanymi znakami). `stickToBottomRef` respektuje sytuację, gdy user
+ * sam przewinął w górę — wtedy auto-scroll się wycofuje, aż wróci do dołu.
  */
 
-import { forwardRef, type ReactNode } from 'react'
+import { forwardRef, useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import type { ChatMessage } from '../../types/ai'
 import AnimatedBot from './AnimatedBot'
 import TypewriterMarkdown from './TypewriterMarkdown'
+
+const STICK_TO_BOTTOM_TOLERANCE_PX = 48
 
 export type MessageListVariant = 'compact' | 'roomy'
 
@@ -151,31 +160,81 @@ function DefaultEmptyState({ variant }: { variant: MessageListVariant }) {
 
 const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
   { messages, isTyping, variant = 'compact', emptyState, className },
-  ref,
+  forwardedRef,
 ) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  const stickToBottomRef = useRef(true)
+
+  // Merge forwarded ref z lokalnym — rodzic (np. `ChatAssistant`) wciąż
+  // może użyć refa do imperatywnego scrolla na otwarciu sheetu, a my
+  // mamy własny uchwyt do obserwatorów i logiki stick-to-bottom.
+  const setContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(node)
+      } else if (forwardedRef) {
+        forwardedRef.current = node
+      }
+    },
+    [forwardedRef],
+  )
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onScroll = () => {
+      const distance = el.scrollHeight - el.clientHeight - el.scrollTop
+      stickToBottomRef.current = distance <= STICK_TO_BOTTOM_TOLERANCE_PX
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const container = containerRef.current
+    const content = contentRef.current
+    if (!container || !content) return
+    if (typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(() => {
+      if (!stickToBottomRef.current) return
+      container.scrollTop = container.scrollHeight
+    })
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [])
+
   const visible = messages.filter((m) => m.role !== 'system')
   return (
     <div
-      ref={ref}
-      className={`min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 ${className ?? ''}`}
+      ref={setContainerRef}
+      className={`min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 ${className ?? ''}`}
     >
-      {visible.length === 0 ? (
-        (emptyState ?? <DefaultEmptyState variant={variant} />)
-      ) : (
-        visible.map((m, idx) => {
-          const isLastAssistant =
-            m.role === 'assistant' && idx === visible.length - 1
-          return (
-            <MessageBubble
-              key={m.id}
-              message={m}
-              variant={variant}
-              isStreaming={isLastAssistant && isTyping}
-            />
-          )
-        })
-      )}
-      {isTyping && <TypingIndicator variant={variant} />}
+      <div ref={contentRef} className="flex min-h-full flex-col space-y-3">
+        {visible.length === 0 ? (
+          // `flex-1` zapewnia, że `DefaultEmptyState` (h-full) dostaje
+          // definitywną wysokość wewnątrz flex-column wrappera.
+          <div className="flex-1">
+            {emptyState ?? <DefaultEmptyState variant={variant} />}
+          </div>
+        ) : (
+          visible.map((m, idx) => {
+            const isLastAssistant =
+              m.role === 'assistant' && idx === visible.length - 1
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                variant={variant}
+                isStreaming={isLastAssistant && isTyping}
+              />
+            )
+          })
+        )}
+        {isTyping && <TypingIndicator variant={variant} />}
+      </div>
     </div>
   )
 })

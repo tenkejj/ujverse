@@ -5,6 +5,7 @@ import type { Comment, Post, Profile } from '../types'
 import { GroupService } from '../services/GroupService'
 import { getChannelDescription } from '../lib/channelPresentation'
 import { usePosts } from '../hooks/useContent'
+import { canonicalOfficialSlug, OFFICIAL_TAG_META } from '../services/TagService'
 import PostCard from './PostCard'
 import EmptyState from './EmptyState'
 import ZoneHeader from './ZoneHeader'
@@ -76,6 +77,8 @@ export default function GroupCard({
 
   useEffect(() => {
     let alive = true
+    setGroupName('')
+    setPosts([])
     setLoading(true)
     setError(null)
     void (async () => {
@@ -106,10 +109,18 @@ export default function GroupCard({
     commentsCountByPost,
   })
 
-  const title = useMemo(() => groupName || groupSlug, [groupName, groupSlug])
+  const officialMeta = useMemo(() => {
+    const canonical = canonicalOfficialSlug(groupSlug)
+    return canonical ? OFFICIAL_TAG_META[canonical] : null
+  }, [groupSlug])
+
+  const title = useMemo(
+    () => groupName || officialMeta?.name || groupSlug,
+    [groupName, officialMeta, groupSlug],
+  )
   const description = useMemo(
-    () => getChannelDescription(groupSlug, groupName),
-    [groupSlug, groupName],
+    () => getChannelDescription(groupSlug, groupName || officialMeta?.name || ''),
+    [groupSlug, groupName, officialMeta],
   )
   const postCountLabel = useMemo(() => {
     if (loading) return null

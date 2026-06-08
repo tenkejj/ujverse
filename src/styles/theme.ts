@@ -37,10 +37,27 @@ export const theme = {
   },
   shadow: {
     card: 'shadow-sm dark:shadow-xl',
-    /** Delikatna złota aureola pod kartą w hover. */
-    goldGlow: 'shadow-[0_0_26px_-14px_rgba(212,175,55,0.55)]',
-    /** Mocniejsza poświata dla wariantu premium (oficjalne wydarzenia). */
-    premium: 'shadow-[0_0_36px_-14px_rgba(201,162,39,0.25)]',
+    /**
+     * Aureola pod kartą w hover — kolor systemowy:
+     *   - light: subtelny granat (`rgba(15,23,42,0.22)`),
+     *   - dark:  złoty hint (`rgba(212,175,55,0.55)`).
+     * Zastąpiła wcześniejszy „goldGlow" który leciał w obu trybach.
+     */
+    cardGlow:
+      'shadow-[0_0_26px_-14px_rgba(15,23,42,0.22)] ' +
+      'dark:shadow-[0_0_26px_-14px_rgba(212,175,55,0.55)]',
+    /** Alias deprecated — zostawiony dla wstecznej kompatybilności (mapuje na `cardGlow`). */
+    goldGlow:
+      'shadow-[0_0_26px_-14px_rgba(15,23,42,0.22)] ' +
+      'dark:shadow-[0_0_26px_-14px_rgba(212,175,55,0.55)]',
+    /**
+     * Mocniejsza poświata dla wariantu premium (oficjalne wydarzenia).
+     *   - light: subtelna navy aureola,
+     *   - dark:  ciepły złoty.
+     */
+    premium:
+      'shadow-[0_0_36px_-14px_rgba(15,23,42,0.18)] ' +
+      'dark:shadow-[0_0_36px_-14px_rgba(201,162,39,0.25)]',
   },
   transition: {
     base: '',

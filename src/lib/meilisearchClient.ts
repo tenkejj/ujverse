@@ -10,10 +10,8 @@ function readHost(): string {
 }
 
 function readApiKey(): string {
-  // Preferujemy master key (pełne uprawnienia, pasuje do lokalnego dockera),
-  // z fallbackiem na publiczny search key dla środowisk produkcyjnych.
+  // Front MOŻE używać wyłącznie search-only key — master/admin key wpadłby do bundla JS.
   return (
-    import.meta.env.VITE_MEILISEARCH_MASTER_KEY?.trim() ||
     import.meta.env.VITE_MEILISEARCH_SEARCH_KEY?.trim() ||
     DEFAULT_API_KEY
   )

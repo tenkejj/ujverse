@@ -1324,13 +1324,19 @@ function App() {
             effectiveActiveView === 'chat'
               ? 'w-full'
               : `mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
-                  effectiveActiveView === 'feed' || effectiveActiveView === 'events' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
-                  || effectiveActiveView === 'search' ||
-                    effectiveActiveView === 'group'
-                    ? 'max-w-7xl px-4 lg:px-6'
-                    : effectiveActiveView === 'settings'
-                      ? 'max-w-2xl px-4 space-y-0'
-                      : 'max-w-2xl space-y-3 px-4'
+                  effectiveActiveView === 'events'
+                    // Wydarzenia: hub-layout (main + side rail) potrzebuje szerokiego
+                    // pola gry na PC; standardowe `max-w-7xl` ścina rail i wymusza
+                    // wąską siatkę kart. `max-w-[1800px]` daje pełen widescreen
+                    // experience bez rozwleczenia na 4K.
+                    ? 'max-w-[1800px] px-4 lg:px-6 xl:px-8'
+                    : effectiveActiveView === 'feed' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
+                      || effectiveActiveView === 'search' ||
+                        effectiveActiveView === 'group'
+                      ? 'max-w-7xl px-4 lg:px-6'
+                      : effectiveActiveView === 'settings'
+                        ? 'max-w-2xl px-4 space-y-0'
+                        : 'max-w-2xl space-y-3 px-4'
                 } ${effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile' ? 'space-y-4' : ''}`
           }
         >

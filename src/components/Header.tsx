@@ -13,6 +13,7 @@ import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
+import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
 type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
 
@@ -284,9 +285,7 @@ export default function Header({
               textSize={HEADER_MOBILE.userAvatarTextSize}
             />
             {myProfile?.department && (
-              <span
-                className={`hidden md:inline ${HEADER_MOBILE.userDepartmentBadgeClass} font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 border border-zinc-700 dark:border-white/20 rounded-full leading-none shrink-0 transition-colors duration-150 ease-in-out`}
-              >
+              <span className={`hidden md:inline-flex ${DEPT_BADGE_SPAN_CLASS}`}>
                 {getDeptAbbreviation(myProfile.department)}
               </span>
             )}
@@ -306,18 +305,23 @@ export default function Header({
             {menuOpen && (
               <motion.div
                 role="menu"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full z-[120] mt-2 w-72 overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] backdrop-blur-md backdrop-saturate-150 origin-top-right dark:border-white/10 dark:bg-bg-card/95 dark:shadow-2xl dark:shadow-black/50"
+                initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.97, transition: { duration: 0.14, ease: [0.4, 0, 1, 1] } }}
+                transition={{ type: 'spring', stiffness: 520, damping: 36, mass: 0.7 }}
+                className="absolute right-0 top-full z-120 mt-2 w-72 overflow-hidden rounded-2xl border border-zinc-200 bg-white/85 backdrop-blur-md backdrop-saturate-150 shadow-[0_30px_80px_-32px_rgba(15,23,42,0.35)] origin-top-right dark:border-white/10 dark:bg-bg-card/95 dark:shadow-[0_30px_80px_-32px_rgba(0,0,0,0.9)]"
               >
                 <div className="flex items-center gap-3 border-b border-zinc-200 px-4 py-3.5 dark:border-white/10">
-                  <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9 shrink-0" textSize="text-sm" />
-                  <div className="flex min-h-9 min-w-0 flex-1 items-center">
-                    <p className="w-full text-sm font-semibold leading-tight text-zinc-800 dark:text-zinc-100 truncate">
+                  <UserAvatar profile={myProfile} name={displayName} className="h-9 w-9 shrink-0 ring-1 ring-zinc-900/10 dark:ring-white/10" textSize="text-sm" />
+                  <div className="flex min-h-9 min-w-0 flex-1 flex-col justify-center">
+                    <p className="w-full text-sm font-semibold leading-tight text-fg-primary dark:text-zinc-100 truncate">
                       {displayName}
                     </p>
+                    {myProfile?.department && (
+                      <span className={`${DEPT_BADGE_SPAN_CLASS} mt-1 self-start`}>
+                        {getDeptAbbreviation(myProfile.department)}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -325,25 +329,25 @@ export default function Header({
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToProfile() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/35 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-zinc-700 before:opacity-0 hover:before:opacity-100 dark:before:bg-zinc-100"
+                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <User size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" />
+                    <User size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
                     Mój profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onOpenProfileModal() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/35 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-zinc-700 before:opacity-0 hover:before:opacity-100 dark:before:bg-zinc-100"
+                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <Pencil size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" />
+                    <Pencil size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
                     Edytuj profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToSettings() }}
-                    className="relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/35 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-100 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-zinc-700 before:opacity-0 hover:before:opacity-100 dark:before:bg-zinc-100"
+                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <Settings size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" />
+                    <Settings size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
                     Ustawienia
                   </button>
                 </div>
@@ -352,9 +356,9 @@ export default function Header({
                   <button
                     role="menuitem"
                     onClick={() => void supabase.auth.signOut()}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-rose-500/80 transition-colors hover:bg-rose-500/[0.08] hover:text-rose-600/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 dark:text-rose-400/80 dark:hover:bg-white/5 dark:hover:text-rose-400/90"
+                    className="group flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-rose-500/85 transition-colors hover:bg-rose-500/8 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 dark:text-rose-400/85 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
                   >
-                    <LogOut size={15} className="shrink-0 text-rose-500/80 dark:text-rose-400/80" />
+                    <LogOut size={16} strokeWidth={2} className="shrink-0 text-rose-500/85 transition-colors group-hover:text-rose-600 dark:text-rose-400/85 dark:group-hover:text-rose-300" />
                     Wyloguj się
                   </button>
                 </div>

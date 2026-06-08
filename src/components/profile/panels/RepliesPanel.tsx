@@ -290,7 +290,7 @@ export default function RepliesPanel({
         loading="lazy"
       />
     ) : (
-      <div className={`${avatarBase} ${sizeClass} flex items-center justify-center text-sm font-bold text-zinc-900 dark:text-yellow-500`}>
+      <div className={`${avatarBase} ${sizeClass} flex items-center justify-center text-sm font-bold text-zinc-900 dark:text-brand-gold-bright`}>
         {first}
       </div>
     )
@@ -1102,7 +1102,7 @@ export default function RepliesPanel({
       <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
         <div className="relative mx-auto flex w-10 items-start justify-center">
           {railBottom ? (
-            <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-zinc-900/25 dark:bg-yellow-500/35" />
+            <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-zinc-900/25 dark:bg-brand-gold-bright/35" />
           ) : null}
           {profileHref ? (
             <Link
@@ -1160,8 +1160,8 @@ export default function RepliesPanel({
                 type="button"
                 className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
                   isLiked
-                    ? 'text-zinc-900 dark:text-yellow-500'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-yellow-500/90'
+                    ? 'text-zinc-900 dark:text-brand-gold-bright'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-brand-gold-bright/90'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1171,7 +1171,7 @@ export default function RepliesPanel({
                 disabled={likeDisabled}
               >
                 <Heart size={18} className={isLiked ? 'fill-current' : undefined} />
-                <span className={isLiked ? 'text-zinc-900 dark:text-yellow-500' : undefined}>
+                <span className={isLiked ? 'text-zinc-900 dark:text-brand-gold-bright' : undefined}>
                   {formatXNumber(likesCount)}
                 </span>
               </button>
@@ -1179,8 +1179,8 @@ export default function RepliesPanel({
                 type="button"
                 className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-2.5 py-2 transition-all hover:bg-white/10 ${
                   commentsActive
-                    ? 'text-zinc-900 dark:text-yellow-500'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-yellow-500/90'
+                    ? 'text-zinc-900 dark:text-brand-gold-bright'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-brand-gold-bright/90'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1189,7 +1189,7 @@ export default function RepliesPanel({
                 aria-label="Komentarze"
               >
                 <MessageCircle size={18} />
-                <span className={commentsActive ? 'text-zinc-900 dark:text-yellow-500' : undefined}>
+                <span className={commentsActive ? 'text-zinc-900 dark:text-brand-gold-bright' : undefined}>
                   {formatXNumber(commentsCount)}
                 </span>
               </button>
@@ -1204,7 +1204,7 @@ export default function RepliesPanel({
   if (loading) {
     return (
       <div className="flex justify-center py-10">
-        <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-zinc-900 border-t-transparent dark:border-yellow-500" />
+        <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-zinc-900 border-t-transparent dark:border-brand-gold-bright" />
       </div>
     )
   }
@@ -1448,7 +1448,7 @@ export default function RepliesPanel({
                     <div className="grid grid-cols-[48px_1fr] gap-x-3 w-full">
                       <div className="relative mx-auto flex w-10 items-start justify-center">
                         {hasNextItem(index) ? (
-                          <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-zinc-900/25 dark:bg-yellow-500/35" />
+                          <span className="pointer-events-none absolute left-1/2 top-11 -bottom-2 w-[2px] -translate-x-1/2 bg-zinc-900/25 dark:bg-brand-gold-bright/35" />
                         ) : null}
                         {composerProfileLoading ? (
                           <div
@@ -1529,7 +1529,7 @@ export default function RepliesPanel({
                               e.stopPropagation()
                               mediaInputByCommentRef.current[item.threadCommentId]?.click()
                             }}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-900/10 dark:text-yellow-500 dark:hover:bg-yellow-500/10"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-900/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/10"
                             aria-label="Dodaj obraz"
                           >
                             <ImageIcon size={18} />
@@ -1555,7 +1555,7 @@ export default function RepliesPanel({
                               void handleCreateNestedReply(item.row, item.threadCommentId, item.draftKey)
                             }}
                             disabled={sendDisabled}
-                            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-zinc-900 px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-yellow-500 dark:text-black"
+                            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-zinc-900 px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-gold-bright dark:text-black"
                           >
                             Odpowiedz
                           </button>

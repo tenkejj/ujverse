@@ -14,14 +14,38 @@
  */
 import type { UJEvent } from '../data/mockEvents'
 import { materializeOfficialFallbackEvents } from '../data/officialFallbackEvents'
+import { startOfTodayIso } from '../lib/eventRow'
 import { supabase } from '../supabaseClient'
 
-const OFFICIAL_CACHE_KEY = 'ujverse_official_ingest_v1'
+// Bump historia:
+//   v1 → v2 — cutoff past-events w `fetchOfficialFromSupabase`.
+//   v2 → v3 — odfiltrowanie wpisów z `/wiadomosci/...` (newsy UJ trafiały
+//             do `official_events` jako "wydarzenia").
+// Bump unieważnia stary cache, żeby użytkownik nie zobaczył odfiltrowanych
+// rekordów z `hydrateOfficialEventsFromStorage` przed pierwszym świeżym fetchem.
+const OFFICIAL_CACHE_KEY = 'ujverse_official_ingest_v3'
 export const OFFICIAL_CACHE_TTL_MS = 15 * 60 * 1000
 
 let syncPromise: Promise<IngestSyncResult> | null = null
 
 const CATEGORY_OFFICIAL = 'Oficjalne'
+
+/**
+ * Wpisy z `/wiadomosci/...` w portalu UJ to *newsy* (artykuły z datą publikacji),
+ * nie wydarzenia. Scraper (`api/scrape-uj-events.ts`) ma blocklist na *indeksy*
+ * kategorii (np. sam `/wiadomosci`), ale przepuszcza pojedyncze artykuły
+ * `/wiadomosci/-/journal_content/...`. Defensywny filtr po stronie ingestu —
+ * pasy + szelki, gdy scraper kiedyś przepuści więcej śmieci.
+ */
+function isNewsArticleUrl(eventUrl: string | null | undefined): boolean {
+  if (!eventUrl) return false
+  try {
+    const u = new URL(eventUrl)
+    return u.pathname.includes('/wiadomosci/') || u.pathname === '/wiadomosci'
+  } catch {
+    return false
+  }
+}
 
 export type IngestSyncResult = {
   events: UJEvent[]
@@ -49,6 +73,7 @@ function rowToUjEvent(row: OfficialEventRow): UJEvent | null {
   if (!row.id || !row.title || !row.date) return null
   const date = new Date(row.date)
   if (Number.isNaN(date.getTime())) return null
+  if (isNewsArticleUrl(row.event_url)) return null
   const faculty: IngestFaculty =
     row.faculty === 'WZiKS' ? 'WZiKS' : 'Uniwersytet Jagielloński'
 
@@ -100,6 +125,11 @@ function reviveFromCache(raw: Record<string, unknown>): UJEvent | null {
   const date =
     typeof d === 'string' ? new Date(d) : d instanceof Date ? d : null
   if (!date || Number.isNaN(date.getTime())) return null
+  // Pas i szelki: nawet gdyby kiedyś past trafił do cache (regresja w
+  // `fetchOfficialFromSupabase`), reviver nie wpuści ich do listy.
+  if (date.getTime() < new Date(startOfTodayIso()).getTime()) return null
+  // Defensywnie odsiej newsy `/wiadomosci/...` z cache zapisanego przed bumpem.
+  if (typeof raw.event_url === 'string' && isNewsArticleUrl(raw.event_url)) return null
   const ev: UJEvent = {
     id: raw.id,
     title: raw.title,
@@ -171,11 +201,17 @@ export function hydrateOfficialEventsFromStorage(): UJEvent[] {
 }
 
 async function fetchOfficialFromSupabase(): Promise<UJEvent[]> {
+  // Cutoff past + sortowanie ASC — symetria z `useEvents.refetchDbEvents` i
+  // `compareOfficialThenDate`. Sortowanie po stronie DB jest informacyjne;
+  // ostatecznie i tak normalizuje je `mergeEventLists` przez
+  // `compareOfficialThenDate`. Trzymamy ten sam kierunek dla czytelności.
+  // Gdy w przyszłości pojawi się widok "kronika", rozszerz o opt-in `includePast`.
   const { data, error } = await supabase
     .from('official_events')
     .select(
       'id, external_id, title, date, category, location, description, faculty, source_name, event_url, image_url',
     )
+    .gte('date', startOfTodayIso())
     .order('date', { ascending: true })
 
   if (error) {

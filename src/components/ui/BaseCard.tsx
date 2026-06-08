@@ -18,9 +18,10 @@ import { theme } from '../../styles/theme'
  * Warianty:
  *  - default — zewnętrzna karta sekcji (glass, subtle border).
  *  - inner   — wiersz wewnątrz sekcji (mocniejsze czarne tło).
- *  - premium — oficjalne wydarzenia: gradient + złota aureola + ring.
+ *  - premium — oficjalne wydarzenia: gradient + akcent + ring.
  *
- * `interactive=true` dodaje hover złotej krawędzi + goldGlow + cursor-pointer.
+ * `interactive=true` dodaje hover akcentu krawędzi + cardGlow + cursor-pointer.
+ * Kolor akcentu jest świadomy trybu: navy (`#1e293b`) w light, gold w dark.
  */
 
 export type BaseCardVariant = 'default' | 'inner' | 'premium'
@@ -81,15 +82,24 @@ function variantClasses(variant: BaseCardVariant): string {
 }
 
 function interactiveClasses(variant: BaseCardVariant): string {
+  // Hover-akcent krawędzi: navy w light, gold w dark — spójnie dla wszystkich
+  // wariantów. Wcześniej `hover:border-[#D4AF37]/45` (gold) leciał też w light.
+  const accentBorderHover =
+    'hover:border-[#1e293b]/45 dark:hover:border-[#D4AF37]/45'
+
   if (variant === 'inner') {
-    return `${theme.transition.base} hover:border-[#D4AF37]/45 cursor-pointer`
+    return `${theme.transition.base} ${accentBorderHover} cursor-pointer`
   }
-  const base = `${theme.transition.base} hover:border-[#D4AF37]/45 hover:${theme.shadow.goldGlow} cursor-pointer`
   if (variant === 'premium') {
-    // Hover spójny w obu trybach — w light wzmacnia navy ring, w dark złoty ring.
     return `${theme.transition.base} cursor-pointer hover:border-[#1e293b]/55 hover:ring-[#1e293b]/20 dark:hover:border-[#D4AF37]/60 dark:hover:ring-[#D4AF37]/40`
   }
-  return base
+  // `default` — hover dodaje aureolę systemową:
+  //   light: subtelny granat, dark: ciepły złoty (jak `theme.shadow.cardGlow`).
+  // Wariant z explicit `dark:hover:` żeby Tailwind v4 stabilnie sparsował.
+  const cardGlowHover =
+    'hover:shadow-[0_0_26px_-14px_rgba(15,23,42,0.22)] ' +
+    'dark:hover:shadow-[0_0_26px_-14px_rgba(212,175,55,0.55)]'
+  return `${theme.transition.base} ${accentBorderHover} ${cardGlowHover} cursor-pointer`
 }
 
 function BaseCardInner(

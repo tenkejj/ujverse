@@ -1,8 +1,9 @@
 /**
  * `TypewriterMarkdown` — renderuje treść asystenta z efektem „pisania
  * literka po literce", spowalniając artyficjalnie szybki stream z Groq-a
- * (~150-300 t/s = wizualnie „bęc całość") do tempa porównywalnego
- * z naturalnym pisaniem ChatGPT/Claude (~65 znaków/s).
+ * (~150-300 t/s = wizualnie „bęc całość") do tempa szybszego niż
+ * ChatGPT/Claude, ale wciąż dającego rytm „pisania" (~200 cps bazowo,
+ * z adaptacyjnym catch-up gdy bufor SSE puchnie).
  *
  * Kontrakt:
  * - `content` — pełna treść (rośnie wraz z napływającymi SSE chunkami
@@ -24,6 +25,9 @@
  *   tylko spokojnie animuje pozostałe znaki aż `shown` dogoni `content.length`.
  *   To bug #2: poprzednio krótkie odpowiedzi z Groq (sub-sekundowe) ledwo
  *   zdążyły zacząć animację, zanim instant-jump nadpisał `shown`.
+ * - Adaptacyjne tempo: gdy bufor (target - prev) puchnie powyżej progu,
+ *   skalujemy `step` proporcjonalnie do zaległości — krótkie odpowiedzi
+ *   lecą w bazowym tempie, długie nie zostają o całe akapity w tyle.
  *
  * Performance:
  * - `setShown(prev => ...)` zwraca tę samą wartość gdy nie ma postępu
@@ -32,7 +36,7 @@
  *   sam siebie (oszczędność CPU dla długich rozmów / wielu starych bąbelków).
  * - ReactMarkdown reparsuje sliced content przy każdym tikku — dla
  *   typowych odpowiedzi (kilka KB) niezauważalne. Dla długich (10+ KB)
- *   można podnieść `CHARS_PER_TICK` lub wprowadzić memo.
+ *   można podnieść `BASE_CHARS_PER_TICK` lub wprowadzić memo.
  *
  * Cancellation: gdy wiadomość znika ze store (np. `clearHistory`),
  * komponent unmount'uje się i cleanup z `useEffect` zatrzymuje interval.
@@ -48,8 +52,10 @@ type Props = {
   isStreaming: boolean
 }
 
-const CHARS_PER_TICK = 1
-const TICK_MS = 15
+const BASE_CHARS_PER_TICK = 2
+const TICK_MS = 10
+const CATCHUP_BACKLOG_THRESHOLD = 80
+const CATCHUP_DIVISOR = 24
 
 export default function TypewriterMarkdown({ content, isStreaming }: Props) {
   const [shown, setShown] = useState<number>(() =>
@@ -73,7 +79,12 @@ export default function TypewriterMarkdown({ content, isStreaming }: Props) {
           }
           return prev
         }
-        return Math.min(prev + CHARS_PER_TICK, target)
+        const backlog = target - prev
+        const step =
+          backlog > CATCHUP_BACKLOG_THRESHOLD
+            ? Math.max(BASE_CHARS_PER_TICK, Math.ceil(backlog / CATCHUP_DIVISOR))
+            : BASE_CHARS_PER_TICK
+        return Math.min(prev + step, target)
       })
     }, TICK_MS)
 

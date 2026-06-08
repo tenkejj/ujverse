@@ -97,17 +97,16 @@ export const PROFILE_MOBILE = {
   },
   avatar: {
     sizePx: { base: 104, sm: 120, lg: 144 } as const,
-    ringClass:
-      'ring-4 ring-[var(--bg-app)] dark:ring-[#01020a] shadow-[0_0_60px_-8px_rgba(24,24,27,0.35)] dark:shadow-[0_0_60px_-8px_rgba(232,200,74,0.28)]',
+    ringClass: 'ring-4 ring-[var(--bg-app)] dark:ring-[#09090b]',
     radiusClass: 'rounded-full',
   },
   card: {
     glassLight:
       'border border-zinc-900/10 bg-white/75 shadow-[0_30px_80px_-40px_rgba(24,24,27,0.35)]',
     glassDark:
-      'dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
+      'dark:border-white/10 dark:bg-[#09090b]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
     glassClass:
-      'relative overflow-hidden rounded-3xl border border-zinc-900/10 bg-white/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_30px_80px_-40px_rgba(24,24,27,0.35)] dark:border-white/10 dark:bg-[#01020a]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
+      'relative overflow-hidden rounded-3xl border border-zinc-900/10 bg-white/75 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_30px_80px_-40px_rgba(24,24,27,0.35)] dark:border-white/10 dark:bg-[#09090b]/70 dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]',
     paddingXClass: 'px-4 sm:px-6 lg:px-8',
   },
   tabs: {
@@ -143,7 +142,7 @@ export const PROFILE_MOBILE = {
   },
   actionButton: {
     inlineClass:
-      'inline-flex items-center justify-center gap-2 rounded-full border border-zinc-900/12 bg-white/95 px-4 py-2 text-sm font-semibold text-fg-primary shadow-sm transition-colors hover:border-zinc-700/50 dark:border-white/20 dark:bg-[#01020a]/95 dark:text-white dark:hover:border-brand-gold-bright/45',
+      'inline-flex items-center justify-center gap-2 rounded-full border border-zinc-900/12 bg-white/95 px-4 py-2 text-sm font-semibold text-fg-primary shadow-sm transition-colors hover:border-zinc-700/50 dark:border-white/20 dark:bg-[#09090b]/95 dark:text-white dark:hover:border-brand-gold-bright/45',
   },
   motion: {
     staggerContainer: {
@@ -425,6 +424,226 @@ export const FILTER_PILL = {
  * Search input celowo używa dokładnie tej samej kapsuły co `OMNI_DESKTOP`,
  * żeby „wydarzenia" wizualnie współgrały z headerową paletą wyszukiwania.
  */
+/**
+ * EVENTS_HUB — tokeny dla nowego "hub" layoutu strony /wydarzenia.
+ *
+ * Zastępuje wcześniejszy "długa siatka kart" jednorodnym multi-sekcyjnym
+ * widokiem (Hero + sekcje datowe + side-rail). Bazuje na tym samym języku
+ * wizualnym co `OMNI_DESKTOP` (deep glass, gold akcent w dark, navy w light)
+ * i `SEARCH_DASHBOARD` (panele z hover scale + ring).
+ *
+ * Komponenty konsumujące:
+ *  - `EventsView` (orkiestracja)
+ *  - `EventsHero` (spotlight najbliższego)
+ *  - `EventsSideRail` (live / stats / quick filters w aside)
+ *  - `EventsEmptyState` (no-results / no-data fallback)
+ */
+export const EVENTS_HUB = {
+  // ── Hero ─────────────────────────────────────────────────────────────────
+  hero: {
+    /** Cała karta hero. Wariant premium glass z gradientem + ring. */
+    cardClass:
+      'relative overflow-hidden rounded-3xl border ' +
+      'border-zinc-200/80 bg-white/85 backdrop-blur-2xl backdrop-saturate-150 ' +
+      'shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)] ring-1 ring-zinc-900/5 ' +
+      'dark:border-white/10 dark:bg-zinc-950/55 ' +
+      'dark:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.85)] dark:ring-white/[0.04]',
+    /**
+     * Grid: image + meta. Proporcje są szersze dla plakatu na szerszych ekranach,
+     * żeby wykorzystać dodatkową przestrzeń na widescreen (po rozszerzeniu layoutu).
+     *  - md:  3:2 (poster | meta)
+     *  - xl:  7:5 (plakat dostaje znaczącą przewagę przy 1280+)
+     *  - cap: `max-h-[420px]` żeby hero nie wybijał się skyscraperem
+     */
+    gridClass:
+      'grid grid-cols-1 md:grid-cols-5 xl:grid-cols-12 gap-0 items-stretch ' +
+      'min-h-[260px] md:min-h-[320px] xl:min-h-[360px] xl:max-h-[440px]',
+    posterWrapClass:
+      'relative md:col-span-3 xl:col-span-7 min-h-[200px] md:min-h-[320px] overflow-hidden',
+    posterImgClass: 'absolute inset-0 h-full w-full object-cover',
+    posterFallbackClass:
+      'relative md:col-span-3 xl:col-span-7 min-h-[200px] md:min-h-[320px] flex items-center justify-center ' +
+      'bg-gradient-to-br from-[#1e293b]/[0.08] via-zinc-100 to-white ' +
+      'dark:from-[#1a1508]/85 dark:via-zinc-900/60 dark:to-transparent',
+    /** Przyciemnienie u dołu plakatu — pod „Najbliższe wydarzenie" badge. */
+    posterShadeClass:
+      'pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/15 to-transparent ' +
+      'md:bg-gradient-to-r md:from-black/30 md:via-transparent md:to-transparent',
+    /** Pływający badge "Najbliższe wydarzenie" lewy-góra plakatu. */
+    eyebrowFloatClass:
+      'absolute left-4 top-4 z-[2] inline-flex items-center gap-1.5 rounded-full ' +
+      'border border-white/30 bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white ' +
+      'backdrop-blur-md shadow-[0_4px_16px_-4px_rgba(0,0,0,0.4)]',
+    metaWrapClass:
+      'relative md:col-span-2 xl:col-span-5 flex flex-col gap-4 p-5 sm:p-6 md:p-7 xl:p-8 ' +
+      'border-t md:border-t-0 md:border-l border-zinc-200/70 dark:border-white/10',
+    /** Data — duży „bilet": miesiąc na górze, dzień gigant. */
+    dateBlockClass:
+      'inline-flex flex-col items-start gap-1 rounded-2xl border px-3 py-2 self-start ' +
+      'border-[#1e293b]/25 bg-[#1e293b]/[0.05] ' +
+      'dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08]',
+    dateMonthClass:
+      'text-[10px] font-bold uppercase tracking-[0.22em] text-[#1e293b] dark:text-brand-gold-bright',
+    dateDayClass:
+      'text-3xl font-extrabold leading-none text-[#1e293b] dark:text-brand-gold-bright',
+    titleClass:
+      'text-xl sm:text-2xl font-extrabold leading-tight text-zinc-900 dark:text-zinc-50 line-clamp-3',
+    metaRowClass: 'flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300',
+    metaIconClass: 'shrink-0 text-[#1e293b] dark:text-brand-gold-bright',
+    /** Pasek akcji u dołu — CTA + zapisanych. */
+    actionsRowClass: 'mt-auto flex flex-wrap items-center gap-3 pt-2',
+  },
+
+  // ── Section divider header (Dziś / Ten tydzień / itd.) ───────────────────
+  section: {
+    wrapClass: 'space-y-3',
+    headerClass:
+      'flex items-baseline justify-between gap-3 px-1',
+    titleClass:
+      'flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] ' +
+      'text-[#1e293b] dark:text-brand-gold-bright',
+    titleIconClass: 'shrink-0 text-[#1e293b] dark:text-brand-gold-bright',
+    countBadgeClass:
+      'inline-flex items-center justify-center rounded-full border px-2 py-0.5 ' +
+      'text-[10px] font-extrabold tabular-nums ' +
+      'border-[#1e293b]/25 bg-[#1e293b]/[0.05] text-[#1e293b] ' +
+      'dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/[0.06] dark:text-brand-gold-bright',
+    subtitleClass:
+      'text-[11px] font-medium text-zinc-500 dark:text-zinc-500',
+    /**
+     * Gęstość siatki kart w sekcji rośnie z szerokością okna:
+     *  - <sm:  1 kolumna
+     *  - sm:   2 kolumny (tablet portrait)
+     *  - xl:   3 kolumny (desktop ≥ 1280 px)
+     *  - 2xl:  4 kolumny (wide desktop ≥ 1536 px)
+     */
+    gridClass: 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4',
+  },
+
+  // ── Sticky toolbar (filter pills + search + create) ──────────────────────
+  toolbar: {
+    /** Sticky pod headerem (top ~ 56-72 px zależnie od headera). */
+    stickyWrapClass:
+      'sticky top-[64px] z-[15] -mx-2 sm:mx-0 px-2 sm:px-0 py-2 ' +
+      'backdrop-blur-xl backdrop-saturate-150 ' +
+      'bg-bg-app/85 dark:bg-bg-app/85 ' +
+      'border-b border-zinc-200/60 dark:border-white/[0.06]',
+    rowClass: 'flex flex-wrap items-center justify-between gap-3',
+    pillsWrapClass: 'flex flex-wrap gap-1.5 min-w-0',
+    actionsWrapClass:
+      'flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end',
+  },
+
+  // ── Side rail (aside) ────────────────────────────────────────────────────
+  rail: {
+    wrapClass: 'sticky top-[140px] flex flex-col gap-4',
+    panelClass:
+      'relative overflow-hidden rounded-2xl border p-4 ' +
+      'border-zinc-200/70 bg-white/75 backdrop-blur-xl backdrop-saturate-150 ' +
+      'shadow-[0_18px_60px_-30px_rgba(15,23,42,0.3)] ' +
+      'dark:border-white/[0.06] dark:bg-zinc-950/45 ' +
+      'dark:shadow-[0_25px_70px_-30px_rgba(0,0,0,0.9)]',
+    panelTitleClass:
+      'flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] ' +
+      'text-[#1e293b] dark:text-brand-gold-bright',
+    panelTitleIconClass: 'shrink-0 text-[#1e293b] dark:text-brand-gold-bright',
+    statsGridClass: 'mt-3 grid grid-cols-3 gap-2',
+    statCellClass:
+      'flex flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2.5 ' +
+      'border-zinc-200/60 bg-zinc-50/60 ' +
+      'dark:border-white/[0.06] dark:bg-white/[0.02]',
+    statValueClass:
+      'text-lg font-extrabold leading-none tabular-nums text-[#1e293b] dark:text-brand-gold-bright',
+    statLabelClass:
+      'text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400 text-center',
+    liveRowClass:
+      'mt-3 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300',
+    filterListClass: 'mt-3 flex flex-col gap-1',
+    filterButtonBase:
+      'group w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm ' +
+      'transition-colors text-left',
+    filterButtonInactive:
+      'text-zinc-600 hover:bg-zinc-100/70 hover:text-zinc-900 ' +
+      'dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-zinc-100',
+    filterButtonActive:
+      'bg-[#1e293b]/[0.06] text-[#1e293b] ring-1 ring-inset ring-[#1e293b]/25 font-semibold ' +
+      'dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright dark:ring-brand-gold-bright/30',
+    /**
+     * Liczniki w nieaktywnym wierszu. W dark mode tło jest mocniejsze
+     * (`bg-white/12`) żeby nie zlać się z hoverem rowki (`bg-white/[0.04]`),
+     * tekst `text-zinc-200` zamiast `zinc-400` dla pełnej czytelności na
+     * hoverze. Na light pozostaje delikatny zinc.
+     */
+    filterCountClass:
+      'shrink-0 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 ' +
+      'text-[10px] font-extrabold tabular-nums min-w-[20px] ' +
+      'bg-zinc-200/80 text-zinc-700 ' +
+      'group-hover:bg-zinc-300/80 group-hover:text-zinc-900 ' +
+      'dark:bg-white/12 dark:text-zinc-200 ' +
+      'dark:group-hover:bg-white/18 dark:group-hover:text-zinc-50',
+    /**
+     * Liczniki w aktywnym wierszu — w tonie filtra (navy w light, gold w dark)
+     * dla spójności wizualnej z ringiem i tekstem aktywnego przycisku.
+     */
+    filterCountActiveClass:
+      'shrink-0 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 ' +
+      'text-[10px] font-extrabold tabular-nums min-w-[20px] ' +
+      'bg-[#1e293b]/15 text-[#1e293b] ring-1 ring-inset ring-[#1e293b]/25 ' +
+      'dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright dark:ring-brand-gold-bright/35',
+  },
+
+  // ── Empty state ──────────────────────────────────────────────────────────
+  empty: {
+    wrapClass:
+      'relative overflow-hidden rounded-3xl border p-8 sm:p-12 text-center ' +
+      'border-zinc-200/70 bg-white/70 backdrop-blur-xl backdrop-saturate-150 ' +
+      'dark:border-white/[0.06] dark:bg-zinc-950/40',
+    iconBubbleClass:
+      'mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ' +
+      'border border-[#1e293b]/20 bg-[#1e293b]/[0.06] text-[#1e293b] ' +
+      'dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright',
+    titleClass: 'text-base font-bold text-zinc-900 dark:text-zinc-100',
+    subtitleClass:
+      'mt-1 text-sm text-zinc-500 dark:text-zinc-400 max-w-md mx-auto',
+    hintsWrapClass: 'mt-5 flex flex-wrap justify-center gap-2',
+    hintChipClass:
+      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 ' +
+      'text-xs font-medium transition-colors ' +
+      'border-zinc-200 bg-white/70 text-zinc-700 ' +
+      'hover:border-[#1e293b]/35 hover:bg-zinc-100 ' +
+      'dark:border-white/15 dark:bg-white/[0.04] dark:text-zinc-200 ' +
+      'dark:hover:border-brand-gold-bright/45 dark:hover:bg-brand-gold-bright/10',
+  },
+
+  // ── Motion ───────────────────────────────────────────────────────────────
+  motion: {
+    page: {
+      hidden: {},
+      show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+    },
+    fadeUp: {
+      hidden: { opacity: 0, y: 12 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
+      },
+    },
+    grid: {
+      hidden: {},
+      show: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } },
+    },
+    item: {
+      hidden: { opacity: 0, y: 8 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { type: 'spring' as const, stiffness: 280, damping: 26 },
+      },
+    },
+  },
+} as const
+
 export const EVENTS_TOOLBAR = {
   liveBadge:
     'hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 ' +

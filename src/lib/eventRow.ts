@@ -70,7 +70,16 @@ export function normalizeEventAuthor(raw: unknown): UJEvent['author'] | undefine
   }
 }
 
-/** Oficjalne na górze, potem rosnąco po dacie. */
+/**
+ * Oficjalne na górze, potem **rosnąco** po dacie (najbliższe nadchodzące na czele).
+ *
+ * Historia: pierwotnie ASC → przesunięte na DESC (8 czerwca 2026, brief "Sortowanie
+ * wydarzeń malejąco") → cofnięte na ASC po testach UI (4.10.2026 lądował na górze
+ * zamiast "co dziś"). Konsumenci modułu (student otwiera "Wydarzenia" by zobaczyć
+ * najbliższe wykłady) potrzebują kolejności "co najbliżej" — DESC pasował tylko do
+ * narracji katalogowej. Patrz też `useEvents.refetchDbEvents`
+ * (`.order('date', { ascending: true })`) i `EventIngestor.fetchOfficialFromSupabase`.
+ */
 export function compareOfficialThenDate(a: UJEvent, b: UJEvent): number {
   const oa = a.is_official ? 0 : 1
   const ob = b.is_official ? 0 : 1
