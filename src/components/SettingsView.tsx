@@ -26,7 +26,6 @@ import {
 import { toast } from '../lib/appToast'
 import { supabase } from '../supabaseClient'
 import { useTheme } from '../ThemeContext'
-import type { Theme } from '../ThemeContext'
 import {
   applyVisualPreferences,
   getUserPreferences,
@@ -96,82 +95,6 @@ const SUPPORT_EMAIL = 'franciszek.dranka@student.uj.edu.pl'
 const APP_AUTHOR = 'Franciszek Dranka'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-
-// ── Theme picker (segmented 3-option control) ────────────────────────────
-
-const THEME_OPTIONS: ReadonlyArray<{
-  value: Theme
-  label: string
-  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
-  hint: string
-}> = [
-  {
-    value: 'light',
-    label: 'Jasny',
-    icon: SunIcon,
-    hint: 'Biała mleczna szyba.',
-  },
-  {
-    value: 'dark',
-    label: 'Ciemny',
-    icon: MoonIcon,
-    hint: 'Granat z domieszką złota.',
-  },
-  {
-    value: 'uj',
-    label: 'Akademicki',
-    icon: AcademicCapIcon,
-    hint: 'Granat tarczy + złoto korony — paleta z herbu UJ.',
-  },
-]
-
-function ThemeSegmented({
-  value,
-  onChange,
-}: {
-  value: Theme
-  onChange: (next: Theme) => void
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Wybór motywu"
-      className={
-        'inline-flex shrink-0 items-center gap-0.5 rounded-full border p-0.5 ' +
-        'border-zinc-200 bg-zinc-50/80 ' +
-        'dark:border-white/10 dark:bg-white/[0.04]'
-      }
-    >
-      {THEME_OPTIONS.map((opt) => {
-        const Icon = opt.icon
-        const active = value === opt.value
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={opt.label}
-            title={opt.label}
-            onClick={() => onChange(opt.value)}
-            className={
-              'relative inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3 ' +
-              'text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 ' +
-              'focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold/45 ' +
-              (active
-                ? 'bg-[#1e293b] text-white shadow-sm dark:bg-brand-gold dark:text-black'
-                : 'text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900 ' +
-                  'dark:text-zinc-300 dark:hover:bg-white/[0.08] dark:hover:text-white')
-            }
-          >
-            <Icon className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">{opt.label}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 function SettingsToggle({
   enabled,
@@ -339,7 +262,7 @@ function clearLocalAppCache(): number {
 // ── Main component ────────────────────────────────────────────────────────
 
 export default function SettingsView({ email, myProfile, onProfilePatch, onBack }: Props) {
-  const { theme, setTheme } = useTheme()
+  const { theme, toggleTheme } = useTheme()
   const prefs = useUserPrefs()
 
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -720,24 +643,26 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
           icon={PaintBrushIcon}
           description="Dopasuj motyw i intensywność animacji do swoich preferencji."
         >
-          <Row className="flex-wrap">
+          <Row>
             <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
-              {(() => {
-                const current =
-                  THEME_OPTIONS.find((o) => o.value === theme) ?? THEME_OPTIONS[0]
-                const Icon = current.icon
-                return (
-                  <Icon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
-                )
-              })()}
+              {theme === 'dark' ? (
+                <MoonIcon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
+              ) : (
+                <SunIcon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
+              )}
               <div>
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Motyw</p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {(THEME_OPTIONS.find((o) => o.value === theme) ?? THEME_OPTIONS[0]).hint}
+                  {theme === 'dark' ? 'Ciemny — granat + złoto.' : 'Jasny — biała mleczna szyba.'}
                 </p>
               </div>
             </div>
-            <ThemeSegmented value={theme} onChange={setTheme} />
+            <SettingsToggle
+              id="theme-toggle"
+              ariaLabel="Przełącz motyw"
+              enabled={theme === 'dark'}
+              onChange={() => toggleTheme()}
+            />
           </Row>
 
           <Row>

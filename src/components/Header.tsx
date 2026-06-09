@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -205,25 +205,10 @@ export default function Header({
             type="button"
             onClick={toggleTheme}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out"
-            aria-label={
-              colorMode === 'light'
-                ? 'Przełącz na tryb ciemny'
-                : colorMode === 'dark'
-                  ? 'Przełącz na motyw akademicki'
-                  : 'Przełącz na tryb jasny'
-            }
-            title={
-              colorMode === 'light'
-                ? 'Jasny → Ciemny'
-                : colorMode === 'dark'
-                  ? 'Ciemny → Akademicki'
-                  : 'Akademicki → Jasny'
-            }
+            aria-label={colorMode === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
           >
             {colorMode === 'dark' ? (
               <Sun size={20} strokeWidth={2} className="shrink-0" />
-            ) : colorMode === 'uj' ? (
-              <GraduationCap size={20} strokeWidth={2} className="shrink-0" />
             ) : (
               <Moon size={20} strokeWidth={2} className="shrink-0" />
             )}
