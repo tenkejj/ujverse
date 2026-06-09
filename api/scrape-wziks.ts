@@ -579,6 +579,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
     if (error) {
+      console.error('[scrape-wziks] announcements upsert failed:', JSON.stringify({
+        message: error.message,
+        code: (error as { code?: string }).code,
+        details: (error as { details?: string }).details,
+        hint: (error as { hint?: string }).hint,
+        rowsCount: rowsForDb.length,
+        firstRowKeys: rowsForDb[0] ? Object.keys(rowsForDb[0]) : null,
+      }))
       return res.status(500).json({ error: error.message })
     }
 
