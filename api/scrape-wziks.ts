@@ -574,20 +574,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     })
 
-    const { error } = await supabase.from('announcements').upsert(rowsForDb, {
-      onConflict: 'body_fingerprint',
-    })
+    /**
+     * Pojedyncze upserty zamiast batcha — PostgREST + trigger
+     * `set_announcement_body_fingerprint` w bulk-mode rzuca niejasne
+     * XX000 "Quote command returned error" (znana klasa bugów PostgREST,
+     * GH #3712). Per-row daje: 1) izolację sypiącego rzędu, 2) idempotentność
+     * po `body_fingerprint`, 3) atomowość per-komunikat zamiast all-or-nothing.
+     */
+    let upsertedCount = 0
+    const failedRows: Array<{ fingerprint: string; lecturer: string; error: string }> = []
+    for (const row of rowsForDb) {
+      const { error } = await supabase.from('announcements').upsert(row, {
+        onConflict: 'body_fingerprint',
+      })
+      if (error) {
+        const errorDetails = {
+          message: error.message,
+          code: (error as { code?: string }).code,
+          details: (error as { details?: string }).details,
+          hint: (error as { hint?: string }).hint,
+          fingerprint: row.body_fingerprint,
+          lecturer: row.lecturer_name,
+          bodyLength: row.body.length,
+        }
+        console.error('[scrape-wziks] single row upsert failed:', JSON.stringify(errorDetails))
+        failedRows.push({
+          fingerprint: row.body_fingerprint,
+          lecturer: row.lecturer_name,
+          error: error.message,
+        })
+        continue
+      }
+      upsertedCount += 1
+    }
 
-    if (error) {
-      console.error('[scrape-wziks] announcements upsert failed:', JSON.stringify({
-        message: error.message,
-        code: (error as { code?: string }).code,
-        details: (error as { details?: string }).details,
-        hint: (error as { hint?: string }).hint,
-        rowsCount: rowsForDb.length,
-        firstRowKeys: rowsForDb[0] ? Object.keys(rowsForDb[0]) : null,
-      }))
-      return res.status(500).json({ error: error.message })
+    if (upsertedCount === 0 && failedRows.length > 0) {
+      return res.status(500).json({
+        error: 'All upserts failed',
+        failedRows,
+      })
     }
 
     if (renamedRows.length > 0) {
@@ -601,7 +626,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     }
 
-    return res.status(200).json({ ok: true, upserted: finalRows.length, scanned: finalRows.length })
+    return res.status(200).json({
+      ok: true,
+      upserted: upsertedCount,
+      scanned: finalRows.length,
+      failed: failedRows.length,
+      failedRows: failedRows.length > 0 ? failedRows : undefined,
+    })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
     return res.status(500).json({ error: msg })
