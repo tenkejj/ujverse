@@ -4,6 +4,7 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/scrape-uj-events", "schedule": "0 5 * * *" }
+    { "path": "/api/scrape-uj-events", "schedule": "0 5 * * *" },
+    { "path": "/api/scrape-wziks", "schedule": "0 6 * * *" }
   ]
 }

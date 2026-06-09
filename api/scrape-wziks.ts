@@ -494,20 +494,35 @@ async function scrapeData(): Promise<Row[]> {
   return parsePage(html)
 }
 
+/**
+ * Vercel Cron wstrzykuje `Authorization: Bearer ${CRON_SECRET}` jako header
+ * (a nie query param), więc obsługujemy obie formy — query token dla
+ * manualnych curli i Bearer dla Vercel Cron. Bez tego cron leciałby 401
+ * i komunikaty stałyby w miejscu (regresja sprzed 9.06.2026).
+ */
+function isAuthorized(req: VercelRequest, cronSecret: string): boolean {
+  const tokenParam = req.query.token
+  const token =
+    typeof tokenParam === 'string' ? tokenParam : Array.isArray(tokenParam) ? tokenParam[0] : undefined
+  if (token === cronSecret) return true
+
+  const authHeader = req.headers['authorization']
+  const header = Array.isArray(authHeader) ? authHeader[0] : authHeader
+  if (header === `Bearer ${cronSecret}`) return true
+
+  return false
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const tokenParam = req.query.token
-  const token =
-    typeof tokenParam === 'string' ? tokenParam : Array.isArray(tokenParam) ? tokenParam[0] : undefined
-
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {
     return res.status(500).json({ error: 'CRON_SECRET not configured' })
   }
-  if (token !== cronSecret) {
+  if (!isAuthorized(req, cronSecret)) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
