@@ -48,6 +48,27 @@ const SHEET_GLASS_CLS = [
   'border-t',
 ].join(' ')
 
+/**
+ * Quick prompts — IDENTYCZNE z `ChatAssistant.QUICK_PROMPTS` i
+ * `ChatHubView.QUICK_PROMPTS`. Świadoma duplikacja (patrz docstring
+ * w `ChatHubView`): każda powierzchnia trzyma własną kopię, ale
+ * stringi MUSZĄ być 1:1, żeby `buildResponseCacheKey` (normalizuje
+ * tekst) dawał cross-surface cache hit.
+ *
+ * Mapowanie tool → patrz docstring w `ChatAssistant.QUICK_PROMPTS`.
+ *
+ * Mobile-specific UX: pillsy renderujemy TYLKO przy pustej historii
+ * (`messages.length === 0`) — po pierwszej wiadomości znikają, żeby
+ * nie zżerać miejsca w 90dvh sheetcie podczas aktywnej rozmowy
+ * (wzorzec ChatGPT / Claude mobile).
+ */
+const QUICK_PROMPTS = [
+  'Co nowego na feedzie?',
+  'Najnowsze ogłoszenia',
+  'Pokaż konferencje',
+  'Wydarzenia naukowe',
+] as const
+
 export default function ChatAssistantFab({
   hidden = false,
   myProfile,
@@ -195,6 +216,26 @@ export default function ChatAssistantFab({
           myProfile={myProfile}
           displayName={displayName}
         />
+
+        {messages.length === 0 ? (
+          <div
+            className="flex shrink-0 gap-1.5 overflow-x-auto px-3 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="group"
+            aria-label="Szybkie pytania"
+          >
+            {QUICK_PROMPTS.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => void handleSend(prompt)}
+                disabled={isTyping}
+                className="shrink-0 rounded-full border border-zinc-200 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <form
           onSubmit={onSubmitForm}

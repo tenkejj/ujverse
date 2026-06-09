@@ -101,7 +101,7 @@ function shouldIgnoreHotkeyTarget(target: EventTarget | null): boolean {
  */
 export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
   const { inputRef, onNavigateToUser, onNavigateToPost, onNavigateToEvents, onNavigateToSearch } = opts
-  const { theme, toggleTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   const [query, setQueryRaw] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -170,13 +170,14 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
 
   useEffect(() => {
     if (!parsed.action) return
-    if (parsed.action === 'theme-dark' && theme !== 'dark') toggleTheme()
-    if (parsed.action === 'theme-light' && theme !== 'light') toggleTheme()
+    if (parsed.action === 'theme-dark' && theme !== 'dark') setTheme('dark')
+    if (parsed.action === 'theme-light' && theme !== 'light') setTheme('light')
+    if (parsed.action === 'theme-uj' && theme !== 'uj') setTheme('uj')
     setQueryRaw('')
     setIsOpen(false)
     setActiveIndex(-1)
     window.setTimeout(() => inputRef.current?.blur(), 0)
-  }, [parsed.action, theme, toggleTheme, inputRef])
+  }, [parsed.action, theme, setTheme, inputRef])
 
   useEffect(() => {
     if (parsed.action) return

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Moon, Sun } from 'lucide-react'
+import { GraduationCap, Moon, Sun } from 'lucide-react'
 import { useTheme } from '../../ThemeContext'
 
 /**
@@ -28,7 +28,20 @@ export default function AuthShell({ children, maxWidthClass = 'max-w-md' }: Prop
       <button
         type="button"
         onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Włącz tryb jasny' : 'Włącz tryb ciemny'}
+        aria-label={
+          theme === 'light'
+            ? 'Włącz tryb ciemny'
+            : theme === 'dark'
+              ? 'Włącz motyw akademicki'
+              : 'Włącz tryb jasny'
+        }
+        title={
+          theme === 'light'
+            ? 'Jasny → Ciemny'
+            : theme === 'dark'
+              ? 'Ciemny → Akademicki'
+              : 'Akademicki → Jasny'
+        }
         className={
           'absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] z-20 ' +
           'inline-flex items-center justify-center rounded-full p-2.5 ' +
@@ -42,7 +55,13 @@ export default function AuthShell({ children, maxWidthClass = 'max-w-md' }: Prop
           'dark:hover:bg-white/10 sm:right-4 sm:top-4'
         }
       >
-        {theme === 'dark' ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
+        {theme === 'dark' ? (
+          <Sun size={18} strokeWidth={2} />
+        ) : theme === 'uj' ? (
+          <GraduationCap size={18} strokeWidth={2} />
+        ) : (
+          <Moon size={18} strokeWidth={2} />
+        )}
       </button>
 
       <motion.div

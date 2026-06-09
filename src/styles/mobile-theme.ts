@@ -186,7 +186,8 @@ export const OMNI_DESKTOP = {
   // Widoczność `hidden xl:flex` (≥ 1280 px): poniżej tego progu prawa
   // strona headera (capsule + 3 przyciski + user-menu) wchodzi w obszar
   // wyśrodkowanego logo. Zamiast capsule pokazujemy wtedy ikonę-lupę
-  // (`SearchModal`) w lewej sekcji — patrz `Header.tsx` (`block xl:hidden`).
+  // w lewej sekcji — patrz `Header.tsx` (`block xl:hidden`). Klik w lupę
+  // nawiguje od razu do `/search` (SearchDashboard), bez pośredniego overlaya.
   // Szerokość `w-72 2xl:w-80` (288/320 px) trzyma capsule poza środkiem
   // viewportu przy każdym aktywnym breakpoincie (xl 1280, 2xl 1536).
   //
@@ -540,7 +541,8 @@ export const EVENTS_HUB = {
       'relative -mx-2 sm:mx-0 px-2 sm:px-0 pb-3 ' +
       'border-b border-zinc-200/60 dark:border-white/[0.06]',
     rowClass: 'flex flex-wrap items-center justify-between gap-3',
-    pillsWrapClass: 'flex flex-wrap gap-1.5 min-w-0',
+    pillsWrapClass:
+      'flex flex-wrap gap-1.5 min-w-0 w-full sm:w-auto justify-center sm:justify-start',
     actionsWrapClass:
       'flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end',
   },

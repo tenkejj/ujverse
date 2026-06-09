@@ -44,22 +44,22 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
           <motion.button
             type="button"
             aria-label="Zamknij"
-            className="fixed inset-0 z-0 bg-black/75"
+            className="fixed inset-0 z-0 bg-black/55 backdrop-blur-sm dark:bg-black/75"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
           <motion.div
-            className="fixed bottom-0 left-0 right-0 z-[1] max-h-[88vh] overflow-y-auto rounded-t-2xl border border-zinc-800 bg-zinc-950 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-12px_48px_rgba(0,0,0,0.55)]"
+            className="fixed bottom-0 left-0 right-0 z-[1] max-h-[88vh] overflow-y-auto rounded-t-2xl border border-zinc-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-24px_60px_-20px_rgba(15,23,42,0.35)] backdrop-blur-md backdrop-saturate-150 dark:border-white/10 dark:bg-bg-card/97 dark:shadow-[0_-12px_48px_rgba(0,0,0,0.55)]"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 320 }}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-600" aria-hidden />
-            <div className="flex items-start gap-3 border-b border-zinc-800 pb-4">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-300 dark:bg-white/15" aria-hidden />
+            <div className="flex items-start gap-3 border-b border-zinc-200 pb-4 dark:border-white/10">
               <UserAvatar
                 profile={null}
                 name={announcement.author.displayName}
@@ -69,13 +69,13 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                 <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
                   <p
                     id="announcement-drawer-title"
-                    className="text-lg font-bold leading-snug text-zinc-50 min-w-0 flex-1"
+                    className="text-lg font-bold leading-snug text-fg-primary min-w-0 flex-1"
                   >
                     {announcement.author.displayName}
                   </p>
                   {showAcademicIsiBadge(announcement.metadata.source) && (
                     <span
-                      className="text-[9px] font-medium leading-none whitespace-nowrap text-zinc-500 opacity-60 shrink-0 text-right"
+                      className="text-[9px] font-medium leading-none whitespace-nowrap text-fg-secondary opacity-70 shrink-0 text-right"
                       title={ACADEMIC_ISI_BADGE_TITLE}
                     >
                       {ACADEMIC_ISI_BADGE_LABEL}
@@ -84,7 +84,7 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                 </div>
                 {announcement.timestamp && (
                   <time
-                    className="mt-0.5 block text-xs tabular-nums text-zinc-500"
+                    className="mt-0.5 block text-xs tabular-nums text-fg-secondary"
                     dateTime={announcement.timestamp}
                   >
                     {formatAnnDate(announcement.timestamp)}
@@ -103,13 +103,13 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                 </div>
               </div>
             </div>
-            <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-300">
+            <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-fg-primary/90 dark:text-zinc-300">
               {announcement.body}
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="mt-6 w-full rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-700"
+              className="mt-6 w-full rounded-xl bg-zinc-900/6 py-3 text-sm font-semibold text-fg-primary transition-colors hover:bg-zinc-900/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
             >
               Zamknij
             </button>

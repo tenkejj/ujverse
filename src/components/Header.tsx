@@ -1,13 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import ClubsModal from './ClubsModal'
 import OmniSearchHub from './OmniSearchHub'
-import SearchModal from './SearchModal'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
@@ -68,8 +67,6 @@ export default function Header({
   const { theme: colorMode, toggleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const [clubsModalOpen, setClubsModalOpen] = useState(false)
-  /** Mobile-only full-screen search overlay (`<md`). Desktop wciąż używa OmniSearchHub. */
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const { clubs, loading: clubsLoading, error: clubsError, reload: reloadClubs } = useClubs()
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
 
@@ -115,20 +112,18 @@ export default function Header({
       }`}
     >
       <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
-        {/* Ikona-lupa otwiera `SearchModal` — pokazywana na wszystkich
-         *  `<xl` (mobile + md + lg). Pełna kapsuła `OmniSearchHub`
-         *  pojawia się dopiero od `xl:flex` (patrz `OMNI_DESKTOP.inputCapsuleWrap`),
-         *  bo wcześniej prawa strona nagłówka wchodziła w obszar wyśrodkowanego logo. */}
+        {/* Ikona-lupa nawiguje od razu do `/search` (SearchDashboard) — bez
+         *  pośredniego overlaya, żeby uniknąć podwójnego UI i utrzymać spójne
+         *  kolory motywu (light/dark/uj). Pokazywana na `<xl`; od `xl:flex`
+         *  pojawia się pełna kapsuła `OmniSearchHub` w prawej sekcji. */}
         <div className="block xl:hidden">
           <button
             type="button"
             onClick={() => {
               setMenuOpen(false)
               onCloseNotificationsPanel()
-              setIsSearchOpen(true)
+              onNavigateToSearch()
             }}
-            aria-haspopup="dialog"
-            aria-expanded={isSearchOpen}
             aria-label="Szukaj"
             className="w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
           >
@@ -210,10 +205,25 @@ export default function Header({
             type="button"
             onClick={toggleTheme}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out"
-            aria-label={colorMode === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
+            aria-label={
+              colorMode === 'light'
+                ? 'Przełącz na tryb ciemny'
+                : colorMode === 'dark'
+                  ? 'Przełącz na motyw akademicki'
+                  : 'Przełącz na tryb jasny'
+            }
+            title={
+              colorMode === 'light'
+                ? 'Jasny → Ciemny'
+                : colorMode === 'dark'
+                  ? 'Ciemny → Akademicki'
+                  : 'Akademicki → Jasny'
+            }
           >
             {colorMode === 'dark' ? (
               <Sun size={20} strokeWidth={2} className="shrink-0" />
+            ) : colorMode === 'uj' ? (
+              <GraduationCap size={20} strokeWidth={2} className="shrink-0" />
             ) : (
               <Moon size={20} strokeWidth={2} className="shrink-0" />
             )}
@@ -376,13 +386,6 @@ export default function Header({
       loading={clubsLoading}
       error={clubsError}
       onRetry={() => void reloadClubs()}
-    />
-
-    <SearchModal
-      isOpen={isSearchOpen}
-      onClose={() => setIsSearchOpen(false)}
-      onSubmit={(q) => onNavigateToSearch(q)}
-      onOpenHub={() => onNavigateToSearch()}
     />
 
     </>
