@@ -9,7 +9,7 @@ import axios from 'axios'
 import { load, type CheerioAPI } from 'cheerio'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'node:crypto'
-import { GroqProvider, GroqProviderError } from './_lib/GroqProvider'
+import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
 
 /** Zgodne z triggerem DB `md5(body)` — jawny klucz dla `upsert(..., onConflict: 'body_fingerprint')`. */
 function bodyFingerprintHex(body: string): string {
