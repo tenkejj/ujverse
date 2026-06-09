@@ -34,12 +34,20 @@ type Props = {
   announcements: UnifiedContent<AnnouncementMeta>[]
   loading: boolean
   error: string | null
+  /**
+   * Override domyślnej klasy wysokości wyspy. Default `h-[600px]` używamy gdy
+   * widget żyje samodzielnie; gdy parent (FeedView) wyrównuje wyspy lewej
+   * kolumny do wysokości prawego asiede, podaje tu `h-full` i kontroluje
+   * rozmiar wrapperem (flex basis).
+   */
+  heightClassName?: string
 }
 
 export default function AcademicAnnouncementsWidget({
   announcements,
   loading,
   error,
+  heightClassName = 'h-[600px]',
 }: Props) {
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({})
 
@@ -50,7 +58,10 @@ export default function AcademicAnnouncementsWidget({
   const visible = announcements
 
   return (
-    <BaseCard variant="default" className="p-4 flex h-[600px] flex-col gap-4 overflow-hidden">
+    <BaseCard
+      variant="default"
+      className={`p-4 flex ${heightClassName} min-h-0 flex-col gap-4 overflow-hidden`}
+    >
       <div className="flex items-center gap-2 mb-3">
         <Megaphone size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
         <div className="flex min-w-0 flex-1 flex-col leading-tight">

@@ -72,9 +72,20 @@ type Props = {
   myProfile?: Profile | null
   /** Display name — fallback dla awatara (inicjał), gdy `myProfile` brak. */
   displayName?: string
+  /**
+   * Override domyślnej klasy wysokości wyspy. Default `h-[460px]` używamy gdy
+   * komponent żyje samodzielnie; gdy parent (FeedView) wyrównuje wyspy lewej
+   * kolumny do wysokości prawego asiede, podaje tu `h-full` i kontroluje
+   * rozmiar wrapperem (flex basis).
+   */
+  heightClassName?: string
 }
 
-export default function ChatAssistant({ myProfile, displayName }: Props = {}) {
+export default function ChatAssistant({
+  myProfile,
+  displayName,
+  heightClassName = 'h-[460px]',
+}: Props = {}) {
   const navigate = useNavigate()
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
@@ -129,7 +140,7 @@ export default function ChatAssistant({ myProfile, displayName }: Props = {}) {
   return (
     <BaseCard
       variant="default"
-      className="flex h-[460px] flex-col gap-3 overflow-hidden p-4"
+      className={`flex ${heightClassName} min-h-0 flex-col gap-3 overflow-hidden p-4`}
     >
       <div className="flex items-center gap-2">
         <AnimatedBot

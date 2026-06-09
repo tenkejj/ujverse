@@ -123,7 +123,7 @@ async function execute(
     return { ok: false, error: error.message }
   }
 
-  const safeData = deepCloneSerializable((data ?? []) as PostRow[])
+  const safeData = deepCloneSerializable((data ?? []) as unknown as PostRow[])
   const items = safeData.map((r) => {
     const tags = Array.isArray(r.tags)
       ? r.tags.filter((t): t is string => typeof t === 'string' && t.length > 0)

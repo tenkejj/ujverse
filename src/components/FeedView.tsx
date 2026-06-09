@@ -1,5 +1,5 @@
 import { CalendarDays, Filter, MessageCircle } from 'lucide-react'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
 import type { UJEvent } from '../data/mockEvents'
@@ -20,7 +20,6 @@ import MobileDashboard from './mobile/MobileDashboard'
 import BaseCard from './ui/BaseCard'
 import {
   sectionTitleCls,
-  sideAsideTrackCls,
   sideHeaderLinkCls,
   sidePanelHoverFocus,
   widgetGoldCls,
@@ -163,6 +162,39 @@ export default function FeedView({
   )
 
   /**
+   * Sticky-island sync. Lewa wyspa (Komunikaty + Czat) trzymała stałe
+   * `h-[600px]` + `h-[460px]`, więc na desktopie kończyła się w innym
+   * miejscu niż prawa kolumna (Niezbędnik + Strefy + Wydarzenia UJ),
+   * której wysokość wynika z naturalnej treści. Mierzymy więc renderowaną
+   * wysokość prawego asiede `ResizeObserver`em i ustawiamy ją inline na
+   * lewym aside; dzieci dzielą tę wysokość przez `flex-grow` w proporcji
+   * 600:460 (zachowując dotychczasowy rytm wizualny).
+   *
+   * `useLayoutEffect` — sync musi nastąpić przed paintem, żeby nie było
+   * FOUC z dziećmi o zerowej wysokości (basis-0 + grow). ResizeObserver
+   * łapie też asynchronicznie ładowane treści po prawej (np. wydarzenia
+   * z `useEvents`), więc nie potrzeba dodatkowych deps.
+   */
+  const leftAsideRef = useRef<HTMLElement | null>(null)
+  const rightAsideRef = useRef<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    const right = rightAsideRef.current
+    const left = leftAsideRef.current
+    if (!right || !left) return
+
+    const sync = () => {
+      const h = right.getBoundingClientRect().height
+      if (h > 0) left.style.height = `${h}px`
+    }
+
+    sync()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(sync)
+    observer.observe(right)
+    return () => observer.disconnect()
+  }, [])
+
+  /**
    * Infinite-scroll sentinel. IntersectionObserver wywołuje `onFetchNextPage`
    * gdy `loadMoreRef` wjedzie w viewport (z 200px marginesem, żeby user nie
    * widział „przerwy" przy szybkim scrollu). `rootMargin: 200px 0px` to
@@ -286,27 +318,40 @@ export default function FeedView({
 
       {/*
         ── LEFT SIDEBAR (desktop only) ───────────────────────────────
-        Top-anchored sticky: `top-4` + `self-start` przyklejają wyspę do
-        górnej krawędzi viewportu (z 1 rem oddechu). Aside jest widoczny
-        od razu po wejściu na stronę i podąża z górnym brzegiem podczas
-        scrolla — bez „zjeżdżania" do dna na wysokich viewportach (2K+).
-        `max-h-[calc(100vh-2rem)] overflow-y-auto` zabezpiecza przed
-        wystawieniem dłuższego contentu poza viewport (małe laptopy):
-        wewnętrzny scroll, gdy aside jest wyższy niż okno.
-        Outer grid trzyma `items-start`, więc `self-start` jest zgodny
-        z domyślnym alignmentem — `self-*` zostawione jawnie dla czytelności.
+        Top-anchored sticky: identyczna polityka klas jak prawy aside —
+        `sticky top-4 self-start max-h-[calc(100vh-2rem)] pt-0`. Wcześniej
+        lewy miał dodatkowy `pt-1 px-0.5 -mx-0.5 rounded-xl` + glass-track
+        z `sideAsideTrackCls`, przez co cards startowały 4px niżej niż
+        po prawej i wizualnie kolumna była niesymetryczna; usunięte żeby
+        TOP i BOTTOM obu wysp leżały na tej samej linii.
+        Wysokość lewego asiede jest synchronizowana z prawym przez
+        `useLayoutEffect` + `ResizeObserver` (patrz `leftAsideRef`),
+        żeby Komunikaty + Czat kończyły się dokładnie na poziomie
+        ostatniej karty prawego asiede (Wydarzenia UJ). Dzieci dzielą
+        tę wysokość przez `basis-0` + `grow-600/grow-460` zachowując
+        oryginalną proporcję 600:460 z wcześniejszych stałych wysokości.
       */}
       <aside
-        className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pt-1 px-0.5 -mx-0.5 rounded-xl ${sideAsideTrackCls}`}
+        ref={leftAsideRef}
+        className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-hidden custom-scrollbar pt-0`}
       >
-        <AcademicAnnouncementsWidget
-          announcements={academicAnnouncements}
-          loading={academicAnnouncementsLoading}
-          error={academicAnnouncementsError}
-        />
-        <Suspense fallback={null}>
-          <ChatAssistant myProfile={myProfile} displayName={displayName} />
-        </Suspense>
+        <div className="min-h-0 basis-0 grow-600">
+          <AcademicAnnouncementsWidget
+            announcements={academicAnnouncements}
+            loading={academicAnnouncementsLoading}
+            error={academicAnnouncementsError}
+            heightClassName="h-full"
+          />
+        </div>
+        <div className="min-h-0 basis-0 grow-460">
+          <Suspense fallback={null}>
+            <ChatAssistant
+              myProfile={myProfile}
+              displayName={displayName}
+              heightClassName="h-full"
+            />
+          </Suspense>
+        </div>
       </aside>
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
@@ -365,6 +410,7 @@ export default function FeedView({
         komórki gridu na wysokich viewportach.
       */}
       <aside
+        ref={rightAsideRef}
         className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pt-0`}
       >
         <Niezbednik />
