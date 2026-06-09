@@ -64,6 +64,7 @@ import type {
 
 export const config = {
   runtime: 'edge',
+  regions: ['fra1'],
 }
 
 const MAX_MESSAGES = 20

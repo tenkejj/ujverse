@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from './lib/appToast'
 import App from './App.tsx'
 import { ThemeProvider } from './ThemeContext.tsx'
@@ -18,6 +19,18 @@ import {
   subscribePreferences,
 } from './lib/userPreferences.ts'
 import './index.css'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      retry: 1,
+    },
+  },
+})
 
 // Stempel autora w DevTools — minifier produkcyjny zachowuje stringi
 // w `console.log`, więc to zostaje widoczne też w buildzie. Cel: ktoś, kto
@@ -64,32 +77,34 @@ function MotionPrefsBridge({ children }: { children: React.ReactNode }) {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ThemeProvider>
-        <MotionPrefsBridge>
-          <App />
-        </MotionPrefsBridge>
-        <Toaster
-          position="bottom-right"
-          gutter={10}
-          toastOptions={{
-            duration: 3500,
-            className: 'ujverse-toast',
-            style: {
-              borderRadius: '1rem',
-              padding: '12px 16px',
-              fontSize: '14px',
-              fontWeight: 500,
-              maxWidth: 'min(90vw, 360px)',
-            },
-            success: {
-              iconTheme: { primary: '#c9a227', secondary: 'rgb(255 255 255 / 0.08)' },
-            },
-            error: {
-              iconTheme: { primary: 'rgb(148 163 184)', secondary: 'rgb(255 255 255 / 0.06)' },
-            },
-          }}
-        />
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <MotionPrefsBridge>
+            <App />
+          </MotionPrefsBridge>
+          <Toaster
+            position="bottom-right"
+            gutter={10}
+            toastOptions={{
+              duration: 3500,
+              className: 'ujverse-toast',
+              style: {
+                borderRadius: '1rem',
+                padding: '12px 16px',
+                fontSize: '14px',
+                fontWeight: 500,
+                maxWidth: 'min(90vw, 360px)',
+              },
+              success: {
+                iconTheme: { primary: '#c9a227', secondary: 'rgb(255 255 255 / 0.08)' },
+              },
+              error: {
+                iconTheme: { primary: 'rgb(148 163 184)', secondary: 'rgb(255 255 255 / 0.06)' },
+              },
+            }}
+          />
+        </ThemeProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   </React.StrictMode>,
 )

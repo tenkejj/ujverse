@@ -31,6 +31,7 @@
     "@meilisearch/instant-meilisearch": "^0.31.1",
     "@supabase/supabase-js": "^2.99.2",
     "@tailwindcss/vite": "^4.2.1",
+    "@tanstack/react-query": "^5.101.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/kv": "^3.0.0",
     "axios": "^1.15.0",

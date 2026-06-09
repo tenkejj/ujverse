@@ -1,5 +1,5 @@
 import { CalendarDays, Filter, MessageCircle } from 'lucide-react'
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Comment, Post, Profile } from '../types'
 import type { UJEvent } from '../data/mockEvents'
@@ -50,6 +50,11 @@ type Props = {
   posts: Post[]
   postsLoading: boolean
   postsError: string | null
+
+  // Infinite scroll (React Query)
+  hasNextPage?: boolean
+  isFetchingNextPage?: boolean
+  onFetchNextPage?: () => void
 
   // Filter
   selectedDepartment: string
@@ -107,6 +112,9 @@ export default function FeedView({
   posts,
   postsLoading,
   postsError,
+  hasNextPage = false,
+  isFetchingNextPage = false,
+  onFetchNextPage,
   likesCountByPost,
   likedPostIds,
   heartPopPostId,
@@ -153,6 +161,31 @@ export default function FeedView({
     () => (selectedEventId ? events.find((e) => e.id === selectedEventId) ?? null : null),
     [events, selectedEventId],
   )
+
+  /**
+   * Infinite-scroll sentinel. IntersectionObserver wywołuje `onFetchNextPage`
+   * gdy `loadMoreRef` wjedzie w viewport (z 200px marginesem, żeby user nie
+   * widział „przerwy" przy szybkim scrollu). `rootMargin: 200px 0px` to
+   * pragmatyczny kompromis między prefetchem a niepotrzebną siecią.
+   */
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!onFetchNextPage || !hasNextPage) return
+    const node = loadMoreRef.current
+    if (!node) return
+    if (typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (entry?.isIntersecting && !isFetchingNextPage) {
+          onFetchNextPage()
+        }
+      },
+      { rootMargin: '200px 0px', threshold: 0 },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [onFetchNextPage, hasNextPage, isFetchingNextPage])
 
   const feedContent = (
     <div className="space-y-0">
@@ -227,6 +260,22 @@ export default function FeedView({
               })}
             </AnimatePresence>
           </div>
+        )}
+
+        {!postsLoading && !postsError && unifiedPosts.length > 0 && (
+          <>
+            <div ref={loadMoreRef} aria-hidden className="h-1 w-full" />
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-6">
+                <div className="h-6 w-6 rounded-full border-2 border-[#1e293b]/30 border-t-[#1e293b] animate-spin dark:border-brand-gold/30 dark:border-t-brand-gold-bright" />
+              </div>
+            )}
+            {!hasNextPage && (
+              <div className="pt-6 pb-3 text-center text-xs text-zinc-500 dark:text-zinc-500">
+                Dotarłeś do końca tablicy.
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

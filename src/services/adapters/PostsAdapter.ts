@@ -10,6 +10,22 @@ export type PostEnrichment = {
   isLiked: boolean
 }
 
+export type FeedCursor = {
+  createdAt: string
+  id: number
+}
+
+export type FeedPagePost = Post & {
+  likes_count: number
+  comments_count: number
+  is_liked: boolean
+}
+
+export type FeedPage = {
+  posts: FeedPagePost[]
+  nextCursor: FeedCursor | null
+}
+
 /**
  * Adapter postów z feedu.
  *
@@ -115,6 +131,47 @@ class PostsAdapterImpl implements ContentAdapter<Post, PostMeta> {
     return (data as Post[])
       .map((row) => this.mapPost(row))
       .filter((row) => row.profiles?.is_banned !== true)
+  }
+
+  /**
+   * Paginowany feed głównej tablicy w jednym round-tripie.
+   *
+   * Wywołuje RPC `get_feed_snapshot` (patrz migracja
+   * `20260609130000_feed_snapshot_rpc.sql`), które zwraca posty + author +
+   * likes_count + comments_count + is_liked w jednym JSONB. Zastępuje 3-krotny
+   * fetch (posts → likes → comments) który był wcześniej w `App.tsx`.
+   *
+   * Keyset paginacja: cursor = (created_at, id) ostatniego elementu poprzedniej
+   * strony. `null` cursor = pierwsza strona. `nextCursor = null` znaczy że to
+   * była ostatnia strona (mniej wyników niż limit).
+   *
+   * `is_banned` profili filtrowany jest po stronie RPC. `viewer` brany z
+   * `auth.uid()` po stronie Postgresa — klient nie może spoofować `is_liked`.
+   */
+  async listFeed(cursor: FeedCursor | null, limit = 30): Promise<FeedPage> {
+    const { data, error } = await supabase.rpc('get_feed_snapshot', {
+      p_limit: limit,
+      p_cursor_ts: cursor?.createdAt ?? null,
+      p_cursor_id: cursor?.id ?? null,
+    })
+    if (error || !data) return { posts: [], nextCursor: null }
+    const raw = data as {
+      posts?: Array<Record<string, unknown>>
+      next_cursor?: { created_at: string; id: number } | null
+    }
+    const posts = (raw.posts ?? []).map((row) => {
+      const mapped = this.mapPost(row as Post)
+      return {
+        ...mapped,
+        likes_count: Number((row as Record<string, unknown>).likes_count ?? 0),
+        comments_count: Number((row as Record<string, unknown>).comments_count ?? 0),
+        is_liked: Boolean((row as Record<string, unknown>).is_liked ?? false),
+      } as FeedPagePost
+    })
+    const nextCursor = raw.next_cursor
+      ? { createdAt: raw.next_cursor.created_at, id: Number(raw.next_cursor.id) }
+      : null
+    return { posts, nextCursor }
   }
 
   async fetchByIds(ids: ReadonlyArray<string>): Promise<Post[]> {

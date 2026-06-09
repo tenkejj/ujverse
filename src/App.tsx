@@ -39,6 +39,8 @@ import { extractPostTags } from './lib/postTags'
 import { Analytics } from '@vercel/analytics/react'
 import { DataService } from './services/DataService'
 import { PostService } from './services/PostService'
+import { useFeedQuery } from './hooks/useFeedQuery'
+import { useFeedMutations } from './hooks/useFeedMutations'
 import { playNotificationPing } from './lib/notificationSound'
 import SearchPageView from './components/SearchPageView'
 import GroupView from './components/GroupView'
@@ -155,10 +157,33 @@ function App() {
   const [bellRingTick, setBellRingTick] = useState(0)
   const notificationsAnchorRef = useRef<HTMLButtonElement | null>(null)
 
-  // Posts
-  const [posts, setPosts] = useState<Post[]>([])
-  const [postsLoading, setPostsLoading] = useState(false)
-  const [postsError, setPostsError] = useState<string | null>(null)
+  // Posts — single React Query cache `['feed', viewerId]` (patrz `useFeedQuery`).
+  // Wszystko (lista, likes, comments count) idzie z jednego RPC `get_feed_snapshot`.
+  const feedQuery = useFeedQuery(session?.user?.id ?? null)
+  const feedMutations = useFeedMutations(session?.user?.id ?? null)
+  const posts = feedQuery.posts as Post[]
+  const postsLoading = feedQuery.isLoading
+  const postsError = feedQuery.error?.message ?? null
+
+  // Overlay enrichmentu dla postów spoza feed cache (głównie GroupCard — posty
+  // z konkretnej strefy mogą być starsze niż pierwsza strona feedu). Mapy
+  // feedQuery są autorytatywne dla aktualnie pobranych stron feedu; overlay
+  // dorzuca enrichment dla pozostałych.
+  const [extraLikesCountByPost, setExtraLikesCountByPost] = useState<Record<string, number>>({})
+  const [extraLikedPostIds, setExtraLikedPostIds] = useState<Record<string, boolean>>({})
+  const [extraCommentsCountByPost, setExtraCommentsCountByPost] = useState<Record<string, number>>({})
+  const likesCountByPost = useMemo(
+    () => ({ ...extraLikesCountByPost, ...feedQuery.likesCountByPost }),
+    [extraLikesCountByPost, feedQuery.likesCountByPost],
+  )
+  const likedPostIds = useMemo(
+    () => ({ ...extraLikedPostIds, ...feedQuery.likedPostIds }),
+    [extraLikedPostIds, feedQuery.likedPostIds],
+  )
+  const commentsCountByPost = useMemo(
+    () => ({ ...extraCommentsCountByPost, ...feedQuery.commentsCountByPost }),
+    [extraCommentsCountByPost, feedQuery.commentsCountByPost],
+  )
 
   // Compose
   const [isComposing, setIsComposing] = useState(false)
@@ -168,15 +193,12 @@ function App() {
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
-  // Likes
-  const [likesCountByPost, setLikesCountByPost] = useState<Record<string, number>>({})
-  const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({})
+  // Likes UI state (poza React Query — tylko per-post loading + heart pop animation).
   const [likeLoadingByPost, setLikeLoadingByPost] = useState<Record<string, boolean>>({})
   const [heartPopPostId, setHeartPopPostId] = useState<string | null>(null)
   const heartPopTimeout = useRef<number | null>(null)
 
   // Comments
-  const [commentsCountByPost, setCommentsCountByPost] = useState<Record<string, number>>({})
   const [commentsByPost, setCommentsByPost] = useState<Record<string, Comment[]>>({})
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
@@ -323,34 +345,6 @@ function App() {
     }
   }, [])
 
-  const fetchLikesForPosts = useCallback(
-    async (ids: string[]) => {
-      if (!session?.user?.id || ids.length === 0) { setLikesCountByPost({}); setLikedPostIds({}); return }
-      const { data } = await supabase.from('likes').select('post_id, user_id').in('post_id', ids.map(Number))
-      const counts: Record<string, number> = {}
-      const liked: Record<string, boolean> = {}
-      for (const like of data ?? []) {
-        const key = String(like.post_id)
-        counts[key] = (counts[key] ?? 0) + 1
-        if (like.user_id === session.user.id) liked[key] = true
-      }
-      setLikesCountByPost(counts)
-      setLikedPostIds(liked)
-    },
-    [session],
-  )
-
-  const fetchCommentsCount = useCallback(async (ids: string[]) => {
-    if (ids.length === 0) return
-    const { data } = await supabase.from('comments').select('post_id').in('post_id', ids.map(Number))
-    const counts: Record<string, number> = {}
-    for (const c of data ?? []) {
-      const k = String(c.post_id)
-      counts[k] = (counts[k] ?? 0) + 1
-    }
-    setCommentsCountByPost(counts)
-  }, [])
-
   const fetchCommentsForPost = useCallback(async (postId: string, opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? false
     if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: true }))
@@ -441,20 +435,17 @@ function App() {
     if (!silent) setNotificationsLoading(false)
   }, [session])
 
-  const fetchPosts = useCallback(async () => {
-    setPostsLoading(true)
-    setPostsError(null)
-    const { data, error } = await supabase
-      .from('posts')
-      .select('*, user_id, profiles(id, full_name, username, avatar_url, department, is_banned, show_department)')
-      .order('created_at', { ascending: false })
-    if (error) { setPostsError(error.message); setPosts([]); setPostsLoading(false); return }
-    const next = ((data ?? []) as Post[]).filter((p) => p.profiles?.is_banned !== true)
-    setPosts(next)
+  // Cache username handles from feed posts (used by routing/profile-link logic).
+  // React Query trzyma listę postów; my po prostu mapujemy `profiles.username` na
+  // `profileHandleByUserId`. Bez tego nawigacja po `/profile/:handle` z URL-a do
+  // zalogowanego usera może zostać bez handlu, gdy posty są w cache, ale handle
+  // jeszcze nie był zapisany.
+  useEffect(() => {
+    if (posts.length === 0) return
     setProfileHandleByUserId((prev) => {
       let changed = false
       const merged = { ...prev }
-      for (const post of next) {
+      for (const post of posts) {
         const userId = post.profiles?.id
         const handle = post.profiles?.username?.trim().toLowerCase()
         if (!userId || !handle || merged[userId] === handle) continue
@@ -463,10 +454,7 @@ function App() {
       }
       return changed ? merged : prev
     })
-    const ids = next.map((p) => p?.id).filter((id): id is string => id !== undefined)
-    await Promise.all([fetchLikesForPosts(ids), fetchCommentsCount(ids)])
-    setPostsLoading(false)
-  }, [fetchLikesForPosts, fetchCommentsCount])
+  }, [posts])
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -486,9 +474,8 @@ function App() {
 
   useEffect(() => {
     if (!session) return
-    void fetchPosts()
     void fetchMyProfile(session.user.id)
-  }, [session, fetchPosts, fetchMyProfile])
+  }, [session, fetchMyProfile])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -560,7 +547,7 @@ function App() {
     setIsComposing(false)
     setCreateLoading(false)
     toast.success('Wpis opublikowany!')
-    await fetchPosts()
+    feedMutations.invalidateFeed()
   }
 
   const resetCompose = () => {
@@ -650,13 +637,40 @@ function App() {
     navigate(-1)
   }, [navigate])
 
+  /**
+   * Fetcher likes/comments dla postów spoza feed cache (group view). Zapisuje
+   * do `extra*` overlay; feed cache pozostaje autorytatywny tam gdzie ma dane.
+   */
   const handleGroupPostsLoaded = useCallback(
-    (ids: string[]) => {
-      if (ids.length === 0) return
-      void fetchLikesForPosts(ids)
-      void fetchCommentsCount(ids)
+    async (ids: string[]) => {
+      const viewerId = session?.user?.id
+      if (!viewerId || ids.length === 0) return
+      const numericIds = ids.map(Number).filter((n) => Number.isFinite(n))
+      if (numericIds.length === 0) return
+
+      const [likesQ, commentsQ] = await Promise.all([
+        supabase.from('likes').select('post_id, user_id').in('post_id', numericIds),
+        supabase.from('comments').select('post_id').in('post_id', numericIds),
+      ])
+
+      const likeCounts: Record<string, number> = {}
+      const likedFlags: Record<string, boolean> = {}
+      for (const like of likesQ.data ?? []) {
+        const key = String(like.post_id)
+        likeCounts[key] = (likeCounts[key] ?? 0) + 1
+        if (like.user_id === viewerId) likedFlags[key] = true
+      }
+      const commentCounts: Record<string, number> = {}
+      for (const c of commentsQ.data ?? []) {
+        const key = String(c.post_id)
+        commentCounts[key] = (commentCounts[key] ?? 0) + 1
+      }
+
+      setExtraLikesCountByPost((prev) => ({ ...prev, ...likeCounts }))
+      setExtraLikedPostIds((prev) => ({ ...prev, ...likedFlags }))
+      setExtraCommentsCountByPost((prev) => ({ ...prev, ...commentCounts }))
     },
-    [fetchLikesForPosts, fetchCommentsCount],
+    [session?.user?.id],
   )
 
   const navigateToUserFromNotificationsPanel = useCallback(async (userId: string) => {
@@ -737,22 +751,56 @@ function App() {
       if (!session?.user?.id || likeLoadingByPost[postId]) return
       const alreadyLiked = Boolean(likedPostIds[postId])
 
-      setLikesCountByPost((p) => ({ ...p, [postId]: Math.max(0, (p[postId] ?? 0) + (alreadyLiked ? -1 : 1)) }))
-      setLikedPostIds((p) => ({ ...p, [postId]: !alreadyLiked }))
-
-      setHeartPopPostId(postId)
-      if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current)
-      heartPopTimeout.current = window.setTimeout(() => setHeartPopPostId(null), 450)
+      // Heart-pop tylko przy polubieniu (nie przy odlubieniu).
+      if (!alreadyLiked) {
+        setHeartPopPostId(postId)
+        if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current)
+        heartPopTimeout.current = window.setTimeout(() => setHeartPopPostId(null), 450)
+      }
 
       setLikeLoadingByPost((p) => ({ ...p, [postId]: true }))
-      if (alreadyLiked) {
-        await supabase.from('likes').delete().eq('post_id', Number(postId)).eq('user_id', session.user.id)
+
+      // Post jest w feed cache → mutacja przez React Query (optimistic + rollback).
+      if (postId in feedQuery.likesCountByPost || postId in feedQuery.likedPostIds) {
+        try {
+          await feedMutations.toggleLike.mutateAsync({
+            postId,
+            currentlyLiked: alreadyLiked,
+          })
+        } catch (err) {
+          console.error('[toggleLike] feed mutation failed:', err)
+        }
       } else {
-        await supabase.from('likes').insert([{ post_id: Number(postId), user_id: session.user.id }])
+        // Post spoza feed cache (np. GroupCard) — patch overlay + direct supabase.
+        setExtraLikesCountByPost((p) => ({
+          ...p,
+          [postId]: Math.max(0, (p[postId] ?? likesCountByPost[postId] ?? 0) + (alreadyLiked ? -1 : 1)),
+        }))
+        setExtraLikedPostIds((p) => ({ ...p, [postId]: !alreadyLiked }))
+        if (alreadyLiked) {
+          await supabase
+            .from('likes')
+            .delete()
+            .eq('post_id', Number(postId))
+            .eq('user_id', session.user.id)
+        } else {
+          await supabase
+            .from('likes')
+            .insert([{ post_id: Number(postId), user_id: session.user.id }])
+        }
       }
+
       setLikeLoadingByPost((p) => ({ ...p, [postId]: false }))
     },
-    [session, likeLoadingByPost, likedPostIds],
+    [
+      session,
+      likeLoadingByPost,
+      likedPostIds,
+      likesCountByPost,
+      feedQuery.likesCountByPost,
+      feedQuery.likedPostIds,
+      feedMutations,
+    ],
   )
 
   // ── Comments ──────────────────────────────────────────────────────────────
@@ -874,7 +922,8 @@ function App() {
         ...p,
         [postId]: sortCommentsForThread([...(p[postId] ?? []), optimisticComment]),
       }))
-      setCommentsCountByPost((p) => ({ ...p, [postId]: (p[postId] ?? 0) + 1 }))
+      feedMutations.updateCommentsCount(postId, (n) => n + 1)
+      setExtraCommentsCountByPost((p) => ({ ...p, [postId]: (p[postId] ?? 0) + 1 }))
       setExpandedComments((prev) => new Set([...prev, postId]))
       setCommentInput((p) => ({ ...p, [postId]: '' }))
       setCommentReplyTargetByPost((prev) => ({ ...prev, [postId]: null }))
@@ -910,27 +959,42 @@ function App() {
           ...p,
           [postId]: (p[postId] ?? []).filter((c) => c.id !== optimisticComment.id),
         }))
-        setCommentsCountByPost((p) => ({ ...p, [postId]: Math.max(0, (p[postId] ?? 1) - 1) }))
+        feedMutations.updateCommentsCount(postId, (n) => n - 1)
+        setExtraCommentsCountByPost((p) => ({ ...p, [postId]: Math.max(0, (p[postId] ?? 1) - 1) }))
         setCommentReplyTargetByPost((prev) => ({ ...prev, [postId]: replyTarget ?? null }))
       }
       setCommentSubmitting((p) => ({ ...p, [postId]: false }))
     },
-    [commentInput, commentReplyTargetByPost, commentSubmitting, session, myProfile, sortCommentsForThread],
+    [
+      commentInput,
+      commentReplyTargetByPost,
+      commentSubmitting,
+      session,
+      myProfile,
+      sortCommentsForThread,
+      feedMutations,
+    ],
   )
 
   // ── Delete ────────────────────────────────────────────────────────────────
 
-  const handleDeletePost = useCallback(async (postId: string) => {
-    const { error } = await supabase.from('posts').delete().eq('id', Number(postId))
-    if (error) { console.error('[handleDeletePost] Błąd Supabase:', error); return }
-    setPosts((prev) => prev.filter((p) => String(p.id) !== String(postId)))
-    setLikesCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-    setLikedPostIds((prev) => { const next = { ...prev }; delete next[postId]; return next })
-    setCommentsCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-    setCommentsByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-    setCommentReplyTargetByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-    setCommentLikeLoadingByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-  }, [])
+  const handleDeletePost = useCallback(
+    async (postId: string) => {
+      try {
+        await feedMutations.removePost.mutateAsync({ postId })
+      } catch (err) {
+        console.error('[handleDeletePost] Błąd Supabase:', err)
+        return
+      }
+      setExtraLikesCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+      setExtraLikedPostIds((prev) => { const next = { ...prev }; delete next[postId]; return next })
+      setExtraCommentsCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+      setCommentsByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+      setCommentReplyTargetByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+      setCommentLikeLoadingByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+    },
+    [feedMutations],
+  )
 
   const handleDeleteComment = useCallback(async (commentId: number, postId: string) => {
     const { error } = await supabase.from('comments').delete().eq('id', commentId)
@@ -960,7 +1024,8 @@ function App() {
         [postId]: filtered,
       }
     })
-    setCommentsCountByPost((prev) => ({
+    feedMutations.updateCommentsCount(postId, (n) => n - removedCount)
+    setExtraCommentsCountByPost((prev) => ({
       ...prev,
       [postId]: Math.max(0, (prev[postId] ?? 1) - removedCount),
     }))
@@ -970,17 +1035,38 @@ function App() {
       if (!cascadeIds.has(target.commentId)) return prev
       return { ...prev, [postId]: null }
     })
-  }, [])
+  }, [feedMutations])
 
   // ── Realtime ──────────────────────────────────────────────────────────────
+  //
+  // Kanał `likes` jest zawężony do **moich** zdarzeń (`user_id=eq.<self>`) +
+  // throttle przez `feedMutations.invalidateFeed()`. Cel: synchronizacja
+  // między urządzeniami tego samego usera. Globalne lubi innych userów nie
+  // generują już chatter'u — React Query refetchOnWindowFocus + 30s staleTime
+  // zsynchronizuje przy następnym powrocie do okna.
 
   useEffect(() => {
     if (!session?.user?.id || postIds.length === 0) return
+    const viewerId = session.user.id
+    let likesInvalidateTimer: number | null = null
     const channel = supabase
       .channel('ujverse-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => {
-        void fetchLikesForPosts(postIds)
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'likes',
+          filter: `user_id=eq.${viewerId}`,
+        },
+        () => {
+          if (likesInvalidateTimer !== null) window.clearTimeout(likesInvalidateTimer)
+          likesInvalidateTimer = window.setTimeout(() => {
+            feedMutations.invalidateFeed()
+            likesInvalidateTimer = null
+          }, 1500)
+        },
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comment_likes' }, (payload) => {
         const row = payload.eventType === 'DELETE' ? payload.old : payload.new
         const changedCommentId = Number(row?.comment_id ?? 0)
@@ -1035,12 +1121,16 @@ function App() {
           return
         }
 
-        setCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
+        feedMutations.updateCommentsCount(pid, (n) => n + 1)
+        setExtraCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
         if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid, { silent: true })
       })
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
-  }, [session?.user?.id, postIds, fetchLikesForPosts, fetchCommentsForPost])
+    return () => {
+      if (likesInvalidateTimer !== null) window.clearTimeout(likesInvalidateTimer)
+      void supabase.removeChannel(channel)
+    }
+  }, [session?.user?.id, postIds, feedMutations, fetchCommentsForPost])
 
   useEffect(() => () => { if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current) }, [])
 
@@ -1110,6 +1200,9 @@ function App() {
             }
             postsLoading={postsLoading}
             postsError={postsError}
+            hasNextPage={feedQuery.hasNextPage}
+            isFetchingNextPage={feedQuery.isFetchingNextPage}
+            onFetchNextPage={feedQuery.fetchNextPage}
             selectedDepartment={selectedDepartment}
             onDepartmentChange={setSelectedDepartment}
             isComposing={isComposing}
@@ -1248,7 +1341,7 @@ function App() {
           session={session}
           profile={myProfile}
           onClose={() => setProfileModalOpen(false)}
-          onSaved={(u) => { setMyProfile(u); void fetchPosts() }}
+          onSaved={(u) => { setMyProfile(u); feedMutations.invalidateFeed() }}
           onAvatarUpdate={(url) =>
             setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
           }
@@ -1333,7 +1426,7 @@ function App() {
           onNavigateToPost={navigateToPost}
           onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}
-          onRefreshPosts={() => void fetchPosts()}
+          onRefreshPosts={() => feedMutations.invalidateFeed()}
         />
 
         <main
