@@ -89,6 +89,8 @@ type Props = {
   onNavigateToEvents: () => void
   /** Otwiera profil po `username` (np. z modala uczestników wydarzenia). */
   onNavigateToProfileHandle?: (handle: string) => void
+  /** Kropka unread na kafelku Aula w mobilnym dashboardzie. */
+  aulaHasUnread?: boolean
 }
 
 const unifiedCardGapCls = 'gap-4'
@@ -140,6 +142,7 @@ export default function FeedView({
   onNavigateToUser,
   onNavigateToEvents,
   onNavigateToProfileHandle,
+  aulaHasUnread = false,
 }: Props) {
   const { events, toggleRsvp, updateEvent } = useEvents()
   const {
@@ -391,6 +394,7 @@ export default function FeedView({
             <MobileDashboard
               announcements={academicAnnouncements}
               announcementsLoading={academicAnnouncementsLoading}
+              aulaHasUnread={aulaHasUnread}
             />
             <FeedFilters
               sticky

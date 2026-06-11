@@ -41,6 +41,8 @@ import { DataService } from './services/DataService'
 import { PostService } from './services/PostService'
 import { useFeedQuery } from './hooks/useFeedQuery'
 import { useFeedMutations } from './hooks/useFeedMutations'
+import { useAulaUnread } from './hooks/useAulaUnread'
+import { useMyCohort } from './hooks/useMyCohort'
 import { playNotificationPing } from './lib/notificationSound'
 import SearchPageView from './components/SearchPageView'
 import GroupView from './components/GroupView'
@@ -52,6 +54,7 @@ import {
 
 const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
+const AulaView = lazy(() => import('./components/aula/AulaView'))
 
 type AppShellView =
   | 'feed'
@@ -64,6 +67,7 @@ type AppShellView =
   | 'settings'
   | 'group'
   | 'chat'
+  | 'aula'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -123,6 +127,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/chat') {
     return { kind: 'ok', view: 'chat', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/aula') {
+    return { kind: 'ok', view: 'aula', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -275,6 +282,28 @@ function App() {
     return routeSnapshot.view
   }, [routeSnapshot])
 
+  // Unread badge dla Auli — lekka subskrypcja cohort_messages (poza widokiem
+  // Auli; gdy user na niej jest, hook się sam wycisza i marker się resetuje).
+  const { hasUnread: aulaHasUnread, markSeen: markAulaSeen } = useAulaUnread({
+    userId: session?.user?.id ?? null,
+    myProfile,
+    isOnAula: effectiveActiveView === 'aula',
+  })
+
+  // Cohort zalogowanego usera — używany przez OmniSearchHub (sekcja Aula
+  // w globalnym searchu jest opt-in: tylko gdy mamy cohortId).
+  const { cohort: myCohort } = useMyCohort({
+    userId: session?.user?.id ?? null,
+    myProfile,
+  })
+  const myCohortId = myCohort?.id ?? null
+  const navigateToAulaMessage = useCallback(
+    (messageId: number) => {
+      navigate(`/aula?message=${messageId}`)
+    },
+    [navigate],
+  )
+
   /** Keep navigation-related state aligned with the URL (hybrid shell). */
   useEffect(() => {
     if (isResetPasswordPath(location.pathname)) return
@@ -329,7 +358,7 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned, is_searchable, show_department')
+      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned, is_searchable, show_department, study_program, year_started, study_mode')
       .eq('id', userId)
       .single()
     if (data) {
@@ -590,6 +619,10 @@ function App() {
     }
     if (view === 'chat') {
       if (p !== '/chat') navigate('/chat')
+      return
+    }
+    if (view === 'aula') {
+      if (p !== '/aula') navigate('/aula')
       return
     }
     if (view === 'settings') {
@@ -1150,7 +1183,8 @@ function App() {
       ? 'feed'
       : effectiveActiveView === 'search' ||
           effectiveActiveView === 'group' ||
-          effectiveActiveView === 'chat'
+          effectiveActiveView === 'chat' ||
+          effectiveActiveView === 'aula'
         ? 'feed'
       : effectiveActiveView === 'settings'
         ? 'profile'
@@ -1220,6 +1254,7 @@ function App() {
             onNavigateToUser={navigateToUser}
             onNavigateToEvents={() => navigateToMainView('events')}
             onNavigateToProfileHandle={navigateToProfileByHandle}
+            aulaHasUnread={aulaHasUnread}
           />
         )
       case 'events':
@@ -1285,6 +1320,8 @@ function App() {
               }
               navigateToMainView('events')
             }}
+            cohortId={myCohortId}
+            onNavigateToAulaMessage={navigateToAulaMessage}
           />
         )
       case 'group':
@@ -1325,6 +1362,19 @@ function App() {
         return (
           <Suspense fallback={null}>
             <ChatHubView displayName={displayName} myProfile={myProfile} />
+          </Suspense>
+        )
+      case 'aula':
+        return (
+          <Suspense fallback={null}>
+            <AulaView
+              currentUserId={session.user.id}
+              myProfile={myProfile}
+              onProfilePatch={(patch) =>
+                setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
+              }
+              onAulaSeen={markAulaSeen}
+            />
           </Suspense>
         )
       default:
@@ -1414,6 +1464,8 @@ function App() {
             }
             navigateToMainView('events')
           }}
+          onNavigateToAula={() => navigateToMainView('aula')}
+          aulaHasUnread={aulaHasUnread}
           onNavigateToSearch={(query) => {
             const normalized = (query ?? '').trim()
             if (!normalized) {
@@ -1424,6 +1476,8 @@ function App() {
           }}
           onNavigateToUser={navigateToUser}
           onNavigateToPost={navigateToPost}
+          onNavigateToAulaMessage={navigateToAulaMessage}
+          cohortId={myCohortId}
           onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}
           onRefreshPosts={() => feedMutations.invalidateFeed()}
@@ -1431,7 +1485,7 @@ function App() {
 
         <main
           className={
-            effectiveActiveView === 'chat'
+            effectiveActiveView === 'chat' || effectiveActiveView === 'aula'
               ? 'w-full'
               : `mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
                   effectiveActiveView === 'events'
@@ -1496,7 +1550,8 @@ function App() {
             profileModalOpen ||
             notificationsPanelOpen ||
             menuOpen ||
-            effectiveActiveView === 'chat'
+            effectiveActiveView === 'chat' ||
+            effectiveActiveView === 'aula'
           }
           myProfile={myProfile}
           displayName={displayName}

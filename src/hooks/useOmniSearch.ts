@@ -20,7 +20,7 @@ import {
   clearAllHistory,
   RECENT_VISIBLE,
 } from '../lib/searchHistory'
-import type { SearchHit, SearchUserHit } from '../types/search'
+import type { AulaSearchHit, SearchHit, SearchUserHit } from '../types/search'
 
 /** Wyniki dropdowna OmniSearchHub. Każda sekcja max 5 pozycji. */
 export type OmniResults = {
@@ -28,6 +28,7 @@ export type OmniResults = {
   posts: SearchHit[]
   announcements: SearchHit[]
   events: UnifiedContent<EventMeta>[]
+  aula: AulaSearchHit[]
 }
 
 type CacheEntry = { results: OmniResults; expiresAt: number }
@@ -37,6 +38,7 @@ const EMPTY_RESULTS: OmniResults = {
   posts: [],
   announcements: [],
   events: [],
+  aula: [],
 }
 const SECTION_LIMIT = 5
 const DEBOUNCE_MS = 180
@@ -48,10 +50,14 @@ export type OmniSearchHandlers = {
   onNavigateToPost: (postId: string) => void
   onNavigateToEvents: (openEventId?: string) => void
   onNavigateToSearch: (query?: string) => void
+  /** Klik w wynik Auli — App.tsx routes na `/aula?message=<id>`. */
+  onNavigateToAulaMessage?: (messageId: number) => void
 }
 
 export type UseOmniSearchOptions = OmniSearchHandlers & {
   inputRef: RefObject<HTMLInputElement | null>
+  /** Cohort zalogowanego usera — bez tego sekcja "Aula" jest wyłączona. */
+  cohortId?: string | null
 }
 
 export type UseOmniSearchReturn = {
@@ -100,7 +106,15 @@ function shouldIgnoreHotkeyTarget(target: EventTarget | null): boolean {
  *  SYSTEM 6: AbortController per zapytanie + cache Map 120 s
  */
 export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
-  const { inputRef, onNavigateToUser, onNavigateToPost, onNavigateToEvents, onNavigateToSearch } = opts
+  const {
+    inputRef,
+    cohortId,
+    onNavigateToUser,
+    onNavigateToPost,
+    onNavigateToEvents,
+    onNavigateToSearch,
+    onNavigateToAulaMessage,
+  } = opts
   const { theme, toggleTheme } = useTheme()
 
   const [query, setQueryRaw] = useState('')
@@ -218,9 +232,10 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
 
     debounceRef.current = window.setTimeout(async () => {
       const wantEvents = parsed.mode === 'all'
+      const wantAula = parsed.mode === 'all' && Boolean(cohortId)
 
       try {
-        const [meiliResponse, eventRows] = await Promise.all([
+        const [meiliResponse, eventRows, aulaResult] = await Promise.all([
           SearchService.searchUnified(q, {
             signal,
             limit: SECTION_LIMIT,
@@ -231,6 +246,13 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
           wantEvents
             ? DataService.searchEvents(q, { limit: SECTION_LIMIT }).catch(() => [])
             : Promise.resolve([]),
+          wantAula && cohortId
+            ? SearchService.searchAula(q, {
+                cohortId,
+                limit: SECTION_LIMIT,
+                signal,
+              }).catch(() => ({ hits: [], estimatedTotalHits: 0 }))
+            : Promise.resolve({ hits: [], estimatedTotalHits: 0 }),
         ])
 
         if (signal.aborted) return
@@ -247,8 +269,9 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
             ? []
             : content.filter((c) => c.type === 'komunikat').slice(0, SECTION_LIMIT)
         const events = wantEvents ? eventRows.slice(0, SECTION_LIMIT) : []
+        const aula = wantAula ? aulaResult.hits.slice(0, SECTION_LIMIT) : []
 
-        const next: OmniResults = { profiles, posts, announcements, events }
+        const next: OmniResults = { profiles, posts, announcements, events, aula }
         cacheRef.current.set(cacheKey, { results: next, expiresAt: Date.now() + CACHE_TTL_MS })
         setResults(next)
         setLastSearchedKey(cacheKey)
@@ -269,7 +292,7 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
         debounceRef.current = null
       }
     }
-  }, [parsed.action, parsed.mode, parsed.stripped])
+  }, [parsed.action, parsed.mode, parsed.stripped, cohortId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -300,7 +323,8 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
     results.profiles.length +
     results.posts.length +
     results.announcements.length +
-    results.events.length
+    results.events.length +
+    results.aula.length
   const hasResults = totalCount > 0
 
   const searched = useMemo(() => {
@@ -357,18 +381,30 @@ export function useOmniSearch(opts: UseOmniSearchOptions): UseOmniSearchReturn {
         }
         cursor++
       }
+      for (const aulaHit of results.aula) {
+        if (cursor === idx) {
+          pushToHistory(query)
+          setIsOpen(false)
+          setActiveIndex(-1)
+          onNavigateToAulaMessage?.(aulaHit.messageId)
+          return
+        }
+        cursor++
+      }
     },
     [
       results.profiles,
       results.posts,
       results.announcements,
       results.events,
+      results.aula,
       totalCount,
       pushToHistory,
       query,
       onNavigateToUser,
       onNavigateToPost,
       onNavigateToEvents,
+      onNavigateToAulaMessage,
     ],
   )
 

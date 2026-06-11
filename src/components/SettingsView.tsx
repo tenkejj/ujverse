@@ -39,10 +39,18 @@ import {
   loadSearchHistory,
 } from '../lib/searchHistory'
 import { playNotificationPing } from '../lib/notificationSound'
+import { UJ_DEPARTMENTS } from '../lib/departments'
 import type { Profile } from '../types'
 import BaseCard from './ui/BaseCard'
 
-type ProfilePatch = Partial<Pick<Profile, 'is_searchable' | 'show_department'>>
+type StudyMode = 'stacjonarne' | 'niestacjonarne' | 'doktoranckie'
+
+type ProfilePatch = Partial<
+  Pick<
+    Profile,
+    'is_searchable' | 'show_department' | 'department' | 'study_program' | 'year_started' | 'study_mode'
+  >
+>
 
 type Props = {
   email: string | undefined
@@ -287,6 +295,51 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
     is_searchable: boolean
     show_department: boolean
   }>({ is_searchable: false, show_department: false })
+
+  // ── Studia (Aula → rocznik) ───────────────────────────────────────────────
+  const currentYear = new Date().getFullYear()
+  const studyYears = Array.from({ length: 8 }, (_, i) => currentYear - i)
+  const [studyDept, setStudyDept] = useState(myProfile?.department ?? '')
+  const [studyProgram, setStudyProgram] = useState(myProfile?.study_program ?? '')
+  const [studyYear, setStudyYear] = useState<number | ''>(myProfile?.year_started ?? '')
+  const [studyMode, setStudyMode] = useState<StudyMode | ''>(myProfile?.study_mode ?? '')
+  const [studyBusy, setStudyBusy] = useState(false)
+
+  useEffect(() => {
+    setStudyDept(myProfile?.department ?? '')
+    setStudyProgram(myProfile?.study_program ?? '')
+    setStudyYear(myProfile?.year_started ?? '')
+    setStudyMode(myProfile?.study_mode ?? '')
+  }, [myProfile?.department, myProfile?.study_program, myProfile?.year_started, myProfile?.study_mode])
+
+  const studyDirty =
+    studyDept !== (myProfile?.department ?? '') ||
+    studyProgram !== (myProfile?.study_program ?? '') ||
+    studyYear !== (myProfile?.year_started ?? '') ||
+    studyMode !== (myProfile?.study_mode ?? '')
+
+  const handleSaveStudies = useCallback(async () => {
+    if (!myProfile?.id || studyBusy) return
+    if (!studyDept.trim() || !studyProgram.trim() || studyYear === '' || studyMode === '') {
+      toast.error('Uzupełnij wydział, kierunek, rok i tryb.')
+      return
+    }
+    setStudyBusy(true)
+    const patch: ProfilePatch = {
+      department: studyDept.trim(),
+      study_program: studyProgram.trim(),
+      year_started: Number(studyYear),
+      study_mode: studyMode as StudyMode,
+    }
+    const { error } = await supabase.from('profiles').update(patch).eq('id', myProfile.id)
+    setStudyBusy(false)
+    if (error) {
+      toast.error(error.message || 'Nie udało się zapisać danych studiów.')
+      return
+    }
+    onProfilePatch(patch)
+    toast.success('Zapisano dane studiów. Trafiłeś/aś do właściwego rocznika.')
+  }, [myProfile?.id, studyBusy, studyDept, studyProgram, studyYear, studyMode, onProfilePatch])
 
   // Po przyznaniu/odebraniu zezwolenia (np. via OS) — odśwież stan przy fokusie.
   useEffect(() => {
@@ -751,6 +804,76 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
               onChange={setShowDepartmentOnPosts}
             />
           </Row>
+        </SectionCard>
+
+        {/* Studia ──────────────────────────────────────────────────────── */}
+        <SectionCard
+          title="Studia"
+          icon={AcademicCapIcon}
+          description="Kierunek, rok i tryb decydują o Twoim roczniku w Auli (czat grupy)."
+        >
+          <div className="space-y-3 py-3">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Wydział</span>
+              <select
+                className={fieldCls}
+                value={studyDept}
+                onChange={(e) => setStudyDept(e.target.value)}
+              >
+                <option value="">Wybierz wydział…</option>
+                {UJ_DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Kierunek studiów</span>
+              <input
+                type="text"
+                className={fieldCls}
+                placeholder="np. Informatyka Stosowana"
+                value={studyProgram}
+                onChange={(e) => setStudyProgram(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Rok rozpoczęcia</span>
+                <select
+                  className={fieldCls}
+                  value={studyYear}
+                  onChange={(e) => setStudyYear(e.target.value ? Number(e.target.value) : '')}
+                >
+                  <option value="">Rok…</option>
+                  {studyYears.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Tryb</span>
+                <select
+                  className={fieldCls}
+                  value={studyMode}
+                  onChange={(e) => setStudyMode((e.target.value || '') as StudyMode | '')}
+                >
+                  <option value="">Tryb…</option>
+                  <option value="stacjonarne">Stacjonarne</option>
+                  <option value="niestacjonarne">Niestacjonarne</option>
+                  <option value="doktoranckie">Doktoranckie</option>
+                </select>
+              </label>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleSaveStudies()}
+              disabled={studyBusy || !studyDirty || !myProfile?.id}
+              className={primaryBtnCls}
+            >
+              {studyBusy ? 'Zapisuję…' : 'Zapisz dane studiów'}
+            </button>
+          </div>
         </SectionCard>
 
         {/* Dane ────────────────────────────────────────────────────────── */}

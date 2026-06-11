@@ -4,6 +4,7 @@ const DEFAULT_HOST = 'http://localhost:7700'
 const DEFAULT_INDEX = 'ujverse_content'
 const DEFAULT_API_KEY = 'admin'
 export const USERS_INDEX = 'ujverse_users'
+export const AULA_INDEX = 'ujverse_aula'
 
 function readHost(): string {
   return import.meta.env.VITE_MEILISEARCH_HOST?.trim() || DEFAULT_HOST

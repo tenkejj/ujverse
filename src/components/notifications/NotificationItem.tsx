@@ -1,5 +1,6 @@
-import { Heart, MessageCircle } from 'lucide-react'
+import { AtSign, GraduationCap, Heart, MessageCircle } from 'lucide-react'
 import type { MouseEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { AppNotification } from '../../types'
 import { relativeTime } from '../../lib/utils'
 import UserAvatar from '../UserAvatar'
@@ -22,14 +23,31 @@ export default function NotificationItem({
   onNavigateToUser,
   onClose,
 }: Props) {
+  const navigate = useNavigate()
   const actor = notif.actor ?? null
   const actorName = actor?.full_name ?? 'Ktoś'
-  const actionText = notif.type === 'like' ? 'polubił(a) Twój wpis' : 'skomentował(a) Twój wpis'
+  const actionText =
+    notif.type === 'like'
+      ? 'polubił(a) Twój wpis'
+      : notif.type === 'reply_aula'
+        ? 'odpowiedział(a) Ci w Auli'
+        : notif.type === 'mention_aula'
+          ? 'wspomniał(a) Cię w Auli'
+          : 'skomentował(a) Twój wpis'
   const badgeBg = getNotificationBadgeBackground(notif)
+
+  const isAulaType = notif.type === 'reply_aula' || notif.type === 'mention_aula'
 
   const handleRowClick = () => {
     if (!notif.is_read) onMarkRead(notif.id)
-    if (notif.post_id) onNavigateToPost(notif.post_id)
+    if (isAulaType) {
+      const target = notif.cohort_message_id
+        ? `/aula?message=${notif.cohort_message_id}`
+        : '/aula'
+      navigate(target)
+    } else if (notif.post_id) {
+      onNavigateToPost(notif.post_id)
+    }
     onClose()
   }
 
@@ -60,6 +78,10 @@ export default function NotificationItem({
         >
           {notif.type === 'like' ? (
             <Heart size={10} fill="currentColor" strokeWidth={0} className="block text-white" />
+          ) : notif.type === 'reply_aula' ? (
+            <GraduationCap size={11} strokeWidth={2.5} className="block text-white" />
+          ) : notif.type === 'mention_aula' ? (
+            <AtSign size={11} strokeWidth={2.5} className="block text-white" />
           ) : (
             <MessageCircle size={10} strokeWidth={2.5} className="block translate-x-[0.5px] translate-y-[0.5px] text-white" />
           )}

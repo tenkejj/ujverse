@@ -2,15 +2,23 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { Meilisearch } from 'meilisearch'
 import {
+  ensureAulaIndexSettings,
   ensureContentIndexSettings,
   ensureUsersIndexSettings,
+  AULA_INDEX_UID,
 } from '../lib/meilisearchIndexSettings.js'
 import {
+  aulaDocumentIdForMessage,
   documentIdFor,
   mapAnnouncementToSearchDocument,
+  mapCohortMessageToSearchDocument,
   mapPostToSearchDocument,
   mapProfileToSearchDocument,
   type AnnouncementRecord,
+  type CohortAttachmentRecord,
+  type CohortChannelRecord,
+  type CohortMessageAuthor,
+  type CohortMessageRecord,
   type PostProfile,
   type PostRecord,
   type ProfileRecord,
@@ -27,10 +35,17 @@ type WebhookPayload = {
 
 const CONTENT_INDEX = 'ujverse_content'
 const USERS_INDEX = 'ujverse_users'
-const SUPPORTED_TABLES = new Set<SearchSyncTable>(['posts', 'announcements', 'profiles'])
+const SUPPORTED_TABLES = new Set<SearchSyncTable>([
+  'posts',
+  'announcements',
+  'profiles',
+  'cohort_messages',
+  'cohort_message_attachments',
+])
 
 let usersIndexSettingsPromise: Promise<void> | null = null
 let contentIndexSettingsPromise: Promise<void> | null = null
+let aulaIndexSettingsPromise: Promise<void> | null = null
 
 function ensureUsersIndexSettingsOnce(client: Meilisearch): Promise<void> {
   if (!usersIndexSettingsPromise) {
@@ -44,6 +59,13 @@ function ensureContentIndexSettingsOnce(client: Meilisearch, indexUid: string): 
     contentIndexSettingsPromise = ensureContentIndexSettings(client, indexUid)
   }
   return contentIndexSettingsPromise
+}
+
+function ensureAulaIndexSettingsOnce(client: Meilisearch): Promise<void> {
+  if (!aulaIndexSettingsPromise) {
+    aulaIndexSettingsPromise = ensureAulaIndexSettings(client)
+  }
+  return aulaIndexSettingsPromise
 }
 
 function getBearerToken(headerValue: string | string[] | undefined): string | null {
@@ -87,7 +109,16 @@ function readRequiredEnv(name: string): string {
 }
 
 function getIndexForTable(table: SearchSyncTable): string {
-  return table === 'profiles' ? USERS_INDEX : CONTENT_INDEX
+  if (table === 'profiles') return USERS_INDEX
+  if (table === 'cohort_messages' || table === 'cohort_message_attachments') return AULA_INDEX_UID
+  return CONTENT_INDEX
+}
+
+function getServiceClient() {
+  const supabaseUrl = process.env.SUPABASE_URL?.trim()
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  if (!supabaseUrl || !serviceRoleKey) return null
+  return createClient(supabaseUrl, serviceRoleKey)
 }
 
 async function deleteDocument(index: ReturnType<Meilisearch['index']>, documentId: string): Promise<void> {
@@ -102,11 +133,8 @@ async function deleteDocument(index: ReturnType<Meilisearch['index']>, documentI
 }
 
 async function fetchPostProfile(userId: string): Promise<PostProfile | null> {
-  const supabaseUrl = process.env.SUPABASE_URL?.trim()
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-  if (!supabaseUrl || !serviceRoleKey) return null
-
-  const client = createClient(supabaseUrl, serviceRoleKey)
+  const client = getServiceClient()
+  if (!client) return null
   const { data, error } = await client
     .from('profiles')
     .select('id, full_name, username, department, is_banned')
@@ -115,6 +143,78 @@ async function fetchPostProfile(userId: string): Promise<PostProfile | null> {
 
   if (error || !data) return null
   return data as PostProfile
+}
+
+async function fetchCohortMessageAuthor(userId: string): Promise<CohortMessageAuthor | null> {
+  const client = getServiceClient()
+  if (!client) return null
+  const { data, error } = await client
+    .from('profiles')
+    .select('id, full_name, username, is_banned')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as CohortMessageAuthor
+}
+
+async function fetchAttachmentsForMessage(messageId: number | string): Promise<CohortAttachmentRecord[]> {
+  const client = getServiceClient()
+  if (!client) return []
+  const { data, error } = await client
+    .from('cohort_message_attachments')
+    .select('id, message_id, file_name')
+    .eq('message_id', messageId)
+  if (error || !data) return []
+  return data as CohortAttachmentRecord[]
+}
+
+async function fetchCohortMessageById(messageId: number | string): Promise<CohortMessageRecord | null> {
+  const client = getServiceClient()
+  if (!client) return null
+  const { data, error } = await client
+    .from('cohort_messages')
+    .select('id, cohort_id, user_id, parent_id, channel_id, content, created_at, deleted_at')
+    .eq('id', messageId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as CohortMessageRecord
+}
+
+async function fetchChannelById(channelId: number | string): Promise<CohortChannelRecord | null> {
+  const client = getServiceClient()
+  if (!client) return null
+  const { data, error } = await client
+    .from('cohort_channels')
+    .select('id, slug, name, kind')
+    .eq('id', channelId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as CohortChannelRecord
+}
+
+/**
+ * Buduje pełny `AulaSyncDocument` dla wiadomości — fetch autora + załączników
+ * + (opcjonalnie) channel. Używane przy UPSERT cohort_messages ORAZ przy
+ * INSERT/DELETE attachmentu (wtedy re-index parent message, żeby `fileNames`
+ * / `hasAttachments` było aktualne).
+ *
+ * Channel fetch tylko gdy `record.channel_id IS NOT NULL` — #general jest
+ * virtual i nie ma rekordu w `cohort_channels`.
+ */
+async function buildAulaDocumentForMessage(
+  record: CohortMessageRecord,
+): Promise<ReturnType<typeof mapCohortMessageToSearchDocument>> {
+  const userId = typeof record.user_id === 'string' ? record.user_id : null
+  const channelId =
+    record.channel_id == null ? null : Number(record.channel_id)
+  const [author, attachments, channel] = await Promise.all([
+    userId ? fetchCohortMessageAuthor(userId) : Promise.resolve(null),
+    fetchAttachmentsForMessage(record.id),
+    channelId != null && Number.isFinite(channelId)
+      ? fetchChannelById(channelId)
+      : Promise.resolve(null),
+  ])
+  return mapCohortMessageToSearchDocument(record, author, attachments, channel)
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -149,6 +249,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const meiliClient = new Meilisearch({ host: meiliHost, apiKey: meiliMasterKey })
     const indexUid = getIndexForTable(table)
     const index = meiliClient.index(indexUid)
+
+    // Routing #1: cohort_message_attachments — re-index parent message, nigdy
+    // własnego dokumentu nie tworzymy. Webhook na INSERT/UPDATE/DELETE.
+    if (table === 'cohort_message_attachments') {
+      const parentMessageIdRaw =
+        (activeRecord?.message_id as number | string | undefined) ??
+        (payload.record?.message_id as number | string | undefined) ??
+        (payload.old_record?.message_id as number | string | undefined)
+      if (parentMessageIdRaw == null) {
+        return res.status(400).json({ error: 'Missing message_id on attachment' })
+      }
+      const parentMessage = await fetchCohortMessageById(parentMessageIdRaw)
+      const parentDocId = aulaDocumentIdForMessage(parentMessageIdRaw)
+      if (!parentMessage) {
+        // Parent message hard-deleted (CASCADE) — atachmenty już zostały usunięte
+        // razem z dokumentem przy DELETE cohort_messages. No-op.
+        await deleteDocument(index, parentDocId)
+        return res.status(200).json({ ok: true, action: 'delete', id: parentDocId, index: indexUid })
+      }
+      await ensureAulaIndexSettingsOnce(meiliClient)
+      const document = await buildAulaDocumentForMessage(parentMessage)
+      if (!document) {
+        await deleteDocument(index, parentDocId)
+        return res.status(200).json({ ok: true, action: 'delete', id: parentDocId, index: indexUid })
+      }
+      await index.addDocuments([document])
+      return res.status(200).json({ ok: true, action: 'upsert', id: document.id, index: indexUid })
+    }
+
     const documentId = documentIdFor(table, sourceId)
 
     if (payload.type === 'DELETE') {
@@ -156,7 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, action: 'delete', id: documentId, index: indexUid })
     }
 
-    if (table !== 'profiles') {
+    if (table === 'posts' || table === 'announcements') {
       await ensureContentIndexSettingsOnce(meiliClient, indexUid)
     }
 
@@ -168,6 +297,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       document = mapPostToSearchDocument((record ?? {}) as PostRecord, profile)
     } else if (table === 'announcements') {
       document = mapAnnouncementToSearchDocument((payload.record ?? {}) as AnnouncementRecord)
+    } else if (table === 'cohort_messages') {
+      await ensureAulaIndexSettingsOnce(meiliClient)
+      const record = (payload.record ?? {}) as CohortMessageRecord
+      // Soft-delete = DELETE z indeksu (mapper i tak zwróci null, ale jawne
+      // dla czytelności)
+      if (record.deleted_at != null) {
+        await deleteDocument(index, documentId)
+        return res.status(200).json({ ok: true, action: 'delete', id: documentId, index: indexUid })
+      }
+      document = await buildAulaDocumentForMessage(record)
     } else {
       await ensureUsersIndexSettingsOnce(meiliClient)
       document = mapProfileToSearchDocument((payload.record ?? {}) as ProfileRecord)

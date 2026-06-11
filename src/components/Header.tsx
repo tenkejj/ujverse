@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -14,7 +14,7 @@ import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula'
 
 type Props = {
   myProfile: Profile | null
@@ -31,9 +31,15 @@ type Props = {
   onNavigateToFeed: () => void
   onNavigateToProfile: () => void
   onNavigateToEvents: (openEventId?: string) => void
+  onNavigateToAula: () => void
+  aulaHasUnread?: boolean
   onNavigateToSearch: (query?: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
+  /** Klik w wynik Auli z `OmniSearchHub` — deep-link `/aula?message=<id>`. */
+  onNavigateToAulaMessage?: (messageId: number) => void
+  /** Cohort zalogowanego usera — przekazany do `OmniSearchHub` jako sekcja Aula. */
+  cohortId?: string | null
   onOpenProfileModal: () => void
   onNavigateToSettings: () => void
   onRefreshPosts: () => void
@@ -54,9 +60,13 @@ export default function Header({
   onNavigateToFeed,
   onNavigateToProfile,
   onNavigateToEvents,
+  onNavigateToAula,
+  aulaHasUnread = false,
   onNavigateToSearch,
   onNavigateToUser,
   onNavigateToPost,
+  onNavigateToAulaMessage,
+  cohortId,
   onOpenProfileModal,
   onNavigateToSettings,
   onRefreshPosts,
@@ -168,10 +178,12 @@ export default function Header({
       <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-end gap-3 relative z-10`}>
         <div className="hidden md:flex items-center gap-1.5 shrink-0">
           <OmniSearchHub
+            cohortId={cohortId}
             onNavigateToUser={onNavigateToUser}
             onNavigateToPost={onNavigateToPost}
             onNavigateToEvents={onNavigateToEvents}
             onNavigateToSearch={onNavigateToSearch}
+            onNavigateToAulaMessage={onNavigateToAulaMessage}
           />
           <button
             type="button"
@@ -199,6 +211,25 @@ export default function Header({
             aria-label="Wydarzenia"
           >
             <CalendarDays size={20} strokeWidth={2} />
+          </button>
+
+          <button
+            type="button"
+            onClick={onNavigateToAula}
+            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
+              activeView === 'aula'
+                ? 'text-[#1e293b] dark:text-accent-interactive'
+                : 'text-[#1e293b] dark:text-gray-400'
+            }`}
+            aria-label={aulaHasUnread ? 'Aula — nowe wiadomości' : 'Aula — czat rocznika'}
+          >
+            <GraduationCap size={20} strokeWidth={2} />
+            {aulaHasUnread && (
+              <span
+                className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(232,200,74,0.55)] dark:bg-brand-gold-bright"
+                aria-hidden
+              />
+            )}
           </button>
 
           <button
@@ -328,6 +359,14 @@ export default function Header({
                   >
                     <User size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
                     Mój profil
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); onNavigateToAula() }}
+                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                  >
+                    <GraduationCap size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
+                    Aula (czat rocznika)
                   </button>
                   <button
                     role="menuitem"

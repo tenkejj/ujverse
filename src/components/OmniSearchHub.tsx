@@ -3,15 +3,30 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   Calendar,
   Clock,
+  GraduationCap,
   Loader2,
   MapPin,
   MessageSquareText,
+  Paperclip,
   Search,
   SlidersHorizontal,
   Sparkles,
   UserRound,
   X,
 } from 'lucide-react'
+import ChannelKindPill, { CHANNEL_KINDS } from './aula/ChannelKindPill'
+import type { ChannelKind } from '../types/database'
+
+/**
+ * Defensywne mapowanie raw `channelKind` z search hita na `ChannelKind`.
+ * Legacy dokumenty bez `channelKind` lub z nieznaną wartością → `inne`.
+ */
+function asOmniChannelKind(raw: string | null | undefined): ChannelKind {
+  if (typeof raw === 'string' && (CHANNEL_KINDS as readonly string[]).includes(raw)) {
+    return raw as ChannelKind
+  }
+  return 'inne'
+}
 import { useOmniSearch, type OmniSearchHandlers } from '../hooks/useOmniSearch'
 import { ACADEMIC_HINTS } from '../lib/searchHints'
 import { OMNI_DESKTOP as T } from '../styles/mobile-theme'
@@ -19,7 +34,7 @@ import { getDeptAbbreviation } from '../lib/departments'
 import UserAvatar from './UserAvatar'
 import type { Profile } from '../types'
 import type { EventMeta, UnifiedContent } from '../types/content'
-import type { SearchHit, SearchUserHit } from '../types/search'
+import type { AulaSearchHit, SearchHit, SearchUserHit } from '../types/search'
 
 /**
  * OmniSearchHub v2 — desktopowa paleta wyszukiwania (md:+).
@@ -34,7 +49,10 @@ import type { SearchHit, SearchUserHit } from '../types/search'
  *
  * Mobile (<768 px) korzysta dalej z full-screen `SearchBar.tsx`.
  */
-type Props = OmniSearchHandlers
+type Props = OmniSearchHandlers & {
+  /** Cohort zalogowanego usera — bez tego sekcja "Aula" jest wyłączona. */
+  cohortId?: string | null
+}
 
 function searchUserHitToProfile(hit: SearchUserHit): Profile {
   return {
@@ -53,7 +71,7 @@ function stripMarks(value: string): string {
 export default function OmniSearchHub(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const o = useOmniSearch({ inputRef, ...props })
+  const o = useOmniSearch({ inputRef, cohortId: props.cohortId, ...props })
 
   useEffect(() => {
     if (!o.isOpen) return
@@ -78,6 +96,7 @@ export default function OmniSearchHub(props: Props) {
   const postsOffset = o.results.profiles.length
   const announcementsOffset = postsOffset + o.results.posts.length
   const eventsOffset = announcementsOffset + o.results.announcements.length
+  const aulaOffset = eventsOffset + o.results.events.length
 
   return (
     <div ref={containerRef} className="relative hidden md:flex">
@@ -236,6 +255,18 @@ export default function OmniSearchHub(props: Props) {
                       onPick={(eventId) => {
                         o.close()
                         props.onNavigateToEvents(eventId)
+                      }}
+                      registerRow={o.registerRow}
+                    />
+                  )}
+                  {o.results.aula.length > 0 && (
+                    <AulaSection
+                      items={o.results.aula}
+                      activeIndex={o.activeIndex}
+                      indexOffset={aulaOffset}
+                      onPick={(messageId) => {
+                        o.close()
+                        props.onNavigateToAulaMessage?.(Number(messageId))
                       }}
                       registerRow={o.registerRow}
                     />
@@ -455,6 +486,83 @@ function AnnouncementsSection({
           )
         })}
       </ul>
+    </section>
+  )
+}
+
+function AulaSection({
+  items,
+  activeIndex,
+  indexOffset,
+  onPick,
+  registerRow,
+}: SectionProps<AulaSearchHit>) {
+  return (
+    <section aria-label="Aula">
+      <div className={T.sectionHeader}>
+        <GraduationCap size={12} strokeWidth={2.25} className={T.sectionIcon} aria-hidden />
+        Aula
+      </div>
+      <ul className={T.sectionBody} role="presentation">
+        {items.map((hit, i) => {
+          const idx = indexOffset + i
+          const active = activeIndex === idx
+          const snippet = stripMarks(hit.contentSnippetHTML ?? hit.content)
+          const author = hit.authorName || 'Użytkownik'
+          return (
+            <li key={hit.id} role="presentation">
+              <button
+                ref={(node) => registerRow(idx, node)}
+                id={`omni-row-${idx}`}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => onPick(String(hit.messageId))}
+                className={rowClassFor(active)}
+              >
+                <span className={T.rowIconBubble} aria-hidden>
+                  <GraduationCap size={14} strokeWidth={2} />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className={T.rowTitle}>
+                    {author}
+                    {hit.channelId == null ? (
+                      <span
+                        className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-[#1e293b]/[0.06] px-1.5 py-0.5 align-baseline text-[10px] font-semibold text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
+                        title="Sala główna"
+                      >
+                        <GraduationCap size={9} />
+                        Sala główna
+                      </span>
+                    ) : (
+                      <span
+                        className="ml-1.5 inline-flex items-center gap-1 align-baseline"
+                        title={`Sala: ${hit.channelName ?? hit.channelSlug ?? ''}`}
+                      >
+                        <ChannelKindPill kind={asOmniChannelKind(hit.channelKind)} size="sm" />
+                        <span className="text-[10px] font-semibold text-fg-primary">
+                          {hit.channelName ?? hit.channelSlug}
+                        </span>
+                      </span>
+                    )}
+                  </span>
+                  <span className={T.rowSnippet}>{snippet || (hit.hasAttachments ? 'Załącznik' : '')}</span>
+                </span>
+                {hit.hasAttachments && (
+                  <span
+                    className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-300/70 bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-600 dark:border-white/15 dark:bg-black/30 dark:text-zinc-300"
+                    title={`${hit.fileNames.length} ${hit.fileNames.length === 1 ? 'plik' : 'plików'}`}
+                  >
+                    <Paperclip size={10} strokeWidth={2.25} />
+                    {hit.fileNames.length}
+                  </span>
+                )}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <div className={T.sectionDivider} aria-hidden />
     </section>
   )
 }

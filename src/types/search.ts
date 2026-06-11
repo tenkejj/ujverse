@@ -32,3 +32,38 @@ export type SearchUserDocument = {
 }
 
 export type SearchUserHit = SearchUserDocument
+
+/** Dokument `ujverse_aula` po stronie klienta (z opcjonalnym `_formatted`). */
+export type AulaSearchDocument = {
+  id: string
+  messageId: number
+  cohortId: string
+  parentId: number | null
+  /** Sub-channel. `null` = virtual Sala główna. */
+  channelId: number | null
+  channelSlug: string | null
+  channelName: string | null
+  /**
+   * Typ zajęć sali (`wyk` / `cw` / `lab` / `sem` / `proj` / `inne`).
+   * `null` = Sala główna. `unknown string` z legacy dokumentów → traktować
+   * jako `inne` w UI badge fallback.
+   */
+  channelKind: string | null
+  content: string
+  authorId: string
+  authorName: string
+  authorUsername: string | null
+  fileNames: string[]
+  hasAttachments: boolean
+  createdAt: string
+  createdAtTs: number
+}
+
+export type AulaSearchHit = AulaSearchDocument & {
+  /**
+   * Sanityzowane HTML-snippety zawierające tylko `<mark>` (XSS-safe).
+   * `null` gdy Meili nie zwrócił `_formatted` dla danego pola.
+   */
+  contentSnippetHTML: string | null
+  fileNamesSnippetHTML: string | null
+}

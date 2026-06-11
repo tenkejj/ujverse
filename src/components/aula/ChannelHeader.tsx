@@ -1,0 +1,142 @@
+/**
+ * UJverse — ChannelHeader: pasek nad chatem z pillem typu, name, description
+ * i gear menu.
+ * Copyright © 2026 Franciszek Dranka. All rights reserved.
+ * License: Proprietary — see LICENSE in repo root.
+ *
+ * Sala główna (virtual, `channel == null`) → static label + description +
+ * ikona GraduationCap zamiast pilla, brak gear menu (nikt nie jest creatorem).
+ *
+ * Gear dropdown widoczny tylko gdy `canManage` (caller decyduje na podstawie
+ * `channel.created_by === currentUserId`). Akcje: Edytuj name/opis/typ,
+ * Archiwizuj / Przywróć. Hard-delete NIE jest dostępny (RLS deny).
+ */
+import { useEffect, useRef, useState } from 'react'
+import {
+  Archive,
+  ArchiveRestore,
+  ChevronDown,
+  GraduationCap,
+  Pencil,
+  Settings,
+} from 'lucide-react'
+import type { CohortChannel } from '../../types/database'
+import ChannelKindPill from './ChannelKindPill'
+
+type Props = {
+  channel: CohortChannel | null
+  canManage: boolean
+  onEdit: () => void
+  onArchive: () => void
+  onUnarchive: () => void
+}
+
+const GENERAL_DESCRIPTION = 'Domyślna sala Twojego rocznika. Wszyscy tu są.'
+
+export default function ChannelHeader({
+  channel,
+  canManage,
+  onEdit,
+  onArchive,
+  onUnarchive,
+}: Props) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
+
+  const name = channel?.name ?? 'Sala główna'
+  const description = channel?.description ?? (channel ? null : GENERAL_DESCRIPTION)
+  const archived = channel?.archived_at != null
+
+  return (
+    <div className="flex items-center gap-3 border-b border-zinc-200 px-4 py-2.5 dark:border-white/10">
+      {channel ? (
+        <ChannelKindPill kind={channel.kind} size="md" />
+      ) : (
+        <GraduationCap
+          size={16}
+          className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright"
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <h2 className="truncate text-sm font-bold text-fg-primary">{name}</h2>
+          {archived && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+              <Archive size={10} />
+              Archiwum
+            </span>
+          )}
+        </div>
+        {description && (
+          <p className="mt-0.5 truncate text-xs text-fg-secondary">{description}</p>
+        )}
+      </div>
+
+      {channel && canManage && (
+        <div ref={menuRef} className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Ustawienia sali"
+            aria-expanded={menuOpen}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-zinc-500 hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200"
+          >
+            <Settings size={14} />
+            <ChevronDown size={11} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-bg-card">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onEdit()
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+              >
+                <Pencil size={13} />
+                Edytuj nazwę / typ / opis
+              </button>
+              {archived ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onUnarchive()
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+                >
+                  <ArchiveRestore size={13} />
+                  Przywróć salę
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onArchive()
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-300/10"
+                >
+                  <Archive size={13} />
+                  Archiwizuj salę
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Bell, Check, Heart, MessageCircle } from 'lucide-react'
+import { AtSign, Bell, Check, GraduationCap, Heart, MessageCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AppNotification } from '../types'
 import { relativeTime } from '../lib/utils'
@@ -35,7 +36,7 @@ const floatingCardClass = [
   '[-webkit-tap-highlight-color:transparent]',
 ].join(' ')
 
-function ActionBadge({ type, clean }: { type: 'like' | 'comment'; clean?: boolean }) {
+function ActionBadge({ type, clean }: { type: AppNotification['type']; clean?: boolean }) {
   if (clean) {
     const wrap =
       'absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-border-app bg-black/[0.04] dark:border-white/12 dark:bg-white/[0.08]'
@@ -43,6 +44,20 @@ function ActionBadge({ type, clean }: { type: 'like' | 'comment'; clean?: boolea
       return (
         <span className={wrap} aria-hidden>
           <Heart size={12} className="text-brand-gold dark:text-brand-gold-bright" fill="currentColor" strokeWidth={0} />
+        </span>
+      )
+    }
+    if (type === 'reply_aula') {
+      return (
+        <span className={wrap} aria-hidden>
+          <GraduationCap size={12} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
+        </span>
+      )
+    }
+    if (type === 'mention_aula') {
+      return (
+        <span className={wrap} aria-hidden>
+          <AtSign size={12} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
         </span>
       )
     }
@@ -63,6 +78,20 @@ function ActionBadge({ type, clean }: { type: 'like' | 'comment'; clean?: boolea
         aria-hidden
       >
         <Heart size={10} className="text-slate-900 dark:text-slate-950" fill="currentColor" strokeWidth={0} />
+      </span>
+    )
+  }
+  if (type === 'reply_aula') {
+    return (
+      <span className={`${base} border-white bg-slate-100 dark:border-slate-950 dark:bg-slate-800`} aria-hidden>
+        <GraduationCap size={10} className="text-uj-blue dark:text-blue-400" strokeWidth={2.25} />
+      </span>
+    )
+  }
+  if (type === 'mention_aula') {
+    return (
+      <span className={`${base} border-white bg-slate-100 dark:border-slate-950 dark:bg-slate-800`} aria-hidden>
+        <AtSign size={10} className="text-uj-blue dark:text-blue-400" strokeWidth={2.25} />
       </span>
     )
   }
@@ -185,9 +214,26 @@ function NotificationRow({
   fullScreenModal,
   cleanOverlay,
 }: CardProps) {
+  const navigate = useNavigate()
   const actorProfile = notif.actor ?? null
   const actorName = actorProfile?.full_name ?? 'Ktoś'
-  const actionText = notif.type === 'like' ? 'polubił(a) Twój wpis' : 'skomentował(a) Twój wpis'
+  const actionText =
+    notif.type === 'like'
+      ? 'polubił(a) Twój wpis'
+      : notif.type === 'reply_aula'
+        ? 'odpowiedział(a) Ci w Auli'
+        : notif.type === 'mention_aula'
+          ? 'wspomniał(a) Cię w Auli'
+          : 'skomentował(a) Twój wpis'
+
+  const handleOpen = () => {
+    if (!notif.is_read) onMarkRead(notif.id)
+    if (notif.type === 'reply_aula' || notif.type === 'mention_aula') {
+      navigate(notif.cohort_message_id ? `/aula?message=${notif.cohort_message_id}` : '/aula')
+      return
+    }
+    if (notif.post_id) onNavigateToPost(notif.post_id)
+  }
 
   if (glassPanel) {
     const avatarGlow =
@@ -213,10 +259,7 @@ function NotificationRow({
     return (
       <button
         type="button"
-        onClick={() => {
-          if (!notif.is_read) onMarkRead(notif.id)
-          if (notif.post_id) onNavigateToPost(notif.post_id)
-        }}
+        onClick={handleOpen}
         className={`group relative w-full flex items-center gap-3 px-4 py-3.5 border text-left transition-all duration-300 ${
           fullScreenModal ? 'rounded-none' : 'rounded-2xl'
         } ${glassPanel && fullScreenModal ? '' : 'hover:shadow-lg hover:border-white/15'} ${cardGlass}`}
@@ -264,10 +307,7 @@ function NotificationRow({
       variant="default"
       interactive
       flush
-      onClick={() => {
-        if (!notif.is_read) onMarkRead(notif.id)
-        if (notif.post_id) onNavigateToPost(notif.post_id)
-      }}
+      onClick={handleOpen}
       className={`${floatingCardClass} ${unreadRing}`}
     >
       <div className="flex items-center gap-3 px-4 py-4">

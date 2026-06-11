@@ -16,6 +16,12 @@ export type Profile = {
   is_searchable?: boolean | null
   /** Czy badge wydziału jest pokazywany przy postach autora. Default `true`. */
   show_department?: boolean | null
+  /** Kierunek studiów (Aula → rocznik). */
+  study_program?: string | null
+  /** Rok rozpoczęcia studiów (Aula → rocznik). */
+  year_started?: number | null
+  /** Tryb studiów (Aula → rocznik). */
+  study_mode?: 'stacjonarne' | 'niestacjonarne' | 'doktoranckie' | null
 }
 
 export type Post = {
@@ -46,8 +52,10 @@ export type AppNotification = {
   id: string
   user_id: string
   actor_id: string
-  type: 'like' | 'comment'
+  type: 'like' | 'comment' | 'reply_aula' | 'mention_aula'
   post_id: string | null
+  /** Referencja do wiadomości w Auli (tylko dla `reply_aula`). */
+  cohort_message_id?: number | null
   is_read: boolean
   created_at: string
   actor?: Profile | null

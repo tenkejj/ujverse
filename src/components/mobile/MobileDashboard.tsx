@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, GraduationCap } from 'lucide-react'
 import { NIEZBEDNIK_LINKS } from '../Niezbednik'
 import {
   OFFICIAL_TAG_META,
@@ -67,6 +67,8 @@ type Props = {
   /** Komunikaty już przefiltrowane po wydziale (z `useAnnouncements`). */
   announcements: UnifiedContent<AnnouncementMeta>[]
   announcementsLoading: boolean
+  /** Kropka unread na kafelku Aula. */
+  aulaHasUnread?: boolean
 }
 
 export default function MobileDashboard({
@@ -74,6 +76,7 @@ export default function MobileDashboard({
   zoneLimit = 3,
   announcements,
   announcementsLoading,
+  aulaHasUnread = false,
 }: Props) {
   const navigate = useNavigate()
   const zones = getZones(zoneLimit)
@@ -126,6 +129,27 @@ export default function MobileDashboard({
     <div className={`${BLEED_WRAPPER_CLS} ${className}`.trim()}>
       <div className="relative w-full min-w-0">
         <nav ref={trayRef} aria-label="Szybki dostęp" className={TRAY_CLS}>
+          <button
+            type="button"
+            onClick={() => navigate('/aula')}
+            aria-label={aulaHasUnread ? 'Aula — nowe wiadomości' : 'Aula — czat rocznika'}
+            title="Aula — czat rocznika"
+            className={`relative ${ITEM_CLS}`}
+          >
+            <span className="relative">
+              <GraduationCap size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
+              {aulaHasUnread && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(232,200,74,0.55)] dark:bg-brand-gold-bright"
+                  aria-hidden
+                />
+              )}
+            </span>
+            <span className={LABEL_CLS}>Aula</span>
+          </button>
+
+          <div className={SEPARATOR_CLS} aria-hidden />
+
           {NIEZBEDNIK_LINKS.map(({ label, shortLabel, href, Icon }) => (
             <a
               key={label}

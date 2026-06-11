@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Calendar, Camera, FileText, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
+import { Calendar, Camera, FileText, GraduationCap, LayoutGrid, Megaphone, Search, Users, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useContentSearch } from '../hooks/useContentSearch'
@@ -13,6 +13,7 @@ import PostCard from './PostCard'
 import SearchResultRow from './search/SearchResultRow'
 import SearchUserResultRow from './search/SearchUserResultRow'
 import SearchDashboard from './search/SearchDashboard'
+import AulaResultsSection from './search/AulaResultsSection'
 import type { DashboardScope } from './search/SearchDashboard'
 import {
   loadSearchHistory,
@@ -22,10 +23,10 @@ import {
 } from '../lib/searchHistory'
 import { parseTagSearchQuery } from '../lib/postTags'
 
-type SearchFilter = 'all' | 'post' | 'komunikat' | 'user' | 'event' | 'media'
+type SearchFilter = 'all' | 'post' | 'komunikat' | 'aula' | 'user' | 'event' | 'media'
 // 'media' to placeholder — feature multimediów jeszcze niezaindeksowany w Meili,
 // pigułka pokazuje stan pusty, ale nie pojawia się w sugestiach.
-type ContentFilter = Exclude<SearchFilter, 'all' | 'media'>
+type ContentFilter = Exclude<SearchFilter, 'all' | 'media' | 'aula'>
 
 type SearchPageItem =
   | { kind: 'user'; hit: SearchUserHit }
@@ -35,6 +36,10 @@ type SearchPageItem =
 type Props = {
   onNavigateToUser: (userId: string) => void
   onNavigateToEvents?: (openEventId?: string) => void
+  /** Cohort zalogowanego usera — bez tego zakładka Aula pokazuje pusty stan. */
+  cohortId?: string | null
+  /** Klik w wynik Auli → deep-link `/aula?message=<id>`. */
+  onNavigateToAulaMessage?: (messageId: number) => void
 
   // sharedPostProps — tożsame z SinglePostView, żeby renderować pełne PostCard
   // dla post-hitów z Meilisearch (likes/komentarze/usuwanie współdzielą stan App.tsx).
@@ -64,9 +69,10 @@ type Props = {
   onNavigateToPost?: (postId: string) => void
 }
 
-// Kolejność = grid 2×3:
+// Kolejność = grid 3×3 (Aula dorzucona po Komunikatach):
 //   Rząd 1: Wszystko · Posty · Komunikaty
-//   Rząd 2: Użytkownicy · Wydarzenia · Multimedia
+//   Rząd 2: Aula · Użytkownicy · Wydarzenia
+//   Rząd 3: Multimedia (pełna szerokość — ostatni, placeholder)
 const FILTER_TABS: ReadonlyArray<{
   id: SearchFilter
   label: string
@@ -75,6 +81,7 @@ const FILTER_TABS: ReadonlyArray<{
   { id: 'all', label: 'Wszystko', icon: LayoutGrid },
   { id: 'post', label: 'Posty', icon: FileText },
   { id: 'komunikat', label: 'Komunikaty', icon: Megaphone },
+  { id: 'aula', label: 'Aula', icon: GraduationCap },
   { id: 'user', label: 'Użytkownicy', icon: Users },
   { id: 'event', label: 'Wydarzenia', icon: Calendar },
   { id: 'media', label: 'Multimedia', icon: Camera },
@@ -93,6 +100,8 @@ const DEFAULT_PLACEHOLDER = 'Szukaj wpisów, komunikatów, wydarzeń i użytkown
 export default function SearchPageView({
   onNavigateToUser,
   onNavigateToEvents,
+  cohortId = null,
+  onNavigateToAulaMessage,
   myProfile,
   displayName,
   currentUserId,
@@ -138,6 +147,13 @@ export default function SearchPageView({
     [location.search],
   )
 
+  const tabFromUrl = useMemo<SearchFilter | null>(() => {
+    const raw = new URLSearchParams(location.search).get('tab')?.trim()
+    if (!raw) return null
+    const supported: SearchFilter[] = ['all', 'post', 'komunikat', 'aula', 'user', 'event', 'media']
+    return supported.includes(raw as SearchFilter) ? (raw as SearchFilter) : null
+  }, [location.search])
+
   const activeTagFilter = useMemo(
     () => parseTagSearchQuery(activeQuery).tag,
     [activeQuery],
@@ -146,8 +162,8 @@ export default function SearchPageView({
   useEffect(() => {
     setInputValue(queryFromUrl)
     setActiveQuery(queryFromUrl)
-    setActiveFilter('all')
-  }, [queryFromUrl])
+    setActiveFilter(tabFromUrl ?? 'all')
+  }, [queryFromUrl, tabFromUrl])
 
   // Aplikujemy preseeded filter z Quick Scopes / Department shortcuts dopiero, gdy
   // użytkownik wpisze ≥2 znaki (lub URL wniesie taki query). Wtedy pigułki są widoczne,
@@ -258,6 +274,9 @@ export default function SearchPageView({
     all: safeUsers.length + safeContent.length + safeEvents.length,
     post: safeContent.filter((result) => result.type === 'post').length,
     komunikat: safeContent.filter((result) => result.type === 'komunikat').length,
+    // Aula liczników nie agregujemy w `useContentSearch` (osobny indeks,
+    // własny request w `AulaResultsSection`). 0 = "nie liczone tutaj".
+    aula: 0,
     user: safeUsers.length,
     event: safeEvents.length,
     media: 0,
@@ -279,8 +298,8 @@ export default function SearchPageView({
     if (activeFilter === 'all') return allItems
     if (activeFilter === 'user') return allItems.filter((item) => item.kind === 'user')
     if (activeFilter === 'event') return allItems.filter((item) => item.kind === 'event')
-    // Multimedia — feature jeszcze niezaindeksowana; pigułka klikalna, ale stan pusty.
-    if (activeFilter === 'media') return []
+    // Multimedia + Aula — dedykowany rendering poniżej (AulaResultsSection), nie idzie przez listę.
+    if (activeFilter === 'media' || activeFilter === 'aula') return []
     return allItems.filter(
       (item) => item.kind === 'content' && item.hit.type === activeFilter,
     )
@@ -445,7 +464,7 @@ export default function SearchPageView({
             </p>
           )}
 
-          {hasActiveSearch && hasAnyResults && (
+          {hasActiveSearch && (hasAnyResults || activeFilter === 'aula') && (
             <div
               role="tablist"
               aria-label="Filtr wyników wyszukiwania"
@@ -461,7 +480,16 @@ export default function SearchPageView({
                     type="button"
                     role="tab"
                     aria-selected={isActive}
-                    onClick={() => setActiveFilter(tab.id)}
+                    onClick={() => {
+                      setActiveFilter(tab.id)
+                      // Trzymaj URL w sync — pozwala omni-section deep-linkować
+                      // bezpośrednio do konkretnej zakładki (?tab=aula).
+                      const params = new URLSearchParams(location.search)
+                      if (tab.id === 'all') params.delete('tab')
+                      else params.set('tab', tab.id)
+                      const search = params.toString()
+                      navigate(search ? `/search?${search}` : '/search', { replace: true })
+                    }}
                     className={
                       'group flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2 ' +
                       'text-xs sm:text-sm font-semibold tracking-[0.01em] transition-all duration-200 ' +
@@ -480,17 +508,19 @@ export default function SearchPageView({
                   >
                     <Icon size={14} strokeWidth={2} className="shrink-0" />
                     <span className="min-w-0 truncate">{tab.label}</span>
-                    <span
-                      className={
-                        'ml-0.5 hidden min-w-5 shrink-0 justify-center rounded-full px-1.5 py-0.5 sm:inline-flex ' +
-                        'text-[10px] font-bold tabular-nums leading-none ' +
-                        (isActive
-                          ? 'bg-[#1e293b]/15 text-[#1e293b] dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright'
-                          : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
-                      }
-                    >
-                      {resultCounts[tab.id]}
-                    </span>
+                    {tab.id !== 'aula' && (
+                      <span
+                        className={
+                          'ml-0.5 hidden min-w-5 shrink-0 justify-center rounded-full px-1.5 py-0.5 sm:inline-flex ' +
+                          'text-[10px] font-bold tabular-nums leading-none ' +
+                          (isActive
+                            ? 'bg-[#1e293b]/15 text-[#1e293b] dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright'
+                            : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
+                        }
+                      >
+                        {resultCounts[tab.id]}
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -525,7 +555,21 @@ export default function SearchPageView({
                 // Stany puste/loading/error otrzymują wewnętrzny mini-panel poniżej.
                 className="mx-auto mt-6 w-full max-w-2xl"
               >
-                {isLoading ? (
+                {activeFilter === 'aula' ? (
+                  <AulaResultsSection
+                    query={activeQuery}
+                    cohortId={cohortId}
+                    currentUserId={currentUserId}
+                    onPickMessage={(messageId) => {
+                      pushHistory(activeQuery)
+                      if (onNavigateToAulaMessage) {
+                        onNavigateToAulaMessage(messageId)
+                        return
+                      }
+                      navigate(`/aula?message=${messageId}`)
+                    }}
+                  />
+                ) : isLoading ? (
                   <div className="rounded-2xl border border-dashed border-zinc-300/90 bg-white/65 px-6 py-6 text-center dark:border-white/15 dark:bg-black/20">
                     <p className="text-sm text-zinc-600 dark:text-zinc-300">
                       Szukam wyników dla „{activeQuery}”...
@@ -555,7 +599,12 @@ export default function SearchPageView({
                     {suggestedFilter && (
                       <button
                         type="button"
-                        onClick={() => setActiveFilter(suggestedFilter)}
+                        onClick={() => {
+                          setActiveFilter(suggestedFilter)
+                          const params = new URLSearchParams(location.search)
+                          params.set('tab', suggestedFilter)
+                          navigate(`/search?${params.toString()}`, { replace: true })
+                        }}
                         className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/45 bg-[#1e293b]/10 px-4 py-2 text-xs font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/15 dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
                       >
                         Pokaż {suggestedTab?.label.toLowerCase()} ({resultCounts[suggestedFilter]})
