@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ACADEMIC_ISI_BADGE_LABEL,
   ACADEMIC_ISI_BADGE_TITLE,
@@ -11,12 +12,48 @@ import {
 } from '../../lib/announcementStatusStyles'
 import { sideMutedCls } from '../../lib/sidePanelStyles'
 import type { AnnouncementMeta, UnifiedContent } from '../../types/content'
+import {
+  CALENDAR_ENTRY_KIND_COLORS,
+  CALENDAR_ENTRY_KIND_LABEL,
+  type AnnouncementExtractedCalendar,
+} from '../../types/calendar'
 import BaseCard from '../ui/BaseCard'
+import LecturerSubscribeBell from './LecturerSubscribeBell'
 
 function formatAnnDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/**
+ * Wyciąga klucz dnia (YYYY-MM-DD, czas lokalny) z `extracted_calendar.starts_at`.
+ * Identycznie z `formatDayKey` w `useCalendarEntries.ts` — duplikujemy lokalnie
+ * żeby uniknąć tworzenia cyklicznej zależności (AnnouncementCard nie powinien
+ * importować z hooka kalendarza, bo karta jest renderowana też na ścieżkach
+ * gdzie kalendarz nie jest doładowany).
+ */
+function isoStartsToCalendarDayKey(startsAt: string): string | null {
+  const d = new Date(startsAt)
+  if (Number.isNaN(d.getTime())) return null
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+function formatExtractedDate(cal: AnnouncementExtractedCalendar): string {
+  const d = new Date(cal.starts_at)
+  if (Number.isNaN(d.getTime())) return ''
+  if (cal.all_day) {
+    return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' })
+  }
+  return d.toLocaleString('pl-PL', {
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function AnnouncementBodyClamp({
@@ -84,13 +121,36 @@ export default function AnnouncementCard({
     (() => {
       setExpandedLocal((v) => !v)
     })
+  const navigate = useNavigate()
+
+  const { summary, extractedCalendar } = announcement.metadata
+  const calendarDayKey =
+    extractedCalendar !== null ? isoStartsToCalendarDayKey(extractedCalendar.starts_at) : null
+  const calendarColors =
+    extractedCalendar !== null ? CALENDAR_ENTRY_KIND_COLORS[extractedCalendar.kind] : null
+
+  const handleOpenInCalendar = (e: MouseEvent) => {
+    // `stopPropagation` żeby na ścieżce z `onOpen` (wyniki wyszukiwania)
+    // klik w deep-link nie otwierał drawera komunikatu zamiast kalendarza.
+    e.stopPropagation()
+    if (!calendarDayKey) return
+    navigate('/events', {
+      state: { tab: 'calendar', openCalendarDay: calendarDayKey },
+    })
+  }
 
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
-        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug min-w-0 break-words whitespace-normal">
-          {announcement.author.displayName}
-        </p>
+        <div className="flex min-w-0 flex-1 items-start gap-2">
+          <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug min-w-0 break-words whitespace-normal">
+            {announcement.author.displayName}
+          </p>
+          <LecturerSubscribeBell
+            lecturerName={announcement.author.displayName}
+            className="shrink-0 translate-y-[-2px]"
+          />
+        </div>
         <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
           {showAcademicIsiBadge(announcement.metadata.source) && (
             <span
@@ -110,7 +170,7 @@ export default function AnnouncementCard({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span
           className={`inline-block size-2 rounded-full shrink-0 ${ANNOUNCEMENT_STATUS_DOT[announcement.metadata.status]}`}
           aria-hidden
@@ -120,7 +180,35 @@ export default function AnnouncementCard({
         >
           {ANNOUNCEMENT_STATUS_LABEL[announcement.metadata.status]}
         </span>
+        {extractedCalendar !== null && calendarDayKey !== null && calendarColors !== null && (
+          // Deep-link do kalendarza — przycisk żeby był focusowalny (a11y),
+          // ale wewnątrz BaseCard `interactive` button (`onOpen`) musimy
+          // zatrzymać event. Pełen kontekst w handleOpenInCalendar.
+          <button
+            type="button"
+            onClick={handleOpenInCalendar}
+            title={`${CALENDAR_ENTRY_KIND_LABEL[extractedCalendar.kind]} — ${formatExtractedDate(extractedCalendar)}. Otwórz w kalendarzu.`}
+            className={`group inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${calendarColors.badge} ${calendarColors.badgeText} hover:brightness-110`}
+          >
+            <span
+              className={`inline-block size-1.5 rounded-full ${calendarColors.dot}`}
+              aria-hidden
+            />
+            <span>{formatExtractedDate(extractedCalendar)}</span>
+            <span aria-hidden className="opacity-60 group-hover:opacity-100">
+              →
+            </span>
+          </button>
+        )}
       </div>
+      {summary !== null && summary.length > 0 && (
+        // TL;DR od Bielika — wizualnie podkreślone (pasek z lewej + większa
+        // czcionka niż body). Świadomie NAD body clampem — to jest pierwsza
+        // rzecz którą widzi user; surowy body służy do weryfikacji.
+        <p className="mb-2 pl-2 border-l-2 border-brand-gold/60 dark:border-brand-gold-bright/60 text-xs font-medium leading-snug text-zinc-800 dark:text-zinc-200">
+          {summary}
+        </p>
+      )}
       <AnnouncementBodyClamp body={announcement.body} expanded={expanded} onToggle={toggleExpand} />
     </>
   )

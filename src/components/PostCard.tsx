@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Flag, Heart, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Flag, Heart, MessageCircle, MoreHorizontal, Share, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Comment, Profile } from '../types'
 import type { PostMeta, UnifiedContent } from '../types/content'
@@ -21,6 +21,7 @@ import {
   secondaryInteractionButtonClass,
   likeActionButtonClass,
   heartLikedIconClass,
+  shareActionButtonClass,
 } from '../lib/interactionBar'
 /**
  * Tokenizer for post body: wykrywa URL-e (http/https/www) ORAZ hashtagi w jednym przebiegu.
@@ -214,6 +215,38 @@ export default function PostCard({
       window.removeEventListener('keydown', handleEscape)
     }
   }, [isPostMenuOpen])
+
+  const handleShare = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    if (!content.id) return
+    const url = `${window.location.origin}/thread/${encodeURIComponent(content.id)}`
+    const shareData: ShareData = {
+      title: `${authorName} na UJverse`,
+      text: hasBody ? body.slice(0, 140) : `Wpis ${authorName} na UJverse`,
+      url,
+    }
+    // Natywny share sheet (mobile): user wybiera Messenger / WhatsApp / cokolwiek.
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share(shareData)
+        return
+      } catch (err) {
+        // Anulowanie sheetu przez usera — bez toastu.
+        if (err instanceof Error && err.name === 'AbortError') return
+        // W innych przypadkach (np. przeglądarka odmówiła) spadamy do clipboarda.
+      }
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url)
+        toast.success('Link skopiowany')
+        return
+      }
+    } catch {
+      // brak uprawnień / niezabezpieczony kontekst (HTTP) — pokażemy błąd niżej
+    }
+    toast.error('Nie udało się udostępnić wpisu')
+  }
 
   const handleReportPost = async (reason: string) => {
     if (!content.id) {
@@ -414,6 +447,18 @@ export default function PostCard({
                 {typeof commentCount === 'number' && commentCount >= 0 && (
                   <span className="text-gray-400 text-sm leading-none tabular-nums">{commentCount}</span>
                 )}
+              </motion.button>
+
+              <motion.button
+                type="button"
+                onClick={handleShare}
+                disabled={!content.id}
+                {...interactionMotionTap}
+                className={shareActionButtonClass}
+                aria-label="Udostępnij wpis"
+                title="Udostępnij"
+              >
+                <Share size={16} strokeWidth={1.75} className="shrink-0" />
               </motion.button>
 
             </div>

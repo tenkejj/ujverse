@@ -66,6 +66,7 @@ const subtitleByView: Record<AuthView, string> = {
 export default function Login() {
   const reducedMotion = useReducedMotion()
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState(false)
   const [view, setView] = useState<AuthView>('login')
 
   const [username, setUsername] = useState('')
@@ -143,6 +144,41 @@ export default function Login() {
     else toast.success('Sprawdź e-mail lub zaloguj się!')
 
     setLoading(false)
+  }
+
+  /**
+   * Google OAuth flow:
+   *   1. signInWithOAuth → browser redirect na consent screen Google
+   *   2. Google redirect → Supabase callback URL → callback URL → tutaj
+   *      z `code` w query lub `access_token` w hash
+   *   3. Supabase JS auto-wymienia code i ustawia session (detectSessionInUrl)
+   *   4. App.tsx widzi session → uruchamia domain guard (UJ-only)
+   *
+   * `hd=uj.edu.pl` to HINT dla Google żeby pokazać tylko UJ G Suite konta
+   * w accountchooserze. To NIE jest zabezpieczenie — user może przeskoczyć
+   * na osobiste @gmail.com. Twardy filtr robi App.tsx po stronie klienta
+   * (`session.user.email` matchowane regexem UJ).
+   *
+   * `redirectTo: window.location.origin` → wracamy na root, nie na
+   * `/login` (którego nie ma — Login renderowany w App.tsx gdy brak session).
+   */
+  const handleGoogleLogin = async () => {
+    setOauthLoading(true)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          hd: 'uj.edu.pl',
+          prompt: 'select_account',
+        },
+      },
+    })
+    if (error) {
+      toast.error('Logowanie Google nieudane: ' + error.message)
+      setOauthLoading(false)
+    }
+    // Sukces → browser redirectuje, setOauthLoading(false) nie potrzebny.
   }
 
   const handleForgot = async (e: FormEvent) => {
@@ -418,6 +454,14 @@ export default function Login() {
               {view === 'signup' ? 'Załóż konto' : 'Zaloguj się'}
             </SubmitButton>
 
+            {/* Google jako *alternatywa*, nie default — pod formularzem,
+                z separatorem „lub kontynuuj z". Konsekwentnie z apkami
+                które stawiają email na 1. miejscu (Reddit, Discord). */}
+            <div className="mt-5">
+              <OrDivider />
+              <GoogleAuthButton onClick={handleGoogleLogin} loading={oauthLoading} />
+            </div>
+
             <div className="mt-5 text-center text-sm text-zinc-500 dark:text-white/55">
               {view === 'signup' ? 'Masz już konto?' : 'Nie masz jeszcze konta?'}{' '}
               <button
@@ -478,5 +522,93 @@ function SubmitButton({
         children
       )}
     </motion.button>
+  )
+}
+
+/**
+ * Przycisk OAuth — Google. Świadomie BIAŁY w obu motywach (zgodne z
+ * Google Brand Guidelines dla third-party sign-in), z oficjalnym
+ * kolorowym G-logo wbudowanym SVG (zero zewnętrznych deps i 0 round-trip).
+ */
+function GoogleAuthButton({
+  onClick,
+  loading,
+}: {
+  onClick: () => void
+  loading: boolean
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      whileHover={loading ? undefined : { y: -1 }}
+      whileTap={loading ? undefined : { scale: 0.99 }}
+      className={
+        'group inline-flex w-full items-center justify-center gap-2.5 ' +
+        'rounded-xl border bg-white py-3 font-semibold text-zinc-800 ' +
+        'shadow-sm transition-all duration-200 ' +
+        'border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 ' +
+        'disabled:cursor-not-allowed disabled:opacity-70 ' +
+        'dark:border-white/10 dark:bg-white dark:text-zinc-900 ' +
+        'dark:hover:bg-zinc-50 dark:hover:border-zinc-200'
+      }
+    >
+      {loading ? (
+        <>
+          <Loader2 size={18} className="animate-spin text-zinc-500" />
+          <span>Przekierowuję do Google…</span>
+        </>
+      ) : (
+        <>
+          <GoogleLogo />
+          <span>Kontynuuj z Google</span>
+        </>
+      )}
+    </motion.button>
+  )
+}
+
+/** Oficjalne kolorowe „G" Google — SVG inline (zero deps). */
+function GoogleLogo() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+        fill="#4285F4"
+      />
+      <path
+        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+        fill="#34A853"
+      />
+      <path
+        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+        fill="#EA4335"
+      />
+    </svg>
+  )
+}
+
+/** Separator „lub" między formularzem (email+hasło) a OAuth fallbackiem. */
+function OrDivider({ label = 'lub' }: { label?: string }) {
+  return (
+    <div
+      className="mb-4 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-zinc-400 dark:text-white/40"
+      role="presentation"
+    >
+      <span className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
+      {label}
+      <span className="h-px flex-1 bg-zinc-200 dark:bg-white/10" />
+    </div>
   )
 }

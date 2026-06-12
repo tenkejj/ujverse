@@ -15,6 +15,7 @@
 import './getLatestAnnouncements.js'
 import './searchEvents.js'
 import './getLatestPosts.js'
+import './getCalendarInRange.js'
 import './getMyUserContext.js'
 import './getMyAulaOverview.js'
 import './findUser.js'

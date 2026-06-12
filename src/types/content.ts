@@ -70,6 +70,21 @@ export type AnnouncementMeta = {
   department: string | null
   /** Stabilny fallback dla klucza React (fingerprint treści). */
   bodyFingerprint: string | null
+  /**
+   * AI TL;DR generowane przez Bielika w drugim passie scrapera (PR #8b).
+   * Jedno zdanie po polsku, ≤ 280 znaków (CHECK na DB pilnuje 400 z marginesem).
+   * `null` = ekstrakcja jeszcze nie poszła LUB LLM nie wygenerował summary
+   * (np. body za krótkie). UI ukrywa sekcję jeśli null/empty.
+   */
+  summary: string | null
+  /**
+   * Wyciągnięte przez Bielika dane temporalne (PR #4). Jeśli niepuste —
+   * UI renderuje badge „Pokaż w kalendarzu" deep-linkujący do widoku
+   * kalendarza w `/events`. Karta `calendar_entries` syncuje się przez
+   * trigger DB, tu trzymamy snapshot do natychmiastowego renderowania
+   * bez dodatkowego zapytania.
+   */
+  extractedCalendar: import('./calendar').AnnouncementExtractedCalendar | null
 }
 
 export type ClubTagTone = 'gold' | 'green' | 'red'

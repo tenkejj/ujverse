@@ -22,7 +22,16 @@ import {
   type LecturerSuggestion,
   type LecturerSubscriptionAnnouncement,
 } from './adapters/LecturerSubscriptionsAdapter'
+import {
+  TimetableAdapter,
+  type ImportIcsResult,
+  type TimetableEntryRow,
+} from './adapters/TimetableAdapter'
+import { BriefingAdapter } from './adapters/BriefingAdapter'
+import type { WeeklyBriefingRow } from '../types/briefing'
+import { CalendarAdapter } from './adapters/CalendarAdapter'
 import type { Unsubscribe } from './adapters/BaseAdapter'
+import type { CalendarEntry, CalendarSearchParams } from '../types/calendar'
 import { canonicalDepartment } from '../lib/departments'
 
 /**
@@ -153,6 +162,44 @@ class DataServiceImpl {
     return LecturerSubscriptionsAdapter.listAnnouncementsForKeys(keys, limit)
   }
 
+  /* Plan zajęć (.ics z USOSweb). */
+  async importTimetableIcs(userId: string, rawIcs: string): Promise<ImportIcsResult> {
+    return TimetableAdapter.importIcs(userId, rawIcs)
+  }
+
+  async clearTimetable(userId: string) {
+    return TimetableAdapter.clear(userId)
+  }
+
+  async listTimetableForRange(
+    from: Date,
+    to: Date,
+    announcementWindowHours?: number,
+  ): Promise<TimetableEntryRow[]> {
+    return TimetableAdapter.listForRange(from, to, announcementWindowHours)
+  }
+
+  async timetableEntryCount(userId: string): Promise<number> {
+    return TimetableAdapter.count(userId)
+  }
+
+  /* Tygodniowy briefing — lazy generation + browsing historycznych. */
+  async ensureWeeklyBriefing(weekStart?: Date) {
+    return BriefingAdapter.ensure(weekStart)
+  }
+
+  async latestWeeklyBriefing(): Promise<WeeklyBriefingRow | null> {
+    return BriefingAdapter.latestForCurrentUser()
+  }
+
+  async listRecentBriefings(limit?: number): Promise<WeeklyBriefingRow[]> {
+    return BriefingAdapter.listRecent(limit)
+  }
+
+  async getBriefingById(briefingId: number): Promise<WeeklyBriefingRow | null> {
+    return BriefingAdapter.getById(briefingId)
+  }
+
   /* Mapowanie wydarzeń z kontekstu do UnifiedContent. */
   toUnifiedEvents(events: UJEvent[]): UnifiedContent<EventMeta>[] {
     return EventsAdapter.toUnifiedList(events)
@@ -179,6 +226,15 @@ class DataServiceImpl {
 
   async fetchEventById(id: string): Promise<UJEvent | null> {
     return EventsAdapter.fetchById(id)
+  }
+
+  /* Kalendarz akademicki (calendar_entries + RPC calendar_search). */
+  async listCalendarEntries(params: CalendarSearchParams): Promise<CalendarEntry[]> {
+    return CalendarAdapter.listForRange(params)
+  }
+
+  subscribeCalendar(onChange: () => void): Unsubscribe {
+    return CalendarAdapter.subscribe(onChange)
   }
 }
 

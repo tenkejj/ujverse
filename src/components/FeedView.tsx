@@ -16,6 +16,9 @@ import CompactEventRow from './CompactEventRow'
 import EmptyState from './EmptyState'
 import FeedSkeleton from './FeedSkeleton'
 import Niezbednik from './Niezbednik'
+import TodayClassesWidget from './TodayClassesWidget'
+import CalendarMiniWidget from './calendar/CalendarMiniWidget'
+import BriefingWidget from './briefing/BriefingWidget'
 import MobileDashboard from './mobile/MobileDashboard'
 import BaseCard from './ui/BaseCard'
 import {
@@ -418,6 +421,14 @@ export default function FeedView({
         className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pt-0`}
       >
         <Niezbednik />
+
+        <BriefingWidget userId={currentUserId} />
+
+        <div className="shrink-0">
+          <TodayClassesWidget userId={currentUserId} variant="compact" />
+        </div>
+
+        <CalendarMiniWidget className="shrink-0" />
 
         <GroupNav limit={3} className="shrink-0" />
 

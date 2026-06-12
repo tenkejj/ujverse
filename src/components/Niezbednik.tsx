@@ -1,4 +1,5 @@
-import { BookOpen, GraduationCap, Link2 as LinkIcon, Mail, type LucideIcon } from 'lucide-react'
+import { BookOpen, ClipboardList, GraduationCap, Link2 as LinkIcon, Mail, MapPin, type LucideIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import BaseCard from './ui/BaseCard'
 import { sectionTitleCls, sidePanelHoverFocus, widgetGoldCls } from '../lib/sidePanelStyles'
 
@@ -34,7 +35,65 @@ const HEADER_CLS = 'mb-2 flex min-w-0 items-center gap-2'
 const CARD_CLS = 'p-4 flex flex-col gap-4 shrink-0'
 const ROW_CLS = `group m-0 w-full flex cursor-pointer items-start gap-2 p-2.5 shadow-none ${sidePanelHoverFocus}`
 
+function ExternalRow({ label, href, Icon, tag }: { label: string; href: string; Icon: LucideIcon; tag: string }) {
+  return (
+    <BaseCard
+      as="a"
+      variant="inner"
+      flush
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={ROW_CLS}
+    >
+      <div className="shrink-0 flex w-12 items-center justify-center min-h-[36px]">
+        <Icon size={18} className={`shrink-0 ${widgetGoldCls}`} strokeWidth={2} aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug truncate">
+          {label}
+        </p>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">{tag}</span>
+      </div>
+    </BaseCard>
+  )
+}
+
+function InternalRow({
+  label,
+  Icon,
+  tag,
+  onClick,
+}: {
+  label: string
+  Icon: LucideIcon
+  tag: string
+  onClick: () => void
+}) {
+  return (
+    <BaseCard
+      as="button"
+      type="button"
+      variant="inner"
+      flush
+      onClick={onClick}
+      className={`${ROW_CLS} text-left`}
+    >
+      <div className="shrink-0 flex w-12 items-center justify-center min-h-[36px]">
+        <Icon size={18} className={`shrink-0 ${widgetGoldCls}`} strokeWidth={2} aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug truncate">
+          {label}
+        </p>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">{tag}</span>
+      </div>
+    </BaseCard>
+  )
+}
+
 export default function Niezbednik({ className = '' }: Props) {
+  const navigate = useNavigate()
   return (
     <BaseCard variant="default" className={`${CARD_CLS} ${className}`.trim()}>
       <div className={HEADER_CLS}>
@@ -47,32 +106,20 @@ export default function Niezbednik({ className = '' }: Props) {
         <span className={`${sectionTitleCls} min-w-0 flex-1`}>Niezbędnik UJ</span>
       </div>
       <div className="space-y-3">
+        <InternalRow
+          label="Mój Plan"
+          Icon={ClipboardList}
+          tag="UJverse"
+          onClick={() => navigate('/moj-plan')}
+        />
+        <InternalRow
+          label="Sale UJ"
+          Icon={MapPin}
+          tag="Mapa + nawigacja"
+          onClick={() => navigate('/sale')}
+        />
         {NIEZBEDNIK_LINKS.map(({ label, href, Icon, tag }) => (
-          <BaseCard
-            key={label}
-            as="a"
-            variant="inner"
-            flush
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={ROW_CLS}
-          >
-            <div className="shrink-0 flex w-12 items-center justify-center min-h-[36px]">
-              <Icon
-                size={18}
-                className={`shrink-0 ${widgetGoldCls}`}
-                strokeWidth={2}
-                aria-hidden
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug truncate">
-                {label}
-              </p>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">{tag}</span>
-            </div>
-          </BaseCard>
+          <ExternalRow key={label} label={label} href={href} Icon={Icon} tag={tag} />
         ))}
       </div>
     </BaseCard>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, GraduationCap } from 'lucide-react'
+import { ChevronLeft, ChevronRight, GraduationCap, MapPin } from 'lucide-react'
 import { NIEZBEDNIK_LINKS } from '../Niezbednik'
 import {
   OFFICIAL_TAG_META,
@@ -146,6 +146,17 @@ export default function MobileDashboard({
               )}
             </span>
             <span className={LABEL_CLS}>Aula</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/sale')}
+            aria-label="Sale UJ — wyszukiwarka sal"
+            title="Sale UJ — wyszukiwarka sal"
+            className={ITEM_CLS}
+          >
+            <MapPin size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
+            <span className={LABEL_CLS}>Sale</span>
           </button>
 
           <div className={SEPARATOR_CLS} aria-hidden />

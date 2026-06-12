@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useScrollY } from '../hooks/useScrollY'
 import { BOTTOM_NAV_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'mojPlan'
 
 type Props = {
   activeView: ActiveView

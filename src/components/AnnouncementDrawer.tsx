@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import {
   ACADEMIC_ISI_BADGE_LABEL,
   ACADEMIC_ISI_BADGE_TITLE,
@@ -11,12 +12,43 @@ import {
   ANNOUNCEMENT_STATUS_LABEL,
 } from '../lib/announcementStatusStyles'
 import type { AnnouncementMeta, UnifiedContent } from '../types/content'
+import {
+  CALENDAR_ENTRY_KIND_COLORS,
+  CALENDAR_ENTRY_KIND_LABEL,
+  type AnnouncementExtractedCalendar,
+} from '../types/calendar'
 import UserAvatar from './UserAvatar'
+import LecturerSubscribeBell from './announcements/LecturerSubscribeBell'
 
 function formatAnnDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/** Patrz `AnnouncementCard.isoStartsToCalendarDayKey` — ten sam algorytm. */
+function isoStartsToCalendarDayKey(startsAt: string): string | null {
+  const d = new Date(startsAt)
+  if (Number.isNaN(d.getTime())) return null
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+function formatExtractedDate(cal: AnnouncementExtractedCalendar): string {
+  const d = new Date(cal.starts_at)
+  if (Number.isNaN(d.getTime())) return ''
+  if (cal.all_day) {
+    return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+  return d.toLocaleString('pl-PL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 type Props = {
@@ -25,7 +57,23 @@ type Props = {
 }
 
 export default function AnnouncementDrawer({ announcement, onClose }: Props) {
+  const navigate = useNavigate()
   if (typeof document === 'undefined') return null
+
+  const summary = announcement?.metadata.summary ?? null
+  const extractedCalendar = announcement?.metadata.extractedCalendar ?? null
+  const calendarDayKey =
+    extractedCalendar !== null ? isoStartsToCalendarDayKey(extractedCalendar.starts_at) : null
+  const calendarColors =
+    extractedCalendar !== null ? CALENDAR_ENTRY_KIND_COLORS[extractedCalendar.kind] : null
+
+  const handleOpenInCalendar = () => {
+    if (!calendarDayKey) return
+    onClose()
+    navigate('/events', {
+      state: { tab: 'calendar', openCalendarDay: calendarDayKey },
+    })
+  }
 
   return createPortal(
     <AnimatePresence>
@@ -90,7 +138,7 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                     {formatAnnDate(announcement.timestamp)}
                   </time>
                 )}
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <span
                     className={`inline-block size-2 shrink-0 rounded-full ${ANNOUNCEMENT_STATUS_DOT[announcement.metadata.status]}`}
                     aria-hidden
@@ -100,16 +148,46 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                   >
                     {ANNOUNCEMENT_STATUS_LABEL[announcement.metadata.status]}
                   </span>
+                  {extractedCalendar !== null && calendarDayKey !== null && calendarColors !== null && (
+                    <button
+                      type="button"
+                      onClick={handleOpenInCalendar}
+                      title={`${CALENDAR_ENTRY_KIND_LABEL[extractedCalendar.kind]}. Otwórz w kalendarzu.`}
+                      className={`group inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${calendarColors.badge} ${calendarColors.badgeText} hover:brightness-110`}
+                    >
+                      <span
+                        className={`inline-block size-1.5 rounded-full ${calendarColors.dot}`}
+                        aria-hidden
+                      />
+                      <span>{formatExtractedDate(extractedCalendar)}</span>
+                      <span aria-hidden className="opacity-60 group-hover:opacity-100">→</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
+            {summary !== null && summary.length > 0 && (
+              // TL;DR od Bielika — pierwsza sekcja po headerze, podkreślone
+              // wizualnie złotym paskiem (brand). Świadomie NAD pełnym body,
+              // żeby user mógł zorientować się w komunikacie w 2 sekundy.
+              <p className="mt-4 pl-3 border-l-2 border-brand-gold/70 dark:border-brand-gold-bright/70 text-[15px] font-medium leading-snug text-fg-primary">
+                {summary}
+              </p>
+            )}
             <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-fg-primary/90 dark:text-zinc-300">
               {announcement.body}
             </p>
+            <div className="mt-5 flex justify-center">
+              <LecturerSubscribeBell
+                lecturerName={announcement.author.displayName}
+                variant="pill"
+                stopPropagation={false}
+              />
+            </div>
             <button
               type="button"
               onClick={onClose}
-              className="mt-6 w-full rounded-xl bg-zinc-900/6 py-3 text-sm font-semibold text-fg-primary transition-colors hover:bg-zinc-900/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+              className="mt-4 w-full rounded-xl bg-zinc-900/6 py-3 text-sm font-semibold text-fg-primary transition-colors hover:bg-zinc-900/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
             >
               Zamknij
             </button>

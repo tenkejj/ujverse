@@ -24,7 +24,8 @@
     "preview": "vite preview",
     "deploy:prod": "npx vercel build --prod && npx vercel deploy --prebuilt --prod --force --yes",
     "search:resync": "tsx scripts/force-resync.ts",
-    "chat:prewarm": "tsx scripts/prewarm-chat-cache.ts"
+    "chat:prewarm": "tsx scripts/prewarm-chat-cache.ts",
+    "floor-plans:scrape": "tsx scripts/scrape-uj-floor-plans.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

@@ -30,6 +30,12 @@ export function searchHitToAnnouncement(hit: SearchHit): UnifiedContent<Announce
       source: hit.announcementSource ?? null,
       department: hit.department ?? null,
       bodyFingerprint: null,
+      // Wyniki wyszukiwarki przychodzą z Meili (search index) — TL;DR i
+      // extracted_calendar nie są jeszcze indeksowane (TODO: dodać do
+      // search pipeline). Dla wyników wyszukiwania ukrywamy te elementy
+      // żeby nie pokazywać starych snapshotów.
+      summary: null,
+      extractedCalendar: null,
     },
     actions: [],
   }

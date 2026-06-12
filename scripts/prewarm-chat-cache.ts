@@ -61,7 +61,7 @@ const QUESTIONS: readonly string[] = [
   // 4 quick prompts — DOSŁOWNIE jak w UI (KEEP IN SYNC)
   'Co nowego na feedzie?',
   'Najnowsze ogłoszenia',
-  'Pokaż konferencje',
+  'Co w przyszłym tygodniu?',
   'Wydarzenia naukowe',
 
   // bliskie warianty — duża szansa że user wpisze coś takiego sam

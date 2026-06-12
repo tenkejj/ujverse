@@ -6,6 +6,10 @@ import type {
   AnnouncementStatus,
   UnifiedContent,
 } from '../../types/content'
+import {
+  isAnnouncementExtractedCalendar,
+  type AnnouncementExtractedCalendar,
+} from '../../types/calendar'
 import type { ContentAdapter, Unsubscribe } from './BaseAdapter'
 
 /** Surowy rekord z tabeli `announcements` (shape ze scrapera ISI UJ). */
@@ -18,6 +22,10 @@ export type AnnouncementRow = {
   body: string
   status: AnnouncementStatus
   created_at: string
+  /** Bielik TL;DR (migracja 20260623100000). `null` przed ekstrakcją. */
+  summary: string | null
+  /** Bielik kalendarz (migracja 20260621100000). `null` jeśli brak ramki czasowej. */
+  extracted_calendar: AnnouncementExtractedCalendar | null
 }
 
 function parseRow(row: Record<string, unknown>): AnnouncementRow | null {
@@ -35,6 +43,25 @@ function parseRow(row: Record<string, unknown>): AnnouncementRow | null {
   const pickStringOrNull = (v: unknown): string | null =>
     typeof v === 'string' ? v : v === null || v === undefined ? null : null
 
+  // `summary` z DB to TEXT z CHECK length<=400; jednak na froncie używamy
+  // ≤280, więc capujemy żeby chronić layout karty na wąskich ekranach.
+  const summaryRaw = pickStringOrNull(row.summary)
+  const summary =
+    summaryRaw === null
+      ? null
+      : summaryRaw.trim().length === 0
+        ? null
+        : summaryRaw.trim().length > 280
+          ? summaryRaw.trim().slice(0, 280)
+          : summaryRaw.trim()
+
+  // `extracted_calendar` przychodzi z PostgREST jako już sparsowany obiekt
+  // (kolumna JSONB). Jeśli nie zgadza się ze schematem — `null`, UI nie
+  // pokaże badge.
+  const extractedCalendar = isAnnouncementExtractedCalendar(row.extracted_calendar)
+    ? (row.extracted_calendar as AnnouncementExtractedCalendar)
+    : null
+
   return {
     id,
     body_fingerprint: pickStringOrNull(row.body_fingerprint),
@@ -44,6 +71,8 @@ function parseRow(row: Record<string, unknown>): AnnouncementRow | null {
     body,
     status: status as AnnouncementStatus,
     created_at,
+    summary,
+    extracted_calendar: extractedCalendar,
   }
 }
 
@@ -67,7 +96,7 @@ class AnnouncementsAdapterImpl
     const { data, error } = await supabase
       .from('announcements')
       .select(
-        'id, body_fingerprint, department, source, lecturer_name, body, status, created_at',
+        'id, body_fingerprint, department, source, lecturer_name, body, status, created_at, summary, extracted_calendar',
       )
       .gte('created_at', since)
       .order('created_at', { ascending: false })
@@ -104,6 +133,8 @@ class AnnouncementsAdapterImpl
         source: raw.source,
         department: raw.department,
         bodyFingerprint: raw.body_fingerprint,
+        summary: raw.summary,
+        extractedCalendar: raw.extracted_calendar,
       },
       actions: [],
     }

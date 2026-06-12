@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -14,7 +14,7 @@ import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing'
 
 type Props = {
   myProfile: Profile | null
@@ -33,6 +33,7 @@ type Props = {
   onNavigateToEvents: (openEventId?: string) => void
   onNavigateToAula: () => void
   aulaHasUnread?: boolean
+  onNavigateToMojPlan: () => void
   onNavigateToSearch: (query?: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
@@ -62,6 +63,7 @@ export default function Header({
   onNavigateToEvents,
   onNavigateToAula,
   aulaHasUnread = false,
+  onNavigateToMojPlan,
   onNavigateToSearch,
   onNavigateToUser,
   onNavigateToPost,
@@ -230,6 +232,20 @@ export default function Header({
                 aria-hidden
               />
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onNavigateToMojPlan}
+            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
+              activeView === 'mojPlan'
+                ? 'text-[#1e293b] dark:text-accent-interactive'
+                : 'text-[#1e293b] dark:text-gray-400'
+            }`}
+            aria-label="Mój Plan — subskrypcje wykładowców"
+            title="Mój Plan"
+          >
+            <ClipboardList size={20} strokeWidth={2} />
           </button>
 
           <button

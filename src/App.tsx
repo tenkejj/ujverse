@@ -23,7 +23,7 @@ import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
-import EventsView from './components/EventsView'
+import EventsHub from './components/EventsHub'
 import { EventsProvider } from './hooks/useEvents'
 import ProfilePage from './pages/Profile'
 import ResetPassword from './pages/ResetPassword'
@@ -47,6 +47,8 @@ import { playNotificationPing } from './lib/notificationSound'
 import SearchPageView from './components/SearchPageView'
 import GroupView from './components/GroupView'
 import GroupsIndexView from './components/GroupsIndexView'
+import MojPlanView from './components/MojPlanView'
+import { LecturerSubscriptionsProvider } from './lib/lecturerSubscriptionsContext'
 import {
   isGroupIndexPath,
   slugFromGroupPath,
@@ -55,6 +57,8 @@ import {
 const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 const AulaView = lazy(() => import('./components/aula/AulaView'))
+const SaleFinderView = lazy(() => import('./components/sale-finder/SaleFinderView'))
+const WeeklyBriefingView = lazy(() => import('./components/briefing/WeeklyBriefingView'))
 
 type AppShellView =
   | 'feed'
@@ -68,6 +72,9 @@ type AppShellView =
   | 'group'
   | 'chat'
   | 'aula'
+  | 'sale'
+  | 'mojPlan'
+  | 'briefing'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -130,6 +137,15 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/aula') {
     return { kind: 'ok', view: 'aula', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/moj-plan') {
+    return { kind: 'ok', view: 'mojPlan', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/sale') {
+    return { kind: 'ok', view: 'sale', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/briefing') {
+    return { kind: 'ok', view: 'briefing', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -501,6 +517,29 @@ function App() {
     return () => subscription.unsubscribe()
   }, [navigate])
 
+  /**
+   * OAuth domain guard — Google OAuth pozwala wybrać dowolne konto Google
+   * (parametr `hd=uj.edu.pl` to tylko HINT w accountchooser, nie restrykcja).
+   * Tu twardo sprawdzamy że email jest z domeny UJ (lub legacy shadow
+   * `@ujverse.test`). Jeśli nie — sign out + toast.
+   *
+   * Sprawdzamy `app_metadata.provider` żeby NIE blokować legacy shadow
+   * userów którzy mogliby teoretycznie mieć email spoza UJ wzorca.
+   */
+  useEffect(() => {
+    if (!session?.user) return
+    const provider = (session.user.app_metadata?.provider as string | undefined) ?? null
+    if (provider !== 'google') return
+    const email = session.user.email ?? ''
+    const isAllowed =
+      /@(student\.)?uj\.edu\.pl$/i.test(email) || /@ujverse\.test$/i.test(email)
+    if (isAllowed) return
+    toast.error(
+      'Konta Google poza domeną UJ nie mogą się logować. Użyj konta @uj.edu.pl lub @student.uj.edu.pl.',
+    )
+    void supabase.auth.signOut()
+  }, [session])
+
   useEffect(() => {
     if (!session) return
     void fetchMyProfile(session.user.id)
@@ -623,6 +662,18 @@ function App() {
     }
     if (view === 'aula') {
       if (p !== '/aula') navigate('/aula')
+      return
+    }
+    if (view === 'mojPlan') {
+      if (p !== '/moj-plan') navigate('/moj-plan')
+      return
+    }
+    if (view === 'sale') {
+      if (p !== '/sale') navigate('/sale')
+      return
+    }
+    if (view === 'briefing') {
+      if (p !== '/briefing') navigate('/briefing')
       return
     }
     if (view === 'settings') {
@@ -1184,11 +1235,19 @@ function App() {
       : effectiveActiveView === 'search' ||
           effectiveActiveView === 'group' ||
           effectiveActiveView === 'chat' ||
-          effectiveActiveView === 'aula'
+          effectiveActiveView === 'aula' ||
+          effectiveActiveView === 'sale'
         ? 'feed'
       : effectiveActiveView === 'settings'
         ? 'profile'
         : effectiveActiveView
+
+  // BottomNav nie ma pigułki dla „Mój Plan", „Sal UJ" ani „Briefingu" —
+  // mapujemy na 'feed', żeby żadna ikona nie była błędnie podświetlona.
+  // Uwaga: 'sale' i 'aula' są już wyeliminowane wcześniej w navActiveView,
+  // więc tutaj filtrujemy tylko 'mojPlan' i 'briefing'.
+  const bottomNavActiveView =
+    navActiveView === 'mojPlan' || navActiveView === 'briefing' ? 'feed' : navActiveView
 
   const sharedPostProps = {
     myProfile,
@@ -1259,7 +1318,7 @@ function App() {
         )
       case 'events':
         return (
-          <EventsView
+          <EventsHub
             currentUserId={session.user.id}
             onNavigateToProfileHandle={navigateToProfileByHandle}
           />
@@ -1377,6 +1436,28 @@ function App() {
             />
           </Suspense>
         )
+      case 'mojPlan':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <MojPlanView />
+          </ViewErrorBoundary>
+        )
+      case 'sale':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <Suspense fallback={null}>
+              <SaleFinderView onBack={goBackInHistory} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
+      case 'briefing':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <Suspense fallback={null}>
+              <WeeklyBriefingView userId={session.user.id} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
       default:
         return null
     }
@@ -1384,6 +1465,7 @@ function App() {
 
   return (
     <EventsProvider>
+    <LecturerSubscriptionsProvider userId={session.user.id}>
     <>
       <Analytics />
       {profileModalOpen && (
@@ -1466,6 +1548,7 @@ function App() {
           }}
           onNavigateToAula={() => navigateToMainView('aula')}
           aulaHasUnread={aulaHasUnread}
+          onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
           onNavigateToSearch={(query) => {
             const normalized = (query ?? '').trim()
             if (!normalized) {
@@ -1496,7 +1579,8 @@ function App() {
                     ? 'max-w-[1800px] px-4 lg:px-6 xl:px-8'
                     : effectiveActiveView === 'feed' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
                       || effectiveActiveView === 'search' ||
-                        effectiveActiveView === 'group'
+                        effectiveActiveView === 'group' ||
+                        effectiveActiveView === 'sale'
                       ? 'max-w-7xl px-4 lg:px-6'
                       : effectiveActiveView === 'settings'
                         ? 'max-w-2xl px-4 space-y-0'
@@ -1518,7 +1602,7 @@ function App() {
         </main>
 
         <BottomNav
-          activeView={navActiveView}
+          activeView={bottomNavActiveView}
           setActiveView={(v) => navigateToMainView(v)}
           unreadCount={unreadCount}
           onOpenNotifications={openNotificationsPanel}
@@ -1558,6 +1642,7 @@ function App() {
         />
       </Suspense>
     </>
+    </LecturerSubscriptionsProvider>
     </EventsProvider>
   )
 }

@@ -10,6 +10,7 @@ import { load, type CheerioAPI } from 'cheerio'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import crypto from 'node:crypto'
 import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
+import { extractAnnouncementMetadata } from './_lib/calendarExtraction.js'
 
 /** Zgodne z triggerem DB `md5(body)` — jawny klucz dla `upsert(..., onConflict: 'body_fingerprint')`. */
 function bodyFingerprintHex(body: string): string {
@@ -124,6 +125,83 @@ async function fetchGroqNominative(raw: string): Promise<{ value: string; cachea
     console.warn('[scrape-wziks] Groq error for', raw, '—', msg, '(falling back to raw)')
     return { value: raw, cacheable: false }
   }
+}
+
+/**
+ * Tnący limit na ekstrakcję per uruchomienie cron-a — chroni przed
+ * spaleniem quota Groqa w jednej iteracji. Backfill istniejących
+ * komunikatów rozłoży się na N iteracji (cron co 15-30 min).
+ *
+ * Świeże komunikaty z tego runu mają pierwszeństwo (ekstrakcja inline
+ * po upserce), backfill leci tylko z reszty budżetu.
+ */
+const EXTRACTION_BUDGET_PER_RUN = 20
+
+/**
+ * Pojedyncza ekstrakcja metadanych komunikatu (TL;DR + kalendarz) + zapis.
+ *
+ * Idempotentna: jeśli `extraction_attempted_at` już istnieje, caller NIE
+ * powinien w ogóle wchodzić w tę ścieżkę (filtruje to query w backfillu
+ * + check po freshly inserted).
+ *
+ * Brak rzucania — błąd LLM-a lub DB loguje i zwraca `false`, scraper
+ * leci dalej. Świeży komunikat zostanie z `extracted_calendar = null`
+ * i `summary = null`, a kolejna iteracja go pominie (attempted_at już
+ * ustawiony).
+ *
+ * Zwraca `true` jeśli wpis dotarł do DB (z wynikiem lub jako null),
+ * `false` jeśli rate-limit / błąd transportu (caller może przerwać dalsze
+ * ekstrakcje w tej iteracji żeby nie spalić więcej quota).
+ *
+ * UWAGA — historyczna nazwa funkcji (`runCalendarExtractionForRow`)
+ * zostawiona dla łatwości grepowania w logach Vercel; faktycznie obsługuje
+ * też summary od PR #8c.
+ */
+async function runCalendarExtractionForRow(
+  supabase: SupabaseClient,
+  provider: GroqProvider,
+  row: { id: string; body: string },
+): Promise<{ ok: boolean; rateLimited: boolean }> {
+  const result = await extractAnnouncementMetadata(provider, row.body)
+
+  if (result.status === 'rate_limited') {
+    console.warn('[scrape-wziks] metadata extraction 429 — pausing for this run, id=', row.id)
+    return { ok: false, rateLimited: true }
+  }
+
+  if (result.status === 'error') {
+    console.warn(
+      '[scrape-wziks] metadata extraction error id=',
+      row.id,
+      'msg=',
+      result.message,
+    )
+    // Nie zapisujemy attempted_at — pozwalamy retry w następnej iteracji.
+    return { ok: false, rateLimited: false }
+  }
+
+  // result.status === 'ok' — może zawierać null w summary i/lub extraction
+  // (legalny brak danych temporalnych lub nieczytelny tekst). I tak
+  // ustawiamy attempted_at żeby nie zapętlać próby.
+  const { error: updateError } = await supabase
+    .from('announcements')
+    .update({
+      summary: result.summary,
+      extracted_calendar: result.extraction,
+      extraction_attempted_at: new Date().toISOString(),
+    })
+    .eq('id', row.id)
+
+  if (updateError) {
+    console.error(
+      '[scrape-wziks] failed to write extracted metadata id=',
+      row.id,
+      updateError.message,
+    )
+    return { ok: false, rateLimited: false }
+  }
+
+  return { ok: true, rateLimited: false }
 }
 
 async function lecturerNameToNominativeWithCache(supabase: SupabaseClient, raw: string): Promise<string> {
@@ -626,12 +704,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // Bielik calendar extraction — drugi pass.
+    //
+    // Strategia:
+    //   1. Pobierz świeżo upsertowane wiersze które jeszcze nie mają
+    //      ekstrakcji (`extraction_attempted_at IS NULL`) — kolejność po
+    //      `created_at DESC`, czyli najpierw nowe z tego runu.
+    //   2. Lecimy sekwencyjnie do `EXTRACTION_BUDGET_PER_RUN` lub do
+    //      pierwszego 429 (wtedy przerywamy, kolejna iteracja dokończy).
+    //   3. Liczymy `extracted`, `extractionAttempts`, `extractionRateLimited`
+    //      do response — przyda się w monitoringu.
+    //
+    // Świadomie poza try/catch wyżej — błąd ekstrakcji NIE może rzutować
+    // statusu scrapera 500. Komunikaty są już zapisane, kalendarz to
+    // dodatkowa warstwa.
+    // ────────────────────────────────────────────────────────────────────
+    let extractionAttempts = 0
+    let extractionExtracted = 0
+    let extractionRateLimited = false
+    const groqProvider = getGroqProvider()
+
+    if (groqProvider && upsertedCount > 0) {
+      const { data: pending, error: pendingError } = await supabase
+        .from('announcements')
+        .select('id, body')
+        .is('extraction_attempted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(EXTRACTION_BUDGET_PER_RUN)
+
+      if (pendingError) {
+        console.warn(
+          '[scrape-wziks] calendar extraction: failed to load pending rows',
+          pendingError.message,
+        )
+      } else if (Array.isArray(pending) && pending.length > 0) {
+        for (const row of pending) {
+          if (typeof row?.id !== 'string' || typeof row?.body !== 'string') continue
+          extractionAttempts += 1
+          const { ok, rateLimited } = await runCalendarExtractionForRow(supabase, groqProvider, {
+            id: row.id,
+            body: row.body,
+          })
+          if (rateLimited) {
+            extractionRateLimited = true
+            break
+          }
+          if (ok) extractionExtracted += 1
+        }
+      }
+    }
+
     return res.status(200).json({
       ok: true,
       upserted: upsertedCount,
       scanned: finalRows.length,
       failed: failedRows.length,
       failedRows: failedRows.length > 0 ? failedRows : undefined,
+      calendarExtraction: {
+        attempted: extractionAttempts,
+        extracted: extractionExtracted,
+        rateLimited: extractionRateLimited,
+        budget: EXTRACTION_BUDGET_PER_RUN,
+      },
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
