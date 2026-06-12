@@ -63,44 +63,39 @@ const STEPS: Step[] = [
     visual: 'logo',
     title: 'Witaj w UJverse',
     subtitle: 'Wszystko, czego potrzebujesz na studiach — w jednym miejscu.',
-    body:
-      'Aula, plan, ogłoszenia, zniżki i AI asystent. Stworzone przez studenta dla studentów UJ. Damy Ci 60 sekund touru, żebyś wiedział co i gdzie.',
+    body: 'Damy Ci 60 sekund touru, żebyś wiedział co i gdzie.',
   },
   {
     id: 'aula',
     visual: MessagesSquare,
-    title: 'Aula — czat Twojego rocznika',
-    subtitle: 'Discord i Teams w jednym. Tylko dla Twojej grupy.',
-    body:
-      'Logując się mailem uczelnianym automatycznie trafiasz do czatu rocznika. Twórzcie sale tematyczne, dzielcie pliki, prowadźcie wspólne notatki, ankietujcie, nagrywajcie głosówki.',
+    title: 'Aula',
+    subtitle: 'Czat Twojego rocznika. Discord i Teams w jednym.',
+    body: 'Sale tematyczne, pliki, wspólne notatki, ankiety, głosówki — dla całej grupy.',
     ctaLabel: 'Otwórz Aulę',
     ctaPath: '/aula',
   },
   {
     id: 'dzis',
     visual: Sunrise,
-    title: '„Dziś" — Twój dzień w 5 sekund',
-    subtitle: 'Najszybszy sposób, żeby wiedzieć co jutro.',
-    body:
-      'Twoje zajęcia, zadania, ogłoszenia wykładowców — w jednym widoku. AI tworzy poranny brief z najważniejszych informacji.',
+    title: 'Dziś',
+    subtitle: 'Twój dzień w 5 sekund.',
+    body: 'Zajęcia, zadania, ogłoszenia wykładowców i poranny AI brief — w jednym widoku.',
     ctaLabel: 'Zobacz Dziś',
     ctaPath: '/dzis',
   },
   {
     id: 'ai',
     visual: 'bot',
-    title: 'AI Asystent — Twój prywatny tutor',
-    subtitle: 'Zapytaj o cokolwiek. Pisz lub mów.',
-    body:
-      '„Co dzisiaj na zajęciach?", „Streść mi tę dyskusję", „Przetłumacz na angielski". AI zna Twój plan, ogłoszenia i wiadomości w Auli. Whisper przepisze Ci głos.',
+    title: 'AI Asystent',
+    subtitle: 'Twój prywatny tutor. Pisz lub mów.',
+    body: 'Zna Twój plan, ogłoszenia i Aulę. „Streść mi ten kanał", „Co dzisiaj?" — odpowie.',
   },
   {
     id: 'znizki',
     visual: Ticket,
-    title: 'Couponek UJ — zniżki studenckie',
+    title: 'Couponek UJ',
     subtitle: 'Krakowska społeczność dzieli się rabatami.',
-    body:
-      'Restauracje, kina, fitness, książki — wszystko, gdzie z legitymacją UJ płacisz mniej. Dodawaj swoje, oceniaj cudze, oszczędzaj.',
+    body: 'Restauracje, kina, fitness, książki — wszystko, gdzie z legitymacją UJ płacisz mniej.',
     ctaLabel: 'Sprawdź zniżki',
     ctaPath: '/znizki',
   },
@@ -108,9 +103,8 @@ const STEPS: Step[] = [
     id: 'profile',
     visual: User,
     title: 'Skompletuj profil',
-    subtitle: 'Awatar + bio = znajomi z roku Cię znajdą.',
-    body:
-      'Twój profil widzą inni studenci. Awatar, krótkie bio, kierunek — to wystarczy, żeby grupowi koledzy mogli dodać Cię na DM.',
+    subtitle: 'Żeby znajomi z roku Cię znaleźli.',
+    body: 'Awatar, krótkie bio, kierunek. To wystarczy.',
   },
 ]
 
@@ -239,7 +233,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                     animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
                     transition={shouldReduceMotion ? undefined : { delay: 0.04, duration: 0.26 }}
-                    className="text-2xl font-extrabold leading-tight tracking-tight text-fg-primary sm:text-[26px]"
+                    className="text-[28px] font-extrabold leading-tight tracking-tight text-fg-primary sm:text-3xl"
                   >
                     {current.title}
                   </motion.h2>
@@ -247,7 +241,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                     animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
                     transition={shouldReduceMotion ? undefined : { delay: 0.1, duration: 0.26 }}
-                    className="mt-1.5 text-[13.5px] font-semibold text-fg-secondary sm:text-sm"
+                    className="mt-2 text-base font-semibold text-fg-secondary"
                   >
                     {current.subtitle}
                   </motion.p>
@@ -255,7 +249,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                     animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
                     transition={shouldReduceMotion ? undefined : { delay: 0.16, duration: 0.26 }}
-                    className="mt-4 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-300"
+                    className="mt-4 text-[15.5px] leading-relaxed text-zinc-600 dark:text-zinc-300"
                   >
                     {current.body}
                   </motion.p>
@@ -268,11 +262,11 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                       type="button"
                       onClick={() => current.ctaPath && visit(current.ctaPath)}
                       whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
-                      className="group mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-[#1e293b] shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 sm:w-auto dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100 dark:hover:border-white/15 dark:hover:bg-white/[0.07]"
+                      className="group mt-6 inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[14px] font-semibold text-[#1e293b] transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100 dark:hover:border-white/15 dark:hover:bg-white/[0.07]"
                     >
                       {current.ctaLabel ?? 'Otwórz'}
                       <ArrowRight
-                        size={15}
+                        size={14}
                         className="transition-transform duration-200 group-hover:translate-x-0.5"
                       />
                     </motion.button>
@@ -283,17 +277,17 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
           </div>
 
           {/* Footer nav */}
-          <div className="relative flex items-center justify-between gap-2 border-t border-zinc-200/70 px-4 py-3 sm:px-6 dark:border-white/10">
+          <div className="relative flex items-center justify-between gap-2 border-t border-zinc-200 px-4 py-3.5 sm:px-6 dark:border-white/10">
             <button
               type="button"
               onClick={prev}
               disabled={isFirst}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100/70 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[14px] font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
             >
-              <ChevronLeft size={15} />
+              <ChevronLeft size={16} />
               Wstecz
             </button>
-            <span className="text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">
+            <span className="text-[12px] tabular-nums text-zinc-400 dark:text-zinc-500">
               {step + 1} / {STEPS.length}
             </span>
             <NextButton
@@ -381,12 +375,15 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
 /* -------------------------------------------------------------------- */
 
 /**
- * NextButton — pill CTA z gradient bg + arrow-chip po prawej (mała kropka
- * z ikoną zamiast goła chevron). Brak idle animacji, na hover:
- *   • shine sweep (skewed light bar leci przez przycisk, 500ms)
- *   • arrow-chip translate-x-1 + bg-white/20
- *   • y -1 + shadow rośnie
- * Inspiracja: Linear / Notion CTA.
+ * NextButton — solidny primary CTA. Bez gradientów, chipów, shimmer'ów.
+ * Tylko proste rozwiązanie:
+ *   • większy padding (px-6 py-2.5) i większy font (15px) — czytelność
+ *   • solid navy (light) / brand-gold (dark) — spójne z resztą primary CTA
+ *   • subtle hover lighten (bg-zinc-800) + arrow translate-x
+ *   • focus ring zgodny z brand
+ *
+ * Filozofia "less is more" — przycisk nie ma być atrakcją, ma być
+ * niewidoczny ale skuteczny.
  */
 function NextButton({
   isLast,
@@ -402,47 +399,27 @@ function NextButton({
       type="button"
       onClick={onClick}
       whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-      whileHover={reduceMotion ? undefined : { y: -1 }}
-      transition={reduceMotion ? undefined : { type: 'spring', stiffness: 460, damping: 28 }}
+      transition={reduceMotion ? undefined : { type: 'spring', stiffness: 500, damping: 30 }}
       className={[
-        'group relative inline-flex items-center gap-2 overflow-hidden rounded-full pl-5 pr-1.5 py-1.5',
-        'text-sm font-bold tracking-tight',
-        // Light: gradient navy + soft inner highlight przez ring-inset.
-        'bg-gradient-to-b from-[#243043] to-[#0f172a] text-white',
-        'shadow-[0_6px_18px_-6px_rgba(15,23,42,0.55),inset_0_1px_0_0_rgba(255,255,255,0.10)]',
-        'hover:shadow-[0_10px_22px_-6px_rgba(15,23,42,0.65),inset_0_1px_0_0_rgba(255,255,255,0.14)]',
-        // Dark: gradient gold.
-        'dark:from-brand-gold-bright dark:to-brand-gold dark:text-zinc-950',
-        'dark:shadow-[0_6px_18px_-6px_rgba(201,162,39,0.55),inset_0_1px_0_0_rgba(255,255,255,0.25)]',
-        'dark:hover:shadow-[0_10px_22px_-6px_rgba(232,200,74,0.7),inset_0_1px_0_0_rgba(255,255,255,0.35)]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/55',
+        'group inline-flex items-center gap-1.5 rounded-full px-6 py-2.5 text-[15px] font-semibold tracking-tight transition-colors',
+        'bg-[#1e293b] text-white hover:bg-[#0f172a]',
+        'dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1e293b]/50 focus-visible:ring-offset-white dark:focus-visible:ring-brand-gold-bright/55 dark:focus-visible:ring-offset-zinc-900',
       ].join(' ')}
     >
-      {/* Hover-only shine sweep */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 -left-10 h-full w-10 skew-x-[-20deg] bg-white/20 opacity-0 transition-all duration-600 ease-out group-hover:left-[110%] group-hover:opacity-100 dark:bg-white/35"
-      />
-
       {isLast ? (
         <>
-          <span className="relative z-10">Gotowe</span>
-          <span
-            aria-hidden
-            className="relative z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm transition-all duration-200 group-hover:bg-white/25 dark:bg-black/15 dark:group-hover:bg-black/25"
-          >
-            <Check size={14} strokeWidth={2.8} />
-          </span>
+          <Check size={16} strokeWidth={2.5} />
+          Gotowe
         </>
       ) : (
         <>
-          <span className="relative z-10">Dalej</span>
-          <span
-            aria-hidden
-            className="relative z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm transition-all duration-200 group-hover:translate-x-0.5 group-hover:bg-white/25 dark:bg-black/15 dark:group-hover:bg-black/25"
-          >
-            <ChevronRight size={14} strokeWidth={2.8} />
-          </span>
+          Dalej
+          <ChevronRight
+            size={16}
+            strokeWidth={2.5}
+            className="transition-transform duration-200 group-hover:translate-x-0.5"
+          />
         </>
       )}
     </motion.button>
