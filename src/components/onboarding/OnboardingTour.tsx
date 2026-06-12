@@ -198,57 +198,94 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
             </button>
           </div>
 
-          {/* Step body */}
+          {/*
+            Step body.
+            ── Animacje:
+              • container: cross-fade z directional slide (24px) — krótkie
+                duration (0.22s) z easing [0.4, 0, 0.2, 1] (material standard)
+              • text stagger: każdy element fade-in z y:8 + lekkie opóźnienia
+                (h2 → subtitle → body → CTA) — daje wrażenie "build up"
+              • hero entry (w StepHero): spring scale+rotate
+              • staggerChildren przez framer-motion variants — czystsze niż
+                ręczne delay'e
+          */}
           <div className="relative">
-            <AnimatePresence custom={direction} mode="wait">
+            <AnimatePresence custom={direction} mode="wait" initial={false}>
               <motion.div
                 key={current.id}
                 custom={direction}
                 initial={
                   shouldReduceMotion
                     ? { opacity: 0 }
-                    : { opacity: 0, x: direction * 24 }
+                    : { opacity: 0, x: direction * 20 }
                 }
                 animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
                 exit={
                   shouldReduceMotion
                     ? { opacity: 0 }
-                    : { opacity: 0, x: -direction * 24 }
+                    : { opacity: 0, x: -direction * 20 }
                 }
                 transition={
                   shouldReduceMotion
                     ? { duration: 0.18 }
-                    : { duration: 0.28, ease: [0.32, 0.72, 0.34, 1] }
+                    : { duration: 0.32, ease: [0.4, 0, 0.2, 1] }
                 }
-                className="grid grid-cols-1 items-center gap-6 px-5 pb-6 pt-8 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-10 sm:px-8 sm:pb-8 sm:pt-10"
+                className="grid grid-cols-1 items-center gap-6 px-5 pb-6 pt-7 sm:grid-cols-[240px_minmax(0,1fr)] sm:gap-10 sm:px-8 sm:pb-8 sm:pt-9"
               >
                 {/* HERO column */}
                 <div className="relative flex items-center justify-center">
                   <StepHero step={current} reduceMotion={!!shouldReduceMotion} />
                 </div>
 
-                {/* TEXT column */}
-                <div className="text-center sm:text-left">
+                {/* TEXT column — staggered children */}
+                <motion.div
+                  className="text-center sm:text-left"
+                  initial={shouldReduceMotion ? undefined : 'hidden'}
+                  animate={shouldReduceMotion ? undefined : 'visible'}
+                  variants={
+                    shouldReduceMotion
+                      ? undefined
+                      : {
+                          hidden: {},
+                          visible: { transition: { staggerChildren: 0.07, delayChildren: 0.08 } },
+                        }
+                  }
+                >
                   <motion.h2
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
-                    animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-                    transition={shouldReduceMotion ? undefined : { delay: 0.04, duration: 0.26 }}
+                    variants={
+                      shouldReduceMotion
+                        ? undefined
+                        : {
+                            hidden: { opacity: 0, y: 12 },
+                            visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 280, damping: 26 } },
+                          }
+                    }
                     className="text-[28px] font-extrabold leading-tight tracking-tight text-fg-primary sm:text-3xl"
                   >
                     {current.title}
                   </motion.h2>
                   <motion.p
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
-                    animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-                    transition={shouldReduceMotion ? undefined : { delay: 0.1, duration: 0.26 }}
+                    variants={
+                      shouldReduceMotion
+                        ? undefined
+                        : {
+                            hidden: { opacity: 0, y: 10 },
+                            visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 28 } },
+                          }
+                    }
                     className="mt-2 text-base font-semibold text-fg-secondary"
                   >
                     {current.subtitle}
                   </motion.p>
                   <motion.p
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
-                    animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-                    transition={shouldReduceMotion ? undefined : { delay: 0.16, duration: 0.26 }}
+                    variants={
+                      shouldReduceMotion
+                        ? undefined
+                        : {
+                            hidden: { opacity: 0, y: 8 },
+                            visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 320, damping: 30 } },
+                          }
+                    }
                     className="mt-4 text-[15.5px] leading-relaxed text-zinc-600 dark:text-zinc-300"
                   >
                     {current.body}
@@ -256,9 +293,14 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
 
                   {current.ctaPath && (
                     <motion.button
-                      initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
-                      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-                      transition={shouldReduceMotion ? undefined : { delay: 0.22, duration: 0.26 }}
+                      variants={
+                        shouldReduceMotion
+                          ? undefined
+                          : {
+                              hidden: { opacity: 0, y: 8 },
+                              visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 340, damping: 30 } },
+                            }
+                      }
                       type="button"
                       onClick={() => current.ctaPath && visit(current.ctaPath)}
                       className="group mt-6 inline-flex items-center gap-1 text-[14px] font-semibold text-[#1e293b] transition-colors hover:text-zinc-600 dark:text-brand-gold-bright dark:hover:text-brand-gold"
@@ -270,7 +312,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                       />
                     </motion.button>
                   )}
-                </div>
+                </motion.div>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -281,7 +323,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
               type="button"
               onClick={prev}
               disabled={isFirst}
-              className="group inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[14px] font-semibold text-zinc-500 transition-colors hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="group inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[14px] font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
             >
               <ChevronLeft
                 size={16}
@@ -309,20 +351,37 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
 /*  Hero (logo / bot / lucide)                                          */
 /* -------------------------------------------------------------------- */
 
+/**
+ * StepHero — JEDNORODNA wysokość kontenera dla wszystkich kroków
+ * (`h-48 sm:h-60 lg:h-64`) żeby przejście krok→krok NIE skakało po Y.
+ *
+ * Logo welcome jest większe niż chip ikony, ale oba mieszczą się w
+ * tym samym wrapperze (logo w 90% wysokości, chip ikony 24/28 px stała).
+ *
+ * Entry animacja: spring scale (0.82 → 1) + rotate (-6° → 0°) + opacity.
+ * Daje delikatny „pop-in" jak ikony w iOS keynote. Respect reduced-motion.
+ */
 function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean }) {
-  // Welcome step ma WIĘKSZE logo i pomijamy glass plate (logo świeci samo,
-  // nie potrzebuje tła). Reszta kroków: ikona w neutralnym chip'ie ze
-  // statyczną tafelką w tle dla głębi.
-  if (step.visual === 'logo') {
-    return (
-      <div className="relative flex h-48 w-full items-center justify-center sm:h-64 lg:h-72">
+  const entry = reduceMotion
+    ? { opacity: 0 }
+    : { opacity: 0, scale: 0.82, rotate: -6 }
+  const animate = reduceMotion
+    ? { opacity: 1 }
+    : { opacity: 1, scale: 1, rotate: 0 }
+  const transition = reduceMotion
+    ? { duration: 0.22 }
+    : { type: 'spring' as const, stiffness: 240, damping: 18, mass: 0.7 }
+
+  return (
+    <div className="relative flex h-48 w-full items-center justify-center sm:h-60 lg:h-64">
+      {step.visual === 'logo' && (
         <motion.div
           aria-label="UJverse"
           role="img"
-          initial={reduceMotion ? false : { opacity: 0, scale: 0.92 }}
-          animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-          transition={reduceMotion ? undefined : { duration: 0.42, ease: [0.32, 0.72, 0.34, 1] }}
-          className="h-44 w-60 bg-logo-navy transition-colors duration-150 sm:h-56 sm:w-72 lg:h-64 lg:w-80 dark:bg-brand-gold-bright"
+          initial={entry}
+          animate={animate}
+          transition={transition}
+          className="h-40 w-56 bg-logo-navy transition-colors duration-150 sm:h-48 sm:w-64 lg:h-52 lg:w-72 dark:bg-brand-gold-bright"
           style={{
             maskImage: 'url(/logo.png)',
             WebkitMaskImage: 'url(/logo.png)',
@@ -334,28 +393,24 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
             WebkitMaskPosition: 'center',
           }}
         />
-      </div>
-    )
-  }
+      )}
 
-  // Ikona w czystym chip'ie navy — BRAK szarej tafelki w tle, BRAK
-  // border'ów chipa. Solid kolor + delikatny cień daje głębię.
-  return (
-    <div className="relative flex h-40 w-full items-center justify-center sm:h-52">
-      {step.visual === 'bot' ? (
+      {step.visual === 'bot' && (
         <motion.div
-          initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
-          animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-          transition={reduceMotion ? undefined : { duration: 0.32 }}
+          initial={entry}
+          animate={animate}
+          transition={transition}
           className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#1e293b] text-brand-gold-bright shadow-lg shadow-[#1e293b]/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
         >
           <AnimatedBot size={48} strokeWidth={1.8} intensity="wave" />
         </motion.div>
-      ) : (
+      )}
+
+      {step.visual !== 'logo' && step.visual !== 'bot' && (
         <motion.div
-          initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
-          animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-          transition={reduceMotion ? undefined : { duration: 0.32 }}
+          initial={entry}
+          animate={animate}
+          transition={transition}
           className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#1e293b] text-brand-gold-bright shadow-lg shadow-[#1e293b]/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
         >
           {(() => {
@@ -373,14 +428,9 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
 /* -------------------------------------------------------------------- */
 
 /**
- * NextButton — ghost text-link styl. Po 3 próbach (solid, gradient pill,
- * solid pill) okazało się, że "less is more" znaczy DOSŁOWNIE less:
- *   • zero tła w idle
- *   • bold navy text (light) / brand-gold-bright (dark)
- *   • arrow inline z micro-translate na hover
- *   • na ostatnim kroku — solid akcent (zachęca do confirm)
- *
- * Inspiracja: Apple SF Symbols continue links, Vercel CLI prompts.
+ * NextButton — solidny primary pill (wariant „minimalistyczny solidny"
+ * z commit 89e29da). User preferuje ten styl nad gradient pill / ghost
+ * link.
  */
 function NextButton({
   isLast,
@@ -391,36 +441,34 @@ function NextButton({
   onClick: () => void
   reduceMotion: boolean
 }) {
-  // Last step → solid akcent (commit action). Pozostałe → ghost link.
-  if (isLast) {
-    return (
-      <motion.button
-        type="button"
-        onClick={onClick}
-        whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-        transition={reduceMotion ? undefined : { type: 'spring', stiffness: 500, damping: 30 }}
-        className="inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] px-5 py-2 text-[15px] font-bold text-white transition-colors hover:bg-[#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright dark:focus-visible:ring-brand-gold-bright/50"
-      >
-        <Check size={16} strokeWidth={2.6} />
-        Gotowe
-      </motion.button>
-    )
-  }
-
   return (
     <motion.button
       type="button"
       onClick={onClick}
       whileTap={reduceMotion ? undefined : { scale: 0.97 }}
       transition={reduceMotion ? undefined : { type: 'spring', stiffness: 500, damping: 30 }}
-      className="group inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[15px] font-bold tracking-tight text-[#1e293b] transition-colors hover:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-brand-gold-bright dark:hover:text-brand-gold dark:focus-visible:ring-brand-gold-bright/40"
+      className={[
+        'group inline-flex items-center gap-1.5 rounded-full px-6 py-2.5 text-[15px] font-semibold tracking-tight transition-colors',
+        'bg-[#1e293b] text-white hover:bg-[#0f172a]',
+        'dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1e293b]/50 focus-visible:ring-offset-white dark:focus-visible:ring-brand-gold-bright/55 dark:focus-visible:ring-offset-zinc-900',
+      ].join(' ')}
     >
-      Dalej
-      <ChevronRight
-        size={17}
-        strokeWidth={2.6}
-        className="transition-transform duration-200 group-hover:translate-x-1"
-      />
+      {isLast ? (
+        <>
+          <Check size={16} strokeWidth={2.5} />
+          Gotowe
+        </>
+      ) : (
+        <>
+          Dalej
+          <ChevronRight
+            size={16}
+            strokeWidth={2.5}
+            className="transition-transform duration-200 group-hover:translate-x-0.5"
+          />
+        </>
+      )}
     </motion.button>
   )
 }
