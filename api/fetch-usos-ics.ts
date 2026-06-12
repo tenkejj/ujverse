@@ -78,33 +78,38 @@ function jsonError(status: number, message: string): Response {
   })
 }
 
-type ValidatedUrl = { ok: true; url: URL } | { ok: false; reason: string }
+type ValidatedUrl = {
+  /** `null` gdy URL OK; string z powodem rejekcji w pp. */
+  reason: string | null
+  /** Zwracane tylko gdy `reason === null`. */
+  url: URL | null
+}
 
 function validateUsosUrl(raw: unknown): ValidatedUrl {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
-    return { ok: false, reason: 'Brak parametru "url".' }
+    return { reason: 'Brak parametru "url".', url: null }
   }
   let parsed: URL
   try {
     parsed = new URL(raw.trim())
   } catch {
-    return { ok: false, reason: 'Niepoprawny URL (nie udało się sparsować).' }
+    return { reason: 'Niepoprawny URL (nie udało się sparsować).', url: null }
   }
   if (parsed.protocol !== 'https:') {
-    return { ok: false, reason: 'URL musi używać protokołu HTTPS.' }
+    return { reason: 'URL musi używać protokołu HTTPS.', url: null }
   }
   if (parsed.hostname.toLowerCase() !== ALLOWED_HOST) {
     return {
-      ok: false,
       reason: `URL musi być z hosta ${ALLOWED_HOST} (wkleiłeś: ${parsed.hostname}).`,
+      url: null,
     }
   }
   const pathOk = ALLOWED_PATH_PREFIXES.some((prefix) => parsed.pathname.startsWith(prefix))
   if (!pathOk) {
     return {
-      ok: false,
       reason:
         'Ten URL nie wygląda na eksport iCalendar z USOSweb (oczekiwana ścieżka /services/tt/upcoming_ical).',
+      url: null,
     }
   }
   // `key` musi być obecny i niepusty — bez niego upstream zwróci 401/403
@@ -112,11 +117,11 @@ function validateUsosUrl(raw: unknown): ValidatedUrl {
   const key = parsed.searchParams.get('key')
   if (!key || key.trim().length < 8) {
     return {
-      ok: false,
       reason: 'URL nie zawiera prawidłowego parametru "key" (z eksportu USOSweb).',
+      url: null,
     }
   }
-  return { ok: true, url: parsed }
+  return { reason: null, url: parsed }
 }
 
 async function readUrlFromRequest(req: Request): Promise<string | null> {
@@ -241,8 +246,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   const rawUrl = await readUrlFromRequest(req)
   const validation = validateUsosUrl(rawUrl)
-  if (!validation.ok) {
-    return jsonError(400, validation.reason)
+  if (validation.reason !== null || validation.url === null) {
+    return jsonError(400, validation.reason ?? 'Nieprawidłowy URL.')
   }
 
   let upstream: Response
