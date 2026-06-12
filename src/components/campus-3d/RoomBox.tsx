@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import { Edges, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Room } from '../../services/SaleFinderService'
 import type { RoomBoxLayout } from '../../services/Campus3DService'
@@ -92,7 +92,14 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
           emissive={EMISSIVE_BASE}
           emissiveIntensity={0}
           transparent
-          opacity={0.85}
+          opacity={0.88}
+        />
+        {/* Edges — wyraźne kontury "ścian" sali. Bez nich boxy zlewają
+            się w jedno z sąsiadami przy ścisłym packingu. */}
+        <Edges
+          threshold={15}
+          color={isSelected ? '#fde68a' : hovered ? '#fef9c3' : '#0f172a'}
+          lineWidth={isSelected ? 2 : 1}
         />
       </mesh>
 

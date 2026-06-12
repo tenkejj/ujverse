@@ -10,6 +10,7 @@ import {
   loadFootprint,
   localProjection,
   ringToMeters,
+  type FloorGroup,
   type FootprintFeature,
 } from '../../services/Campus3DService'
 import { useTheme } from '../../ThemeContext'
@@ -108,15 +109,43 @@ export default function ExplodedBuildingView({
   }, [footprint, building.lat, building.lng])
 
   // ── Floor groups + room lookup ───────────────────────────────────────
-  const floorGroups = useMemo(() => groupRoomsByFloor(rooms), [rooms])
+  const floorGroupsFromDb = useMemo(() => groupRoomsByFloor(rooms), [rooms])
   const roomLookup = useMemo(() => {
     const m = new Map<string, Room>()
     for (const r of rooms) m.set(r.id, r)
     return m
   }, [rooms])
 
+  // Liczba pięter z footprint OSM — preferujemy ją bo to "ground truth"
+  // (budynki bywają wyższe niż liczba pięter z `uj_rooms`).
+  const buildingLevels = footprint?.properties.levels ?? null
+
+  // Pełna lista poziomów do wyrenderowania — od najniższej piwnicy w DB
+  // do top-floor z OSM (lub max z DB jeśli OSM brak). Empty floors
+  // (bez sal w DB) renderowane jako placeholder.
+  const allFloors = useMemo(() => {
+    const dbMin = floorGroupsFromDb.length > 0 ? floorGroupsFromDb[0].level : 0
+    const dbMax = floorGroupsFromDb.length > 0
+      ? floorGroupsFromDb[floorGroupsFromDb.length - 1].level
+      : 0
+    const top = Math.max(dbMax, buildingLevels !== null ? buildingLevels - 1 : dbMax)
+    const bottom = Math.min(dbMin, 0)
+    const byLevel = new Map<number, FloorGroup>()
+    for (const g of floorGroupsFromDb) byLevel.set(g.level, g)
+    const out: Array<{ level: number; group: FloorGroup; empty: boolean }> = []
+    for (let lv = bottom; lv <= top; lv++) {
+      const g = byLevel.get(lv)
+      if (g) {
+        out.push({ level: lv, group: g, empty: false })
+      } else {
+        out.push({ level: lv, group: { level: lv, rooms: [] }, empty: true })
+      }
+    }
+    return out
+  }, [floorGroupsFromDb, buildingLevels])
+
   // Z poziomu na Y w 3D scene. Najniższy level → y = 0, wyżej → +y.
-  const minLevel = floorGroups[0]?.level ?? 0
+  const minLevel = allFloors[0]?.level ?? 0
   const spacing = mode === 'exploded' ? EXPLODED_SPACING : COMPACT_SPACING
 
   // ── Fallback: WebGL not supported lub nie ma sal w bazie ─────────────
@@ -124,7 +153,7 @@ export default function ExplodedBuildingView({
     return (
       <FallbackList
         rooms={rooms}
-        floorGroups={floorGroups}
+        floorGroups={floorGroupsFromDb}
         selectedRoomId={selectedRoomId}
         onPickRoom={onPickRoom}
         reason="Twoja przeglądarka nie wspiera WebGL2 — pokazuję widok tekstowy."
@@ -230,11 +259,11 @@ export default function ExplodedBuildingView({
           {/* Bounds — auto-fit kamery do zawartości po zmianach mode/data */}
           <Bounds fit clip observe margin={1.4}>
             <group>
-              {floorGroups.map((group) => {
-                const targetY = (group.level - minLevel) * spacing
+              {allFloors.map(({ level, group, empty }) => {
+                const targetY = (level - minLevel) * spacing
                 return (
                   <FloorPlane
-                    key={group.level}
+                    key={level}
                     group={group}
                     footprintShape={shape}
                     footprintWidth={width}
@@ -244,6 +273,7 @@ export default function ExplodedBuildingView({
                     roomLookup={roomLookup}
                     theme={theme}
                     onPickRoom={onPickRoom}
+                    emptyFloor={empty}
                   />
                 )
               })}
@@ -274,7 +304,7 @@ export default function ExplodedBuildingView({
           minDistance={isMobile ? 15 : 10}
           maxDistance={isMobile ? 260 : 200}
           maxPolarAngle={Math.PI / 2.05}
-          target={[0, ((floorGroups.length - 1) * spacing) / 2, 0]}
+          target={[0, ((allFloors.length - 1) * spacing) / 2, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN,

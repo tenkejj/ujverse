@@ -257,6 +257,28 @@ export type RoomBoxLayout = {
 }
 
 /**
+ * Reprezentacja korytarza wewnątrz budynku — wąski pas między rzędami
+ * pomieszczeń. Wizualnie ciemniejszy/podświetlony pas na podłodze
+ * piętra; nie jest klikalny ani interaktywny.
+ */
+export type CorridorLayout = {
+  x: number
+  z: number
+  width: number
+  depth: number
+}
+
+/**
+ * Wynik layoutu pojedynczego piętra. Oddzielone sale + korytarze, bo
+ * `FloorPlane` renderuje je osobno (sale = klikalne boxy, korytarze =
+ * dekoracyjne ścieżki na podłodze).
+ */
+export type FloorLayout = {
+  rooms: RoomBoxLayout[]
+  corridors: CorridorLayout[]
+}
+
+/**
  * Wykrywa "skrzydło" z kodu sali. UJ kodyfikacje:
  *   - `A-101`, `B-205` — pierwsza litera = skrzydło
  *   - `A-0-04` (WGG) — j.w., litera przed myślnikiem
@@ -295,26 +317,34 @@ function sortKey(code: string): number {
 }
 
 /**
- * Layout pomieszczeń na danym piętrze. Strategia:
+ * Layout pomieszczeń na danym piętrze — bardziej "realny" rozkład niż
+ * grid sloty. Wzorowany na typowym układzie wydziałów UJ:
  *
- *   1. Grupujemy po wykrytym `wing` (A/B/C…). Bez prefixu → jedna grupa.
- *   2. Aule (kind=aula) wyciągamy do osobnej "wstęgi" przy bottom edge —
- *      duże, jeden rząd na całej szerokości skrzydła.
- *   3. Pozostałe sale układamy w siatkę N kolumn × M rzędów w obrębie
- *      skrzydła, sortowane po sortKey.
- *   4. Skrzydła ułożone obok siebie (X axis), z lukami ~3m między nimi.
+ *   - **Skrzydła**: rooms grupowane po `wing` (A/B/C…) z kodu.
+ *   - **Centralny korytarz**: każdy "rząd" sal ma korytarz biegnący
+ *     przez środek skrzydła (oś X). Sale lokowane po obu jego stronach.
+ *   - **Aule na "froncie"**: rooms `kind=aula` lokowane przy krawędzi
+ *     +Z (frontowa "ściana" skrzydła) jako szeroka wstęga.
+ *   - **Wypełnianie**: sale rozszerzają się tak żeby WYPEŁNIAĆ skrzydło
+ *     (bez gigantycznej pustki w środku) — wcześniej max cap 8m sprawiał
+ *     że duże footprinty wyglądały na puste.
  *
- * Wymiary boxa zależą od `capacity` (auditorium 220 osób > sala 40 osób).
- * Aspekt ratio dla auli jest spłaszczony (theatre seating).
+ * Zwraca rooms + corridors — FloorPlane renderuje rooms jako klikalne
+ * boxy, a corridors jako ciemniejsze pasy na podłodze (dekoracja).
+ *
+ * Wymiary boxa nadal zależą od capacity (auditorium > sala ćwiczeniowa),
+ * ale teraz szerokość/głębokość zależy też od ile sal jest w kolumnie.
+ *
+ * Edge case: gdy w skrzydle 1 sala → wypełnia całe skrzydło bez korytarza.
  */
-export function layoutRoomBoxes(
+export function layoutFloor(
   rooms: Array<{ id: string; code: string; capacity: number | null }>,
   footprintWidth: number,
   footprintDepth: number,
-): RoomBoxLayout[] {
-  if (rooms.length === 0) return []
+): FloorLayout {
+  if (rooms.length === 0) return { rooms: [], corridors: [] }
 
-  // ── 1. Pogrupuj po wing ────────────────────────────────────────────
+  // ── 1. Pogrupuj po wing + annotuj ──────────────────────────────────
   type Annotated = {
     id: string
     code: string
@@ -339,26 +369,32 @@ export function layoutRoomBoxes(
     list.push(r)
     wingsMap.set(key, list)
   }
-
   const wingKeys = Array.from(wingsMap.keys()).sort((a, b) => {
     if (a === '*') return 1
     if (b === '*') return -1
     return a.localeCompare(b)
   })
 
-  // ── 2. Wymiary kanwy: 80% footprintu, margines na korytarze ─────────
-  const usableW = Math.max(footprintWidth * 0.85, 20)
-  const usableD = Math.max(footprintDepth * 0.85, 15)
-  const wingGap = 2 // metry między skrzydłami
+  // ── 2. Wymiary użytkowe — wypełniamy 92% footprintu (ściany zewnętrzne)
+  const wallThickness = 0.6 // grubość zewn. ściany (metry)
+  const usableW = Math.max(footprintWidth - 2 * wallThickness, 12)
+  const usableD = Math.max(footprintDepth - 2 * wallThickness, 8)
+  const wingGap = 1.5 // metry między skrzydłami (poprzeczny "łącznik")
 
-  // Equal split: każde skrzydło dostaje proporcjonalną szerokość po
-  // pierwiastku z liczby sal (większe skrzydło → więcej miejsca).
-  const wingWeights = wingKeys.map((k) => Math.sqrt(wingsMap.get(k)!.length))
+  // Każde skrzydło dostaje proporcjonalną szerokość — większe skrzydło
+  // (więcej sal) → szersze.
+  const wingWeights = wingKeys.map((k) => Math.max(1, wingsMap.get(k)!.length))
   const totalWeight = wingWeights.reduce((a, b) => a + b, 0)
   const totalGap = wingGap * (wingKeys.length - 1)
   const wingWidths = wingWeights.map((w) => ((usableW - totalGap) * w) / totalWeight)
 
   const layouts: RoomBoxLayout[] = []
+  const corridors: CorridorLayout[] = []
+
+  // Standardowa wysokość sali — wystarczy żeby było widać "piętro",
+  // ale niżej od high-ceiling auli.
+  const ROOM_H = 3.2
+  const AULA_H = 4.5
 
   let cursorX = -usableW / 2
 
@@ -367,27 +403,39 @@ export function layoutRoomBoxes(
     const wing = wingsMap.get(wingKey)!
     const wingW = wingWidths[wi]
 
+    const wingLeftX = cursorX
+    const wingCenterX = cursorX + wingW / 2
+
     const aulas = wing.filter((r) => r.kind === 'aula').sort((a, b) => a.sortKey - b.sortKey)
     const others = wing.filter((r) => r.kind !== 'aula').sort((a, b) => a.sortKey - b.sortKey)
 
-    // ── 2a. Aule — wstęga przy bottom edge (z= +usableD/2 - depth/2)
-    const aulaBandD = aulas.length > 0 ? Math.min(usableD * 0.45, 14) : 0
+    // ── 2a. Aule — wstęga przy "froncie" (+Z edge) ─────────────────────
+    // Realne wymiary auli UJ: 10-22m szer × 8-14m głęb (zależnie od capacity).
+    // Bez stretching — gdy budynek jest duży a aula mała, NIE rozciągamy
+    // jej na całe skrzydło (lepiej zostawić "niezindeksowany" obszar).
+    const aulaBandD = aulas.length > 0
+      ? Math.min(Math.max(usableD * 0.28, 8), 14)
+      : 0
     if (aulas.length > 0) {
-      const eachW = (wingW - (aulas.length - 1) * 1.5) / aulas.length
-      const aulaCenterZ = usableD / 2 - aulaBandD / 2 - 1
+      const aulaCenterZ = usableD / 2 - aulaBandD / 2
+      const eachW = Math.min(wingW / aulas.length, 24)
+      const startX = wingLeftX + (wingW - eachW * aulas.length) / 2
       for (let i = 0; i < aulas.length; i++) {
         const a = aulas[i]
-        const capacityMult = a.capacity
-          ? Math.max(0.9, Math.min(1.6, Math.sqrt(a.capacity / 120)))
-          : 1.1
-        const w = Math.min(eachW, 16) * Math.min(capacityMult, 1.3)
-        const d = aulaBandD * Math.min(capacityMult, 1.2)
-        const x = cursorX + i * (eachW + 1.5) + eachW / 2
+        // Capacity → rozmiar: 50 osób ~ 60m², 300 osób ~ 200m².
+        const cap = a.capacity ?? 100
+        const targetArea = 0.55 * cap + 30 // m²
+        const aspect = 1.4 // wider than deep (theatre seating)
+        const idealD = Math.sqrt(targetArea / aspect)
+        const idealW = idealD * aspect
+        const w = Math.max(8, Math.min(eachW - 0.6, idealW, 22))
+        const d = Math.max(6, Math.min(aulaBandD - 0.6, idealD, 14))
+        const x = startX + (i + 0.5) * eachW
         layouts.push({
           roomId: a.id,
-          width: Math.max(6, w),
-          depth: Math.max(5, d),
-          height: 5, // aule wyższe — visual cue
+          width: w,
+          depth: d,
+          height: AULA_H,
           x,
           z: aulaCenterZ,
           kind: 'aula',
@@ -396,49 +444,155 @@ export function layoutRoomBoxes(
       }
     }
 
-    // ── 2b. Pozostałe — siatka na pozostałym kawałku
-    const gridTop = -usableD / 2 + 1
-    const gridBottom = aulas.length > 0
-      ? usableD / 2 - aulaBandD - 2
-      : usableD / 2 - 1
-    const gridD = Math.max(gridBottom - gridTop, 8)
+    // ── 2b. Pozostałe sale — centralny korytarz + sale po obu stronach
+    const remainingTopZ = -usableD / 2
+    const remainingBottomZ = aulas.length > 0
+      ? usableD / 2 - aulaBandD - 1.2
+      : usableD / 2
+    const remainingD = remainingBottomZ - remainingTopZ
 
-    if (others.length > 0) {
-      // Liczba kolumn ~ proporcjonalnie do aspect ratio skrzydła.
-      const aspect = wingW / gridD
-      const cols = Math.max(1, Math.round(Math.sqrt(others.length * aspect)))
-      const rows = Math.ceil(others.length / cols)
-      const cellW = wingW / cols
-      const cellD = gridD / rows
+    if (others.length > 0 && remainingD > 4) {
+      // Decyzja: pojedyncza kolumna (gdy skrzydło wąskie lub mało sal),
+      // czy dwie kolumny z korytarzem.
+      const wantTwoColumns = wingW >= 10 && others.length >= 3
+      const corridorW = wantTwoColumns ? Math.min(2.0, wingW * 0.15) : 0
 
-      for (let i = 0; i < others.length; i++) {
-        const r = others[i]
-        const col = i % cols
-        const row = Math.floor(i / cols)
-        const capacityMult = r.capacity
-          ? Math.max(0.65, Math.min(1.5, Math.sqrt(r.capacity / 30)))
-          : 0.9
-        const w = Math.max(2.5, Math.min(cellW * 0.85, 8) * capacityMult)
-        const d = Math.max(2.5, Math.min(cellD * 0.85, 8) * capacityMult)
-        const x = cursorX + (col + 0.5) * cellW
-        const z = gridTop + (row + 0.5) * cellD
-        layouts.push({
-          roomId: r.id,
-          width: w,
-          depth: d,
-          height: 3,
-          x,
-          z,
-          kind: r.kind,
-          wing: r.wing,
+      if (wantTwoColumns) {
+        // Korytarz pionowo (oś Z) na środku skrzydła.
+        corridors.push({
+          x: wingCenterX,
+          z: (remainingTopZ + remainingBottomZ) / 2,
+          width: corridorW,
+          depth: remainingD,
         })
+
+        const colW = (wingW - corridorW) / 2
+        // Naprzemiennie: parzyste → lewa kolumna, nieparzyste → prawa.
+        // Daje równomiernie rozłożone numery sal po obu stronach.
+        const leftCol: Annotated[] = []
+        const rightCol: Annotated[] = []
+        for (let i = 0; i < others.length; i++) {
+          ;(i % 2 === 0 ? leftCol : rightCol).push(others[i])
+        }
+        layoutColumn(
+          leftCol,
+          wingLeftX + colW / 2,
+          remainingTopZ,
+          remainingBottomZ,
+          colW,
+          ROOM_H,
+          layouts,
+        )
+        layoutColumn(
+          rightCol,
+          wingLeftX + colW + corridorW + colW / 2,
+          remainingTopZ,
+          remainingBottomZ,
+          colW,
+          ROOM_H,
+          layouts,
+        )
+      } else {
+        // Pojedyncza kolumna — sale wypełniają całą szerokość skrzydła.
+        layoutColumn(
+          others,
+          wingCenterX,
+          remainingTopZ,
+          remainingBottomZ,
+          wingW,
+          ROOM_H,
+          layouts,
+        )
       }
     }
 
     cursorX += wingW + wingGap
+
+    // Łącznik korytarza między skrzydłami (poziomo, oś X) — gdy >1 wing.
+    if (wi < wingKeys.length - 1) {
+      corridors.push({
+        x: cursorX - wingGap / 2,
+        z: 0,
+        width: wingGap,
+        depth: usableD,
+      })
+    }
   }
 
-  return layouts
+  return { rooms: layouts, corridors }
+}
+
+/**
+ * Helper: rozłóż listę sal wzdłuż osi Z (pionowej) w obrębie wąskiej
+ * kolumny szerokości `colW`, centrowanej na `centerX`.
+ *
+ * Strategia: REALNE rozmiary klas (nie stretching!).
+ *   - Sala 20-30 osób (ćwiczenia) → ~6m × 5m
+ *   - Sala 50-80 osób (wykład mały) → ~8m × 6m
+ *   - Lab komputerowy → ~9m × 7m
+ *
+ * Gdy `rooms` zajmuje mniej niż dostępna głębokość, układamy je od góry
+ * i ZOSTAWIAMY pustą przestrzeń na dole — UI renderuje to jako hatched
+ * pattern "niezindeksowane". Lepsze niż stretching 3 sal na 40m budynek.
+ *
+ * Gdy `rooms` jest za dużo, kompresujemy proporcjonalnie (rzadkie).
+ */
+function layoutColumn(
+  rooms: Array<{ id: string; capacity: number | null; wing: string | null; kind: RoomBoxLayout['kind'] }>,
+  centerX: number,
+  topZ: number,
+  bottomZ: number,
+  colW: number,
+  height: number,
+  out: RoomBoxLayout[],
+) {
+  if (rooms.length === 0) return
+  const totalD = bottomZ - topZ
+  const gap = 0.4
+
+  // Krok 1: wylicz realny rozmiar każdej sali (capacity → metry).
+  const items = rooms.map((r) => {
+    const cap = r.capacity ?? 30
+    // Linear interp: cap 15 → 4.5m, cap 50 → 6.5m, cap 100 → 8.5m (capped)
+    const targetD = Math.max(4.0, Math.min(8.5, 4.0 + cap * 0.045))
+    return { ...r, targetD }
+  })
+
+  // Krok 2: sprawdź czy mieści się. Jeśli nie — skaluj proporcjonalnie down.
+  const totalNeeded = items.reduce((sum, it) => sum + it.targetD + gap, -gap)
+  const scale = totalNeeded > totalD ? totalD / totalNeeded : 1
+
+  // Sale ułożone od góry kolumny (z= topZ), pustka na dole zostaje.
+  let zCursor = topZ + (gap / 2)
+  for (const item of items) {
+    const d = item.targetD * scale
+    // Szerokość: cap na 8.5m (max realny class), nie cała szerokość kolumny.
+    const w = Math.min(colW - 0.6, 8.5)
+    const zCenter = zCursor + d / 2
+    out.push({
+      roomId: item.id,
+      width: Math.max(3, w),
+      depth: Math.max(3, d),
+      height,
+      x: centerX,
+      z: zCenter,
+      kind: item.kind,
+      wing: item.wing,
+    })
+    zCursor += d + gap * scale
+  }
+}
+
+/**
+ * Backward-compat alias dla starego API. Zwraca tylko sale.
+ * @deprecated Użyj `layoutFloor` żeby dostać też corridors.
+ */
+export function layoutRoomBoxes(
+  rooms: Array<{ id: string; code: string; capacity: number | null }>,
+  footprintWidth: number,
+  footprintDepth: number,
+): RoomBoxLayout[] {
+  return layoutFloor(rooms, footprintWidth, footprintDepth).rooms
 }
 
 // ─────────────────────────────────────────────────────────────────────────

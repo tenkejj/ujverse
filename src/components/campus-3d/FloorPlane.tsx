@@ -3,18 +3,20 @@ import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Room } from '../../services/SaleFinderService'
-import { layoutRoomBoxes, type FloorGroup } from '../../services/Campus3DService'
+import { layoutFloor, type FloorGroup } from '../../services/Campus3DService'
 import RoomBox from './RoomBox'
 
 /**
  * FloorPlane — pojedyncze piętro budynku w widoku exploded.
  *
  * Renderuje:
- *   1. Cienką "deskę" piętra (footprint extrusion 30cm) — daje wrażenie
+ *   1. "Deskę" piętra (footprint extrusion ~40cm) — daje wrażenie
  *      stosu pięter, plus contact surface dla shadow.
  *   2. Outline (linia po obwodzie) — wzmacnia kontur pięter w wide view.
  *   3. Etykietę piętra (`level`) z boku — sprite zawsze obrócony do kamery.
- *   4. RoomBoxes z `uj_rooms` na tym piętrze.
+ *   4. Korytarze — ciemniejsze pasy na podłodze (między rzędami sal).
+ *   5. RoomBoxes z `uj_rooms` na tym piętrze (lub puste piętro gdy brak
+ *      sal w bazie — pokazuje że budynek faktycznie ma to piętro).
  *
  * Animacja exploded:
  *   - Position Y jest animowana z `useFrame`: lerp do `targetY`.
@@ -22,11 +24,16 @@ import RoomBox from './RoomBox'
  *     `level * SPACING` w aktualnym trybie (compact vs exploded).
  */
 
-const FLOOR_THICKNESS = 0.3
+const FLOOR_THICKNESS = 0.4
 const FLOOR_COLOR_LIGHT = '#cbd5e1'
 const FLOOR_COLOR_DARK = '#1e293b'
 const OUTLINE_COLOR_LIGHT = '#475569'
 const OUTLINE_COLOR_DARK = '#fde68a'
+
+// Korytarz — wąski pas na podłodze, ciemniejszy/jaśniejszy niż reszta
+// piętra. Daje wrażenie "hallway" między salami.
+const CORRIDOR_COLOR_LIGHT = '#94a3b8'
+const CORRIDOR_COLOR_DARK = '#0f172a'
 
 type Props = {
   group: FloorGroup
@@ -39,6 +46,12 @@ type Props = {
   roomLookup: Map<string, Room>
   theme: 'light' | 'dark'
   onPickRoom: (roomId: string) => void
+  /**
+   * Jeśli `true`, piętro jest "puste" (brak sal w bazie) — pokazujemy
+   * tylko slab + outline + label. Wykorzystywane gdy `building.levels`
+   * > liczba pięter z sali w `uj_rooms`.
+   */
+  emptyFloor?: boolean
 }
 
 export default function FloorPlane({
@@ -51,6 +64,7 @@ export default function FloorPlane({
   roomLookup,
   theme,
   onPickRoom,
+  emptyFloor = false,
 }: Props) {
   const groupRef = useRef<THREE.Group>(null)
 
@@ -62,10 +76,13 @@ export default function FloorPlane({
     groupRef.current.position.y = cur + (targetY - cur) * speed
   })
 
-  // Layouts per pokój — w sync z footprint dimensions.
-  const boxLayouts = useMemo(
-    () => layoutRoomBoxes(group.rooms, footprintWidth, footprintDepth),
-    [group.rooms, footprintWidth, footprintDepth],
+  // Layout: sale + korytarze. Puste piętro nie ma żadnego layoutu.
+  const { rooms: boxLayouts, corridors } = useMemo(
+    () =>
+      emptyFloor
+        ? { rooms: [], corridors: [] }
+        : layoutFloor(group.rooms, footprintWidth, footprintDepth),
+    [emptyFloor, group.rooms, footprintWidth, footprintDepth],
   )
 
   // Geometria deski piętra — z `Shape` jeśli mamy, fallback to prostokąt.
@@ -133,6 +150,63 @@ export default function FloorPlane({
       >
         {labelForLevel(group.level)}
       </Text>
+
+      {/* Korytarze — cienkie pasy na podłodze (tuż nad slabem, żeby się
+          nie z-fightowały). `side: DoubleSide` żeby były widoczne też
+          od dołu w trybie wide camera. Renderowane TYLKO gdy nie jest
+          to puste piętro i mamy sale. */}
+      {corridors.map((c, i) => (
+        <group key={`corridor-${i}`} position={[c.x, 0.05, c.z]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[c.width, c.depth]} />
+            <meshStandardMaterial
+              color={theme === 'dark' ? CORRIDOR_COLOR_DARK : CORRIDOR_COLOR_LIGHT}
+              roughness={0.95}
+              metalness={0.0}
+              side={THREE.DoubleSide}
+              transparent
+              opacity={theme === 'dark' ? 0.92 : 0.85}
+            />
+          </mesh>
+          {/* Centralny pasek "linii środkowej" — wąski jasny pas wzdłuż
+              dłuższej osi korytarza. Daje silne wizualne wrażenie "hallway". */}
+          <mesh
+            position={[0, 0.02, 0]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <planeGeometry
+              args={
+                c.depth > c.width
+                  ? [Math.max(0.15, c.width * 0.12), c.depth - 0.3]
+                  : [c.width - 0.3, Math.max(0.15, c.depth * 0.12)]
+              }
+            />
+            <meshBasicMaterial
+              color={theme === 'dark' ? '#fde68a' : '#facc15'}
+              transparent
+              opacity={0.55}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Pusty floor marker — gdy `emptyFloor` rysujemy małą etykietkę
+          "Brak danych" w środku piętra, żeby user wiedział czemu jest pusto. */}
+      {emptyFloor && (
+        <Text
+          position={[0, 0.6, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.9}
+          color={theme === 'dark' ? '#64748b' : '#64748b'}
+          outlineColor={theme === 'dark' ? '#0b1226' : '#ffffff'}
+          outlineWidth={0.03}
+          anchorX="center"
+          anchorY="middle"
+        >
+          (brak danych o salach)
+        </Text>
+      )}
 
       {/* Sale */}
       {boxLayouts.map((layout) => {

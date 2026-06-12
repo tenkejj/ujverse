@@ -12,20 +12,17 @@ import {
 /**
  * FloorPlan2D — schematyczny plan pojedynczego piętra w SVG.
  *
- * Domyślny widok wnętrza budynku (zamiast 3D exploded view). Wyświetla:
- *   - Obrys budynku (real OSM polygon, projected do lokalnych metrów)
- *   - Korytarze jako ciemniejsze pasy
- *   - Sale jako kolorowe rectangles wg kind (aula/lab/standard)
- *   - Klikalne sale z hover/select
- *   - Inline legenda + onboarding
+ * Estetyka: modern architectural blueprint, NIE primary-colors paint.
+ *   - Bardzo subtelne tinty per kind (różnica ledwo widoczna, ale jest)
+ *   - Selected = mocny gold accent — JEDYNA wibrująca rzecz na planie
+ *   - Hatched pattern dla obszaru bez sal w DB ("niezindeksowane")
+ *   - Cienkie ściany (blueprint-style) zamiast grubych borderów
  *
- * Czytelne, accurate-na-tyle-na-ile-się-da (schemat), nie udaje że
- * to realny plan UJ. Działa bez WebGL, mobile-friendly, vector → ostre
- * przy każdym zoomie.
+ * Algorytm layoutu sal (`layoutFloor` z Campus3DService) używa realnych
+ * rozmiarów klas (5-9m), więc gdy budynek ma 3 sale w DB i 40m długości,
+ * sale są realne małe a reszta to hatched "brak danych" — uczciwe.
  *
- * Algorytm layoutu sal IDENTYCZNY jak w 3D (`layoutFloor`) — czyli
- * centralny korytarz + sale w 2 kolumnach + aule na froncie. Po prostu
- * w 2D rzutowane na płaszczyznę XZ → SVG.
+ * Działa bez WebGL, mobile-friendly, vector → ostre przy każdym zoomie.
  */
 
 type Props = {
@@ -41,34 +38,42 @@ type Props = {
   footprint: FootprintFeature | null
   selectedRoomId: string | null
   onPickRoom: (roomId: string) => void
-  /** Tryb kolorów — sync z global ThemeContext. */
   theme: 'light' | 'dark'
 }
 
+// ── Paleta — bardzo stonowane tinty + JEDEN mocny accent dla selected ─
 const COLORS = {
   light: {
-    buildingFill: '#f8fafc',
-    buildingStroke: '#475569',
-    corridor: '#cbd5e1',
-    corridorLine: '#fbbf24',
-    aula: { fill: '#fef3c7', stroke: '#d97706', selected: '#fde047' },
-    lab: { fill: '#dbeafe', stroke: '#2563eb', selected: '#93c5fd' },
-    standard: { fill: '#fef9c3', stroke: '#a16207', selected: '#fde047' },
+    bgGradient: ['#f5f0e6', '#ede6d3'],   // ciepły papierowy
+    buildingFill: '#ffffff',
+    buildingStroke: '#1e293b',
+    hatchStroke: '#94a3b8',
+    corridor: '#e9e4d8',
+    corridorLine: '#94a3b8',
+    aula: { fill: '#fff4dc', stroke: '#1e293b' },         // bardzo lekki cream
+    lab: { fill: '#eef2f9', stroke: '#1e293b' },          // bardzo lekki blue
+    standard: { fill: '#fafaf3', stroke: '#1e293b' },     // off-white
+    selected: { fill: '#fde047', stroke: '#1e293b' },     // GOLD ACCENT
+    selectedHalo: 'rgba(250, 204, 21, 0.35)',
     text: '#0f172a',
-    textMuted: '#475569',
-    selectedStroke: '#0f172a',
+    textMuted: '#64748b',
+    textOnSelected: '#0f172a',
   },
   dark: {
-    buildingFill: '#0f172a',
+    bgGradient: ['#0a0e1c', '#161a2e'],   // deep navy → slate
+    buildingFill: '#1a1f33',
     buildingStroke: '#fde68a',
-    corridor: '#1e293b',
-    corridorLine: '#fbbf24',
-    aula: { fill: '#92400e', stroke: '#f59e0b', selected: '#fde047' },
-    lab: { fill: '#1e3a8a', stroke: '#60a5fa', selected: '#93c5fd' },
-    standard: { fill: '#713f12', stroke: '#eab308', selected: '#fde047' },
-    text: '#f8fafc',
-    textMuted: '#cbd5e1',
-    selectedStroke: '#fde047',
+    hatchStroke: '#334155',
+    corridor: '#0f1428',
+    corridorLine: '#475569',
+    aula: { fill: '#252a40', stroke: '#fde68a' },        // bardzo lekki warm tint
+    lab: { fill: '#1d2740', stroke: '#fde68a' },         // bardzo lekki cool tint
+    standard: { fill: '#1e2336', stroke: '#fde68a' },    // close to building fill
+    selected: { fill: '#facc15', stroke: '#fde047' },    // GOLD ACCENT
+    selectedHalo: 'rgba(250, 204, 21, 0.45)',
+    text: '#f1f5f9',
+    textMuted: '#94a3b8',
+    textOnSelected: '#0f172a',
   },
 }
 
@@ -82,16 +87,13 @@ export default function FloorPlan2D({
 }: Props) {
   const palette = COLORS[theme]
 
-  // ── Projection footprintu do lokalnych metrów ─────────────────────────
-  // Jeśli brak footprintu, używamy syntetycznego prostokąta 30×40m.
+  // ── Projection footprintu do lokalnych metrów ──────────────────────
   const geom = useMemo(() => {
     if (!footprint) {
       return {
         outline: null as Array<{ x: number; z: number }> | null,
         width: 30,
         depth: 40,
-        cx: 0,
-        cz: 0,
       }
     }
     const outerRing = footprint.geometry.coordinates[0]
@@ -100,12 +102,11 @@ export default function FloorPlan2D({
     const meters = ringToMeters(outerRing, project)
     const cx = (bbox.minX + bbox.maxX) / 2
     const cz = (bbox.minZ + bbox.maxZ) / 2
-    // Re-centruj wszystko na (0, 0).
     const outline = meters.map((p) => ({ x: p.x - cx, z: p.z - cz }))
-    return { outline, width: bbox.width, depth: bbox.depth, cx, cz }
+    return { outline, width: bbox.width, depth: bbox.depth }
   }, [footprint, building.lat, building.lng])
 
-  // ── Layout sal + korytarzy z tego samego algo co 3D ──────────────────
+  // ── Layout sal + korytarzy ─────────────────────────────────────────
   const layout = useMemo(() => {
     return layoutFloor(
       rooms.map((r) => ({ id: r.id, code: r.code, capacity: r.capacity })),
@@ -120,17 +121,19 @@ export default function FloorPlan2D({
     return m
   }, [rooms])
 
-  // ── ViewBox SVG — padding 6m wokół budynku ───────────────────────────
-  const PADDING = 6
+  // ── ViewBox SVG — padding 8m wokół budynku ─────────────────────────
+  const PADDING = 8
   const vbW = geom.width + 2 * PADDING
   const vbD = geom.depth + 2 * PADDING
   const vbX = -vbW / 2
   const vbZ = -vbD / 2
 
+  // Krok grid'a dla decorative grid w tle
+  const gridStep = 5
+
   // SVG path obrysu budynku.
   const buildingPath = useMemo(() => {
     if (!geom.outline || geom.outline.length === 0) {
-      // Fallback: prostokąt.
       const w = geom.width / 2
       const d = geom.depth / 2
       return `M ${-w} ${-d} L ${w} ${-d} L ${w} ${d} L ${-w} ${d} Z`
@@ -146,141 +149,238 @@ export default function FloorPlan2D({
     )
   }, [geom.outline, geom.width, geom.depth])
 
+  // Stable IDs dla SVG defs (gdy więcej niż 1 FloorPlan2D w DOM).
+  const uid = useMemo(() => Math.random().toString(36).slice(2, 8), [])
+  const hatchId = `hatch-${uid}`
+  const gridId = `grid-${uid}`
+  const buildingClipId = `clip-${uid}`
+  const bgGradId = `bg-${uid}`
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       <svg
         viewBox={`${vbX} ${vbZ} ${vbW} ${vbD}`}
         preserveAspectRatio="xMidYMid meet"
         className="h-full w-full select-none"
-        style={{ background: theme === 'dark' ? '#070a18' : '#e6eef7' }}
       >
-        {/* ── Obrys budynku ─────────────────────────────────────────── */}
+        <defs>
+          {/* Subtle background gradient */}
+          <linearGradient id={bgGradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={palette.bgGradient[0]} />
+            <stop offset="100%" stopColor={palette.bgGradient[1]} />
+          </linearGradient>
+
+          {/* Hatched pattern dla "niezindeksowane" sale */}
+          <pattern
+            id={hatchId}
+            patternUnits="userSpaceOnUse"
+            width="2.4"
+            height="2.4"
+            patternTransform="rotate(45)"
+          >
+            <line
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="2.4"
+              stroke={palette.hatchStroke}
+              strokeWidth="0.35"
+              opacity="0.55"
+            />
+          </pattern>
+
+          {/* Subtle grid in background */}
+          <pattern id={gridId} width={gridStep} height={gridStep} patternUnits="userSpaceOnUse">
+            <path
+              d={`M ${gridStep} 0 L 0 0 0 ${gridStep}`}
+              fill="none"
+              stroke={palette.hatchStroke}
+              strokeWidth="0.08"
+              opacity="0.35"
+            />
+          </pattern>
+
+          {/* Clip-path do obrysu budynku — żeby hatch nie wychodził poza */}
+          <clipPath id={buildingClipId}>
+            <path d={buildingPath} />
+          </clipPath>
+        </defs>
+
+        {/* ── Tło: gradient + subtelna siatka ────────────────────────── */}
+        <rect x={vbX} y={vbZ} width={vbW} height={vbD} fill={`url(#${bgGradId})`} />
+        <rect x={vbX} y={vbZ} width={vbW} height={vbD} fill={`url(#${gridId})`} />
+
+        {/* ── Subtle shadow pod budynkiem ──────────────────────────── */}
+        <path
+          d={buildingPath}
+          fill={theme === 'dark' ? '#000000' : '#0f172a'}
+          opacity={theme === 'dark' ? 0.45 : 0.15}
+          transform="translate(0.8, 1.2)"
+          filter="blur(1px)"
+        />
+
+        {/* ── Obrys budynku z fill ─────────────────────────────────── */}
         <path
           d={buildingPath}
           fill={palette.buildingFill}
           stroke={palette.buildingStroke}
-          strokeWidth={0.6}
+          strokeWidth={0.5}
           strokeLinejoin="round"
-          opacity={0.95}
         />
 
-        {/* ── Korytarze ─────────────────────────────────────────────── */}
-        {layout.corridors.map((c, i) => (
-          <g key={`corridor-${i}`}>
-            <rect
-              x={c.x - c.width / 2}
-              y={c.z - c.depth / 2}
-              width={c.width}
-              height={c.depth}
-              fill={palette.corridor}
-              opacity={0.85}
-            />
-            {/* Linia środkowa korytarza — żółty pasek */}
-            {c.depth > c.width ? (
-              <line
-                x1={c.x}
-                y1={c.z - c.depth / 2 + 0.4}
-                x2={c.x}
-                y2={c.z + c.depth / 2 - 0.4}
-                stroke={palette.corridorLine}
-                strokeWidth={Math.max(0.12, c.width * 0.1)}
-                strokeDasharray="0.8 0.6"
-                opacity={0.7}
-              />
-            ) : (
-              <line
-                x1={c.x - c.width / 2 + 0.4}
-                y1={c.z}
-                x2={c.x + c.width / 2 - 0.4}
-                y2={c.z}
-                stroke={palette.corridorLine}
-                strokeWidth={Math.max(0.12, c.depth * 0.1)}
-                strokeDasharray="0.8 0.6"
-                opacity={0.7}
-              />
-            )}
-          </g>
-        ))}
+        {/* ── Wewnątrz budynku: hatched pattern (= "niezindeksowane") ─
+            Wszystko clip'owane do obrysu, więc nie wycieka na zewnątrz.
+            Sale i korytarze renderowane NA WIERZCHU pokryją hatching tam
+            gdzie wiemy co jest. Reszta zostaje hatched → wizualnie "?". */}
+        <g clipPath={`url(#${buildingClipId})`}>
+          <rect x={vbX} y={vbZ} width={vbW} height={vbD} fill={`url(#${hatchId})`} />
 
-        {/* ── Sale ──────────────────────────────────────────────────── */}
-        {layout.rooms.map((box) => {
-          const room = roomLookup.get(box.roomId)
-          if (!room) return null
-          const isSelected = selectedRoomId === room.id
-          const kindPalette = palette[box.kind]
-          const fill = isSelected ? kindPalette.selected : kindPalette.fill
-          const stroke = isSelected ? palette.selectedStroke : kindPalette.stroke
-          const strokeWidth = isSelected ? 0.45 : 0.25
-
-          // Sensowny rozmiar label'a — 1m wysokości w jednostkach SVG,
-          // ale cap na max wymiar sali (żeby duża aula nie miała wielkiej
-          // litery zajmującej cały box).
-          const fontSize = Math.min(
-            1.6,
-            Math.max(0.8, Math.min(box.width, box.depth) * 0.22),
-          )
-
-          return (
-            <g key={room.id}>
+          {/* ── Korytarze — solid color przykrywa hatching ─────────── */}
+          {layout.corridors.map((c, i) => (
+            <g key={`corridor-${i}`}>
               <rect
-                x={box.x - box.width / 2}
-                y={box.z - box.depth / 2}
-                width={box.width}
-                height={box.depth}
-                rx={0.3}
-                ry={0.3}
-                fill={fill}
-                stroke={stroke}
-                strokeWidth={strokeWidth}
-                className="cursor-pointer transition-[fill,stroke] hover:brightness-110"
-                onClick={() => onPickRoom(room.id)}
+                x={c.x - c.width / 2}
+                y={c.z - c.depth / 2}
+                width={c.width}
+                height={c.depth}
+                fill={palette.corridor}
               />
-              <text
-                x={box.x}
-                y={box.z}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={fontSize}
-                fontWeight={800}
-                fontFamily="ui-sans-serif, system-ui"
-                fill={palette.text}
-                style={{ pointerEvents: 'none' }}
-              >
-                {room.code}
-              </text>
-              {box.kind === 'aula' && room.capacity && box.depth > 4 && (
-                <text
-                  x={box.x}
-                  y={box.z + fontSize * 0.9}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize={fontSize * 0.55}
-                  fontWeight={600}
-                  fontFamily="ui-sans-serif, system-ui"
-                  fill={palette.textMuted}
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {room.capacity} miejsc
-                </text>
+              {/* Linia środkowa korytarza — subtle dashed gold */}
+              {c.depth > c.width ? (
+                <line
+                  x1={c.x}
+                  y1={c.z - c.depth / 2 + 0.6}
+                  x2={c.x}
+                  y2={c.z + c.depth / 2 - 0.6}
+                  stroke={palette.corridorLine}
+                  strokeWidth={0.18}
+                  strokeDasharray="1.2 0.8"
+                  opacity={0.6}
+                />
+              ) : (
+                <line
+                  x1={c.x - c.width / 2 + 0.6}
+                  y1={c.z}
+                  x2={c.x + c.width / 2 - 0.6}
+                  y2={c.z}
+                  stroke={palette.corridorLine}
+                  strokeWidth={0.18}
+                  strokeDasharray="1.2 0.8"
+                  opacity={0.6}
+                />
               )}
             </g>
-          )
-        })}
+          ))}
 
-        {/* ── Strzałka północy ──────────────────────────────────────── */}
-        <g transform={`translate(${vbX + 3.5} ${vbZ + 3.5})`}>
-          <circle r={1.6} fill={palette.buildingFill} stroke={palette.buildingStroke} strokeWidth={0.15} />
+          {/* ── Sale ─────────────────────────────────────────────── */}
+          {layout.rooms.map((box) => {
+            const room = roomLookup.get(box.roomId)
+            if (!room) return null
+            const isSelected = selectedRoomId === room.id
+            const kindPalette = palette[box.kind]
+            const fill = isSelected ? palette.selected.fill : kindPalette.fill
+            const stroke = isSelected ? palette.selected.stroke : kindPalette.stroke
+            const strokeWidth = isSelected ? 0.55 : 0.22
+
+            const labelFontSize = Math.min(
+              1.4,
+              Math.max(0.7, Math.min(box.width, box.depth) * 0.2),
+            )
+
+            return (
+              <g key={room.id}>
+                {/* Halo dla selected — soft glow */}
+                {isSelected && (
+                  <rect
+                    x={box.x - box.width / 2 - 1.2}
+                    y={box.z - box.depth / 2 - 1.2}
+                    width={box.width + 2.4}
+                    height={box.depth + 2.4}
+                    rx={1.5}
+                    ry={1.5}
+                    fill={palette.selectedHalo}
+                  />
+                )}
+                <rect
+                  x={box.x - box.width / 2}
+                  y={box.z - box.depth / 2}
+                  width={box.width}
+                  height={box.depth}
+                  rx={0.4}
+                  ry={0.4}
+                  fill={fill}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  className="cursor-pointer transition-[fill,stroke,stroke-width]"
+                  onClick={() => onPickRoom(room.id)}
+                />
+                {/* Label — kod sali */}
+                <text
+                  x={box.x}
+                  y={box.z - (room.display_name && room.display_name !== `Sala ${room.code}` ? labelFontSize * 0.45 : 0)}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={labelFontSize}
+                  fontWeight={700}
+                  fontFamily="ui-monospace, 'SF Mono', Menlo, monospace"
+                  fill={isSelected ? palette.textOnSelected : palette.text}
+                  style={{ pointerEvents: 'none', letterSpacing: '-0.02em' }}
+                >
+                  {room.code}
+                </text>
+                {/* Display name jako mała "metryka" pod kodem */}
+                {room.display_name &&
+                  room.display_name !== `Sala ${room.code}` &&
+                  box.depth > 5 && (
+                    <text
+                      x={box.x}
+                      y={box.z + labelFontSize * 0.7}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={labelFontSize * 0.5}
+                      fontWeight={500}
+                      fontFamily="ui-sans-serif, system-ui"
+                      fill={isSelected ? palette.textOnSelected : palette.textMuted}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {truncate(room.display_name, 22)}
+                    </text>
+                  )}
+                {/* Capacity dla auli — jako mała pin */}
+                {box.kind === 'aula' && room.capacity && box.depth > 6 && (
+                  <text
+                    x={box.x}
+                    y={box.z + labelFontSize * 1.45}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={labelFontSize * 0.42}
+                    fontWeight={600}
+                    fontFamily="ui-sans-serif, system-ui"
+                    fill={isSelected ? palette.textOnSelected : palette.textMuted}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {room.capacity} miejsc
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        </g>
+
+        {/* ── Strzałka północy ─────────────────────────────────────── */}
+        <g transform={`translate(${vbX + 4} ${vbZ + 4})`}>
+          <circle r={2} fill={palette.buildingFill} stroke={palette.buildingStroke} strokeWidth={0.18} opacity={0.95} />
           <path
-            d="M 0 -1.1 L 0.5 0.3 L 0 -0.1 L -0.5 0.3 Z"
+            d="M 0 -1.3 L 0.55 0.4 L 0 0 L -0.55 0.4 Z"
             fill={palette.text}
           />
           <text
             x={0}
-            y={1.05}
+            y={1.25}
             textAnchor="middle"
             dominantBaseline="central"
-            fontSize={0.7}
-            fontWeight={700}
+            fontSize={0.75}
+            fontWeight={800}
             fontFamily="ui-sans-serif, system-ui"
             fill={palette.text}
           >
@@ -288,14 +388,14 @@ export default function FloorPlan2D({
           </text>
         </g>
 
-        {/* ── Skala w prawym dolnym rogu ────────────────────────────── */}
-        <g transform={`translate(${vbX + vbW - 12} ${vbZ + vbD - 3.5})`}>
-          <line x1={0} y1={0} x2={10} y2={0} stroke={palette.text} strokeWidth={0.18} />
-          <line x1={0} y1={-0.5} x2={0} y2={0.5} stroke={palette.text} strokeWidth={0.18} />
-          <line x1={10} y1={-0.5} x2={10} y2={0.5} stroke={palette.text} strokeWidth={0.18} />
+        {/* ── Skala 10m ──────────────────────────────────────────── */}
+        <g transform={`translate(${vbX + vbW - 14} ${vbZ + vbD - 4})`}>
+          <line x1={0} y1={0} x2={10} y2={0} stroke={palette.text} strokeWidth={0.22} />
+          <line x1={0} y1={-0.55} x2={0} y2={0.55} stroke={palette.text} strokeWidth={0.22} />
+          <line x1={10} y1={-0.55} x2={10} y2={0.55} stroke={palette.text} strokeWidth={0.22} />
           <text
             x={5}
-            y={1.6}
+            y={1.7}
             textAnchor="middle"
             dominantBaseline="central"
             fontSize={0.85}
@@ -308,25 +408,57 @@ export default function FloorPlan2D({
         </g>
       </svg>
 
-      {/* ── Pusty stan ─────────────────────────────────────────────── */}
+      {/* ── Pusty stan ────────────────────────────────────────────── */}
       {rooms.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="rounded-2xl border border-white/15 bg-black/65 px-4 py-3 text-center backdrop-blur-md">
-            <p className="text-sm font-bold text-white">Brak sal w bazie na tym piętrze</p>
-            <p className="mt-1 text-[11px] text-white/70">
-              Obrys budynku z OSM, wnętrze nie jest jeszcze zindeksowane.
+          <div className="rounded-2xl border border-zinc-300 bg-white/95 px-4 py-3 text-center shadow-md dark:border-white/15 dark:bg-black/85">
+            <p className="text-sm font-bold text-zinc-900 dark:text-white">
+              Brak sal w bazie na tym piętrze
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300">
+              Obrys budynku z OSM · sale do dodania
             </p>
           </div>
         </div>
       )}
 
-      {/* ── Mini-info: liczba sal na piętrze ──────────────────────── */}
+      {/* ── Sticker: liczba sal ──────────────────────────────────── */}
       {rooms.length > 0 && (
-        <div className="pointer-events-none absolute top-3 right-3 rounded-full bg-black/70 backdrop-blur-md px-3 py-1.5 text-[11px] font-bold text-white inline-flex items-center gap-1.5">
+        <div className="pointer-events-none absolute top-3 right-3 rounded-full bg-white/95 backdrop-blur-md px-3 py-1.5 text-[11px] font-bold text-zinc-900 inline-flex items-center gap-1.5 border border-zinc-200 shadow-sm dark:bg-black/75 dark:text-zinc-100 dark:border-white/15">
           <Users size={12} strokeWidth={2.5} aria-hidden />
-          {rooms.length} {rooms.length === 1 ? 'sala' : rooms.length < 5 ? 'sale' : 'sal'}
+          {rooms.length} {pluralRoom(rooms.length)}
+        </div>
+      )}
+
+      {/* ── Sticker: info o hatched ──────────────────────────────── */}
+      {rooms.length > 0 && (
+        <div className="pointer-events-none absolute bottom-3 right-3 max-w-[200px] rounded-xl bg-white/85 backdrop-blur-md px-2.5 py-1.5 text-[10px] text-zinc-700 inline-flex items-start gap-1.5 border border-zinc-200 shadow-sm dark:bg-black/65 dark:text-zinc-300 dark:border-white/10">
+          <span
+            className="inline-block w-3 h-3 mt-0.5 shrink-0 rounded-sm"
+            style={{
+              background: theme === 'dark'
+                ? 'repeating-linear-gradient(45deg, #334155 0, #334155 1px, transparent 1px, transparent 3px)'
+                : 'repeating-linear-gradient(45deg, #94a3b8 0, #94a3b8 1px, transparent 1px, transparent 3px)',
+              border: `1px solid ${theme === 'dark' ? '#475569' : '#cbd5e1'}`,
+            }}
+          />
+          <span className="leading-tight">Kreskowane = brak danych w bazie</span>
         </div>
       )}
     </div>
   )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────
+
+function truncate(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max - 1) + '…' : s
+}
+
+function pluralRoom(n: number): string {
+  if (n === 1) return 'sala'
+  if (n >= 2 && n <= 4) return 'sale'
+  return 'sal'
 }
