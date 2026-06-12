@@ -1,0 +1,41 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          19.9343456,
+          50.0613103
+        ],
+        [
+          19.9343133,
+          50.0612761
+        ],
+        [
+          19.9344522,
+          50.0612375
+        ],
+        [
+          19.9344813,
+          50.0612725
+        ],
+        [
+          19.9343456,
+          50.0613103
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "building_id": "golebia-16",
+    "osm_id": 304504505,
+    "osm_type": "way",
+    "name": null,
+    "levels": 4,
+    "height_m": 14,
+    "source": "overpass",
+    "match_strategy": "osm_id",
+    "generated_at": "2026-06-12T20:55:17.310Z"
+  }
+}

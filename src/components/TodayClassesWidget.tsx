@@ -154,7 +154,7 @@ export default function TodayClassesWidget({
         <ClipboardList size={isPanel ? 16 : 13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} />
         <div className="flex min-w-0 flex-col leading-tight">
           <span className={isPanel ? `text-[15px] font-bold ${theme.text.primary}` : sectionTitleCls}>
-            {isPanel ? 'Co dziś masz?' : 'Co dziś masz'}
+            Dzisiaj
           </span>
           <span className={`text-[10px] ${sideMutedCls}`}>{todayLabel}</span>
         </div>
@@ -169,7 +169,13 @@ export default function TodayClassesWidget({
 
   const cardCls = isPanel
     ? 'p-4 sm:p-5 flex flex-col gap-4'
-    : 'p-4 flex flex-col gap-3 h-[420px] min-h-0 overflow-hidden'
+    : 'p-4 flex flex-col gap-3 max-h-[420px] min-h-0 overflow-hidden shrink-0'
+
+  const listClasses = isPanel
+    ? classes
+    : nextClass
+      ? classes.filter((c) => c.id !== nextClass.id)
+      : classes
 
   return (
     <BaseCard variant="default" className={cardCls}>
@@ -213,16 +219,18 @@ export default function TodayClassesWidget({
               </p>
             </div>
           )}
-          <div className={`flex-1 min-h-0 ${isPanel ? '' : 'overflow-y-auto pr-1'} space-y-2`}>
-            {classes.map((c) => (
-              <ClassRow
-                key={c.id}
-                c={c}
-                compact={!isPanel}
-                onOpenCancellation={handleOpenCancellation}
-              />
-            ))}
-          </div>
+          {listClasses.length > 0 && (
+            <div className={`flex-1 min-h-0 ${isPanel ? '' : 'overflow-y-auto pr-1'} space-y-2`}>
+              {listClasses.map((c) => (
+                <ClassRow
+                  key={c.id}
+                  c={c}
+                  compact={!isPanel}
+                  onOpenCancellation={handleOpenCancellation}
+                />
+              ))}
+            </div>
+          )}
           {!isPanel && (
             <button
               type="button"

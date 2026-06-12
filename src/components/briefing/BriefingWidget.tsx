@@ -1,11 +1,19 @@
 /**
- * UJverse — compaktowy widget tygodniowego briefingu (sidebar feedu / mobile).
+ * UJverse — kompaktowy widget tygodniowego briefingu (sidebar feedu / mobile).
  *
- * Wzorzec wizualny dopasowany do `AcademicAnnouncementsWidget` /
- * `TodayClassesWidget`: header z `sectionTitleCls`, content w `BaseCard`,
- * jednorodne odstępy. Klik → `/briefing` (full view).
+ * Wzorzec wizualny zgodny z innymi „wyspami" sidebaru (Niezbędnik / Wydarzenia
+ * UJ): `BaseCard` (default) + header z `sectionTitleCls` + lista wewnętrznych
+ * wierszy (`variant="inner"`). Każdy wiersz: ikona w kwadratowym slocie, bold
+ * label + muted sub. Klik → `/briefing` (full view).
  */
-import { Sparkles, ChevronRight, AlertTriangle, Calendar, Megaphone } from 'lucide-react'
+import {
+  BarChart3,
+  ChevronRight,
+  AlertTriangle,
+  Calendar,
+  Megaphone,
+  type LucideIcon,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import BaseCard from '../ui/BaseCard'
 import {
@@ -19,6 +27,53 @@ import { fmtHours, fmtWeekRange } from './briefingFormat'
 
 type Props = {
   userId: string | null
+}
+
+type StatTone = 'neutral' | 'warn'
+
+type StatRowData = {
+  icon: LucideIcon
+  primary: string
+  secondary: string | null
+  tone: StatTone
+}
+
+function pluralPl(n: number, one: string, few: string, many: string): string {
+  if (n === 1) return one
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
+  return many
+}
+
+function StatRow({ icon: Icon, primary, secondary, tone }: StatRowData) {
+  const iconCls =
+    tone === 'warn'
+      ? 'text-amber-600 dark:text-amber-400'
+      : widgetGoldCls
+  return (
+    <BaseCard
+      variant="inner"
+      flush
+      className="m-0 w-full flex items-start gap-2 p-2.5 shadow-none"
+    >
+      <div className="shrink-0 flex w-9 items-center justify-center min-h-[32px]">
+        <Icon size={16} className={`shrink-0 ${iconCls}`} strokeWidth={2} aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p
+          className={`text-[13px] font-semibold leading-snug truncate ${theme.text.primary}`}
+        >
+          {primary}
+        </p>
+        {secondary && (
+          <p className={`text-[11px] leading-snug ${theme.text.muted} truncate`}>
+            {secondary}
+          </p>
+        )}
+      </div>
+    </BaseCard>
+  )
 }
 
 export default function BriefingWidget({ userId }: Props) {
@@ -36,8 +91,9 @@ export default function BriefingWidget({ userId }: Props) {
     if (loading && !briefing) {
       return (
         <div className="space-y-2">
-          <div className="h-9 animate-pulse rounded-lg bg-black/[0.05] dark:bg-white/[0.04]" />
-          <div className="h-9 animate-pulse rounded-lg bg-black/[0.05] dark:bg-white/[0.04]" />
+          <div className="h-12 animate-pulse rounded-2xl bg-black/[0.05] dark:bg-white/[0.04]" />
+          <div className="h-12 animate-pulse rounded-2xl bg-black/[0.05] dark:bg-white/[0.04]" />
+          <div className="h-12 animate-pulse rounded-2xl bg-black/[0.05] dark:bg-white/[0.04]" />
         </div>
       )
     }
@@ -52,46 +108,49 @@ export default function BriefingWidget({ userId }: Props) {
       )
     }
     const p = briefing.payload
-    const stats = [
+    const classCount = p.classes.total
+    const changeCount = p.changes.length
+    const annCount = p.announcements_from_subscribed.length
+
+    const stats: StatRowData[] = [
       {
         icon: Calendar,
-        label: `${p.classes.total} zajęć`,
-        sub: fmtHours(p.classes.hours),
+        primary:
+          classCount === 0
+            ? 'Brak zajęć w tym tygodniu'
+            : `${classCount} ${pluralPl(classCount, 'zajęcie', 'zajęcia', 'zajęć')}`,
+        secondary: classCount === 0 ? null : `${fmtHours(p.classes.hours)} tygodniowo`,
+        tone: 'neutral',
       },
       {
         icon: AlertTriangle,
-        label: `${p.changes.length} zmian`,
-        sub: p.classes.cancelled > 0 ? `${p.classes.cancelled} odwołane` : 'w planie',
-        tone: p.changes.length > 0 ? 'warn' : 'neutral',
+        primary:
+          changeCount === 0
+            ? 'Brak zmian w planie'
+            : `${changeCount} ${pluralPl(changeCount, 'zmiana', 'zmiany', 'zmian')}`,
+        secondary:
+          p.classes.cancelled > 0
+            ? `${p.classes.cancelled} ${pluralPl(p.classes.cancelled, 'odwołane', 'odwołane', 'odwołanych')}`
+            : null,
+        tone: changeCount > 0 ? 'warn' : 'neutral',
       },
       {
         icon: Megaphone,
-        label: `${p.announcements_from_subscribed.length} komunikatów`,
-        sub: 'od Twoich wykł.',
+        primary:
+          annCount === 0
+            ? 'Brak nowych komunikatów'
+            : `${annCount} ${pluralPl(annCount, 'komunikat', 'komunikaty', 'komunikatów')}`,
+        secondary: annCount > 0 ? 'od Twoich wykładowców' : null,
+        tone: 'neutral',
       },
-    ] as const
+    ]
 
     return (
       <div className="flex flex-col gap-3">
-        <div className="grid grid-cols-3 gap-2">
-          {stats.map((s) => {
-            const tone =
-              'tone' in s && s.tone === 'warn'
-                ? 'bg-amber-50/80 border-amber-200 dark:bg-amber-500/[0.08] dark:border-amber-500/30'
-                : 'bg-zinc-50 border-zinc-200 dark:bg-white/[0.03] dark:border-white/10'
-            return (
-              <div
-                key={s.label}
-                className={`flex flex-col items-start gap-1 rounded-xl border px-2.5 py-2 ${tone}`}
-              >
-                <s.icon size={14} className={widgetGoldCls} strokeWidth={2} aria-hidden />
-                <span className={`text-[12px] font-bold leading-tight ${theme.text.primary}`}>
-                  {s.label}
-                </span>
-                <span className={`text-[10px] leading-tight ${theme.text.muted}`}>{s.sub}</span>
-              </div>
-            )
-          })}
+        <div className="flex flex-col gap-2">
+          {stats.map((s) => (
+            <StatRow key={s.primary} {...s} />
+          ))}
         </div>
 
         {p.next_exam && (
@@ -116,7 +175,7 @@ export default function BriefingWidget({ userId }: Props) {
         <button
           type="button"
           onClick={() => navigate('/briefing')}
-          className="flex items-center justify-center gap-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-[11.5px] font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.04]"
+          className={`flex items-center justify-center gap-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-[11.5px] font-medium ${theme.text.muted} hover:bg-zinc-50 dark:border-white/10 dark:hover:bg-white/[0.04]`}
         >
           Otwórz pełny przegląd <ChevronRight size={12} />
         </button>
@@ -127,9 +186,9 @@ export default function BriefingWidget({ userId }: Props) {
   return (
     <BaseCard variant="default" className="p-4 flex flex-col gap-3 shrink-0">
       <div className="flex items-center gap-2">
-        <Sparkles size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} aria-hidden />
+        <BarChart3 size={13} className={`${widgetGoldCls} shrink-0`} strokeWidth={2} aria-hidden />
         <div className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className={sectionTitleCls}>Twój tydzień</span>
+          <span className={sectionTitleCls}>Przegląd tygodnia</span>
           {briefing && (
             <span className={`text-[10px] ${sideMutedCls}`}>
               {fmtWeekRange(briefing.payload.week_start, briefing.payload.week_end)}

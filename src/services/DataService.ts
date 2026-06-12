@@ -24,8 +24,10 @@ import {
 } from './adapters/LecturerSubscriptionsAdapter'
 import {
   TimetableAdapter,
+  type DistinctLecturerRow,
   type ImportIcsResult,
   type TimetableEntryRow,
+  type TimetableStats,
 } from './adapters/TimetableAdapter'
 import { BriefingAdapter } from './adapters/BriefingAdapter'
 import type { WeeklyBriefingRow } from '../types/briefing'
@@ -147,6 +149,10 @@ class DataServiceImpl {
     return LecturerSubscriptionsAdapter.subscribe(userId, displayName)
   }
 
+  async subscribeManyLecturers(userId: string, names: readonly string[]) {
+    return LecturerSubscriptionsAdapter.subscribeMany(userId, names)
+  }
+
   async unsubscribeLecturer(userId: string, id: number) {
     return LecturerSubscriptionsAdapter.unsubscribe(userId, id)
   }
@@ -190,6 +196,16 @@ class DataServiceImpl {
 
   async timetableEntryCount(userId: string): Promise<number> {
     return TimetableAdapter.count(userId)
+  }
+
+  /** Lista unikalnych wykładowców z zaimportowanego planu (do auto-subscribe). */
+  async listTimetableLecturers(userId: string): Promise<DistinctLecturerRow[]> {
+    return TimetableAdapter.listDistinctLecturers(userId)
+  }
+
+  /** Stats planu dla widoku „Mój Plan" (zajęcia tygodniowo, godziny, busiest day, last import). */
+  async timetableStats(userId: string, weekStart: Date, weekEnd: Date): Promise<TimetableStats> {
+    return TimetableAdapter.stats(userId, weekStart, weekEnd)
   }
 
   /* Tygodniowy briefing — lazy generation + browsing historycznych. */

@@ -225,6 +225,117 @@ class TimetableAdapterImpl {
       .eq('user_id', userId)
     return count ?? 0
   }
+
+  /**
+   * Lista unikalnych wykładowców z planu danego usera, posortowana po
+   * częstości (najczęściej spotykany na górze).
+   *
+   * Implementacja: pobieramy `lecturer_name` + `lecturer_key` z wszystkich
+   * entries (typowy plan = 30–150 wierszy, więc bez paginacji) i agregujemy
+   * w JS. RPC byłoby czystsze, ale dla rozmiaru danych nieuzasadnione.
+   */
+  async listDistinctLecturers(userId: string): Promise<DistinctLecturerRow[]> {
+    const { data, error } = await supabase
+      .from('user_timetable_entries')
+      .select('lecturer_name, lecturer_key')
+      .eq('user_id', userId)
+      .not('lecturer_name', 'is', null)
+    if (error || !Array.isArray(data)) return []
+
+    const acc = new Map<string, DistinctLecturerRow>()
+    for (const row of data as Array<{ lecturer_name: string | null; lecturer_key: string | null }>) {
+      const name = row.lecturer_name?.trim()
+      const key = row.lecturer_key?.trim()
+      if (!name || !key) continue
+      const existing = acc.get(key)
+      if (existing) {
+        existing.class_count += 1
+        // Wybieramy „najpełniejszą" formę nazwiska (najdłuższa = z tytułami).
+        if (name.length > existing.lecturer_name.length) {
+          existing.lecturer_name = name
+        }
+      } else {
+        acc.set(key, { lecturer_name: name, lecturer_key: key, class_count: 1 })
+      }
+    }
+    return Array.from(acc.values()).sort((a, b) => b.class_count - a.class_count)
+  }
+
+  /**
+   * Stats dla widoku „Mój Plan" — wszystkie zajęcia od `from` do `to` (lub
+   * przyszłe gdy `from` = now). Liczymy łączny czas (godziny), zajęcia per
+   * dzień tygodnia, ostatni import.
+   */
+  async stats(userId: string, weekStart: Date, weekEnd: Date): Promise<TimetableStats> {
+    const empty: TimetableStats = {
+      thisWeekCount: 0,
+      thisWeekHours: 0,
+      busiestDay: null,
+      lastImportedAt: null,
+      totalEntries: 0,
+    }
+
+    const [{ data: weekRows }, { data: lastImport, count: totalCount }] = await Promise.all([
+      supabase
+        .from('user_timetable_entries')
+        .select('start_time, end_time')
+        .eq('user_id', userId)
+        .gte('start_time', weekStart.toISOString())
+        .lt('start_time', weekEnd.toISOString()),
+      supabase
+        .from('user_timetable_entries')
+        .select('imported_at', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('imported_at', { ascending: false })
+        .limit(1),
+    ])
+
+    if (Array.isArray(weekRows)) {
+      const dayCounts = new Map<number, number>()
+      let totalMs = 0
+      for (const row of weekRows as Array<{ start_time: string; end_time: string }>) {
+        const start = new Date(row.start_time)
+        const end = new Date(row.end_time)
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue
+        const dow = start.getDay() // 0=Sun, 1=Mon, …
+        dayCounts.set(dow, (dayCounts.get(dow) ?? 0) + 1)
+        totalMs += end.getTime() - start.getTime()
+      }
+      empty.thisWeekCount = weekRows.length
+      empty.thisWeekHours = Math.round((totalMs / 3_600_000) * 10) / 10
+      let topDow = -1
+      let topCount = 0
+      for (const [dow, count] of dayCounts) {
+        if (count > topCount) {
+          topCount = count
+          topDow = dow
+        }
+      }
+      empty.busiestDay =
+        topDow >= 0 ? { dayOfWeek: topDow, count: topCount } : null
+    }
+
+    if (Array.isArray(lastImport) && lastImport[0]) {
+      const row = lastImport[0] as { imported_at?: string | null }
+      empty.lastImportedAt = row.imported_at ?? null
+    }
+    empty.totalEntries = totalCount ?? 0
+    return empty
+  }
+}
+
+export type DistinctLecturerRow = {
+  lecturer_name: string
+  lecturer_key: string
+  class_count: number
+}
+
+export type TimetableStats = {
+  thisWeekCount: number
+  thisWeekHours: number
+  busiestDay: { dayOfWeek: number; count: number } | null
+  lastImportedAt: string | null
+  totalEntries: number
 }
 
 export const TimetableAdapter = new TimetableAdapterImpl()

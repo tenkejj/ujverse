@@ -42,6 +42,8 @@ export type UseLecturerSubscriptionsResult = {
   toggle: (lecturerName: string) => Promise<void>
   /** Twarda usuwka po id (np. ze Settings). */
   remove: (id: number) => Promise<void>
+  /** Bulk subskrypcja (np. „zasubskrybuj wszystkich z mojego planu"). Zwraca ile *nowych* wpisów dodano. */
+  subscribeMany: (names: readonly string[]) => Promise<number>
   refresh: () => Promise<void>
 }
 
@@ -155,6 +157,42 @@ export function useLecturerSubscriptions({
     [subscriptions, userId],
   )
 
+  const subscribeMany = useCallback(
+    async (names: readonly string[]): Promise<number> => {
+      if (!userId) {
+        toast.error('Zaloguj się, żeby subskrybować wykładowców.')
+        return 0
+      }
+      // Filtruj te których już subskrybujesz (po znormalizowanym kluczu) —
+      // unikamy zbędnych roundtripów i fałszywych „dodano N" w UI.
+      const candidates = Array.from(
+        new Set(names.map((n) => n.trim()).filter(Boolean)),
+      ).filter((name) => !subscribedKeys.has(deriveKeyClient(name)))
+
+      if (candidates.length === 0) return 0
+
+      const { inserted, error } = await DataService.subscribeManyLecturers(userId, candidates)
+      if (error) {
+        toast.error(errorMessage(error), { id: 'lecturer-subscribe-bulk' })
+        return 0
+      }
+      const insertedCount = inserted.length
+      // Świeży snapshot z DB jest tańszy niż mergowanie ręcznie — bulk
+      // upsert mógł trafić w mix nowych + już istniejących, refresh
+      // ujednolica stan.
+      await refresh()
+      if (insertedCount > 0) {
+        toast.success(
+          insertedCount === 1
+            ? 'Dodano 1 nową subskrypcję.'
+            : `Dodano ${insertedCount} nowych subskrypcji.`,
+        )
+      }
+      return insertedCount
+    },
+    [refresh, subscribedKeys, userId],
+  )
+
   const remove = useCallback(
     async (id: number) => {
       if (!userId) return
@@ -181,8 +219,19 @@ export function useLecturerSubscriptions({
       isSubscribed,
       toggle,
       remove,
+      subscribeMany,
       refresh,
     }),
-    [isSubscribed, loading, refresh, remove, subscriptions, subscribedKeys, toggle, userId],
+    [
+      isSubscribed,
+      loading,
+      refresh,
+      remove,
+      subscribeMany,
+      subscriptions,
+      subscribedKeys,
+      toggle,
+      userId,
+    ],
   )
 }

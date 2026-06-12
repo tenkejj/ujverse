@@ -2,11 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   haversineKm,
   listBuildings,
-  listFloorPlansForBuilding,
   listRoomsForBuilding,
   searchSale,
   type Building,
-  type FloorPlan,
   type Room,
   type SearchResult,
 } from '../services/SaleFinderService'
@@ -26,6 +24,11 @@ type SelectedTarget =
 
 /**
  * useSaleFinder — stan widoku Sale Finder (search + selection + geo).
+ *
+ * Po przejściu na Campus3DView (mapa 3D + exploded floors) wyrzuciliśmy
+ * obsługę floor plans (PNG ImageOverlay) — tabela `uj_building_floor_plans`
+ * pozostaje w DB ale UI z niej nie korzysta. Hook jest dalej re-używany
+ * przez Campus3D dla search/buildings/geo (via `useCampus3D` adapter).
  *
  * Zachowanie:
  *  - `query` jest debounced 180 ms; podczas debounce'u trzymamy poprzednie
@@ -52,15 +55,6 @@ export function useSaleFinder() {
   const [selected, setSelected] = useState<SelectedTarget>(null)
   const [siblingRooms, setSiblingRooms] = useState<Room[]>([])
   const [siblingRoomsLoading, setSiblingRoomsLoading] = useState(false)
-
-  // Plany pięter dla aktualnie wybranego budynku. Ładowane razem z
-  // sibling rooms — jedna selekcja = dwa zapytania równolegle.
-  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([])
-  const [floorPlansLoading, setFloorPlansLoading] = useState(false)
-  // Aktywny poziom (level) — null gdy budynek nie ma żadnych planów.
-  // Domyślnie: poziom wybranej sali jeśli ma plan, inaczej parter (0)
-  // jeśli istnieje, inaczej najniższy dostępny.
-  const [activeLevel, setActiveLevel] = useState<number | null>(null)
 
   const [geo, setGeo] = useState<GeoState>({ status: 'idle' })
 
@@ -116,59 +110,29 @@ export function useSaleFinder() {
       })
   }, [debouncedQuery])
 
-  // ── Sibling rooms + floor plans (równolegle, na zmianę selected) ──────
+  // ── Sibling rooms — sale w tym samym budynku ──────────────────────────
   const siblingTokenRef = useRef(0)
   useEffect(() => {
     if (!selected) {
       setSiblingRooms([])
-      setFloorPlans([])
-      setActiveLevel(null)
       return
     }
     const buildingId = selected.building.id
-    const targetRoomLevel = selected.kind === 'room' ? selected.room.floor : null
-
     const token = ++siblingTokenRef.current
     setSiblingRoomsLoading(true)
-    setFloorPlansLoading(true)
 
-    Promise.allSettled([
-      listRoomsForBuilding(buildingId),
-      listFloorPlansForBuilding(buildingId),
-    ])
-      .then(([roomsRes, plansRes]) => {
+    listRoomsForBuilding(buildingId)
+      .then((rooms) => {
         if (token !== siblingTokenRef.current) return
-
-        const rooms =
-          roomsRes.status === 'fulfilled' ? roomsRes.value : []
-        const plans =
-          plansRes.status === 'fulfilled' ? plansRes.value : []
-
         setSiblingRooms(rooms)
-        setFloorPlans(plans)
-
-        // Choose initial active level:
-        //   1. Wybrana sala ma poziom + plan na tym poziomie istnieje
-        //   2. Parter (0) ma plan
-        //   3. Najniższy poziom z planem
-        //   4. null (budynek bez planów)
-        if (plans.length === 0) {
-          setActiveLevel(null)
-        } else if (
-          targetRoomLevel !== null &&
-          plans.some((p) => p.level === targetRoomLevel)
-        ) {
-          setActiveLevel(targetRoomLevel)
-        } else if (plans.some((p) => p.level === 0)) {
-          setActiveLevel(0)
-        } else {
-          setActiveLevel(plans[0].level)
-        }
+      })
+      .catch(() => {
+        if (token !== siblingTokenRef.current) return
+        setSiblingRooms([])
       })
       .finally(() => {
         if (token !== siblingTokenRef.current) return
         setSiblingRoomsLoading(false)
-        setFloorPlansLoading(false)
       })
   }, [selected])
 
@@ -219,12 +183,6 @@ export function useSaleFinder() {
     [userLocation],
   )
 
-  /** Plan dla aktywnego poziomu lub `null` gdy budynek nie ma planów. */
-  const activePlan = useMemo<FloorPlan | null>(() => {
-    if (activeLevel === null) return null
-    return floorPlans.find((p) => p.level === activeLevel) ?? null
-  }, [floorPlans, activeLevel])
-
   return {
     buildings,
     buildingsLoading,
@@ -238,11 +196,6 @@ export function useSaleFinder() {
     clearSelection,
     siblingRooms,
     siblingRoomsLoading,
-    floorPlans,
-    floorPlansLoading,
-    activeLevel,
-    setActiveLevel,
-    activePlan,
     geo,
     userLocation,
     requestGeo,

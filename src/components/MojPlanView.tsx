@@ -13,7 +13,9 @@ import BaseCard from './ui/BaseCard'
 import EmptyState from './EmptyState'
 import AnnouncementDrawer from './AnnouncementDrawer'
 import ImportTimetablePanel from './ImportTimetablePanel'
+import TimetableInsights from './TimetableInsights'
 import TodayClassesWidget from './TodayClassesWidget'
+import WeekTimetableView from './WeekTimetableView'
 import { useLecturerSubscriptionsContext } from '../lib/lecturerSubscriptionsContext'
 import { DataService } from '../services/DataService'
 import {
@@ -106,7 +108,7 @@ function AddLecturerPanel() {
   if (!ctx || !ctx.userId) return null
 
   return (
-    <BaseCard variant="default" className="p-4 sm:p-5">
+    <BaseCard variant="default" className="relative z-30 p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 dark:border-brand-gold-bright/35 dark:bg-brand-gold/15">
           <Bell size={18} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.25} />
@@ -150,7 +152,7 @@ function AddLecturerPanel() {
         </div>
 
         {focused && (
-          <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-72 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-950">
+          <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-72 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-zinc-950">
             {loading ? (
               <div className="px-3 py-4 text-center text-xs text-zinc-500">Szukam…</div>
             ) : suggestions.length === 0 ? (
@@ -391,66 +393,115 @@ export default function MojPlanView() {
     )
   }
 
+  /**
+   * Layout:
+   * - Mobile (default): jednokolumnowy flow — wszystkie karty w pionie,
+   *   kolejność = main column → aside column. Najpierw user widzi DANE
+   *   (Today / Week / Subscriptions), poniżej KONTROLKI (Insights / Import /
+   *   Add lecturer). Mobile-first: data first, controls below.
+   *
+   * - Desktop (lg+): 2-col grid `[2fr 1fr]`. Lewa kolumna (main) to dane —
+   *   szerokie karty z planem i komunikatami. Prawa kolumna (aside) to
+   *   utility-stack (stats + import + add) z `sticky` na górze, żeby user
+   *   miał dostęp do kontrolek nawet podczas scrollowania długiej listy
+   *   subskrypcji albo planu na cały tydzień.
+   *
+   * UWAGA: `lg:min-w-0` na <main> jest konieczne — grid items mają default
+   * `min-width: auto`, co blokuje truncate w środku kart (np. nazwy
+   * przedmiotów w Week view). Bez tego layout breakuje gdy summary jest
+   * długie.
+   */
+
+  const subscriptionsBlock = ctx.loading && ctx.subscriptions.length === 0 ? (
+    <BaseCard variant="default" className="p-8">
+      <div className="space-y-3">
+        <div className="h-4 w-1/3 animate-pulse rounded-full bg-zinc-200 dark:bg-white/10" />
+        <div className="h-3 w-2/3 animate-pulse rounded-full bg-zinc-100 dark:bg-white/5" />
+        <div className="h-3 w-1/2 animate-pulse rounded-full bg-zinc-100 dark:bg-white/5" />
+      </div>
+    </BaseCard>
+  ) : ctx.subscriptions.length === 0 ? (
+    <BaseCard variant="default" className="p-8 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 dark:border-brand-gold-bright/35 dark:bg-brand-gold/15">
+        <Bell size={26} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2} />
+      </div>
+      <p className={`mt-4 text-[15px] font-semibold ${theme.text.primary}`}>Jeszcze nikogo nie subskrybujesz</p>
+      <p className={`mx-auto mt-1 max-w-md text-[13px] leading-relaxed ${theme.text.muted}`}>
+        Dodaj wykładowcę z listy {' '}
+        <span className="lg:hidden">poniżej</span>
+        <span className="hidden lg:inline">obok</span>
+        . Możesz też kliknąć dzwonek 🔔 przy nazwisku w dowolnym komunikacie, żeby aktywować powiadomienia jednym kliknięciem.
+      </p>
+    </BaseCard>
+  ) : (
+    <div className="space-y-4">
+      {loading && (
+        <p className={`text-center text-xs ${theme.text.muted}`}>Ładuję komunikaty…</p>
+      )}
+      {ctx.subscriptions.map((sub) => (
+        <LecturerSubscriptionCard
+          key={sub.id}
+          sub={sub}
+          announcements={grouped.get(sub.lecturer_key) ?? []}
+          onOpenAnnouncement={(ann) => setOpenAnn(announcementToUnified(ann))}
+          onUnsubscribe={() => void ctx.remove(sub.id)}
+        />
+      ))}
+    </div>
+  )
+
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <h1 className={`text-2xl font-bold tracking-tight ${theme.text.primary}`}>Mój Plan</h1>
+        <h1 className={`text-2xl font-bold tracking-tight ${theme.text.primary} lg:text-3xl`}>
+          Mój Plan
+        </h1>
         <p className={`max-w-2xl text-sm leading-relaxed ${theme.text.muted}`}>
           Twój plan zajęć + powiadomienia gdy któryś z Twoich wykładowców coś ogłosi (odwołanie / zdalne zajęcia / dyżur). Importujesz plan raz na semestr, a odwołania wpadają tu i jako notyfikacja — bez sprawdzania ISI UJ.
         </p>
       </div>
 
-      <TodayClassesWidget key={`today-${todayWidgetTick}`} userId={ctx.userId} variant="panel" />
+      <div className="lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:items-start lg:gap-5">
+        <main className="space-y-5 lg:min-w-0">
+          <TodayClassesWidget key={`today-${todayWidgetTick}`} userId={ctx.userId} variant="panel" />
 
-      <ImportTimetablePanel
-        userId={ctx.userId}
-        existingCount={timetableCount}
-        onImported={() => {
-          void refreshTimetableCount()
-          setTodayWidgetTick((t) => t + 1)
-        }}
-        onCleared={() => {
-          setTimetableCount(0)
-          setTodayWidgetTick((t) => t + 1)
-        }}
-      />
-
-      <AddLecturerPanel />
-
-      {ctx.loading && ctx.subscriptions.length === 0 ? (
-        <BaseCard variant="default" className="p-8">
-          <div className="space-y-3">
-            <div className="h-4 w-1/3 animate-pulse rounded-full bg-zinc-200 dark:bg-white/10" />
-            <div className="h-3 w-2/3 animate-pulse rounded-full bg-zinc-100 dark:bg-white/5" />
-            <div className="h-3 w-1/2 animate-pulse rounded-full bg-zinc-100 dark:bg-white/5" />
-          </div>
-        </BaseCard>
-      ) : ctx.subscriptions.length === 0 ? (
-        <BaseCard variant="default" className="p-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 dark:border-brand-gold-bright/35 dark:bg-brand-gold/15">
-            <Bell size={26} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2} />
-          </div>
-          <p className={`mt-4 text-[15px] font-semibold ${theme.text.primary}`}>Jeszcze nikogo nie subskrybujesz</p>
-          <p className={`mx-auto mt-1 max-w-md text-[13px] leading-relaxed ${theme.text.muted}`}>
-            Dodaj wykładowcę z listy powyżej. Możesz też kliknąć dzwonek 🔔 przy nazwisku w dowolnym komunikacie, żeby aktywować powiadomienia jednym kliknięciem.
-          </p>
-        </BaseCard>
-      ) : (
-        <div className="space-y-4">
-          {loading && (
-            <p className={`text-center text-xs ${theme.text.muted}`}>Ładuję komunikaty…</p>
+          {timetableCount > 0 && (
+            <WeekTimetableView userId={ctx.userId} refreshTick={todayWidgetTick} />
           )}
-          {ctx.subscriptions.map((sub) => (
-            <LecturerSubscriptionCard
-              key={sub.id}
-              sub={sub}
-              announcements={grouped.get(sub.lecturer_key) ?? []}
-              onOpenAnnouncement={(ann) => setOpenAnn(announcementToUnified(ann))}
-              onUnsubscribe={() => void ctx.remove(sub.id)}
-            />
-          ))}
-        </div>
-      )}
+
+          {subscriptionsBlock}
+        </main>
+
+        {/*
+          Aside z `sticky`: na lg+ kontrolki (stats, import, dodaj wykładowcę)
+          przyklejają się na górze viewportu (top-4) i pozostają widoczne
+          podczas scrollowania długiej listy subskrypcji / planu.
+          Świadomie BEZ `overflow-y-auto` — to clipowałoby dropdown autosuggesta
+          „Dodaj wykładowcę" (`absolute` w aside). Trzy karty (Insights ~150px
+          + Import ~350px + Add ~250px) ≈ 750px łącznie, co spokojnie mieści
+          się w typowym viewporcie laptopa (768+ wysokości).
+        */}
+        <aside className="mt-5 space-y-5 lg:mt-0 lg:sticky lg:top-4 lg:self-start">
+          {timetableCount > 0 && (
+            <TimetableInsights userId={ctx.userId} refreshTick={todayWidgetTick} />
+          )}
+
+          <ImportTimetablePanel
+            userId={ctx.userId}
+            existingCount={timetableCount}
+            onImported={() => {
+              void refreshTimetableCount()
+              setTodayWidgetTick((t) => t + 1)
+            }}
+            onCleared={() => {
+              setTimetableCount(0)
+              setTodayWidgetTick((t) => t + 1)
+            }}
+          />
+
+          <AddLecturerPanel />
+        </aside>
+      </div>
 
       <AnnouncementDrawer announcement={openAnn} onClose={() => setOpenAnn(null)} />
     </div>

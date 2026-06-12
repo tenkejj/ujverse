@@ -1,4 +1,5 @@
 import {
+  createElement,
   forwardRef,
   type ComponentPropsWithoutRef,
   type ComponentPropsWithRef,
@@ -124,10 +125,13 @@ function BaseCardInner(
   const paddingCls = 'p-0'
   const composed = `${variantCls} ${paddingCls} ${synchronizedThemeTransitionCls} ${interactiveCls} ${className}`.replace(/\s+/g, ' ').trim()
 
-  return (
-    <Component ref={ref} className={composed} {...rest}>
-      {children}
-    </Component>
+  // Polimorficzny `as` powoduje że TS w trybie build (`tsc -b`) nie potrafi
+  // zwęzić children type Component do ReactNode. Używamy `createElement` —
+  // omija strict JSX children inference, ale zachowuje runtime semantykę.
+  return createElement(
+    Component as ElementType,
+    { ref, className: composed, ...(rest as object) },
+    children,
   )
 }
 

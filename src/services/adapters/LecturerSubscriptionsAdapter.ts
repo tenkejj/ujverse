@@ -93,6 +93,48 @@ class LecturerSubscriptionsAdapterImpl {
     return { data: (data as LecturerSubscription | null) ?? null, error }
   }
 
+  /**
+   * Bulk subskrypcja wielu wykładowców (np. „zasubskrybuj wszystkich z mojego
+   * planu"). UNIQUE(user_id, lecturer_key) na poziomie DB + `ignoreDuplicates`
+   * w upserce daje idempotencję — wykładowcy już zasubskrybowani nie są
+   * tworzeni ponownie i nie powodują błędu.
+   *
+   * Zwracamy `inserted` (faktycznie nowe wiersze) i `requested` (ile nazwisk
+   * dostaliśmy po deduplikacji po lecturer_key). Caller pokaże to userowi
+   * jako toast / podsumowanie w bannerze.
+   */
+  async subscribeMany(
+    userId: string,
+    displayNames: readonly string[],
+  ): Promise<{
+    inserted: LecturerSubscription[]
+    requested: number
+    error: PostgrestError | null
+  }> {
+    const trimmed = Array.from(
+      new Set(
+        displayNames
+          .map((n) => n.trim())
+          .filter((n) => n.length >= 2 && n.length <= 160),
+      ),
+    )
+    if (trimmed.length === 0) {
+      return { inserted: [], requested: 0, error: null }
+    }
+
+    const rows = trimmed.map((display_name) => ({ user_id: userId, display_name }))
+    const { data, error } = await supabase
+      .from('lecturer_subscriptions')
+      .upsert(rows, { onConflict: 'user_id,lecturer_key', ignoreDuplicates: true })
+      .select('id, user_id, display_name, lecturer_key, created_at')
+
+    return {
+      inserted: (data as LecturerSubscription[] | null) ?? [],
+      requested: trimmed.length,
+      error,
+    }
+  }
+
   /** Usunięcie subskrypcji po id (RLS chroni przed obcymi). */
   async unsubscribe(
     userId: string,

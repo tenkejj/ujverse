@@ -58,10 +58,12 @@ import {
 const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 const AulaView = lazy(() => import('./components/aula/AulaView'))
-const SaleFinderView = lazy(() => import('./components/sale-finder/SaleFinderView'))
+const Campus3DView = lazy(() => import('./components/campus-3d/Campus3DView'))
 const WeeklyBriefingView = lazy(() => import('./components/briefing/WeeklyBriefingView'))
 const DzisView = lazy(() => import('./components/DzisView'))
 const ZniskiView = lazy(() => import('./components/discounts/ZniskiView'))
+const UsosRegistrationsView = lazy(() => import('./components/usos/UsosRegistrationsView'))
+const UsosAlarmBanner = lazy(() => import('./components/usos/UsosAlarmBanner'))
 const OnboardingTour = lazy(() => import('./components/onboarding/OnboardingTour'))
 
 type AppShellView =
@@ -81,6 +83,7 @@ type AppShellView =
   | 'briefing'
   | 'dzis'
   | 'znizki'
+  | 'usos'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -158,6 +161,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/znizki') {
     return { kind: 'ok', view: 'znizki', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/usos' || normalizedPath === '/rejestracje') {
+    return { kind: 'ok', view: 'usos', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -694,6 +700,10 @@ function App() {
     }
     if (view === 'znizki') {
       if (p !== '/znizki') navigate('/znizki')
+      return
+    }
+    if (view === 'usos') {
+      if (p !== '/usos') navigate('/usos')
       return
     }
     if (view === 'settings') {
@@ -1262,13 +1272,17 @@ function App() {
         ? 'profile'
         : effectiveActiveView
 
-  // BottomNav nie ma pigułki dla „Mój Plan", „Sal UJ", „Briefingu", „Dziś"
-  // ani „Zniżek" — mapujemy na 'feed', żeby żadna ikona nie była błędnie
-  // podświetlona. Uwaga: 'sale' i 'aula' są już wyeliminowane wcześniej
-  // w navActiveView, więc tutaj filtrujemy tylko 'mojPlan' / 'briefing' /
-  // 'dzis' / 'znizki'.
+  // BottomNav nie ma pigułki dla „Mój Plan", „Sal UJ", „Briefingu", „Dziś",
+  // „Zniżek" ani „USOS" — mapujemy na 'feed', żeby żadna ikona nie była
+  // błędnie podświetlona. Uwaga: 'sale' i 'aula' są już wyeliminowane
+  // wcześniej w navActiveView, więc tutaj filtrujemy tylko 'mojPlan' /
+  // 'briefing' / 'dzis' / 'znizki' / 'usos'.
   const bottomNavActiveView =
-    navActiveView === 'mojPlan' || navActiveView === 'briefing' || navActiveView === 'dzis' || navActiveView === 'znizki'
+    navActiveView === 'mojPlan' ||
+    navActiveView === 'briefing' ||
+    navActiveView === 'dzis' ||
+    navActiveView === 'znizki' ||
+    navActiveView === 'usos'
       ? 'feed'
       : navActiveView
 
@@ -1469,7 +1483,7 @@ function App() {
         return (
           <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
             <Suspense fallback={null}>
-              <SaleFinderView onBack={goBackInHistory} />
+              <Campus3DView onBack={goBackInHistory} />
             </Suspense>
           </ViewErrorBoundary>
         )
@@ -1498,6 +1512,18 @@ function App() {
           <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
             <Suspense fallback={null}>
               <ZniskiView userId={session.user.id} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
+      case 'usos':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <Suspense fallback={null}>
+              <UsosRegistrationsView
+                userId={session.user.id}
+                studyProgram={myProfile?.study_program ?? null}
+                yearStarted={myProfile?.year_started ?? null}
+              />
             </Suspense>
           </ViewErrorBoundary>
         )
@@ -1601,6 +1627,7 @@ function App() {
           onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
           onNavigateToDzis={() => navigateToMainView('dzis')}
           onNavigateToZnizki={() => navigateToMainView('znizki')}
+          onNavigateToUsos={() => navigateToMainView('usos')}
           onNavigateToSearch={(query) => {
             const normalized = (query ?? '').trim()
             if (!normalized) {
@@ -1617,6 +1644,13 @@ function App() {
           onNavigateToSettings={openSettings}
           onRefreshPosts={() => feedMutations.invalidateFeed()}
         />
+
+        <Suspense fallback={null}>
+          <UsosAlarmBanner
+            userId={session.user.id}
+            onNavigateToUsos={() => navigateToMainView('usos' as AppShellView)}
+          />
+        </Suspense>
 
         <main
           className={
@@ -1635,6 +1669,7 @@ function App() {
                         effectiveActiveView === 'sale' ||
                         effectiveActiveView === 'mojPlan' ||
                         effectiveActiveView === 'znizki' ||
+                        effectiveActiveView === 'usos' ||
                         effectiveActiveView === 'dzis' ||
                         effectiveActiveView === 'briefing'
                       ? 'max-w-7xl px-4 lg:px-6'

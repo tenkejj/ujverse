@@ -365,6 +365,38 @@ Module **Aula** = live chat per study-year cohort. **Independent** from `groups`
 
 ---
 
+## USOS Registrations (alarmy rejestracji USOSweb)
+
+### SQL — [20260627100000_usos_registrations.sql](supabase/migrations/20260627100000_usos_registrations.sql)
+
+- `usos_registrations` — community-driven katalog nadchodzących rejestracji USOS per `study_program` + `year` (oba opcjonalne, null = "dla wszystkich"). Pola: `title`, `description`, `audience_label`, `opens_at`, `closes_at`, `registration_url`, `info_url`, `kind` (`obieralne|lektoraty|wf|seminarium|specjalizacja|inne`), `subscriber_count` (trigger-bumped).
+- `usos_registration_subscriptions` — `(registration_id, user_id)` PK + `dismissed_at` (banner soft-dismiss). Trigger `bump_usos_subscriber_count` synchronizuje agregat.
+- RLS: SELECT publiczny dla `authenticated`; INSERT/UPDATE/DELETE rejestracji = own or `is_profile_admin()`; subskrypcje strictly own.
+- RPC `get_my_upcoming_registrations(uuid)` — zwraca subskrybowane przez user'a "żywe" rejestracje (`opens_at > now() - 1h`) sortowane po dacie.
+- Seed: 10 realistycznych wpisów (Informatyka I/II/III, Prawo, Psychologia, Matematyka, Kognitywistyka, lektoraty SPNJO, WF SWFIS, lektoraty filologii).
+- Realtime: publication na obu tabelach — nowe wpisy i przesunięcia terminów propagują live.
+
+### Frontend
+
+- [`UsosRegistrationsService`](src/services/UsosRegistrationsService.ts) — CRUD rejestracji + `subscribe`/`unsubscribe`/`markDismissed`. `list()` przyjmuje `RegistrationFilter` + opts (`studyProgram`, `year`) gdy `myProgramOnly=true` (filtruje "mój kierunek LUB ogólne" w PostgREST or-syntax).
+- [`useUsosRegistrations`](src/hooks/useUsosRegistrations.ts) — lista + subskrypcje + upcoming (RPC). Optimistic `toggleSubscribe` z rollback'iem. Realtime INSERT/UPDATE/DELETE na `usos_registrations`. Helper `currentStudyYear(yearStarted)` liczy aktualny rok studiów na podstawie września-października.
+- [`UsosRegistrationsView`](src/components/usos/UsosRegistrationsView.tsx) — `/usos` (alias `/rejestracje`): toolbar (filter "Moje alarmy" + "Mój kierunek · N rok"), sekcja "Twoje nadchodzące alarmy" (`HorizontalPillScroller` z countdownem per karta), filter pills kind (`HorizontalPillScroller`), grid 1/2/3 col.
+- [`UsosRegistrationCard`](src/components/usos/UsosRegistrationCard.tsx) — `memo`, live countdown (`useCountdownTick` re-render co 30s normalnie, 1s gdy <5min). Phase tint via `COUNTDOWN_PHASE_TINT`. CTA: USOS link + "Alarmuj mnie" / "Wyłącz alarm".
+- [`UsosRegistrationDetailModal`](src/components/usos/UsosRegistrationDetailModal.tsx) — portal modal z dual-card countdown (opens / closes), tipy do rejestracji, USOSweb + opis przedmiotów links, subscribe toggle.
+- [`UsosRegistrationFormModal`](src/components/usos/UsosRegistrationFormModal.tsx) — formularz dodawania (pre-fill kierunku/roku z profilu zalogowanego), walidacja `opens_at`/`closes_at`/`registration_url`.
+- [`UsosAlarmBanner`](src/components/usos/UsosAlarmBanner.tsx) — **globalny floating banner** sticky pod headerem; wyselektuje pierwszą subskrypcję w phase `critical|urgent|live`, animowany pulse na ikonie alarmu. Session-scoped dismiss w `sessionStorage`. Mount via lazy import w [`App.tsx`](src/App.tsx) tuż po `<Header>`.
+- [`types/usosRegistrations.ts`](src/types/usosRegistrations.ts) — `RegistrationKind` enum (sync z DB CHECK), `REGISTRATION_KIND_META` (label + lucide icon + tint), `computeCountdown` (helper liczący phase + label + compact `Xd Yh`/`Yh Zm`/`Zm`), `pluralPL` (rok/dni).
+- Entry points: header pill `AlarmClock` ikon w [`Header.tsx`](src/components/Header.tsx) (prop `onNavigateToUsos`), mobile rail tile w [`MobileDashboard.tsx`](src/components/mobile/MobileDashboard.tsx). Route `/usos` (alias `/rejestracje`) w [`App.tsx`](src/App.tsx) `parseAppRoute` + `navigateToMainView`.
+
+### Invariants
+
+- **Kind enum sync**: `REGISTRATION_KINDS` w `types/usosRegistrations.ts` MUSI matchować `CHECK (kind in (...))` w migracji.
+- **subscriber_count**: source of truth = trigger DB. Klient robi optimistic bump w `toggleSubscribe`, ale po requeście backend jest autorytetem.
+- **Countdown phase**: zmienia się czasowo bez interakcji usera — komponenty muszą tickować (`useCountdownTick` 30s/1s, banner 30s polling state + 5min RPC poll).
+- **Dismissed-set**: banner-dismiss jest *session-scoped* (sessionStorage); pełny dismiss z trwałością przez `markDismissed` (RPC `dismissed_at`). Nie używamy localStorage żeby kolejnego dnia user dostał ponowny alarm.
+
+---
+
 ## API surface
 
 - **[api/daily-brief.ts](api/daily-brief.ts)** — **Edge** endpoint (`fra1`) generujący "morning brief" dla widoku `/dzis`. Reuse infrastruktury: `GroqProvider`, `extractRequestUser`, `checkAndConsumeRateLimit` (5 req/min per user, 1 req/12s refill). Pojedynczy task — payload `DailyBriefInput` (classes + tasks + announcements) zbudowany po stronie klienta przez [`useDailyBrief.toBriefPayload()`](src/hooks/useDailyBrief.ts), prompty z [`src/lib/dailyBriefPrompts.ts`](src/lib/dailyBriefPrompts.ts). Streamuje SSE w formacie OpenAI delta + filtr `<think>` (think-stripping copy z `aula-ai.ts`). Klient: [`DailyBriefService`](src/services/ai/DailyBriefService.ts) → `AsyncGenerator<string>` zużywane przez [`AiInsightModal`](src/components/aula/AiInsightModal.tsx). Hook agregujący [`useDailyBrief`](src/hooks/useDailyBrief.ts) tickuje co 60s (countdown), korzysta z [`useTodayClasses`](src/hooks/useTodayClasses.ts) (re-export anulacji przez RPC `get_timetable_for_range`) + [`CohortService.listOpenTasksForCohort`](src/services/CohortService.ts) (NEW: filtr per-user completions JS-side; sort `due_at NULLS LAST`) + [`AnnouncementsAdapter.fetch`](src/services/adapters/AnnouncementsAdapter.ts) (ostatnie 48h). Entry points: header pill `Dziś` (Sparkles, golden tint) w [`Header.tsx`](src/components/Header.tsx), mobile rail tile w [`MobileDashboard.tsx`](src/components/mobile/MobileDashboard.tsx). Route `/dzis` w [`App.tsx`](src/App.tsx) `parseAppRoute` + `navigateToMainView`; renderowany przez lazy [`DzisView`](src/components/DzisView.tsx).

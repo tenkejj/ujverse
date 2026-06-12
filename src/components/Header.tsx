@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sparkles, Sun, Tag, User, Users } from 'lucide-react'
+import { AlarmClock, Bell, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sparkles, Sun, Tag, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -14,7 +14,7 @@ import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing' | 'dzis' | 'znizki'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing' | 'dzis' | 'znizki' | 'usos'
 
 type Props = {
   myProfile: Profile | null
@@ -36,6 +36,7 @@ type Props = {
   onNavigateToMojPlan: () => void
   onNavigateToDzis: () => void
   onNavigateToZnizki: () => void
+  onNavigateToUsos: () => void
   onNavigateToSearch: (query?: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
@@ -68,6 +69,7 @@ export default function Header({
   onNavigateToMojPlan,
   onNavigateToDzis,
   onNavigateToZnizki,
+  onNavigateToUsos,
   onNavigateToSearch,
   onNavigateToUser,
   onNavigateToPost,
@@ -279,6 +281,20 @@ export default function Header({
             title="Couponek UJ — zniżki"
           >
             <Tag size={20} strokeWidth={2} />
+          </button>
+
+          <button
+            type="button"
+            onClick={onNavigateToUsos}
+            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
+              activeView === 'usos'
+                ? 'text-[#1e293b] dark:text-accent-interactive'
+                : 'text-[#1e293b] dark:text-gray-400'
+            }`}
+            aria-label="Rejestracje USOS — alarmy"
+            title="Rejestracje USOS"
+          >
+            <AlarmClock size={20} strokeWidth={2} />
           </button>
 
           <button

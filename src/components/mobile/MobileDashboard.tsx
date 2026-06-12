@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles, Tag } from 'lucide-react'
+import { AlarmClock, ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles, Tag } from 'lucide-react'
 import { NIEZBEDNIK_LINKS } from '../Niezbednik'
 import {
   OFFICIAL_TAG_META,
@@ -148,6 +148,16 @@ export default function MobileDashboard({
           >
             <Tag size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
             <span className={LABEL_CLS}>Zniżki</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/usos')}
+            aria-label="Rejestracje USOS — alarmy"
+            title="Rejestracje USOS — nie przegap"
+            className={`relative ${ITEM_CLS}`}
+          >
+            <AlarmClock size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
+            <span className={LABEL_CLS}>USOS</span>
           </button>
           <button
             type="button"

@@ -35,47 +35,17 @@ export type Room = {
   capacity: number | null
   photo_url: string | null
   notes: string | null
-  /** 0–100 — pozycja sali na planie piętra (NULL = nieznana). */
-  pin_x_pct: number | null
-  pin_y_pct: number | null
 }
 
 export type RoomWithBuilding = Room & {
   building: Building
 }
 
-/**
- * Plan piętra konkretnego budynku — image_url + georeferencja (4 rogi w
- * lat/lng + opcjonalny obrót). Renderowany jako Leaflet `<ImageOverlay>`.
- *
- * `pin_x_pct/y_pct` na sali jest mapowany do lat/lng wewnątrz tych bounds.
- */
-export type FloorPlan = {
-  id: string
-  building_id: string
-  level: number
-  display_name: string | null
-  image_url: string
-  image_width_px: number | null
-  image_height_px: number | null
-  bounds_north: number
-  bounds_south: number
-  bounds_east: number
-  bounds_west: number
-  rotation_deg: number
-  source_url: string | null
-  source_label: string | null
-}
-
 const BUILDING_COLS =
   'id, name, short_name, address, lat, lng, photo_url, description, faculty_slug, campus, search_aliases'
 
 const ROOM_COLS =
-  'id, building_id, code, display_name, floor, capacity, photo_url, notes, pin_x_pct, pin_y_pct'
-
-const FLOOR_PLAN_COLS =
-  'id, building_id, level, display_name, image_url, image_width_px, image_height_px, ' +
-  'bounds_north, bounds_south, bounds_east, bounds_west, rotation_deg, source_url, source_label'
+  'id, building_id, code, display_name, floor, capacity, photo_url, notes'
 
 type BuildingRowDb = {
   id: string
@@ -100,25 +70,6 @@ type RoomRowDb = {
   capacity: number | null
   photo_url: string | null
   notes: string | null
-  pin_x_pct: number | string | null
-  pin_y_pct: number | string | null
-}
-
-type FloorPlanRowDb = {
-  id: string
-  building_id: string
-  level: number
-  display_name: string | null
-  image_url: string
-  image_width_px: number | null
-  image_height_px: number | null
-  bounds_north: number | string
-  bounds_south: number | string
-  bounds_east: number | string
-  bounds_west: number | string
-  rotation_deg: number | string
-  source_url: string | null
-  source_label: string | null
 }
 
 function numericFromDb(value: number | string | null | undefined): number | null {
@@ -172,64 +123,6 @@ function normalizeRoom(row: RoomRowDb): Room {
     capacity: row.capacity,
     photo_url: row.photo_url,
     notes: row.notes,
-    pin_x_pct: numericFromDb(row.pin_x_pct),
-    pin_y_pct: numericFromDb(row.pin_y_pct),
-  }
-}
-
-function normalizeFloorPlan(row: FloorPlanRowDb): FloorPlan {
-  return {
-    id: row.id,
-    building_id: row.building_id,
-    level: row.level,
-    display_name: row.display_name,
-    image_url: row.image_url,
-    image_width_px: row.image_width_px,
-    image_height_px: row.image_height_px,
-    bounds_north: numericFromDb(row.bounds_north) ?? 0,
-    bounds_south: numericFromDb(row.bounds_south) ?? 0,
-    bounds_east: numericFromDb(row.bounds_east) ?? 0,
-    bounds_west: numericFromDb(row.bounds_west) ?? 0,
-    rotation_deg: numericFromDb(row.rotation_deg) ?? 0,
-    source_url: row.source_url,
-    source_label: row.source_label,
-  }
-}
-
-/**
- * Konwertuje pin (procenty na planie) na lat/lng wewnątrz bounds plan'u.
- * Używane do renderowania pinezki sali na ImageOverlay (Leaflet operuje
- * na lat/lng nawet gdy obrazek jest tłem).
- *
- * Zwraca `null` gdy którykolwiek input jest NaN/Infinity — UI dzięki temu
- * może zrobić defensive null-check zamiast przepuścić NaN do Leaflet.
- *
- * UWAGA: Ignoruje `rotation_deg` — gdy plan jest obrócony, UI obraca cały
- * `<ImageOverlay>` CSS-em na poziomie wrappera, więc pin idzie w tym
- * samym kierunku.
- */
-export function pinToLatLng(
-  plan: FloorPlan,
-  pinXPct: number,
-  pinYPct: number,
-): { lat: number; lng: number } | null {
-  if (
-    !Number.isFinite(pinXPct) ||
-    !Number.isFinite(pinYPct) ||
-    !Number.isFinite(plan.bounds_north) ||
-    !Number.isFinite(plan.bounds_south) ||
-    !Number.isFinite(plan.bounds_east) ||
-    !Number.isFinite(plan.bounds_west)
-  ) {
-    return null
-  }
-  const xRatio = Math.max(0, Math.min(100, pinXPct)) / 100
-  const yRatio = Math.max(0, Math.min(100, pinYPct)) / 100
-  return {
-    // y=0 (top) → bounds_north; y=100 (bottom) → bounds_south
-    lat: plan.bounds_north + (plan.bounds_south - plan.bounds_north) * yRatio,
-    // x=0 (left) → bounds_west; x=100 (right) → bounds_east
-    lng: plan.bounds_west + (plan.bounds_east - plan.bounds_west) * xRatio,
   }
 }
 
@@ -414,24 +307,6 @@ export async function listRoomsForBuilding(buildingId: string): Promise<Room[]> 
 
   if (error) throw new Error(error.message)
   return (data ?? []).map((row) => normalizeRoom(row as RoomRowDb))
-}
-
-/**
- * Lista opublikowanych planów pięter dla danego budynku, posortowana wg
- * `level` rosnąco (piwnica → parter → wyższe piętra).
- */
-export async function listFloorPlansForBuilding(
-  buildingId: string,
-): Promise<FloorPlan[]> {
-  const { data, error } = await supabase
-    .from('uj_building_floor_plans')
-    .select(FLOOR_PLAN_COLS)
-    .eq('building_id', buildingId)
-    .eq('status', 'published')
-    .order('level', { ascending: true })
-
-  if (error) throw new Error(error.message)
-  return (data ?? []).map((row) => normalizeFloorPlan(row as unknown as FloorPlanRowDb))
 }
 
 export async function getRoomById(roomId: string): Promise<RoomWithBuilding | null> {
