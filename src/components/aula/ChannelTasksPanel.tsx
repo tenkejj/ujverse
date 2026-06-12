@@ -155,14 +155,22 @@ function TaskItem({
           aria-pressed={isMine}
           aria-label={isMine ? 'Odznacz „ja zrobiłem"' : 'Oznacz „ja zrobiłem"'}
           title={isMine ? 'Odznacz „ja zrobiłem"' : 'Oznacz „ja zrobiłem"'}
-          className={[
-            'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors',
-            isMine
-              ? 'border-[#1e293b] bg-[#1e293b] text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-bg-card'
-              : 'border-zinc-300 bg-transparent hover:border-zinc-500 dark:border-white/25 dark:hover:border-white/45',
-          ].join(' ')}
+          className="-mt-1 -ml-1 flex shrink-0 items-center justify-center rounded-md p-1.5 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
         >
-          {isMine && <CheckSquare size={11} strokeWidth={3} />}
+          {/* Wewnętrzny "checkbox" pozostaje 20×20 px (design), ale wrapper
+              dodaje 6 px padding po każdej stronie → 32×32 px touch target
+              + ujemny margin neutralizuje wpływ na layout. */}
+          <span
+            className={[
+              'inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors',
+              isMine
+                ? 'border-[#1e293b] bg-[#1e293b] text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-bg-card'
+                : 'border-zinc-300 bg-transparent hover:border-zinc-500 dark:border-white/25 dark:hover:border-white/45',
+            ].join(' ')}
+            aria-hidden
+          >
+            {isMine && <CheckSquare size={11} strokeWidth={3} />}
+          </span>
         </button>
         <div className="min-w-0 flex-1">
           <button
@@ -203,7 +211,8 @@ function TaskItem({
             onClick={() => onDelete(task.id)}
             aria-label="Usuń zadanie"
             title="Usuń zadanie"
-            className="shrink-0 rounded-md p-1 text-zinc-400 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-500/15 dark:hover:text-red-400"
+            // Mobile: zawsze widoczny (touch nie ma hovera).
+            className="shrink-0 rounded-md p-1.5 text-zinc-400 transition-opacity hover:bg-red-500/10 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:bg-red-500/15 dark:hover:text-red-400"
           >
             <Trash2 size={12} />
           </button>

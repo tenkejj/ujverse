@@ -34,7 +34,9 @@ const TITLE_MAX = 200
 const DESC_MAX = 2000
 
 const fieldCls =
-  'w-full rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 text-sm text-zinc-900 outline-none ' +
+  // text-base na mobile (≥16px) → iOS Safari NIE auto-zoomuje na focusie.
+  // text-sm dopiero od sm: (768+) gdzie i tak nie ma touch keyboard.
+  'w-full rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 text-base text-zinc-900 outline-none sm:text-sm ' +
   'placeholder:text-zinc-400 focus:border-[#1e293b] ' +
   'dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 ' +
   'dark:focus:border-brand-gold-bright'

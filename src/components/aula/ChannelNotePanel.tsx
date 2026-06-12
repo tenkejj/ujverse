@@ -147,7 +147,7 @@ function ChannelNoteEditor({
           disabled={status === 'saving' || status === 'loading'}
           aria-label="Zapisz teraz (Ctrl+S)"
           title="Zapisz teraz (Ctrl+S)"
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-zinc-600 transition-colors hover:bg-black/[0.05] disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+          className="inline-flex min-h-[36px] items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-black/[0.05] disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
         >
           {status === 'saving' ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
           Zapisz
@@ -161,7 +161,7 @@ function ChannelNoteEditor({
           onClick={() => setTab('edit')}
           aria-pressed={tab === 'edit'}
           className={[
-            'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors',
+            'inline-flex min-h-[36px] items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors',
             tab === 'edit'
               ? 'bg-[#1e293b] text-white dark:bg-brand-gold dark:text-black'
               : 'text-zinc-500 hover:bg-black/[0.04] dark:text-zinc-400 dark:hover:bg-white/[0.06]',
@@ -175,7 +175,7 @@ function ChannelNoteEditor({
           onClick={() => setTab('preview')}
           aria-pressed={tab === 'preview'}
           className={[
-            'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors',
+            'inline-flex min-h-[36px] items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors',
             tab === 'preview'
               ? 'bg-[#1e293b] text-white dark:bg-brand-gold dark:text-black'
               : 'text-zinc-500 hover:bg-black/[0.04] dark:text-zinc-400 dark:hover:bg-white/[0.06]',
@@ -237,7 +237,9 @@ function ChannelNoteEditor({
               'Markdown wspierany: **bold**, *italic*, # nagłówki, - listy, > cytaty, `kod`.\n' +
               'Każdy w roczniku może edytować. Autosave co 1.5s.'
             }
-            className="custom-scrollbar h-full w-full resize-none bg-transparent px-3 py-2.5 font-mono text-[13px] leading-relaxed text-fg-primary outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
+            // text-base na mobile (≥16px → no iOS zoom). Desktop wraca do
+            // gęstszego font-mono [13px] dla większej ilości tekstu w viewport.
+            className="custom-scrollbar h-full w-full resize-none bg-transparent px-3 py-2.5 font-mono text-base leading-relaxed text-fg-primary outline-none placeholder:text-zinc-400 sm:text-[13px] dark:placeholder:text-zinc-500"
           />
         ) : (
           <div className="custom-scrollbar h-full overflow-y-auto px-3 py-2.5">

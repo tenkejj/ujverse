@@ -12,6 +12,7 @@
  */
 import { Filter, Users } from 'lucide-react'
 import { FILTER_PILL } from '../../styles/mobile-theme'
+import HorizontalPillScroller from '../ui/HorizontalPillScroller'
 import {
   CALENDAR_ENTRY_KIND_COLORS,
   CALENDAR_ENTRY_KIND_LABEL,
@@ -51,8 +52,17 @@ export default function CalendarFilters({
   const subscriptionsLoading = lecturerCtx?.loading ?? false
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-fg-secondary">
+    // Na mobile (sm-): horizontal scroller z chevronami (`HorizontalPillScroller`)
+    // żeby 6 pillów + toggle + label nie wrapowały na 3 rzędy zżerając
+    // ~120 px viewportu. Na desktop (sm+): flex-wrap jak dotąd.
+    <HorizontalPillScroller
+      scrollClassName="flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-hide overscroll-x-contain [-webkit-overflow-scrolling:touch] min-w-0 sm:flex-wrap sm:overflow-visible"
+      watchDeps={[selectedKinds, onlyMyLecturers, hasSubscriptions]}
+      scrollLeftLabel="Przewiń filtry w lewo"
+      scrollRightLabel="Przewiń filtry w prawo"
+      withMobileEdgeSpacer={false}
+    >
+      <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-fg-secondary">
         <Filter size={12} strokeWidth={2.25} aria-hidden />
         Filtry
       </span>
@@ -67,7 +77,7 @@ export default function CalendarFilters({
             className={[
               FILTER_PILL.base,
               active ? FILTER_PILL.active : FILTER_PILL.inactive,
-              'gap-1.5 text-xs px-3 py-1',
+              'gap-1.5 text-xs px-3 py-1.5 min-h-[34px]',
             ].join(' ')}
             aria-pressed={active}
           >
@@ -80,7 +90,7 @@ export default function CalendarFilters({
         )
       })}
 
-      <span className="mx-1 h-4 w-px bg-zinc-200 dark:bg-white/10" aria-hidden />
+      <span className="mx-1 hidden h-4 w-px shrink-0 bg-zinc-200 sm:inline-block dark:bg-white/10" aria-hidden />
 
       <button
         type="button"
@@ -96,13 +106,13 @@ export default function CalendarFilters({
         className={[
           FILTER_PILL.base,
           onlyMyLecturers ? FILTER_PILL.active : FILTER_PILL.inactive,
-          'gap-1.5 text-xs px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40',
+          'gap-1.5 text-xs px-3 py-1.5 min-h-[34px] disabled:cursor-not-allowed disabled:opacity-40',
         ].join(' ')}
         aria-pressed={onlyMyLecturers}
       >
         <Users size={13} strokeWidth={2.25} aria-hidden />
         Tylko moi wykładowcy
       </button>
-    </div>
+    </HorizontalPillScroller>
   )
 }

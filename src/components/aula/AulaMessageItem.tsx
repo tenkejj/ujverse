@@ -283,7 +283,7 @@ export default function AulaMessageItem({
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleEditKey}
                 rows={2}
-                className="w-full resize-y rounded-lg border border-zinc-200 bg-zinc-50/80 px-2.5 py-1.5 text-sm text-zinc-900 outline-none focus:border-[#1e293b] dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:focus:border-brand-gold-bright"
+                className="w-full resize-y rounded-lg border border-zinc-200 bg-zinc-50/80 px-2.5 py-1.5 text-base text-zinc-900 outline-none focus:border-[#1e293b] sm:text-sm dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:focus:border-brand-gold-bright"
                 autoFocus
               />
               <div className="mt-1 flex items-center gap-2">
@@ -335,12 +335,14 @@ export default function AulaMessageItem({
           )}
 
           {!isDeleted && !editing && (
-            <div className="mt-1 flex items-center gap-3 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            // Mobile (sm-): zawsze widoczne (touch nie ma hovera!).
+            // Desktop (sm+): hover/focus-within reveal — czysto wizualnie.
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
               {depth < MAX_DEPTH && (
                 <button
                   type="button"
                   onClick={() => onReply(node.id, authorName)}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                 >
                   <CornerUpLeft size={12} /> Odpowiedz
                 </button>
@@ -351,7 +353,7 @@ export default function AulaMessageItem({
                   onClick={() => setPickerOpen((v) => !v)}
                   aria-haspopup="menu"
                   aria-expanded={pickerOpen}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                 >
                   <SmilePlus size={12} /> Reaguj
                 </button>
@@ -360,7 +362,7 @@ export default function AulaMessageItem({
                 <button
                   type="button"
                   onClick={() => onTogglePin(node.id)}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                 >
                   {isPinned ? (
                     <>
@@ -381,7 +383,7 @@ export default function AulaMessageItem({
                     aria-haspopup="menu"
                     aria-expanded={aiMenuOpen}
                     title="AI: wyjaśnij / streść / przetłumacz"
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-violet-600 dark:text-zinc-400 dark:hover:text-violet-300"
+                    className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-violet-600 dark:text-zinc-400 dark:hover:text-violet-300"
                   >
                     <Sparkles size={12} /> AI
                   </button>
@@ -435,14 +437,14 @@ export default function AulaMessageItem({
                   <button
                     type="button"
                     onClick={() => { setDraft(node.content); setEditing(true) }}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                    className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                   >
                     <Pencil size={12} /> Edytuj
                   </button>
                   <button
                     type="button"
                     onClick={() => onDelete(node.id)}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400"
+                    className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400"
                   >
                     <Trash2 size={12} /> Usuń
                   </button>

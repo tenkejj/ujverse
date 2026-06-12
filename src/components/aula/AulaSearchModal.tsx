@@ -198,7 +198,8 @@ export default function AulaSearchModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Szukaj w Auli — wiadomości, autorzy, pliki..."
-            className="ujverse-search-input flex-1 bg-transparent text-sm text-zinc-800 outline-none placeholder:text-zinc-400 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+            // text-base na mobile → no iOS auto-zoom; sm:text-sm na PC.
+            className="ujverse-search-input flex-1 bg-transparent text-base text-zinc-800 outline-none placeholder:text-zinc-400 sm:text-sm dark:text-zinc-100 dark:placeholder:text-zinc-500"
             autoComplete="off"
             spellCheck={false}
           />
@@ -232,8 +233,11 @@ export default function AulaSearchModal({
         )}
 
         <div
+          // Na mobile (sm-): horizontal scroll z hidden scrollbarem; pills NIE
+          // wrapują (gap-1.5 + 6 pillów * ~80px byłyby 3 rzędy na 360px).
+          // Na desktop (sm+): flex-wrap jak dotąd.
           className={[
-            'mt-2 flex flex-wrap items-center gap-1.5',
+            'mt-2 flex items-center gap-1.5 overflow-x-auto scrollbar-hide [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:overflow-visible',
             kindFilterDisabled ? 'pointer-events-none opacity-40' : '',
           ].join(' ')}
           title={
@@ -243,7 +247,7 @@ export default function AulaSearchModal({
           }
           aria-disabled={kindFilterDisabled}
         >
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
             Typ:
           </span>
           {CHANNEL_KINDS.map((k) => (
@@ -262,7 +266,7 @@ export default function AulaSearchModal({
               onClick={() => setSelectedKinds(new Set())}
               aria-label="Wyczyść filter typów"
               title="Wyczyść filter"
-              className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-500 hover:bg-black/[0.06] hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200"
+              className="ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-zinc-500 hover:bg-black/[0.06] hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200"
             >
               <X size={11} />
             </button>

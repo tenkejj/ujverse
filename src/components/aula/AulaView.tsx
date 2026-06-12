@@ -7,6 +7,7 @@ import {
   GraduationCap,
   Loader2,
   MessagesSquare,
+  MoreHorizontal,
   Search,
   Users,
   X,
@@ -805,7 +806,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-8.5rem)] max-w-7xl gap-3 px-3 py-3 md:h-[calc(100dvh-5rem)] md:px-6">
+    <div className="mx-auto flex h-[calc(100dvh-8.5rem)] max-w-7xl gap-2 px-2 py-2 sm:px-3 sm:py-3 sm:gap-3 md:h-[calc(100dvh-5rem)] md:px-6">
       {/* Channel rail (desktop only — mobile via drawer) */}
       <aside className="hidden w-56 shrink-0 lg:flex">
         <ChannelRail
@@ -877,48 +878,16 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
 
       {/* Chat */}
       <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white/70 backdrop-blur-md dark:border-white/10 dark:bg-bg-card/70">
-        {/* Mobile header — channels drawer toggle + meta + members */}
-        <div className="flex items-center gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-white/10 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setChannelsSheetOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 hover:bg-black/5 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/5"
-            aria-label="Otwórz listę sal"
-          >
-            {activeChannel ? (
-              <ChannelKindPill kind={activeChannel.kind} size="sm" />
-            ) : (
-              <GraduationCap size={13} className="text-[#1e293b]/70 dark:text-brand-gold-bright/80" />
-            )}
-            <span className="max-w-[6rem] truncate">{activeChannel?.name ?? 'Sala główna'}</span>
-          </button>
-          <div className="min-w-0 flex-1" />
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-black/5 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5"
-            aria-label="Szukaj w Auli"
-          >
-            <Search size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setRecentFilesOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-black/5 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5"
-            aria-label="Pliki rocznika"
-          >
-            <FolderOpen size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setMembersSheetOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-black/5 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5"
-            aria-label="Pokaż członków rocznika"
-          >
-            <Users size={13} />
-            <span>{members.length}</span>
-          </button>
-        </div>
+        {/* Mobile sub-header — kompaktowy: channel pill + members + overflow menu */}
+        <MobileAulaSubHeader
+          activeChannel={activeChannel}
+          membersCount={members.length}
+          onlineCount={onlineCount}
+          onOpenChannels={() => setChannelsSheetOpen(true)}
+          onOpenMembers={() => setMembersSheetOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
+          onOpenFiles={() => setRecentFilesOpen(true)}
+        />
 
         {/* Channel header — #name + opis + gear (creator) */}
         <ChannelHeader
@@ -1288,6 +1257,124 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           />
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+/**
+ * Mobile (`lg-`) sub-header dla Auli — kompaktowy 1-row pasek nad chatem.
+ *
+ * Po lewej: channel selector (pill z `ChannelKindPill` + nazwa, trigger drawer).
+ * W środku: `flex-1` spacer.
+ * Po prawej: members chip (count + dot online, trigger members sheet)
+ *           + overflow menu `MoreHorizontal` z search / files.
+ *
+ * Cel: zmniejszyć liczbę widocznych "klikadeł" z 4 do 2 (+ ukryta lista pod
+ * overflow). Buttony niższe (h-8) z mniejszym padding, żeby zostawić więcej
+ * miejsca na właściwy chat na mobile 360×640.
+ */
+function MobileAulaSubHeader({
+  activeChannel,
+  membersCount,
+  onlineCount,
+  onOpenChannels,
+  onOpenMembers,
+  onOpenSearch,
+  onOpenFiles,
+}: {
+  activeChannel: CohortChannel | null
+  membersCount: number
+  onlineCount: number
+  onOpenChannels: () => void
+  onOpenMembers: () => void
+  onOpenSearch: () => void
+  onOpenFiles: () => void
+}) {
+  const [overflowOpen, setOverflowOpen] = useState(false)
+  const overflowRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!overflowOpen) return
+    const handler = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [overflowOpen])
+
+  return (
+    <div className="flex items-center gap-1.5 border-b border-zinc-200 px-2 py-1.5 dark:border-white/10 lg:hidden">
+      <button
+        type="button"
+        onClick={onOpenChannels}
+        className="inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 px-2 py-1 text-[12.5px] font-semibold text-zinc-700 hover:bg-black/5 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/5"
+        aria-label="Otwórz listę sal"
+      >
+        {activeChannel ? (
+          <ChannelKindPill kind={activeChannel.kind} size="sm" />
+        ) : (
+          <GraduationCap size={13} className="text-[#1e293b]/70 dark:text-brand-gold-bright/80" />
+        )}
+        <span className="max-w-[10rem] truncate">{activeChannel?.name ?? 'Sala główna'}</span>
+      </button>
+      <div className="min-w-0 flex-1" />
+      <button
+        type="button"
+        onClick={onOpenMembers}
+        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-200 px-2 py-1 text-[12px] font-semibold text-zinc-600 hover:bg-black/5 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5"
+        aria-label={`Pokaż członków rocznika — ${membersCount} osób, ${onlineCount} online`}
+      >
+        <Users size={12} />
+        <span className="tabular-nums">{membersCount}</span>
+        {onlineCount > 0 && (
+          <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+        )}
+      </button>
+      <div ref={overflowRef} className="relative shrink-0">
+        <button
+          type="button"
+          onClick={() => setOverflowOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={overflowOpen}
+          aria-label="Więcej akcji"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-zinc-600 hover:bg-black/5 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5"
+        >
+          <MoreHorizontal size={14} />
+        </button>
+        {overflowOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-bg-card"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOverflowOpen(false)
+                onOpenSearch()
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+            >
+              <Search size={14} />
+              Szukaj w Auli
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOverflowOpen(false)
+                onOpenFiles()
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+            >
+              <FolderOpen size={14} />
+              Pliki rocznika
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

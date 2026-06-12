@@ -7,7 +7,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from 'react'
-import { BarChart3, Loader2, Mic, Paperclip, SendHorizonal, X } from 'lucide-react'
+import { BarChart3, Loader2, Mic, Paperclip, Plus, SendHorizonal, X } from 'lucide-react'
 import { findMentionTrigger } from '../../lib/aulaMentions'
 import {
   ACCEPT_ATTR,
@@ -248,10 +248,29 @@ export default function AulaComposer({
   const [poll, setPoll] = useState<ComposerPollInput | null>(null)
   const [pollOpen, setPollOpen] = useState(false)
   const [voicePreview, setVoicePreview] = useState<RecordedVoice | null>(null)
+  /**
+   * Mobile-only attach popover. Na desktop trzymamy 3 osobne ikony
+   * (paperclip / poll / voice) bo jest dużo miejsca. Na mobile (sm-)
+   * zwijamy je do jednego "+" — textarea dostaje znacznie więcej szerokości
+   * (~+96px), co jest kluczowe na 360px ekranach.
+   */
+  const [attachOpen, setAttachOpen] = useState(false)
   const dragDepthRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const attachWrapRef = useRef<HTMLDivElement | null>(null)
   const voiceRecorder = useVoiceRecorder()
+
+  useEffect(() => {
+    if (!attachOpen) return
+    const handler = (e: MouseEvent) => {
+      if (attachWrapRef.current && !attachWrapRef.current.contains(e.target as Node)) {
+        setAttachOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [attachOpen])
 
   const mentionableMembers = useMemo(() => {
     if (!members) return []
@@ -729,13 +748,83 @@ export default function AulaComposer({
         />
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1.5 sm:gap-2">
+        {/* ── Mobile: pojedynczy "+" trigger otwierający attach popover ── */}
+        <div ref={attachWrapRef} className="relative shrink-0 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setAttachOpen((v) => !v)}
+            disabled={disabled || sending || !cohortId}
+            aria-haspopup="menu"
+            aria-expanded={attachOpen}
+            aria-label="Dodaj załącznik / ankietę / głosówkę"
+            className={[
+              'flex h-11 w-11 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+              attachOpen || poll || voicePreview || pending.length > 0
+                ? 'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright'
+                : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06]',
+            ].join(' ')}
+          >
+            <Plus size={20} strokeWidth={2.2} className={attachOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />
+          </button>
+          {attachOpen && (
+            <div
+              role="menu"
+              className="absolute bottom-full left-0 z-30 mb-2 w-48 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-bg-card"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAttachOpen(false)
+                  fileInputRef.current?.click()
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+              >
+                <Paperclip size={15} />
+                Załącznik
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAttachOpen(false)
+                  setPollOpen(true)
+                }}
+                disabled={isRecordingActive}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-fg-primary hover:bg-black/[0.04] disabled:opacity-50 dark:hover:bg-white/[0.05]"
+              >
+                <BarChart3 size={15} />
+                {poll ? 'Edytuj ankietę' : 'Ankieta'}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAttachOpen(false)
+                  if (voicePreview) {
+                    setVoicePreview(null)
+                    void voiceRecorder.start()
+                  } else {
+                    void voiceRecorder.start()
+                  }
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+              >
+                <Mic size={15} />
+                {voicePreview ? 'Nagraj ponownie' : 'Głosówka'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Desktop (sm+): 3 oddzielne buttony jak dotąd ── */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || sending || !cohortId}
           aria-label="Dodaj załącznik"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition-colors hover:bg-black/[0.04] hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
+          className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition-colors hover:bg-black/[0.04] hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-50 sm:flex dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
         >
           <Paperclip size={18} />
         </button>
@@ -746,7 +835,7 @@ export default function AulaComposer({
           aria-label={poll ? 'Edytuj ankietę' : 'Dodaj ankietę'}
           title={poll ? 'Edytuj ankietę' : 'Dodaj ankietę'}
           className={[
-            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            'hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:flex',
             poll
               ? 'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] hover:bg-[#1e293b]/[0.1] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.15]'
               : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] hover:text-[#1e293b] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright',
@@ -784,7 +873,7 @@ export default function AulaComposer({
                 : 'Nagraj głosówkę'
           }
           className={[
-            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            'hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:flex',
             isRecordingActive
               ? 'border-rose-400 bg-rose-500/10 text-rose-600 hover:bg-rose-500/15 dark:border-rose-300/50 dark:bg-rose-400/10 dark:text-rose-300'
               : voicePreview
@@ -794,6 +883,7 @@ export default function AulaComposer({
         >
           {isRecordingActive ? <X size={18} /> : <Mic size={18} />}
         </button>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -824,9 +914,11 @@ export default function AulaComposer({
           }}
           onKeyDown={handleKeyDown}
           rows={1}
-          placeholder={`Wiadomość w sali ${channelName ?? 'głównej'}…  (Ctrl+Enter wysyła, @ = wzmianka)`}
+          placeholder={`Wiadomość w sali ${channelName ?? 'głównej'}…`}
           disabled={disabled}
-          className="max-h-40 min-h-[44px] w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50/80 px-3.5 py-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-[#1e293b] disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-brand-gold-bright"
+          // text-base na mobile → iOS NIE auto-zoomuje (zooming komplikuje
+          // submit przez SendHorizonal poza viewportem). sm:text-sm na PC.
+          className="max-h-40 min-h-[44px] w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-[#1e293b] disabled:opacity-60 sm:px-3.5 sm:text-sm dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-brand-gold-bright"
         />
         <button
           type="button"

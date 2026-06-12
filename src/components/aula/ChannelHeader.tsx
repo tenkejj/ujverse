@@ -21,6 +21,7 @@ import {
   CheckSquare,
   ChevronDown,
   GraduationCap,
+  MoreHorizontal,
   Pencil,
   Settings,
   Sparkles,
@@ -92,8 +93,15 @@ export default function ChannelHeader({
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [muteMenuOpen, setMuteMenuOpen] = useState(false)
+  /**
+   * Mobile-only overflow menu (md-). Zawiera notes / mute / settings —
+   * akcje rzadziej używane, schowane za jednym "..." żeby pasek na 360px
+   * mieścił tylko AI + tasks + overflow.
+   */
+  const [overflowOpen, setOverflowOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const muteWrapRef = useRef<HTMLDivElement | null>(null)
+  const overflowRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -105,6 +113,17 @@ export default function ChannelHeader({
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!overflowOpen) return
+    const handler = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [overflowOpen])
 
   const name = channel?.name ?? 'Sala główna'
   const description = channel?.description ?? (channel ? null : GENERAL_DESCRIPTION)
@@ -120,8 +139,10 @@ export default function ChannelHeader({
     )
   const muteIsActive = muteMode !== 'all'
 
+  const hasManageMenu = Boolean(channel && canManage)
+
   return (
-    <div className="flex items-center gap-3 border-b border-zinc-200 px-4 py-2.5 dark:border-white/10">
+    <div className="flex items-center gap-2 border-b border-zinc-200 px-3 py-2 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-2.5">
       {channel ? (
         <ChannelKindPill kind={channel.kind} size="md" />
       ) : (
@@ -136,7 +157,7 @@ export default function ChannelHeader({
           {archived && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
               <Archive size={10} />
-              Archiwum
+              <span className="hidden sm:inline">Archiwum</span>
             </span>
           )}
         </div>
@@ -150,10 +171,12 @@ export default function ChannelHeader({
             </span>
           </p>
         ) : description ? (
-          <p className="mt-0.5 truncate text-xs text-fg-secondary">{description}</p>
+          // Description ukryta na mobile (mało miejsca) — odsłania się od `sm`.
+          <p className="mt-0.5 hidden truncate text-xs text-fg-secondary sm:block">{description}</p>
         ) : null}
       </div>
 
+      {/* AI summarize — zawsze widoczny (kluczowa akcja). */}
       {onSummarizeAi && (
         <button
           type="button"
@@ -166,6 +189,7 @@ export default function ChannelHeader({
         </button>
       )}
 
+      {/* Tasks toggle — zawsze widoczny (ważna akcja produktowa). */}
       {onToggleTasks && (
         <button
           type="button"
@@ -184,6 +208,8 @@ export default function ChannelHeader({
         </button>
       )}
 
+      {/* ── Desktop (sm+): osobne buttony dla notes / mute / settings ─── */}
+
       {onToggleNotes && (
         <button
           type="button"
@@ -192,7 +218,7 @@ export default function ChannelHeader({
           aria-label={notesOpen ? 'Zamknij notatki' : 'Otwórz wspólne notatki sali'}
           title={notesOpen ? 'Zamknij notatki' : 'Wspólne notatki sali'}
           className={[
-            'inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 transition-colors',
+            'hidden shrink-0 items-center gap-1 rounded-md px-1.5 py-1 transition-colors sm:inline-flex',
             notesOpen
               ? 'bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
               : 'text-zinc-500 hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200',
@@ -203,7 +229,7 @@ export default function ChannelHeader({
       )}
 
       {onChangeMute && (
-        <div ref={muteWrapRef} className="relative shrink-0">
+        <div ref={muteWrapRef} className="relative hidden shrink-0 sm:block">
           <button
             type="button"
             onClick={() => setMuteMenuOpen((v) => !v)}
@@ -233,8 +259,8 @@ export default function ChannelHeader({
         </div>
       )}
 
-      {channel && canManage && (
-        <div ref={menuRef} className="relative shrink-0">
+      {hasManageMenu && (
+        <div ref={menuRef} className="relative hidden shrink-0 sm:block">
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -284,6 +310,117 @@ export default function ChannelHeader({
                 </button>
               )}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Mobile (sm-): "..." overflow menu z notes / mute / settings ── */}
+      {(onToggleNotes || onChangeMute || hasManageMenu) && (
+        <div ref={overflowRef} className="relative shrink-0 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setOverflowOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={overflowOpen}
+            aria-label="Więcej akcji sali"
+            className={[
+              'inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors',
+              muteIsActive
+                ? 'text-amber-600 dark:text-amber-300'
+                : 'text-zinc-500 hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200',
+            ].join(' ')}
+          >
+            <MoreHorizontal size={14} />
+          </button>
+          {overflowOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-bg-card"
+            >
+              {onToggleNotes && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOverflowOpen(false)
+                    onToggleNotes()
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+                >
+                  <StickyNote size={14} />
+                  {notesOpen ? 'Zamknij notatki' : 'Notatki sali'}
+                </button>
+              )}
+              {onChangeMute && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOverflowOpen(false)
+                    setMuteMenuOpen(true)
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+                >
+                  {muteIcon}
+                  <span className="truncate">
+                    {muteIsActive ? describeMute(muteMode, mutedUntil) : 'Wycisz powiadomienia'}
+                  </span>
+                </button>
+              )}
+              {hasManageMenu && (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOverflowOpen(false)
+                      onEdit()
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+                  >
+                    <Pencil size={13} />
+                    Edytuj salę
+                  </button>
+                  {archived ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setOverflowOpen(false)
+                        onUnarchive()
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+                    >
+                      <ArchiveRestore size={13} />
+                      Przywróć salę
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setOverflowOpen(false)
+                        onArchive()
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-300/10"
+                    >
+                      <Archive size={13} />
+                      Archiwizuj
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {/* Mobile mute submenu — otwarte przez click w overflow item */}
+          {muteMenuOpen && onChangeMute && (
+            <ChannelMuteMenu
+              currentMode={muteMode}
+              mutedUntil={mutedUntil}
+              channelLabel={name}
+              onChange={(mode, snoozeHours) => onChangeMute(mode, snoozeHours)}
+              onClose={() => setMuteMenuOpen(false)}
+            />
           )}
         </div>
       )}
