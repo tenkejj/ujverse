@@ -7,7 +7,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from 'react'
-import { Loader2, Paperclip, SendHorizonal, X } from 'lucide-react'
+import { BarChart3, Loader2, Paperclip, SendHorizonal, X } from 'lucide-react'
 import { findMentionTrigger } from '../../lib/aulaMentions'
 import {
   ACCEPT_ATTR,
@@ -21,6 +21,7 @@ import { toast } from '../../lib/appToast'
 import type { CohortMemberProfile } from '../../services/CohortService'
 import type { Profile } from '../../types'
 import UserAvatar from '../UserAvatar'
+import PollCreator, { type PollCreatorPayload } from './PollCreator'
 
 type ReplyTarget = { id: number; authorName: string } | null
 
@@ -33,12 +34,15 @@ export type ComposerAttachmentInput = {
   height: number | null
 }
 
+export type ComposerPollInput = PollCreatorPayload
+
 type Props = {
   replyTarget: ReplyTarget
   onCancelReply: () => void
   onSend: (
     content: string,
     attachments?: ComposerAttachmentInput[],
+    poll?: ComposerPollInput,
   ) => void | Promise<void>
   disabled?: boolean
   /** Lista członków rocznika do autocomplete `@mention`. */
@@ -236,6 +240,8 @@ export default function AulaComposer({
   const [mention, setMention] = useState<MentionState>({ open: false })
   const [pending, setPending] = useState<PendingFile[]>([])
   const [dragging, setDragging] = useState(false)
+  const [poll, setPoll] = useState<ComposerPollInput | null>(null)
+  const [pollOpen, setPollOpen] = useState(false)
   const dragDepthRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -370,7 +376,7 @@ export default function AulaComposer({
   const submit = async () => {
     const trimmed = value.trim()
     if (sending || disabled) return
-    if (!trimmed && pending.length === 0) return
+    if (!trimmed && pending.length === 0 && !poll) return
     if (!cohortId || !currentUserId) return
 
     setSending(true)
@@ -435,7 +441,7 @@ export default function AulaComposer({
           .map((r) => r.input)
       }
 
-      await onSend(trimmed, attachments)
+      await onSend(trimmed, attachments, poll ?? undefined)
 
       // Cleanup po sukcesie.
       for (const p of pending) {
@@ -444,6 +450,7 @@ export default function AulaComposer({
       setPending([])
       setValue('')
       setMention({ open: false })
+      setPoll(null)
     } finally {
       setSending(false)
     }
@@ -515,7 +522,7 @@ export default function AulaComposer({
   }
 
   const canSend =
-    !sending && !disabled && (value.trim().length > 0 || pending.length > 0)
+    !sending && !disabled && (value.trim().length > 0 || pending.length > 0 || poll != null)
 
   return (
     <div
@@ -563,6 +570,37 @@ export default function AulaComposer({
         </div>
       )}
 
+      {poll && (
+        <div className="mb-2 flex items-start gap-2 rounded-xl border border-[#1e293b]/15 bg-[#1e293b]/[0.04] px-3 py-2 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06]">
+          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
+            <BarChart3 size={11} strokeWidth={2.5} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-fg-primary">
+              Ankieta: {poll.question}
+            </p>
+            <p className="mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+              {poll.options.length} {poll.options.length === 1 ? 'opcja' : poll.options.length < 5 ? 'opcje' : 'opcji'}: {poll.options.join(' · ')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPollOpen(true)}
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-zinc-600 hover:bg-black/[0.04] dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+          >
+            Edytuj
+          </button>
+          <button
+            type="button"
+            onClick={() => setPoll(null)}
+            aria-label="Usuń ankietę"
+            className="shrink-0 rounded p-1 text-zinc-400 hover:bg-black/5 hover:text-zinc-700 dark:hover:bg-white/5 dark:hover:text-zinc-200"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
       {mention.open && (
         <MentionDropdown
           results={mention.results}
@@ -580,6 +618,21 @@ export default function AulaComposer({
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition-colors hover:bg-black/[0.04] hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
         >
           <Paperclip size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setPollOpen(true)}
+          disabled={disabled || sending || !cohortId}
+          aria-label={poll ? 'Edytuj ankietę' : 'Dodaj ankietę'}
+          title={poll ? 'Edytuj ankietę' : 'Dodaj ankietę'}
+          className={[
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            poll
+              ? 'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] hover:bg-[#1e293b]/[0.1] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.15]'
+              : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] hover:text-[#1e293b] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright',
+          ].join(' ')}
+        >
+          <BarChart3 size={18} />
         </button>
         <input
           ref={fileInputRef}
@@ -629,6 +682,13 @@ export default function AulaComposer({
           )}
         </button>
       </div>
+
+      {pollOpen && (
+        <PollCreator
+          onClose={() => setPollOpen(false)}
+          onConfirm={(payload) => setPoll(payload)}
+        />
+      )}
     </div>
   )
 }

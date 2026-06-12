@@ -13,7 +13,9 @@ import type {
   CohortChannelMute,
   CohortMessage,
   CohortMessageAttachment,
+  CohortMessagePoll,
   CohortMessageReaction,
+  CohortPollVote,
 } from '../types/database'
 import type { Profile } from '../types'
 import { AULA_BUCKET } from '../lib/aulaUpload'
@@ -778,6 +780,143 @@ class CohortServiceImpl {
             handlers.onUpdate?.(payload.new as CohortChannelMute)
           } else if (payload.eventType === 'DELETE') {
             handlers.onDelete?.(payload.old as CohortChannelMute)
+          }
+        },
+      )
+      .subscribe((status) => onStatus?.(status))
+    return channel
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Polls (ankiety w wiadomościach)
+  // ────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Wstaw rekord pollu doczepiony do `messageId`. Pre-warunki: wiadomość musi
+   * być świeżo zaINSERTowana przez tego samego usera (RLS blokuje doczepianie
+   * do cudzej wiadomości). Trigger DB wypełnia `cohort_id` z parent message.
+   */
+  async createPollRecord(params: {
+    messageId: number
+    userId: string
+    question: string
+    options: string[]
+  }): Promise<{ data: CohortMessagePoll | null; error: PostgrestError | null }> {
+    const { data, error } = await supabase
+      .from('cohort_message_polls')
+      .insert({
+        message_id: params.messageId,
+        user_id: params.userId,
+        question: params.question,
+        options: params.options,
+      })
+      .select('id, message_id, cohort_id, user_id, question, options, closed_at, created_at')
+      .single()
+    return { data, error }
+  }
+
+  /**
+   * Wszystkie polle dla cohortu w zakresie message_id (analogicznie do
+   * `getAttachmentsForCohort`). Sortowanie po created_at ASC żeby paginacja
+   * w `useCohortPolls` była przewidywalna.
+   */
+  async getPollsForCohort(
+    cohortId: string,
+    opts?: { sinceMessageId?: number; untilMessageId?: number },
+  ): Promise<{ data: CohortMessagePoll[]; error: PostgrestError | null }> {
+    let query = supabase
+      .from('cohort_message_polls')
+      .select('id, message_id, cohort_id, user_id, question, options, closed_at, created_at')
+      .eq('cohort_id', cohortId)
+      .order('created_at', { ascending: true })
+      .limit(1000)
+
+    if (opts?.sinceMessageId != null) query = query.gte('message_id', opts.sinceMessageId)
+    if (opts?.untilMessageId != null) query = query.lte('message_id', opts.untilMessageId)
+
+    const { data, error } = await query
+    return { data: (data ?? []) as CohortMessagePoll[], error }
+  }
+
+  /** Wszystkie głosy dla danej puli polli. Cohort isolation przez RLS. */
+  async getVotesForPolls(
+    pollIds: number[],
+  ): Promise<{ data: CohortPollVote[]; error: PostgrestError | null }> {
+    if (pollIds.length === 0) return { data: [], error: null }
+    const { data, error } = await supabase
+      .from('cohort_poll_votes')
+      .select('poll_id, user_id, cohort_id, option_index, created_at')
+      .in('poll_id', pollIds)
+    return { data: (data ?? []) as CohortPollVote[], error }
+  }
+
+  /**
+   * Wywołaj RPC `vote_on_poll`. `optionIndex = -1` cofa głos
+   * (RPC robi tylko DELETE). Atomicity w transakcji RPC, klient nie musi
+   * łączyć DELETE+INSERT.
+   */
+  async voteOnPoll(
+    pollId: number,
+    optionIndex: number,
+  ): Promise<{ error: PostgrestError | null }> {
+    const { error } = await supabase.rpc('vote_on_poll', {
+      p_poll_id: pollId,
+      p_option_index: optionIndex,
+    })
+    return { error }
+  }
+
+  async closePoll(pollId: number): Promise<{ error: PostgrestError | null }> {
+    const { error } = await supabase.rpc('close_poll', { p_poll_id: pollId })
+    return { error }
+  }
+
+  /**
+   * Realtime na obu tabelach poll. Polls UPDATE = closed_at (jedyna mutacja
+   * dozwolona przez RLS); INSERT = nowy poll. Votes INSERT/DELETE = głosy.
+   * `aula-polls-<cohortId>` to jeden channel z dwoma listenerami.
+   */
+  subscribeToPolls(
+    cohortId: string,
+    handlers: {
+      onPollInsert?: (row: CohortMessagePoll) => void
+      onPollUpdate?: (row: CohortMessagePoll) => void
+      onVoteInsert?: (row: CohortPollVote) => void
+      onVoteDelete?: (row: CohortPollVote) => void
+    },
+    onStatus?: (status: string) => void,
+  ): RealtimeChannel {
+    const channel = supabase
+      .channel(`aula-polls-${cohortId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cohort_message_polls',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            handlers.onPollInsert?.(payload.new as CohortMessagePoll)
+          } else if (payload.eventType === 'UPDATE') {
+            handlers.onPollUpdate?.(payload.new as CohortMessagePoll)
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cohort_poll_votes',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            handlers.onVoteInsert?.(payload.new as CohortPollVote)
+          } else if (payload.eventType === 'DELETE') {
+            handlers.onVoteDelete?.(payload.old as CohortPollVote)
           }
         },
       )

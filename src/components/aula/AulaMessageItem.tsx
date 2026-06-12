@@ -8,10 +8,11 @@ import { relativeTime } from '../../lib/utils'
 import { MENTION_REGEX } from '../../lib/aulaMentions'
 import type { CohortMessageNode } from '../../hooks/useCohortMessages'
 import type { ReactionAggregate } from '../../hooks/useCohortReactions'
-import type { CohortMessageAttachment } from '../../types/database'
+import type { CohortMessageAttachment, CohortPollAggregate } from '../../types/database'
 import ReactionBar from './ReactionBar'
 import EmojiReactionPicker from './EmojiReactionPicker'
 import MessageAttachments from './MessageAttachments'
+import PollDisplay from './PollDisplay'
 
 const MENTION_URI_PREFIX = 'mention://'
 
@@ -124,6 +125,12 @@ type Props = {
   getSignedUrl?: (path: string) => string | null
   /** Hard-delete pojedynczego załącznika (własnego). */
   onDeleteAttachment?: (attachment: CohortMessageAttachment) => void
+  /** Polls per messageId — z useCohortPolls. */
+  pollsByMessage?: Map<number, CohortPollAggregate>
+  /** Optimistic vote (single-select, optionIndex=null = cofnij głos). */
+  onVotePoll?: (messageId: number, optionIndex: number | null) => void
+  /** Zamknij poll (creator only — RPC i tak enforce'uje). */
+  onClosePoll?: (messageId: number) => void
 }
 
 const MAX_DEPTH = 2
@@ -145,6 +152,9 @@ export default function AulaMessageItem({
   attachmentsByMessage,
   getSignedUrl,
   onDeleteAttachment,
+  pollsByMessage,
+  onVotePoll,
+  onClosePoll,
 }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(node.content)
@@ -159,6 +169,7 @@ export default function AulaMessageItem({
   const isAuthorOnline = !!onlineIds?.has(node.user_id)
   const reactions = reactionsByMessage?.get(node.id) ?? []
   const attachments = attachmentsByMessage?.get(node.id) ?? []
+  const pollAggregate = pollsByMessage?.get(node.id) ?? null
 
   const saveEdit = () => {
     const trimmed = draft.trim()
@@ -268,6 +279,16 @@ export default function AulaMessageItem({
             />
           )}
 
+          {!isDeleted && pollAggregate && onVotePoll && (
+            <PollDisplay
+              aggregate={pollAggregate}
+              currentUserId={currentUserId}
+              userNames={userNames}
+              onVote={onVotePoll}
+              onClose={onClosePoll}
+            />
+          )}
+
           {!isDeleted && reactions.length > 0 && (
             <ReactionBar
               reactions={reactions}
@@ -366,6 +387,9 @@ export default function AulaMessageItem({
               attachmentsByMessage={attachmentsByMessage}
               getSignedUrl={getSignedUrl}
               onDeleteAttachment={onDeleteAttachment}
+              pollsByMessage={pollsByMessage}
+              onVotePoll={onVotePoll}
+              onClosePoll={onClosePoll}
             />
           ))}
         </div>

@@ -197,10 +197,12 @@ export function useCohortMessages({ cohortId, currentUserId, myProfile, channelI
         width: number | null
         height: number | null
       }>,
+      pollInput?: { question: string; options: string[] },
     ) => {
       const trimmed = content.trim()
       const hasAttachments = (attachmentInputs?.length ?? 0) > 0
-      if ((!trimmed && !hasAttachments) || !cohortId) return
+      const hasPoll = pollInput != null
+      if ((!trimmed && !hasAttachments && !hasPoll) || !cohortId) return
 
       const tempId = -Date.now()
       const optimistic: CohortMessageWithAuthor = {
@@ -260,6 +262,20 @@ export function useCohortMessages({ cohortId, currentUserId, myProfile, channelI
               ? 'Wiadomość wysłana, ale 1 plik nie został dodany.'
               : `Wiadomość wysłana, ale ${failed} pliki nie zostały dodane.`,
           )
+        }
+      }
+
+      // Poll (1:1 do wiadomości). Failure NIE rollbackuje wiadomości — informujemy
+      // tylko toastem. Realtime na cohort_message_polls dosypie aggregate do UI.
+      if (hasPoll && pollInput) {
+        const { error: pollError } = await CohortService.createPollRecord({
+          messageId: data.id,
+          userId: currentUserId,
+          question: pollInput.question,
+          options: pollInput.options,
+        })
+        if (pollError) {
+          toast.error('Wiadomość wysłana, ale nie udało się dodać ankiety.')
         }
       }
     },

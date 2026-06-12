@@ -362,6 +362,61 @@ export type Database = {
           created_at?: string
         }
       }
+      cohort_message_polls: {
+        Row: {
+          id: number
+          message_id: number
+          cohort_id: string
+          user_id: string
+          question: string
+          options: string[]
+          closed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          message_id: number
+          cohort_id?: string
+          user_id: string
+          question: string
+          options: string[]
+          closed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          message_id?: number
+          cohort_id?: string
+          user_id?: string
+          question?: string
+          options?: string[]
+          closed_at?: string | null
+          created_at?: string
+        }
+      }
+      cohort_poll_votes: {
+        Row: {
+          poll_id: number
+          user_id: string
+          cohort_id: string
+          option_index: number
+          created_at: string
+        }
+        Insert: {
+          poll_id: number
+          user_id: string
+          cohort_id?: string
+          option_index: number
+          created_at?: string
+        }
+        Update: {
+          poll_id?: number
+          user_id?: string
+          cohort_id?: string
+          option_index?: number
+          created_at?: string
+        }
+      }
     }
     Functions: {
       get_replies_engagement_snapshot: {
@@ -389,6 +444,19 @@ export type Database = {
           p_message_id: number
         }
         Returns: boolean
+      }
+      vote_on_poll: {
+        Args: {
+          p_poll_id: number
+          p_option_index: number
+        }
+        Returns: void
+      }
+      close_poll: {
+        Args: {
+          p_poll_id: number
+        }
+        Returns: void
       }
     }
   }
@@ -459,3 +527,41 @@ export type ChannelMuteMode = 'all' | 'mentions_only' | 'none'
 
 /** Wiersz `public.cohort_channel_mutes` — preferencje wyciszania sali. */
 export type CohortChannelMute = TablesRow<'cohort_channel_mutes'>
+
+/**
+ * Wiersz `public.cohort_message_polls` — ankieta doczepiona 1:1 do
+ * `cohort_messages` przez UNIQUE `message_id`. `options` to JSONB array
+ * stringów (2–10 opcji, CHECK w DB). `closed_at != null` blokuje vote_on_poll
+ * po stronie RPC.
+ */
+export type CohortMessagePoll = TablesRow<'cohort_message_polls'>
+
+/**
+ * Wiersz `public.cohort_poll_votes` — pojedynczy głos w ankiecie.
+ *
+ * Single-select MVP: PRIMARY KEY `(poll_id, user_id)` — jeden głos per user
+ * per poll. Zmiana głosu = atomowy DELETE + INSERT przez RPC `vote_on_poll`
+ * (atomicity gwarantowana w transakcji RPC, nie po stronie klienta).
+ * `option_index` jest 0-based indexem w `cohort_message_polls.options`.
+ */
+export type CohortPollVote = TablesRow<'cohort_poll_votes'>
+
+/**
+ * Agregat ankiet zbierany w hooku `useCohortPolls` na potrzeby renderowania
+ * w `PollDisplay` (poll + counts per opcja + voters per opcja + flag czy
+ * aktualny user już głosował i na co).
+ *
+ * `votersPerOption[i]` to lista userId dla opcji `i` (nie posortowana —
+ * UI sortuje po `userNames`); `myVoteIndex` to indeks opcji aktualnego usera
+ * lub `null` gdy jeszcze nie głosował.
+ */
+export type CohortPollAggregate = {
+  poll: CohortMessagePoll
+  /** Liczba głosów per opcja (długość = `poll.options.length`). */
+  countsPerOption: number[]
+  /** ID-ki voterów per opcja (do awatarów). */
+  votersPerOption: string[][]
+  /** Łączna liczba unikalnych głosów (= suma counts, single-select). */
+  totalVotes: number
+  myVoteIndex: number | null
+}

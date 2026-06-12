@@ -18,6 +18,7 @@ import { useCohortMessages } from '../../hooks/useCohortMessages'
 import { useCohortReactions } from '../../hooks/useCohortReactions'
 import { useAulaPresence } from '../../hooks/useAulaPresence'
 import { useCohortAttachments } from '../../hooks/useCohortAttachments'
+import { useCohortPolls } from '../../hooks/useCohortPolls'
 import {
   useCohortChannels,
   GENERAL_SLUG,
@@ -310,6 +311,15 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
     currentUserId,
   })
   const { attachmentsByMessage, getSignedUrl } = useCohortAttachments({ cohortId })
+
+  // Polls per cohort — agregat {poll + countsPerOption + votersPerOption + myVoteIndex}
+  // per messageId. Cohort-scoped (nie per-channel) bo polls 1:1 z cohort_message;
+  // PollDisplay sam decyduje czy renderować na podstawie `pollsByMessage.get(msgId)`.
+  const {
+    pollsByMessage,
+    vote: votePoll,
+    closePoll: closePollAction,
+  } = useCohortPolls({ cohortId, currentUserId })
 
   const handleDeleteAttachment = useCallback(
     async (attachment: CohortMessageAttachment) => {
@@ -713,9 +723,10 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   const handleSendMessage = async (
     content: string,
     attachments?: Parameters<typeof sendMessage>[2],
+    poll?: Parameters<typeof sendMessage>[3],
   ) => {
     if (isArchivedActive) return
-    await sendMessage(content, replyTarget?.id ?? null, attachments)
+    await sendMessage(content, replyTarget?.id ?? null, attachments, poll)
     setReplyTarget(null)
   }
 
@@ -933,6 +944,9 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
                   attachmentsByMessage={attachmentsByMessage}
                   getSignedUrl={getSignedUrl}
                   onDeleteAttachment={handleDeleteAttachment}
+                  pollsByMessage={pollsByMessage}
+                  onVotePoll={votePoll}
+                  onClosePoll={closePollAction}
                 />
               ))}
             </div>
