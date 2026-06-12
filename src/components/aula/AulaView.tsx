@@ -26,6 +26,7 @@ import {
 } from '../../hooks/useCohortChannels'
 import { useChannelUnread } from '../../hooks/useChannelUnread'
 import { useCohortChannelMutes } from '../../hooks/useCohortChannelMutes'
+import { useChannelTyping } from '../../hooks/useChannelTyping'
 import {
   CohortService,
   type CohortMemberProfile,
@@ -403,6 +404,19 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   } = useCohortChannelMutes({
     cohortId,
     userId: currentUserId,
+  })
+
+  // Per-channel typing indicators (ephemeral, Realtime BROADCAST, zero DB).
+  // Re-subskrybuje przy każdej zmianie `activeChannelId` — cross-channel
+  // typing nie powinno wyciekać. `notifyTyping` jest throttled w hooku (3s),
+  // bezpiecznie wołać per keystroke w composerze.
+  const currentUserName =
+    (myProfile?.full_name || myProfile?.username || '').trim() || null
+  const { typingUsers, notifyTyping } = useChannelTyping({
+    cohortId,
+    channelId: activeChannelId,
+    currentUserId,
+    currentUserName,
   })
 
   // Focus-textarea bump — odpalany TYLKO na explicit user-click w kanał
@@ -850,6 +864,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           onChangeMute={(mode, snoozeHours) => {
             void setChannelMute(activeChannelId, mode, snoozeHours)
           }}
+          typingUsers={typingUsers}
         />
 
         <PinnedMessagesStrip pinned={pinned} onJump={jumpToMessage} />
@@ -956,6 +971,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           }
           focusKey={focusBump}
           onSend={handleSendMessage}
+          onTyping={notifyTyping}
         />
       </section>
 

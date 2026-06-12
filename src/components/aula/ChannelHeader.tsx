@@ -24,6 +24,7 @@ import {
   Settings,
 } from 'lucide-react'
 import type { ChannelMuteMode, CohortChannel } from '../../types/database'
+import type { TypingUser } from '../../hooks/useChannelTyping'
 import ChannelKindPill from './ChannelKindPill'
 import ChannelMuteMenu, { describeMute } from './ChannelMuteMenu'
 
@@ -40,6 +41,20 @@ type Props = {
   muteMode?: ChannelMuteMode
   mutedUntil?: Date | null
   onChangeMute?: (mode: ChannelMuteMode, snoozeHours: number | null) => void
+  /**
+   * Aktywni typers (już bez `currentUserId` — hook filtruje). Gdy lista
+   * niepusta zamiast description renderujemy "X pisze..." (Discord/Slack
+   * pattern; po wygaśnięciu wraca description bez skoku layoutu, bo
+   * obie wersje to 1 linia).
+   */
+  typingUsers?: TypingUser[]
+}
+
+function formatTypingLabel(users: TypingUser[]): string {
+  if (users.length === 0) return ''
+  if (users.length === 1) return `${users[0].name} pisze`
+  if (users.length === 2) return `${users[0].name} i ${users[1].name} piszą`
+  return `${users[0].name} i ${users.length - 1} innych pisze`
 }
 
 const GENERAL_DESCRIPTION = 'Domyślna sala Twojego rocznika. Wszyscy tu są.'
@@ -53,6 +68,7 @@ export default function ChannelHeader({
   muteMode = 'all',
   mutedUntil = null,
   onChangeMute,
+  typingUsers,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [muteMenuOpen, setMuteMenuOpen] = useState(false)
@@ -104,9 +120,18 @@ export default function ChannelHeader({
             </span>
           )}
         </div>
-        {description && (
+        {typingUsers && typingUsers.length > 0 ? (
+          <p className="mt-0.5 flex items-center gap-1 truncate text-xs italic text-zinc-500 dark:text-zinc-400">
+            <span className="truncate">{formatTypingLabel(typingUsers)}</span>
+            <span aria-hidden className="inline-flex shrink-0 items-end gap-[2px] pl-0.5">
+              <span className="inline-block h-1 w-1 animate-typing-dot rounded-full bg-current [animation-delay:0ms]" />
+              <span className="inline-block h-1 w-1 animate-typing-dot rounded-full bg-current [animation-delay:150ms]" />
+              <span className="inline-block h-1 w-1 animate-typing-dot rounded-full bg-current [animation-delay:300ms]" />
+            </span>
+          </p>
+        ) : description ? (
           <p className="mt-0.5 truncate text-xs text-fg-secondary">{description}</p>
-        )}
+        ) : null}
       </div>
 
       {onChangeMute && (

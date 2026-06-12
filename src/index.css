@@ -60,6 +60,7 @@ html {
   --animate-spin:         spin         1s linear infinite;
   --animate-fade-in:      fade-in      0.15s ease-out both;
   --animate-slide-up:     slide-up     0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-typing-dot:   typing-dot   1.2s ease-in-out infinite;
 }
 
 @layer utilities {
@@ -213,6 +214,12 @@ input[type="search"].ujverse-search-input::-moz-search-clear-button {
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(10px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Typing indicator — 3 kropki w sekwencji (Discord-style) */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30%           { opacity: 1;    transform: translateY(-2px); }
 }
 
 /* Oficjalne karty UJ — subtelny połysk (shimmer) */

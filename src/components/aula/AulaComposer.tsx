@@ -60,6 +60,12 @@ type Props = {
    * focusuje — chronimy przed kradzieżą focusu na load.
    */
   focusKey?: number | string
+  /**
+   * Wywoływane przy każdej zmianie textarea — hook `useChannelTyping`
+   * throttluje samodzielnie, więc tu wystarczy wołać per keystroke. Skipujemy
+   * gdy `value` jest pusty (clear po wysłaniu nie triggeruje typing-eventa).
+   */
+  onTyping?: () => void
 }
 
 const MENTION_RESULT_LIMIT = 6
@@ -223,6 +229,7 @@ export default function AulaComposer({
   channelName,
   archivedNotice,
   focusKey,
+  onTyping,
 }: Props) {
   const [value, setValue] = useState('')
   const [sending, setSending] = useState(false)
@@ -338,6 +345,9 @@ export default function AulaComposer({
     const next = e.target.value
     setValue(next)
     updateMentionState(next, e.target.selectionStart ?? next.length)
+    // Hook samodzielnie throttluje (3s) — bezpiecznie wołać per keystroke.
+    // Skip przy pustym stringu (clear po submit nie powinien generować eventu).
+    if (next.length > 0) onTyping?.()
   }
 
   const pickMention = (m: CohortMemberProfile) => {
