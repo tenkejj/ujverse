@@ -162,26 +162,17 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
       >
         <motion.div
           /*
-            Miękki glassmorphism — bg-white/95 (mniej "lodowate"),
-            backdrop-blur-md (zamiast 2xl), border zinc-200/70 (zamiast
-            jaskrawego white/40). Cień delikatny, bez 60px blur.
+            Czysta solidna karta — bez glassmorphism, bez backdrop-blur,
+            bez gradient-tintów. Po prostu surface'owy bg + cień.
+            Zinc-200 border w light, white/10 w dark — konsystencja z
+            BaseCard / Modal w reszcie aplikacji.
           */
-          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200/70 bg-white/95 shadow-xl backdrop-blur-md sm:max-w-2xl dark:border-white/10 dark:bg-zinc-900/85"
+          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl sm:max-w-2xl dark:border-white/10 dark:bg-zinc-900"
           initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.97 }}
           animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
           exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
           transition={shouldReduceMotion ? { duration: 0.18 } : { duration: 0.28, ease: [0.32, 0.72, 0.34, 1] }}
         >
-          {/* Subtelny soft tint w rogu — STATYCZNY (zero animacji = zero lagów).
-              Beige/gold zamiast jaskrawych kolorów. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-gradient-to-br from-amber-100/40 to-amber-50/0 blur-3xl dark:from-brand-gold/15 dark:to-transparent"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-gradient-to-br from-zinc-100/50 to-zinc-50/0 blur-3xl dark:from-white/[0.04] dark:to-transparent"
-          />
 
           {/* Top bar — progress + skip */}
           <div className="relative flex items-center justify-between gap-3 border-b border-zinc-200/70 px-4 py-3 sm:px-6 dark:border-white/10">
@@ -323,24 +314,19 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
 /* -------------------------------------------------------------------- */
 
 function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean }) {
-  return (
-    <div className="relative flex h-44 w-full items-center justify-center sm:h-56">
-      {/* Glass plate — bardzo subtelny, zin-200 zamiast white */}
-      <div
-        aria-hidden
-        className="absolute inset-x-1 inset-y-1 rounded-3xl border border-zinc-200/60 bg-zinc-50/60 dark:border-white/[0.06] dark:bg-white/[0.025]"
-      />
-
-      {/* Welcome step — logo.png jako CSS mask (jak Header / AuthShell).
-          Pełna dostępność (role+aria-label), kolor theme-aware. */}
-      {step.visual === 'logo' && (
+  // Welcome step ma WIĘKSZE logo i pomijamy glass plate (logo świeci samo,
+  // nie potrzebuje tła). Reszta kroków: ikona w neutralnym chip'ie ze
+  // statyczną tafelką w tle dla głębi.
+  if (step.visual === 'logo') {
+    return (
+      <div className="relative flex h-48 w-full items-center justify-center sm:h-64 lg:h-72">
         <motion.div
           aria-label="UJverse"
           role="img"
           initial={reduceMotion ? false : { opacity: 0, scale: 0.92 }}
           animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-          transition={reduceMotion ? undefined : { duration: 0.4, ease: [0.32, 0.72, 0.34, 1] }}
-          className="relative z-10 h-28 w-40 bg-logo-navy transition-colors duration-150 sm:h-36 sm:w-52 dark:bg-brand-gold-bright"
+          transition={reduceMotion ? undefined : { duration: 0.42, ease: [0.32, 0.72, 0.34, 1] }}
+          className="h-44 w-60 bg-logo-navy transition-colors duration-150 sm:h-56 sm:w-72 lg:h-64 lg:w-80 dark:bg-brand-gold-bright"
           style={{
             maskImage: 'url(/logo.png)',
             WebkitMaskImage: 'url(/logo.png)',
@@ -352,29 +338,33 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
             WebkitMaskPosition: 'center',
           }}
         />
-      )}
+      </div>
+    )
+  }
 
-      {/* AI step — AnimatedBot z chat/AnimatedBot.tsx (intensity wave).
-          Single animowany element, respektuje prefers-reduced-motion. */}
-      {step.visual === 'bot' && (
+  return (
+    <div className="relative flex h-44 w-full items-center justify-center sm:h-56">
+      {/* Neutralna tafelka w tle — daje głębię bez glassmorphismu */}
+      <div
+        aria-hidden
+        className="absolute inset-x-1 inset-y-1 rounded-3xl bg-zinc-50 dark:bg-white/[0.025]"
+      />
+
+      {step.visual === 'bot' ? (
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
           animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
           transition={reduceMotion ? undefined : { duration: 0.32 }}
-          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200/70 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
+          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
         >
           <AnimatedBot size={48} strokeWidth={1.7} intensity="wave" />
         </motion.div>
-      )}
-
-      {/* Pozostałe kroki — lucide icon w neutralnym chip'ie z brand kolorem.
-          ZERO loop animations. */}
-      {step.visual !== 'logo' && step.visual !== 'bot' && (
+      ) : (
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
           animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
           transition={reduceMotion ? undefined : { duration: 0.32 }}
-          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200/70 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
+          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
         >
           {(() => {
             const Icon = step.visual as LucideIcon
@@ -390,6 +380,14 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
 /*  NextButton — primary CTA z micro-animacją strzałki / completion check */
 /* -------------------------------------------------------------------- */
 
+/**
+ * NextButton — pill CTA z gradient bg + arrow-chip po prawej (mała kropka
+ * z ikoną zamiast goła chevron). Brak idle animacji, na hover:
+ *   • shine sweep (skewed light bar leci przez przycisk, 500ms)
+ *   • arrow-chip translate-x-1 + bg-white/20
+ *   • y -1 + shadow rośnie
+ * Inspiracja: Linear / Notion CTA.
+ */
 function NextButton({
   isLast,
   onClick,
@@ -403,34 +401,48 @@ function NextButton({
     <motion.button
       type="button"
       onClick={onClick}
-      whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+      whileTap={reduceMotion ? undefined : { scale: 0.97 }}
       whileHover={reduceMotion ? undefined : { y: -1 }}
+      transition={reduceMotion ? undefined : { type: 'spring', stiffness: 460, damping: 28 }}
       className={[
-        'group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-shadow',
-        'bg-[#1e293b] text-white hover:shadow-md',
-        'dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/50',
+        'group relative inline-flex items-center gap-2 overflow-hidden rounded-full pl-5 pr-1.5 py-1.5',
+        'text-sm font-bold tracking-tight',
+        // Light: gradient navy + soft inner highlight przez ring-inset.
+        'bg-gradient-to-b from-[#243043] to-[#0f172a] text-white',
+        'shadow-[0_6px_18px_-6px_rgba(15,23,42,0.55),inset_0_1px_0_0_rgba(255,255,255,0.10)]',
+        'hover:shadow-[0_10px_22px_-6px_rgba(15,23,42,0.65),inset_0_1px_0_0_rgba(255,255,255,0.14)]',
+        // Dark: gradient gold.
+        'dark:from-brand-gold-bright dark:to-brand-gold dark:text-zinc-950',
+        'dark:shadow-[0_6px_18px_-6px_rgba(201,162,39,0.55),inset_0_1px_0_0_rgba(255,255,255,0.25)]',
+        'dark:hover:shadow-[0_10px_22px_-6px_rgba(232,200,74,0.7),inset_0_1px_0_0_rgba(255,255,255,0.35)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/55',
       ].join(' ')}
     >
-      {/* Subtelny shine — pojawia się tylko on hover (zero animacji w idle) */}
+      {/* Hover-only shine sweep */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 -ml-8 h-full w-8 translate-x-0 skew-x-[-20deg] bg-white/15 opacity-0 transition-all duration-500 ease-out group-hover:translate-x-[180px] group-hover:opacity-100"
+        className="pointer-events-none absolute inset-y-0 -left-10 h-full w-10 skew-x-[-20deg] bg-white/20 opacity-0 transition-all duration-600 ease-out group-hover:left-[110%] group-hover:opacity-100 dark:bg-white/35"
       />
 
       {isLast ? (
         <>
-          <Check size={15} strokeWidth={2.5} className="relative z-10" />
           <span className="relative z-10">Gotowe</span>
+          <span
+            aria-hidden
+            className="relative z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm transition-all duration-200 group-hover:bg-white/25 dark:bg-black/15 dark:group-hover:bg-black/25"
+          >
+            <Check size={14} strokeWidth={2.8} />
+          </span>
         </>
       ) : (
         <>
           <span className="relative z-10">Dalej</span>
-          <ChevronRight
-            size={15}
-            strokeWidth={2.5}
-            className="relative z-10 transition-transform duration-200 group-hover:translate-x-0.5"
-          />
+          <span
+            aria-hidden
+            className="relative z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm transition-all duration-200 group-hover:translate-x-0.5 group-hover:bg-white/25 dark:bg-black/15 dark:group-hover:bg-black/25"
+          >
+            <ChevronRight size={14} strokeWidth={2.8} />
+          </span>
         </>
       )}
     </motion.button>
