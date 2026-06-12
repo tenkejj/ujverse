@@ -4,27 +4,29 @@
  * Copyright © 2026 Franciszek Dranka. All rights reserved.
  * License: Proprietary — see LICENSE in repo root.
  *
- * Glassmorphism modal z slajdami przedstawiającymi kluczowe sekcje:
- *   1. Witaj                  — branding + greeting
- *   2. Aula                   — czat rocznika (z fake-message preview)
- *   3. Dziś                   — daily brief
- *   4. AI Asystent            — `AnimatedBot` z `chat/AnimatedBot.tsx`
- *   5. Couponek UJ            — zniżki studenckie (z mock-card preview)
- *   6. Profil                 — uzupełnij + zaproś
+ * Glassmorphism modal z slajdami:
+ *   1. Witaj     — logo.png (mask z brand color, jak w Header / AuthShell)
+ *   2. Aula      — czat rocznika
+ *   3. Dziś      — daily brief
+ *   4. AI        — AnimatedBot (lucide Bot z chat/AnimatedBot.tsx)
+ *   5. Couponek  — zniżki studenckie
+ *   6. Profil    — uzupełnij + zaproś znajomych
+ *
+ * Design decisions (po user feedback):
+ *   • Kolory STONOWANE — paleta zinc + akcent brand-gold/navy.
+ *     Brak jaskrawych gradientów violet/fuchsia/emerald/teal/rose;
+ *     spójność z resztą aplikacji (AuthShell, Header, ProfileCard).
+ *   • Glassmorphism MIĘKKI — bg-white/95 + backdrop-blur-md
+ *     (zamiast /80 + blur-2xl). Border zinc-200/70 + ring zinc-200/40.
+ *   • CTA "Dalej" — bg navy / brand-gold (jak primary CTA w app),
+ *     z animowaną strzałką (translate-x przy hover/tap, bez Infinity loop).
+ *   • ZERO infinite loop animations w tle (raportowane laggi) — wszystkie
+ *     animacje są one-shot entry (300 ms). Jedyny wyjątek to AnimatedBot
+ *     na AI step (sam jeden element, respektuje prefers-reduced-motion).
  *
  * Layout:
- *   - mobile  (<sm): `max-w-md`, padding gęstszy
- *   - desktop (sm+): `max-w-2xl` (≈672 px) — sporo miejsca na ikonę-hero,
- *     dwukolumnowy layout (hero po lewej, treść po prawej)
- *
- * Animacje:
- *   - 2 unoszące się "blob" w tle (różne osie + opóźnienia)
- *   - ikona-hero floating loop (y: -6→6, scale 1→1.04)
- *   - tekst per-step entry: y+opacity z opóźnieniem (stagger)
- *   - per-step `interactive` mock preview (Aula/Couponek), animowany
- *
- * Po ukończeniu: `onComplete()` ustawia `profiles.onboarding_completed_at`.
- * "Pomiń" → `onboarding_skipped_at`.
+ *   - mobile  (<sm): max-w-md, single column
+ *   - desktop (sm+): max-w-2xl (~672px), 2 kolumny (hero | tekst)
  */
 import { useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -35,11 +37,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  GraduationCap,
-  Heart,
   type LucideIcon,
   MessagesSquare,
-  Sparkles,
   Sunrise,
   Ticket,
   User,
@@ -49,92 +48,69 @@ import AnimatedBot from '../chat/AnimatedBot'
 
 type Step = {
   id: string
-  icon: LucideIcon | 'bot'
-  /** Tailwind `from-…to-…` dla gradient pierścienia ikony. */
-  iconGradient: string
-  /** Tailwind `from-…/X via-…/Y to-…/Z` dla blob tła (subtelny). */
-  bgBlob: string
+  /** Hero rendering: 'logo' = /logo.png mask, 'bot' = AnimatedBot, inaczej lucide. */
+  visual: LucideIcon | 'logo' | 'bot'
   title: string
   subtitle: string
   body: string
   ctaLabel?: string
   ctaPath?: string
-  /** Komponent demo wyświetlany w kolumnie hero (mock kart/messageów). */
-  preview: 'logo' | 'aula' | 'dzis' | 'ai' | 'znizki' | 'profile'
 }
 
 const STEPS: Step[] = [
   {
     id: 'welcome',
-    icon: GraduationCap,
-    iconGradient: 'from-indigo-500 to-violet-600',
-    bgBlob: 'from-indigo-400/30 via-violet-400/20 to-fuchsia-400/30',
+    visual: 'logo',
     title: 'Witaj w UJverse',
     subtitle: 'Wszystko, czego potrzebujesz na studiach — w jednym miejscu.',
     body:
       'Aula, plan, ogłoszenia, zniżki i AI asystent. Stworzone przez studenta dla studentów UJ. Damy Ci 60 sekund touru, żebyś wiedział co i gdzie.',
-    preview: 'logo',
   },
   {
     id: 'aula',
-    icon: MessagesSquare,
-    iconGradient: 'from-emerald-500 to-teal-600',
-    bgBlob: 'from-emerald-400/25 via-teal-400/20 to-cyan-400/25',
+    visual: MessagesSquare,
     title: 'Aula — czat Twojego rocznika',
     subtitle: 'Discord i Teams w jednym. Tylko dla Twojej grupy.',
     body:
       'Logując się mailem uczelnianym automatycznie trafiasz do czatu rocznika. Twórzcie sale tematyczne, dzielcie pliki, prowadźcie wspólne notatki, ankietujcie, nagrywajcie głosówki.',
     ctaLabel: 'Otwórz Aulę',
     ctaPath: '/aula',
-    preview: 'aula',
   },
   {
     id: 'dzis',
-    icon: Sunrise,
-    iconGradient: 'from-amber-500 to-orange-500',
-    bgBlob: 'from-amber-400/30 via-orange-400/20 to-rose-400/25',
+    visual: Sunrise,
     title: '„Dziś" — Twój dzień w 5 sekund',
     subtitle: 'Najszybszy sposób, żeby wiedzieć co jutro.',
     body:
       'Twoje zajęcia, zadania, ogłoszenia wykładowców — w jednym widoku. AI tworzy poranny brief z najważniejszych informacji.',
     ctaLabel: 'Zobacz Dziś',
     ctaPath: '/dzis',
-    preview: 'dzis',
   },
   {
     id: 'ai',
-    icon: 'bot',
-    iconGradient: 'from-violet-500 to-fuchsia-600',
-    bgBlob: 'from-violet-400/30 via-fuchsia-400/20 to-pink-400/25',
+    visual: 'bot',
     title: 'AI Asystent — Twój prywatny tutor',
     subtitle: 'Zapytaj o cokolwiek. Pisz lub mów.',
     body:
       '„Co dzisiaj na zajęciach?", „Streść mi tę dyskusję", „Przetłumacz na angielski". AI zna Twój plan, ogłoszenia i wiadomości w Auli. Whisper przepisze Ci głos.',
-    preview: 'ai',
   },
   {
     id: 'znizki',
-    icon: Ticket,
-    iconGradient: 'from-rose-500 to-pink-600',
-    bgBlob: 'from-rose-400/25 via-pink-400/20 to-fuchsia-400/25',
+    visual: Ticket,
     title: 'Couponek UJ — zniżki studenckie',
     subtitle: 'Krakowska społeczność dzieli się rabatami.',
     body:
       'Restauracje, kina, fitness, książki — wszystko, gdzie z legitymacją UJ płacisz mniej. Dodawaj swoje, oceniaj cudze, oszczędzaj.',
     ctaLabel: 'Sprawdź zniżki',
     ctaPath: '/znizki',
-    preview: 'znizki',
   },
   {
     id: 'profile',
-    icon: User,
-    iconGradient: 'from-sky-500 to-cyan-600',
-    bgBlob: 'from-sky-400/25 via-cyan-400/20 to-teal-400/25',
+    visual: User,
     title: 'Skompletuj profil',
     subtitle: 'Awatar + bio = znajomi z roku Cię znajdą.',
     body:
       'Twój profil widzą inni studenci. Awatar, krótkie bio, kierunek — to wystarczy, żeby grupowi koledzy mogli dodać Cię na DM.',
-    preview: 'profile',
   },
 ]
 
@@ -178,26 +154,37 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="Wprowadzenie do UJverse"
-        className="fixed inset-0 z-[350] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-md sm:py-10"
+        className="fixed inset-0 z-[350] flex items-center justify-center bg-zinc-950/55 px-4 py-6 backdrop-blur-sm sm:py-10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={shouldReduceMotion ? { duration: 0.15 } : { duration: 0.25 }}
+        transition={{ duration: 0.2 }}
       >
         <motion.div
-          /* GLASSMORPHISM SHELL — bg białe z półprzezroczystością, gruby blur,
-             subtelne border + inner highlight przez ring. */
-          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/40 bg-white/80 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.45)] ring-1 ring-white/60 backdrop-blur-2xl sm:max-w-2xl dark:border-white/10 dark:bg-zinc-900/70 dark:ring-white/10"
-          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, scale: 0.95 }}
+          /*
+            Miękki glassmorphism — bg-white/95 (mniej "lodowate"),
+            backdrop-blur-md (zamiast 2xl), border zinc-200/70 (zamiast
+            jaskrawego white/40). Cień delikatny, bez 60px blur.
+          */
+          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200/70 bg-white/95 shadow-xl backdrop-blur-md sm:max-w-2xl dark:border-white/10 dark:bg-zinc-900/85"
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.97 }}
           animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-          exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
-          transition={shouldReduceMotion ? { duration: 0.18 } : { type: 'spring', stiffness: 320, damping: 30 }}
+          exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+          transition={shouldReduceMotion ? { duration: 0.18 } : { duration: 0.28, ease: [0.32, 0.72, 0.34, 1] }}
         >
-          {/* Decoratory tła — 2 unoszące się blob'y per step (gradient zmienia się przez current.bgBlob) */}
-          <FloatingBlobs gradient={current.bgBlob} reduceMotion={!!shouldReduceMotion} />
+          {/* Subtelny soft tint w rogu — STATYCZNY (zero animacji = zero lagów).
+              Beige/gold zamiast jaskrawych kolorów. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-gradient-to-br from-amber-100/40 to-amber-50/0 blur-3xl dark:from-brand-gold/15 dark:to-transparent"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-gradient-to-br from-zinc-100/50 to-zinc-50/0 blur-3xl dark:from-white/[0.04] dark:to-transparent"
+          />
 
           {/* Top bar — progress + skip */}
-          <div className="relative flex items-center justify-between gap-3 border-b border-white/40 px-4 py-3 sm:px-6 dark:border-white/10">
+          <div className="relative flex items-center justify-between gap-3 border-b border-zinc-200/70 px-4 py-3 sm:px-6 dark:border-white/10">
             <div className="flex items-center gap-1.5">
               {STEPS.map((s, i) => (
                 <motion.span
@@ -206,27 +193,27 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                   className={[
                     'h-1.5 rounded-full',
                     i === step
-                      ? 'w-8 bg-gradient-to-r from-violet-500 to-fuchsia-500 dark:from-violet-400 dark:to-fuchsia-400'
+                      ? 'w-8 bg-[#1e293b] dark:bg-brand-gold-bright'
                       : i < step
-                        ? 'w-2 bg-violet-300 dark:bg-violet-500/60'
-                        : 'w-2 bg-zinc-300/60 dark:bg-white/15',
+                        ? 'w-2 bg-zinc-400 dark:bg-zinc-500'
+                        : 'w-2 bg-zinc-200 dark:bg-white/10',
                   ].join(' ')}
                   layout
-                  transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 28 }}
+                  transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 30 }}
                 />
               ))}
             </div>
             <button
               type="button"
               onClick={onSkip}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.08] dark:hover:text-zinc-100"
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-100/70 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-100"
             >
               Pomiń
               <X size={13} />
             </button>
           </div>
 
-          {/* Step body — 1 col mobile, 2 col od sm */}
+          {/* Step body */}
           <div className="relative">
             <AnimatePresence custom={direction} mode="wait">
               <motion.div
@@ -235,22 +222,22 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                 initial={
                   shouldReduceMotion
                     ? { opacity: 0 }
-                    : { opacity: 0, x: direction * 32 }
+                    : { opacity: 0, x: direction * 24 }
                 }
                 animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
                 exit={
                   shouldReduceMotion
                     ? { opacity: 0 }
-                    : { opacity: 0, x: -direction * 32 }
+                    : { opacity: 0, x: -direction * 24 }
                 }
                 transition={
                   shouldReduceMotion
                     ? { duration: 0.18 }
-                    : { type: 'spring', stiffness: 280, damping: 30 }
+                    : { duration: 0.28, ease: [0.32, 0.72, 0.34, 1] }
                 }
-                className="grid grid-cols-1 items-center gap-6 px-5 pb-6 pt-7 sm:grid-cols-[260px_minmax(0,1fr)] sm:gap-8 sm:px-8 sm:pb-8 sm:pt-10"
+                className="grid grid-cols-1 items-center gap-6 px-5 pb-6 pt-8 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-10 sm:px-8 sm:pb-8 sm:pt-10"
               >
-                {/* HERO column — ikona + preview */}
+                {/* HERO column */}
                 <div className="relative flex items-center justify-center">
                   <StepHero step={current} reduceMotion={!!shouldReduceMotion} />
                 </div>
@@ -258,25 +245,25 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                 {/* TEXT column */}
                 <div className="text-center sm:text-left">
                   <motion.h2
-                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
-                    animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                    transition={shouldReduceMotion ? { duration: 0.18 } : { delay: 0.05, duration: 0.32 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={shouldReduceMotion ? undefined : { delay: 0.04, duration: 0.26 }}
                     className="text-2xl font-extrabold leading-tight tracking-tight text-fg-primary sm:text-[26px]"
                   >
                     {current.title}
                   </motion.h2>
                   <motion.p
-                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
-                    animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                    transition={shouldReduceMotion ? { duration: 0.2 } : { delay: 0.12, duration: 0.32 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={shouldReduceMotion ? undefined : { delay: 0.1, duration: 0.26 }}
                     className="mt-1.5 text-[13.5px] font-semibold text-fg-secondary sm:text-sm"
                   >
                     {current.subtitle}
                   </motion.p>
                   <motion.p
-                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
-                    animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                    transition={shouldReduceMotion ? { duration: 0.22 } : { delay: 0.18, duration: 0.32 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={shouldReduceMotion ? undefined : { delay: 0.16, duration: 0.26 }}
                     className="mt-4 text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-300"
                   >
                     {current.body}
@@ -284,16 +271,19 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
 
                   {current.ctaPath && (
                     <motion.button
-                      initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
-                      animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                      transition={shouldReduceMotion ? { duration: 0.22 } : { delay: 0.24, duration: 0.32 }}
+                      initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+                      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                      transition={shouldReduceMotion ? undefined : { delay: 0.22, duration: 0.26 }}
                       type="button"
                       onClick={() => current.ctaPath && visit(current.ctaPath)}
-                      className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r ${current.iconGradient} px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition-transform hover:scale-[1.02] sm:w-auto`}
                       whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
+                      className="group mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-[#1e293b] shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 sm:w-auto dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100 dark:hover:border-white/15 dark:hover:bg-white/[0.07]"
                     >
                       {current.ctaLabel ?? 'Otwórz'}
-                      <ArrowRight size={15} />
+                      <ArrowRight
+                        size={15}
+                        className="transition-transform duration-200 group-hover:translate-x-0.5"
+                      />
                     </motion.button>
                   )}
                 </div>
@@ -302,12 +292,12 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
           </div>
 
           {/* Footer nav */}
-          <div className="relative flex items-center justify-between gap-2 border-t border-white/40 px-4 py-3 sm:px-6 dark:border-white/10">
+          <div className="relative flex items-center justify-between gap-2 border-t border-zinc-200/70 px-4 py-3 sm:px-6 dark:border-white/10">
             <button
               type="button"
               onClick={prev}
               disabled={isFirst}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-600 transition-colors hover:bg-black/[0.05] disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-white/[0.08]"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100/70 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
             >
               <ChevronLeft size={15} />
               Wstecz
@@ -315,24 +305,11 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
             <span className="text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">
               {step + 1} / {STEPS.length}
             </span>
-            <motion.button
-              type="button"
+            <NextButton
+              isLast={isLast}
               onClick={next}
-              whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#1e293b] px-4 py-2 text-sm font-bold text-white shadow-md transition-transform hover:scale-[1.03] dark:bg-brand-gold dark:text-black"
-            >
-              {isLast ? (
-                <>
-                  <Check size={15} />
-                  Gotowe
-                </>
-              ) : (
-                <>
-                  Dalej
-                  <ChevronRight size={15} />
-                </>
-              )}
-            </motion.button>
+              reduceMotion={!!shouldReduceMotion}
+            />
           </div>
         </motion.div>
       </motion.div>
@@ -342,243 +319,120 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
 }
 
 /* -------------------------------------------------------------------- */
-/*  Sub-components                                                       */
+/*  Hero (logo / bot / lucide)                                          */
 /* -------------------------------------------------------------------- */
-
-function FloatingBlobs({ gradient, reduceMotion }: { gradient: string; reduceMotion: boolean }) {
-  return (
-    <>
-      <motion.div
-        aria-hidden
-        className={`pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-gradient-to-br ${gradient} blur-3xl`}
-        animate={
-          reduceMotion
-            ? undefined
-            : { y: [0, 14, 0], x: [0, -10, 0], scale: [1, 1.05, 1] }
-        }
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        aria-hidden
-        className={`pointer-events-none absolute -bottom-28 -left-20 h-80 w-80 rounded-full bg-gradient-to-br ${gradient} opacity-70 blur-3xl`}
-        animate={
-          reduceMotion
-            ? undefined
-            : { y: [0, -16, 0], x: [0, 12, 0], scale: [1, 1.06, 1] }
-        }
-        transition={{ duration: 11, delay: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-      />
-    </>
-  )
-}
 
 function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean }) {
   return (
     <div className="relative flex h-44 w-full items-center justify-center sm:h-56">
-      {/* Glass plate behind hero */}
+      {/* Glass plate — bardzo subtelny, zin-200 zamiast white */}
       <div
         aria-hidden
-        className="absolute inset-x-2 inset-y-2 rounded-3xl border border-white/50 bg-white/40 shadow-inner backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
+        className="absolute inset-x-1 inset-y-1 rounded-3xl border border-zinc-200/60 bg-zinc-50/60 dark:border-white/[0.06] dark:bg-white/[0.025]"
       />
 
-      {/* Floating big icon */}
-      <motion.div
-        className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br ${step.iconGradient} text-white shadow-[0_15px_35px_-12px_rgba(99,102,241,0.55)] ring-2 ring-white/40 sm:h-28 sm:w-28`}
-        animate={
-          reduceMotion
-            ? undefined
-            : { y: [-6, 6, -6], rotate: [-1.5, 1.5, -1.5] }
-        }
-        transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        {step.icon === 'bot' ? (
-          <AnimatedBot size={48} strokeWidth={1.7} intensity="wave" />
-        ) : (
-          <step.icon size={44} strokeWidth={1.7} />
-        )}
-      </motion.div>
+      {/* Welcome step — logo.png jako CSS mask (jak Header / AuthShell).
+          Pełna dostępność (role+aria-label), kolor theme-aware. */}
+      {step.visual === 'logo' && (
+        <motion.div
+          aria-label="UJverse"
+          role="img"
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.92 }}
+          animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
+          transition={reduceMotion ? undefined : { duration: 0.4, ease: [0.32, 0.72, 0.34, 1] }}
+          className="relative z-10 h-28 w-40 bg-logo-navy transition-colors duration-150 sm:h-36 sm:w-52 dark:bg-brand-gold-bright"
+          style={{
+            maskImage: 'url(/logo.png)',
+            WebkitMaskImage: 'url(/logo.png)',
+            maskSize: 'contain',
+            WebkitMaskSize: 'contain',
+            maskRepeat: 'no-repeat',
+            WebkitMaskRepeat: 'no-repeat',
+            maskPosition: 'center',
+            WebkitMaskPosition: 'center',
+          }}
+        />
+      )}
 
-      {/* Per-step mini preview (mock cards) — overlay nad ikoną */}
-      <PreviewMock kind={step.preview} reduceMotion={reduceMotion} />
+      {/* AI step — AnimatedBot z chat/AnimatedBot.tsx (intensity wave).
+          Single animowany element, respektuje prefers-reduced-motion. */}
+      {step.visual === 'bot' && (
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
+          animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
+          transition={reduceMotion ? undefined : { duration: 0.32 }}
+          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200/70 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
+        >
+          <AnimatedBot size={48} strokeWidth={1.7} intensity="wave" />
+        </motion.div>
+      )}
+
+      {/* Pozostałe kroki — lucide icon w neutralnym chip'ie z brand kolorem.
+          ZERO loop animations. */}
+      {step.visual !== 'logo' && step.visual !== 'bot' && (
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
+          animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
+          transition={reduceMotion ? undefined : { duration: 0.32 }}
+          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200/70 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
+        >
+          {(() => {
+            const Icon = step.visual as LucideIcon
+            return <Icon size={44} strokeWidth={1.7} />
+          })()}
+        </motion.div>
+      )}
     </div>
   )
 }
 
-/**
- * Mock-up overlay per step — pływające karty/wiadomości/bańki które
- * sugerują jak wygląda dana sekcja. Wszystko 100% client-side, zero fetch.
- */
-function PreviewMock({ kind, reduceMotion }: { kind: Step['preview']; reduceMotion: boolean }) {
-  if (kind === 'logo') {
-    return (
-      <>
-        <FloatBadge text="UJ" className="-left-2 top-2 sm:left-0" delay={0.3} reduceMotion={reduceMotion} />
-        <FloatBadge text="🎓" className="-right-2 bottom-3 sm:right-0" delay={0.6} reduceMotion={reduceMotion} />
-      </>
-    )
-  }
-  if (kind === 'aula') {
-    return (
-      <>
-        <FloatBubble className="-left-3 top-3 sm:-left-1" delay={0.3} reduceMotion={reduceMotion}>
-          <span className="font-semibold">Anna</span> rzuciła pytanie o egzamin
-        </FloatBubble>
-        <FloatBubble className="-right-2 bottom-2 sm:right-0" delay={0.6} reduceMotion={reduceMotion} variant="me">
-          Materiały są w 📌 przypiętej notatce
-        </FloatBubble>
-      </>
-    )
-  }
-  if (kind === 'dzis') {
-    return (
-      <>
-        <FloatPill className="-left-1 top-2 sm:left-0" delay={0.3} reduceMotion={reduceMotion} icon="🕘">
-          09:45 · Analiza matematyczna
-        </FloatPill>
-        <FloatPill className="-right-1 bottom-2 sm:right-0" delay={0.6} reduceMotion={reduceMotion} icon="📋">
-          1 zadanie do oddania
-        </FloatPill>
-      </>
-    )
-  }
-  if (kind === 'ai') {
-    return (
-      <>
-        <FloatBubble className="-left-3 top-3 sm:-left-1" delay={0.3} reduceMotion={reduceMotion}>
-          <Sparkles size={11} className="-mt-0.5 mr-1 inline" />
-          „Streść mi ten kanał"
-        </FloatBubble>
-        <FloatBubble className="-right-2 bottom-1 sm:right-0" delay={0.55} reduceMotion={reduceMotion} variant="ai">
-          5 wykładowców, 3 deadliny…
-        </FloatBubble>
-      </>
-    )
-  }
-  if (kind === 'znizki') {
-    return (
-      <>
-        <FloatPill className="-left-2 top-3 sm:-left-1" delay={0.3} reduceMotion={reduceMotion} icon="☕">
-          -20% w Cafe Camelot
-        </FloatPill>
-        <FloatPill className="-right-2 bottom-2 sm:right-0" delay={0.6} reduceMotion={reduceMotion} icon="🎬">
-          Kino studyjne -50%
-        </FloatPill>
-      </>
-    )
-  }
-  // profile
-  return (
-    <>
-      <FloatBadge text="@franek" className="-left-3 top-2 sm:-left-1" delay={0.3} reduceMotion={reduceMotion} />
-      <FloatPill className="-right-3 bottom-3 sm:-right-1" delay={0.55} reduceMotion={reduceMotion} icon={<Heart size={11} className="text-rose-500" />}>
-        3 znajomych z roku
-      </FloatPill>
-    </>
-  )
-}
+/* -------------------------------------------------------------------- */
+/*  NextButton — primary CTA z micro-animacją strzałki / completion check */
+/* -------------------------------------------------------------------- */
 
-/* ─ Floating UI primitives (glassmorphism mini-elements) ────────────────── */
-
-function FloatBadge({
-  text,
-  className,
-  delay,
+function NextButton({
+  isLast,
+  onClick,
   reduceMotion,
 }: {
-  text: string
-  className: string
-  delay: number
+  isLast: boolean
+  onClick: () => void
   reduceMotion: boolean
 }) {
   return (
-    <motion.span
-      className={`absolute z-20 inline-flex items-center rounded-full border border-white/60 bg-white/80 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-zinc-700 shadow-md backdrop-blur-md dark:border-white/10 dark:bg-zinc-800/70 dark:text-zinc-100 ${className}`}
-      initial={{ opacity: 0, y: 14, scale: 0.85 }}
-      animate={
-        reduceMotion
-          ? { opacity: 1, y: 0, scale: 1 }
-          : { opacity: 1, y: [0, -6, 0], scale: 1 }
-      }
-      transition={
-        reduceMotion
-          ? { delay, duration: 0.25 }
-          : { delay, y: { duration: 3.6, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.4 }, scale: { duration: 0.4 } }
-      }
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+      whileHover={reduceMotion ? undefined : { y: -1 }}
+      className={[
+        'group relative inline-flex items-center gap-1.5 overflow-hidden rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-shadow',
+        'bg-[#1e293b] text-white hover:shadow-md',
+        'dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/50',
+      ].join(' ')}
     >
-      {text}
-    </motion.span>
-  )
-}
+      {/* Subtelny shine — pojawia się tylko on hover (zero animacji w idle) */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 -ml-8 h-full w-8 translate-x-0 skew-x-[-20deg] bg-white/15 opacity-0 transition-all duration-500 ease-out group-hover:translate-x-[180px] group-hover:opacity-100"
+      />
 
-function FloatBubble({
-  children,
-  className,
-  delay,
-  reduceMotion,
-  variant = 'them',
-}: {
-  children: React.ReactNode
-  className: string
-  delay: number
-  reduceMotion: boolean
-  variant?: 'them' | 'me' | 'ai'
-}) {
-  const tone =
-    variant === 'me'
-      ? 'bg-gradient-to-br from-emerald-500/90 to-teal-600/90 text-white border-white/30'
-      : variant === 'ai'
-        ? 'bg-gradient-to-br from-violet-500/90 to-fuchsia-600/90 text-white border-white/30'
-        : 'bg-white/85 text-zinc-800 border-white/60 dark:bg-zinc-800/80 dark:text-zinc-100 dark:border-white/10'
-  return (
-    <motion.div
-      className={`absolute z-20 max-w-[180px] rounded-2xl border px-3 py-1.5 text-[11.5px] leading-snug shadow-lg backdrop-blur-md ${tone} ${className}`}
-      initial={{ opacity: 0, y: 16, scale: 0.9 }}
-      animate={
-        reduceMotion
-          ? { opacity: 1, y: 0, scale: 1 }
-          : { opacity: 1, y: [0, -5, 0], scale: 1 }
-      }
-      transition={
-        reduceMotion
-          ? { delay, duration: 0.25 }
-          : { delay, y: { duration: 3.8, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.4 }, scale: { duration: 0.4 } }
-      }
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-function FloatPill({
-  children,
-  className,
-  delay,
-  reduceMotion,
-  icon,
-}: {
-  children: React.ReactNode
-  className: string
-  delay: number
-  reduceMotion: boolean
-  icon?: React.ReactNode
-}) {
-  return (
-    <motion.span
-      className={`absolute z-20 inline-flex items-center gap-1.5 rounded-full border border-white/60 bg-white/85 px-2.5 py-1 text-[11.5px] font-semibold text-zinc-800 shadow-md backdrop-blur-md dark:border-white/10 dark:bg-zinc-800/80 dark:text-zinc-100 ${className}`}
-      initial={{ opacity: 0, y: 16, scale: 0.85 }}
-      animate={
-        reduceMotion
-          ? { opacity: 1, y: 0, scale: 1 }
-          : { opacity: 1, y: [0, -5, 0], scale: 1 }
-      }
-      transition={
-        reduceMotion
-          ? { delay, duration: 0.25 }
-          : { delay, y: { duration: 3.4, repeat: Infinity, ease: 'easeInOut' }, opacity: { duration: 0.4 }, scale: { duration: 0.4 } }
-      }
-    >
-      {icon ? <span className="-ml-0.5">{icon}</span> : null}
-      {children}
-    </motion.span>
+      {isLast ? (
+        <>
+          <Check size={15} strokeWidth={2.5} className="relative z-10" />
+          <span className="relative z-10">Gotowe</span>
+        </>
+      ) : (
+        <>
+          <span className="relative z-10">Dalej</span>
+          <ChevronRight
+            size={15}
+            strokeWidth={2.5}
+            className="relative z-10 transition-transform duration-200 group-hover:translate-x-0.5"
+          />
+        </>
+      )}
+    </motion.button>
   )
 }
