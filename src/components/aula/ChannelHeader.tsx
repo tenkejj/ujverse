@@ -15,13 +15,17 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Archive,
   ArchiveRestore,
+  Bell,
+  BellMinus,
+  BellOff,
   ChevronDown,
   GraduationCap,
   Pencil,
   Settings,
 } from 'lucide-react'
-import type { CohortChannel } from '../../types/database'
+import type { ChannelMuteMode, CohortChannel } from '../../types/database'
 import ChannelKindPill from './ChannelKindPill'
+import ChannelMuteMenu, { describeMute } from './ChannelMuteMenu'
 
 type Props = {
   channel: CohortChannel | null
@@ -29,6 +33,13 @@ type Props = {
   onEdit: () => void
   onArchive: () => void
   onUnarchive: () => void
+  /**
+   * Mute prefs dla AKTYWNEGO kanału (= ten widoczny w headerze). `null`
+   * channel = Sala główna, mute dotyczy `channel_id IS NULL`.
+   */
+  muteMode?: ChannelMuteMode
+  mutedUntil?: Date | null
+  onChangeMute?: (mode: ChannelMuteMode, snoozeHours: number | null) => void
 }
 
 const GENERAL_DESCRIPTION = 'Domyślna sala Twojego rocznika. Wszyscy tu są.'
@@ -39,9 +50,14 @@ export default function ChannelHeader({
   onEdit,
   onArchive,
   onUnarchive,
+  muteMode = 'all',
+  mutedUntil = null,
+  onChangeMute,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [muteMenuOpen, setMuteMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const muteWrapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -57,6 +73,16 @@ export default function ChannelHeader({
   const name = channel?.name ?? 'Sala główna'
   const description = channel?.description ?? (channel ? null : GENERAL_DESCRIPTION)
   const archived = channel?.archived_at != null
+
+  const muteIcon =
+    muteMode === 'none' ? (
+      <BellOff size={14} />
+    ) : muteMode === 'mentions_only' ? (
+      <BellMinus size={14} />
+    ) : (
+      <Bell size={14} />
+    )
+  const muteIsActive = muteMode !== 'all'
 
   return (
     <div className="flex items-center gap-3 border-b border-zinc-200 px-4 py-2.5 dark:border-white/10">
@@ -82,6 +108,37 @@ export default function ChannelHeader({
           <p className="mt-0.5 truncate text-xs text-fg-secondary">{description}</p>
         )}
       </div>
+
+      {onChangeMute && (
+        <div ref={muteWrapRef} className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setMuteMenuOpen((v) => !v)}
+            aria-label={
+              muteIsActive ? 'Zmień wyciszenie powiadomień' : 'Wycisz powiadomienia'
+            }
+            aria-expanded={muteMenuOpen}
+            title={describeMute(muteMode, mutedUntil)}
+            className={[
+              'inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors',
+              muteIsActive
+                ? 'text-amber-600 hover:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-300/10'
+                : 'text-zinc-500 hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200',
+            ].join(' ')}
+          >
+            {muteIcon}
+          </button>
+          {muteMenuOpen && (
+            <ChannelMuteMenu
+              currentMode={muteMode}
+              mutedUntil={mutedUntil}
+              channelLabel={name}
+              onChange={(mode, snoozeHours) => onChangeMute(mode, snoozeHours)}
+              onClose={() => setMuteMenuOpen(false)}
+            />
+          )}
+        </div>
+      )}
 
       {channel && canManage && (
         <div ref={menuRef} className="relative shrink-0">

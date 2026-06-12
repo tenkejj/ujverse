@@ -7,8 +7,10 @@ import type { PostgrestError, RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../supabaseClient'
 import type {
   ChannelKind,
+  ChannelMuteMode,
   Cohort,
   CohortChannel,
+  CohortChannelMute,
   CohortMessage,
   CohortMessageAttachment,
   CohortMessageReaction,
@@ -692,6 +694,90 @@ class CohortServiceImpl {
             // RLS odrzuca authenticated DELETE; eventy mogą iść tylko z
             // service-role hard-delete (defensywnie obsługujemy).
             handlers.onDelete?.(payload.old as CohortChannel)
+          }
+        },
+      )
+      .subscribe((status) => onStatus?.(status))
+    return channel
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Channel mutes (per-user-per-channel notification prefs)
+  // ──────────────────────────────────────────────────────────────────────
+
+  /**
+   * Wszystkie mute prefs aktualnego usera dla danego cohortu. RLS filtruje
+   * po `user_id = auth.uid()`, więc nie potrzebujemy explicit `eq('user_id')`.
+   * Pomija rekordy z wygasłym `muted_until` (snooze przeszedł).
+   */
+  async getChannelMutes(
+    cohortId: string,
+  ): Promise<{ data: CohortChannelMute[]; error: PostgrestError | null }> {
+    const { data, error } = await supabase
+      .from('cohort_channel_mutes')
+      .select('id, user_id, cohort_id, channel_id, mode, muted_until, created_at, updated_at')
+      .eq('cohort_id', cohortId)
+    if (error) return { data: [], error }
+    const nowMs = Date.now()
+    const active = (data ?? []).filter((row) => {
+      if (row.muted_until == null) return true
+      return new Date(row.muted_until).getTime() > nowMs
+    }) as CohortChannelMute[]
+    return { data: active, error: null }
+  }
+
+  /**
+   * Upsert / delete mute prefs przez RPC `set_channel_mute`. `mode='all'` =
+   * usunięcie wpisu (default state). Snooze przez `snoozeHours` (null/undefined
+   * = wycisz na zawsze).
+   */
+  async setChannelMute(params: {
+    cohortId: string
+    channelId: number | null
+    mode: ChannelMuteMode
+    snoozeHours?: number | null
+  }): Promise<{ data: CohortChannelMute | null; error: PostgrestError | null }> {
+    const { data, error } = await supabase.rpc('set_channel_mute', {
+      p_cohort_id: params.cohortId,
+      p_channel_id: params.channelId,
+      p_mode: params.mode,
+      p_snooze_hours: params.snoozeHours ?? null,
+    })
+    if (error) return { data: null, error }
+    return { data: (data as CohortChannelMute | null) ?? null, error: null }
+  }
+
+  /**
+   * Realtime na `cohort_channel_mutes` dla aktualnego usera w danym cohorcie.
+   * RLS w server-side filtruje events do własnych — Realtime filter dorzucamy
+   * defensywnie (cohort_id) ale per-user filter tylko via RLS server-side.
+   */
+  subscribeToChannelMutes(
+    cohortId: string,
+    handlers: {
+      onInsert?: (row: CohortChannelMute) => void
+      onUpdate?: (row: CohortChannelMute) => void
+      onDelete?: (row: CohortChannelMute) => void
+    },
+    onStatus?: (status: string) => void,
+  ): RealtimeChannel {
+    const channel = supabase
+      .channel(`aula-channel-mutes-${cohortId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cohort_channel_mutes',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            handlers.onInsert?.(payload.new as CohortChannelMute)
+          } else if (payload.eventType === 'UPDATE') {
+            handlers.onUpdate?.(payload.new as CohortChannelMute)
+          } else if (payload.eventType === 'DELETE') {
+            handlers.onDelete?.(payload.old as CohortChannelMute)
           }
         },
       )

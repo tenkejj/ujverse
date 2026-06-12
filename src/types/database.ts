@@ -263,6 +263,38 @@ export type Database = {
           kind?: ChannelKind
         }
       }
+      cohort_channel_mutes: {
+        Row: {
+          id: number
+          user_id: string
+          cohort_id: string
+          channel_id: number | null
+          mode: ChannelMuteMode
+          muted_until: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          cohort_id: string
+          channel_id?: number | null
+          mode: ChannelMuteMode
+          muted_until?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          cohort_id?: string
+          channel_id?: number | null
+          mode?: ChannelMuteMode
+          muted_until?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       cohort_message_reactions: {
         Row: {
           id: number
@@ -409,3 +441,21 @@ export type ChannelKind = 'wyk' | 'cw' | 'lab' | 'sem' | 'proj' | 'inne'
  * wartości `'general'` (kolizja URL). Sala główna nie ma też `kind`.
  */
 export type CohortChannel = TablesRow<'cohort_channels'>
+
+/**
+ * Per-user per-channel notification preferences. Brak rekordu = `'all'`
+ * (default — pełne powiadomienia). UI usuwa rekord gdy user wraca do
+ * default żeby tabela pozostała chuda; `set_channel_mute` RPC enforce'uje
+ * ten invariant.
+ *
+ *   - `'all'`           = pełne powiadomienia (reply + mention)
+ *   - `'mentions_only'` = tylko `@username` powiadamia (replies skipowane)
+ *   - `'none'`          = całkowite wyciszenie (nic nie powiadamia)
+ *
+ * `muted_until` NULL = wyciszone na zawsze (do ręcznego cofnięcia);
+ * timestamp = snooze do tej chwili (po wygaśnięciu trigger traktuje jak `'all'`).
+ */
+export type ChannelMuteMode = 'all' | 'mentions_only' | 'none'
+
+/** Wiersz `public.cohort_channel_mutes` — preferencje wyciszania sali. */
+export type CohortChannelMute = TablesRow<'cohort_channel_mutes'>

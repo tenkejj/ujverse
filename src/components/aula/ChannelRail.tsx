@@ -14,8 +14,8 @@
  * Każdy item jest klikalny → `onSelect(id | null)`. Aktywny ma highlight.
  */
 import { useMemo, useState } from 'react'
-import { Archive, ChevronDown, ChevronRight, GraduationCap, Plus, X } from 'lucide-react'
-import type { ChannelKind, CohortChannel } from '../../types/database'
+import { Archive, BellMinus, BellOff, ChevronDown, ChevronRight, GraduationCap, Plus, X } from 'lucide-react'
+import type { ChannelKind, ChannelMuteMode, CohortChannel } from '../../types/database'
 import type { ActiveChannelId } from '../../hooks/useCohortChannels'
 import ChannelKindPill, { CHANNEL_KINDS } from './ChannelKindPill'
 
@@ -46,6 +46,11 @@ type Props = {
   onToggleKind?: (kind: ChannelKind) => void
   /** Czyści cały filter (button "X" obok pigułek). */
   onClearKindFilter?: () => void
+  /**
+   * Mute mode per kanał (z `useCohortChannelMutes.getMuteMode`). `null` =
+   * Sala główna. Brak callbacka = pomijamy renderowanie ikon (legacy mode).
+   */
+  getMuteMode?: (channelId: number | null) => ChannelMuteMode
 }
 
 export default function ChannelRail({
@@ -60,11 +65,15 @@ export default function ChannelRail({
   availableKinds,
   onToggleKind,
   onClearKindFilter,
+  getMuteMode,
 }: Props) {
   const [archivedOpen, setArchivedOpen] = useState(false)
 
   const isUnread = (id: number | null): boolean =>
     unreadChannels ? unreadChannels.has(id) : false
+
+  const muteModeFor = (id: number | null): ChannelMuteMode =>
+    getMuteMode ? getMuteMode(id) : 'all'
 
   const filterActive = (kindFilter?.size ?? 0) > 0
   const showKindFilterRow =
@@ -140,6 +149,7 @@ export default function ChannelRail({
         <GeneralRoomItem
           active={activeChannelId === null}
           unread={isUnread(null)}
+          muteMode={muteModeFor(null)}
           onClick={() => onSelect(null)}
         />
         {filteredChannels.map((c) => (
@@ -148,6 +158,7 @@ export default function ChannelRail({
             channel={c}
             active={activeChannelId === c.id}
             unread={isUnread(c.id)}
+            muteMode={muteModeFor(c.id)}
             onClick={() => onSelect(c.id)}
           />
         ))}
@@ -188,6 +199,7 @@ export default function ChannelRail({
                     channel={c}
                     active={activeChannelId === c.id}
                     unread={isUnread(c.id)}
+                    muteMode={muteModeFor(c.id)}
                     archived
                     onClick={() => onSelect(c.id)}
                   />
@@ -213,18 +225,27 @@ export default function ChannelRail({
 function GeneralRoomItem({
   active,
   unread,
+  muteMode = 'all',
   onClick,
 }: {
   active: boolean
   unread?: boolean
+  muteMode?: ChannelMuteMode
   onClick: () => void
 }) {
   const showUnread = unread && !active
+  const isMuted = muteMode !== 'all'
   return (
     <button
       type="button"
       onClick={onClick}
-      title="Sala główna — domyślny kanał rocznika"
+      title={
+        isMuted
+          ? muteMode === 'none'
+            ? 'Sala główna — wyciszona'
+            : 'Sala główna — tylko wzmianki'
+          : 'Sala główna — domyślny kanał rocznika'
+      }
       className={[
         'group flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
         active
@@ -232,6 +253,7 @@ function GeneralRoomItem({
           : showUnread
             ? 'font-semibold text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
             : 'text-fg-secondary hover:bg-black/[0.04] hover:text-fg-primary dark:hover:bg-white/[0.05]',
+        isMuted && !active ? 'opacity-70' : '',
       ].join(' ')}
     >
       <GraduationCap
@@ -239,6 +261,7 @@ function GeneralRoomItem({
         className="shrink-0 text-[#1e293b]/70 dark:text-brand-gold-bright/80"
       />
       <span className="min-w-0 flex-1 truncate">Sala główna</span>
+      <MuteIcon mode={muteMode} />
       {showUnread && (
         <span
           aria-label="Nowe wiadomości"
@@ -254,17 +277,20 @@ function ChannelItem({
   active,
   archived,
   unread,
+  muteMode = 'all',
   onClick,
 }: {
   channel: CohortChannel
   active: boolean
   archived?: boolean
   unread?: boolean
+  muteMode?: ChannelMuteMode
   onClick: () => void
 }) {
   // Unread NIE bumpuje wagi gdy sala jest aktywna — auto-mark useEffect i
   // tak zaraz wyczyści state, ale chronimy przed jednoramkowym mignięciem.
   const showUnread = unread && !active
+  const isMuted = muteMode !== 'all'
   return (
     <button
       type="button"
@@ -278,10 +304,12 @@ function ChannelItem({
             ? 'font-semibold text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
             : 'text-fg-secondary hover:bg-black/[0.04] hover:text-fg-primary dark:hover:bg-white/[0.05]',
         archived ? 'opacity-60' : '',
+        isMuted && !archived && !active ? 'opacity-70' : '',
       ].join(' ')}
     >
       <ChannelKindPill kind={channel.kind} size="sm" />
       <span className="min-w-0 flex-1 truncate">{channel.name}</span>
+      <MuteIcon mode={muteMode} />
       {showUnread && (
         <span
           aria-label="Nowe wiadomości"
@@ -296,5 +324,26 @@ function ChannelItem({
         />
       )}
     </button>
+  )
+}
+
+/** Subtelna ikonka wyciszenia (BellOff / BellMinus) — pomija się dla 'all'. */
+function MuteIcon({ mode }: { mode: ChannelMuteMode }) {
+  if (mode === 'all') return null
+  if (mode === 'mentions_only') {
+    return (
+      <BellMinus
+        size={10}
+        aria-label="Tylko wzmianki"
+        className="shrink-0 text-amber-500 dark:text-amber-300"
+      />
+    )
+  }
+  return (
+    <BellOff
+      size={10}
+      aria-label="Wyciszone"
+      className="shrink-0 text-zinc-400 dark:text-zinc-500"
+    />
   )
 }

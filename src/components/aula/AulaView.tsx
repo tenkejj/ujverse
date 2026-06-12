@@ -25,12 +25,18 @@ import {
   writeLastChannel,
 } from '../../hooks/useCohortChannels'
 import { useChannelUnread } from '../../hooks/useChannelUnread'
+import { useCohortChannelMutes } from '../../hooks/useCohortChannelMutes'
 import {
   CohortService,
   type CohortMemberProfile,
   type CohortMessageWithAuthor,
 } from '../../services/CohortService'
-import type { ChannelKind, CohortChannel, CohortMessageAttachment } from '../../types/database'
+import type {
+  ChannelKind,
+  ChannelMuteMode,
+  CohortChannel,
+  CohortMessageAttachment,
+} from '../../types/database'
 import UserAvatar from '../UserAvatar'
 import AulaMessageItem from './AulaMessageItem'
 import AulaComposer from './AulaComposer'
@@ -387,6 +393,18 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
     activeChannelId,
   })
 
+  // Per-channel notification mute prefs — Bell w ChannelHeader otwiera
+  // ChannelMuteMenu, ChannelRail rysuje subtelne BellOff/BellMinus per kanał.
+  // Trigger SQL też respect mute (źródło prawdy server-side); hook tylko UI.
+  const {
+    getMuteMode,
+    getMutedUntil,
+    setMute: setChannelMute,
+  } = useCohortChannelMutes({
+    cohortId,
+    userId: currentUserId,
+  })
+
   // Focus-textarea bump — odpalany TYLKO na explicit user-click w kanał
   // (w `setActiveChannelAndUrl`). NIE bumpujemy przy initial load / deep-
   // link / URL sync — tam scroll/highlight rządzi i kradzież focusu = UX bug.
@@ -714,6 +732,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           availableKinds={availableKinds}
           onToggleKind={toggleKindFilter}
           onClearKindFilter={clearKindFilter}
+          getMuteMode={getMuteMode}
           className="w-full"
         />
       </aside>
@@ -825,6 +844,11 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           }}
           onUnarchive={() => {
             if (activeChannel) void unarchiveChannel(activeChannel.id)
+          }}
+          muteMode={getMuteMode(activeChannelId)}
+          mutedUntil={getMutedUntil(activeChannelId)}
+          onChangeMute={(mode, snoozeHours) => {
+            void setChannelMute(activeChannelId, mode, snoozeHours)
           }}
         />
 
@@ -961,6 +985,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             availableKinds={availableKinds}
             onToggleKind={toggleKindFilter}
             onClearKindFilter={clearKindFilter}
+            getMuteMode={getMuteMode}
           />
         )}
         {recentFilesOpen && cohortId && (
@@ -1031,6 +1056,7 @@ function ChannelsSheet({
   availableKinds,
   onToggleKind,
   onClearKindFilter,
+  getMuteMode,
 }: {
   channels: CohortChannel[]
   archived: CohortChannel[]
@@ -1043,6 +1069,7 @@ function ChannelsSheet({
   availableKinds?: ReadonlySet<ChannelKind>
   onToggleKind?: (kind: ChannelKind) => void
   onClearKindFilter?: () => void
+  getMuteMode?: (channelId: number | null) => ChannelMuteMode
 }) {
   const shouldReduceMotion = useReducedMotion()
 
@@ -1121,6 +1148,7 @@ function ChannelsSheet({
             availableKinds={availableKinds}
             onToggleKind={onToggleKind}
             onClearKindFilter={onClearKindFilter}
+            getMuteMode={getMuteMode}
             className="h-full rounded-none border-0 bg-transparent"
           />
         </div>
