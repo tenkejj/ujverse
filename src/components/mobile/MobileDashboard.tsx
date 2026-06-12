@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, GraduationCap, MapPin } from 'lucide-react'
+import { ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles } from 'lucide-react'
 import { NIEZBEDNIK_LINKS } from '../Niezbednik'
 import {
   OFFICIAL_TAG_META,
@@ -129,6 +129,16 @@ export default function MobileDashboard({
     <div className={`${BLEED_WRAPPER_CLS} ${className}`.trim()}>
       <div className="relative w-full min-w-0">
         <nav ref={trayRef} aria-label="Szybki dostęp" className={TRAY_CLS}>
+          <button
+            type="button"
+            onClick={() => navigate('/dzis')}
+            aria-label="Dziś — Twój brief poranny"
+            title="Dziś — przegląd dnia"
+            className={`relative ${ITEM_CLS} text-brand-gold dark:text-brand-gold-bright`}
+          >
+            <Sparkles size={22} strokeWidth={1.95} className="shrink-0" aria-hidden />
+            <span className={LABEL_CLS}>Dziś</span>
+          </button>
           <button
             type="button"
             onClick={() => navigate('/aula')}

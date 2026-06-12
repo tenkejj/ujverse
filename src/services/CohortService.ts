@@ -1070,6 +1070,54 @@ class CohortServiceImpl {
   }
 
   /**
+   * Otwarte zadania w całym roczniku które user JESZCZE NIE ukończył
+   * (per-user completions w `cohort_task_completions`). Sortowanie ASC po
+   * `due_at NULLS LAST`. Używane przez "Dziś" widok do listy najbliższych
+   * deadlinów (cross-channel preview).
+   *
+   * Implementacja: dwie kwerendy (tasks + my-completions) → JS-side filter
+   * + sort. PostgREST nie obsługuje "WHERE NOT EXISTS" w deklaratywnej formie,
+   * a dla ~50 otwartych zadań/cohort to taniej niż custom RPC.
+   *
+   * `nowMs` (opcjonalny) — granica dla sortowania "po terminie najpierw, potem
+   * wg due_at". Bez parametru bierzemy `Date.now()` w momencie wywołania.
+   */
+  async listOpenTasksForCohort(
+    cohortId: string,
+    userId: string,
+    limit = 50,
+  ): Promise<{ data: CohortChannelTask[]; error: PostgrestError | null }> {
+    const [tasksRes, completionsRes] = await Promise.all([
+      supabase
+        .from('cohort_channel_tasks')
+        .select('id, cohort_id, channel_id, created_by, title, description, due_at, priority, completed_at, completed_by, created_at')
+        .eq('cohort_id', cohortId)
+        .is('completed_at', null)
+        .order('due_at', { ascending: true, nullsFirst: false })
+        .limit(limit),
+      supabase
+        .from('cohort_task_completions')
+        .select('task_id')
+        .eq('user_id', userId)
+        .eq('cohort_id', cohortId),
+    ])
+
+    if (tasksRes.error) return { data: [], error: tasksRes.error }
+
+    const myCompletedIds = new Set<number>()
+    if (!completionsRes.error && Array.isArray(completionsRes.data)) {
+      for (const c of completionsRes.data as Array<{ task_id: number }>) {
+        myCompletedIds.add(c.task_id)
+      }
+    }
+
+    const tasks = ((tasksRes.data ?? []) as CohortChannelTask[]).filter(
+      (t) => !myCompletedIds.has(t.id),
+    )
+    return { data: tasks, error: null }
+  }
+
+  /**
    * Lista zadań dla (cohort, channel). `channelId === null` = Sala główna.
    * Sortowanie ASC po `due_at` (NULLS LAST) zachowuje hook (po pobraniu) —
    * tutaj zostawiamy DB-default `created_at` żeby zachować chronologię tworzenia.

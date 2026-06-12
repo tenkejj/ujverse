@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sun, User, Users } from 'lucide-react'
+import { Bell, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sparkles, Sun, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -14,7 +14,7 @@ import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing' | 'dzis'
 
 type Props = {
   myProfile: Profile | null
@@ -34,6 +34,7 @@ type Props = {
   onNavigateToAula: () => void
   aulaHasUnread?: boolean
   onNavigateToMojPlan: () => void
+  onNavigateToDzis: () => void
   onNavigateToSearch: (query?: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
@@ -64,6 +65,7 @@ export default function Header({
   onNavigateToAula,
   aulaHasUnread = false,
   onNavigateToMojPlan,
+  onNavigateToDzis,
   onNavigateToSearch,
   onNavigateToUser,
   onNavigateToPost,
@@ -202,6 +204,21 @@ export default function Header({
             <Users size={15} strokeWidth={1.95} />
             <span>Koła Naukowe</span>
           </button>
+          <button
+            type="button"
+            onClick={onNavigateToDzis}
+            className={`relative inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-[12.5px] font-semibold transition-colors duration-150 ease-in-out ${
+              activeView === 'dzis'
+                ? 'bg-brand-gold text-white shadow-sm dark:bg-brand-gold-bright dark:text-zinc-900'
+                : 'bg-brand-gold/12 text-[#1e293b] hover:bg-brand-gold/20 dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/25'
+            }`}
+            aria-label="Dziś — Twój brief poranny"
+            title="Dziś — przegląd dnia"
+          >
+            <Sparkles size={14} strokeWidth={2.4} />
+            <span>Dziś</span>
+          </button>
+
           <button
             type="button"
             onClick={() => onNavigateToEvents()}
