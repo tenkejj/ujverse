@@ -711,6 +711,10 @@ function App() {
       if (p !== '/usos') navigate('/usos')
       return
     }
+    if (view === 'miejsca') {
+      if (p !== '/miejsca') navigate('/miejsca')
+      return
+    }
     if (view === 'settings') {
       if (p !== '/settings') navigate('/settings')
       return

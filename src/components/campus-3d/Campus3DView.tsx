@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Building2,
@@ -6,12 +6,13 @@ import {
   Crosshair,
   ExternalLink,
   Hash,
+  HelpCircle,
   Layers,
+  Map as MapIcon,
   MapPin,
   Maximize2,
   Ruler,
   Search,
-  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -32,10 +33,7 @@ import BaseCard from '../ui/BaseCard'
 import { theme } from '../../styles/theme'
 import { sectionTitleCls, sideMutedCls, widgetGoldCls } from '../../lib/sidePanelStyles'
 import MapLibreCanvas from './MapLibreCanvas'
-
-// Three.js scene jest ciężki (~600KB gzipped). Ładujemy go DOPIERO gdy user
-// otworzy exploded view — pierwsza ramka mapy 3D nie czeka na r3f.
-const ExplodedBuildingView = lazy(() => import('./ExplodedBuildingView'))
+import BuildingInteriorView from './BuildingInteriorView'
 
 /**
  * Campus3DView — top-level widok 3D mapy kampusu UJ.
@@ -123,6 +121,10 @@ export default function Campus3DView(_props: Props) {
   // below); user može toggle przyciskiem expand żeby dostać większy
   // widok na phonach (klasyczne map-first UX).
   const [mobileMapExpanded, setMobileMapExpanded] = useState(false)
+
+  // Legenda mapy — toggleable overlay z opisem co kliknąć. Default off
+  // żeby nie zaśmiecać widoku, ale jest mały przycisk żeby otworzyć.
+  const [mapLegendOpen, setMapLegendOpen] = useState(false)
 
   // Footprint metadata dla aktualnie wybranego budynku — używane w
   // BuildingDetailCard do pokazania liczb pięter, wysokości, powierzchni.
@@ -461,6 +463,50 @@ export default function Campus3DView(_props: Props) {
                 </p>
               </div>
             )}
+
+            {/* Map legend toggle — pomaga rozumieć kolory budynków na mapie */}
+            <button
+              type="button"
+              onClick={() => setMapLegendOpen((v) => !v)}
+              className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md transition-colors ${
+                mapLegendOpen
+                  ? 'bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-black'
+                  : 'bg-white/85 text-zinc-700 hover:bg-white dark:bg-black/70 dark:text-zinc-100 dark:hover:bg-black/85'
+              }`}
+              aria-label={mapLegendOpen ? 'Ukryj legendę mapy' : 'Pokaż legendę mapy'}
+              title="Co znaczą kolory budynków?"
+            >
+              <HelpCircle size={15} strokeWidth={2.5} aria-hidden />
+            </button>
+            {mapLegendOpen && (
+              <div className="absolute top-14 right-3 z-10 max-w-[260px] rounded-2xl border border-zinc-200 bg-white/95 px-3.5 py-3 shadow-lg backdrop-blur-md dark:border-white/15 dark:bg-black/85">
+                <p className="text-[11px] font-extrabold text-zinc-900 dark:text-white">
+                  Mapa kampusu UJ
+                </p>
+                <p className="mt-0.5 text-[10px] text-zinc-600 dark:text-zinc-300 leading-snug">
+                  18 budynków zindeksowanych z OpenStreetMap. Kliknij bryłę aby zobaczyć
+                  szczegóły i plan piętra.
+                </p>
+                <div className="mt-2 space-y-1.5 text-[10px]">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-4 h-3 rounded-sm bg-amber-300 border border-amber-600" />
+                    <span className="text-zinc-700 dark:text-zinc-200">Budynek UJ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-4 h-3 rounded-sm bg-amber-500 border border-amber-700" />
+                    <span className="text-zinc-700 dark:text-zinc-200">Hover / wybrany</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-4 h-3 rounded-sm bg-zinc-400 border border-zinc-500" />
+                    <span className="text-zinc-700 dark:text-zinc-200">Inny budynek (OSM)</span>
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] text-zinc-500 dark:text-zinc-400">
+                  <kbd className="rounded bg-black/8 px-1 dark:bg-white/10">Scroll</kbd> zoom · {' '}
+                  <kbd className="rounded bg-black/8 px-1 dark:bg-white/10">Right-drag</kbd> obrót
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -554,16 +600,20 @@ export default function Campus3DView(_props: Props) {
               onClick={() => setExploded(false)}
             />
             <div className="relative z-10 flex h-full flex-col">
-              <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6 bg-linear-to-b from-black/70 to-transparent">
+              <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6 bg-linear-to-b from-black/80 to-transparent">
                 <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-brand-gold-bright font-bold">
-                    Wnętrza · układ schematyczny
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-brand-gold-bright font-bold inline-flex items-center gap-1.5">
+                    <MapIcon size={11} strokeWidth={2.5} aria-hidden />
+                    Plan budynku
                   </p>
                   <h2 className="text-base sm:text-2xl font-extrabold text-white truncate">
-                    {selectedBuilding.short_name
-                      ? `${selectedBuilding.short_name} · ${selectedBuilding.name}`
-                      : selectedBuilding.name}
+                    {selectedBuilding.name}
                   </h2>
+                  {selectedBuilding.short_name && (
+                    <p className="text-[11px] sm:text-sm text-white/65 truncate">
+                      {selectedBuilding.short_name} · {selectedBuilding.address}
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -575,16 +625,14 @@ export default function Campus3DView(_props: Props) {
                   <span className="hidden sm:inline">Zwiń</span>
                 </button>
               </div>
-              <div className="relative flex-1">
-                <Suspense fallback={<ExplodedFallback />}>
-                  <ExplodedBuildingView
-                    building={selectedBuilding}
-                    rooms={siblingRooms}
-                    roomsLoading={siblingRoomsLoading}
-                    selectedRoomId={selectedRoomId}
-                    onPickRoom={(roomId) => selectRoom(roomId)}
-                  />
-                </Suspense>
+              <div className="relative flex-1 min-h-0">
+                <BuildingInteriorView
+                  building={selectedBuilding}
+                  rooms={siblingRooms}
+                  roomsLoading={siblingRoomsLoading}
+                  selectedRoomId={selectedRoomId}
+                  onPickRoom={(roomId) => selectRoom(roomId)}
+                />
               </div>
             </div>
           </motion.div>
@@ -597,18 +645,6 @@ export default function Campus3DView(_props: Props) {
 // ───────────────────────────────────────────────────────────────────
 // Sub-components
 // ───────────────────────────────────────────────────────────────────
-
-function ExplodedFallback() {
-  return (
-    <div className="flex h-full items-center justify-center">
-      <div className="text-center text-white/85">
-        <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-white/20 border-t-brand-gold-bright" />
-        <p className="mt-3 text-sm font-semibold">Ładuję widok 3D wnętrz…</p>
-        <p className="mt-1 text-xs text-white/55">~600KB modułu Three.js, jednorazowo na sesję.</p>
-      </div>
-    </div>
-  )
-}
 
 type BuildingDetailCardProps = {
   building: Building
@@ -757,16 +793,18 @@ function BuildingDetailCard({
         </div>
       )}
 
-      {/* Akcje — większe tap targets dla mobile (py-2.5 zamiast py-2) */}
+      {/* Akcje — primary = otwórz plan, secondary = mapy. CTA mocniejsze
+          żeby user wiedział "TU jest interakcja" (wcześniej Sparkles
+          sugerowało coś dekoracyjnego). */}
       <div className="px-4 mt-1 mb-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onToggleExploded}
           className={`${theme.button.primary} px-4 py-2.5 text-xs flex-1 sm:flex-none min-w-0 justify-center`}
         >
-          <Sparkles size={14} strokeWidth={2.25} aria-hidden />
+          <MapIcon size={14} strokeWidth={2.25} aria-hidden />
           <span className="truncate">
-            {exploded ? 'Zwiń wnętrza' : 'Pokaż wnętrza 3D'}
+            {exploded ? 'Zwiń plan budynku' : 'Otwórz plan budynku'}
           </span>
         </button>
         <a
@@ -779,6 +817,14 @@ function BuildingDetailCard({
           <span className="hidden sm:inline">Otwórz w </span>Mapach
         </a>
       </div>
+
+      {/* Mini-hint — co znajdziesz po otwarciu planu. Cienka linia info
+          żeby user nie był zaskoczony. */}
+      {!exploded && (
+        <p className="px-4 mb-3 -mt-1 text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug">
+          Plan piętra w 2D z klikalnymi salami · piętra przełączasz tabami · opcjonalny widok 3D
+        </p>
+      )}
 
       {/* Selected room highlight */}
       {selectedRoom && (
