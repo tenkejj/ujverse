@@ -23,8 +23,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send } from 'lucide-react'
+import { Send, Square } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
+import ChatVoiceButton from './ChatVoiceButton'
 import {
   sectionTitleCls,
   sideHeaderLinkCls,
@@ -63,7 +64,7 @@ const OPEN_HUB_BTN_CLS = `shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium ${
 const QUICK_PROMPTS = [
   'Co nowego na feedzie?',
   'Najnowsze ogłoszenia',
-  'Pokaż konferencje',
+  'Co w przyszłym tygodniu?',
   'Wydarzenia naukowe',
 ] as const
 
@@ -203,6 +204,14 @@ export default function ChatAssistant({
         onSubmit={onSubmitForm}
         className="flex items-end gap-2 border-t border-zinc-200/70 pt-2 dark:border-white/10"
       >
+        <ChatVoiceButton
+          onTranscript={(text) => {
+            setDraft((prev) => (prev ? prev + ' ' + text : text))
+            window.setTimeout(() => inputRef.current?.focus(), 0)
+          }}
+          disabled={isTyping}
+          size="compact"
+        />
         <textarea
           ref={inputRef}
           value={draft}
@@ -213,14 +222,26 @@ export default function ChatAssistant({
           disabled={isTyping}
           className="max-h-28 min-h-9 flex-1 resize-none rounded-xl border border-zinc-200 bg-white/80 px-2.5 py-1.5 text-xs text-zinc-900 outline-none transition-colors focus:border-[#1e293b] focus:ring-2 focus:ring-[#1e293b]/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"
         />
-        <button
-          type="submit"
-          aria-label="Wyślij wiadomość"
-          disabled={isTyping || draft.trim().length === 0}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
-        >
-          <Send size={14} strokeWidth={2} />
-        </button>
+        {isTyping ? (
+          <button
+            type="button"
+            onClick={cancel}
+            aria-label="Zatrzymaj odpowiedź"
+            title="Zatrzymaj odpowiedź"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
+          >
+            <Square size={12} strokeWidth={2.5} fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            aria-label="Wyślij wiadomość"
+            disabled={draft.trim().length === 0}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
+          >
+            <Send size={14} strokeWidth={2} />
+          </button>
+        )}
       </form>
     </BaseCard>
   )

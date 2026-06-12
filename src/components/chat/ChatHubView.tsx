@@ -24,13 +24,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Send } from 'lucide-react'
+import { Plus, Send, Square } from 'lucide-react'
 import type { Profile } from '../../types'
 import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
+import {
+  filterSlashCommands,
+  isSlashMode,
+  type SlashCommand,
+} from '../../lib/chatSlashCommands'
 import AnimatedBot from './AnimatedBot'
 import MessageList from './MessageList'
+import SlashCommandMenu from './SlashCommandMenu'
+import ChatVoiceButton from './ChatVoiceButton'
 
 /**
  * Quick prompts — IDENTYCZNE z `ChatAssistant.QUICK_PROMPTS`.
@@ -47,7 +54,7 @@ import MessageList from './MessageList'
 const QUICK_PROMPTS = [
   'Co nowego na feedzie?',
   'Najnowsze ogłoszenia',
-  'Pokaż konferencje',
+  'Co w przyszłym tygodniu?',
   'Wydarzenia naukowe',
 ] as const
 
@@ -69,8 +76,23 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
+  const [slashActiveIndex, setSlashActiveIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const slashMode = useMemo(() => isSlashMode(draft), [draft])
+  const slashCommands = useMemo(
+    () => (slashMode ? filterSlashCommands(draft) : []),
+    [slashMode, draft],
+  )
+  const slashOpen = slashMode
+
+  // Reset active index gdy lista się skraca lub user kasuje slash.
+  useEffect(() => {
+    if (slashActiveIndex >= slashCommands.length) {
+      setSlashActiveIndex(0)
+    }
+  }, [slashCommands.length, slashActiveIndex])
 
   const hasMessages = useMemo(
     () => messages.some((m) => m.role !== 'system'),
@@ -126,14 +148,65 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
     [draft, handleSend],
   )
 
+  const handleSelectSlashCommand = useCallback(
+    (cmd: SlashCommand) => {
+      // Słownie wysyłamy zapytanie odpowiadające komendzie. Cache (`responseCache`
+      // po stronie serwera) trafia te same prompty co `QUICK_PROMPTS` w wyspie.
+      setDraft('')
+      setSlashActiveIndex(0)
+      void handleSend(cmd.query)
+    },
+    [handleSend],
+  )
+
   const onKeyDownTextarea = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Slash mode: ArrowUp/Down nawigują listę, Enter wybiera, Escape zamyka.
+      if (slashOpen && slashCommands.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setSlashActiveIndex((i) => (i + 1) % slashCommands.length)
+          return
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setSlashActiveIndex(
+            (i) => (i - 1 + slashCommands.length) % slashCommands.length,
+          )
+          return
+        }
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault()
+          const cmd = slashCommands[slashActiveIndex] ?? slashCommands[0]
+          if (cmd) handleSelectSlashCommand(cmd)
+          return
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setDraft('')
+          return
+        }
+        if (e.key === 'Tab') {
+          // Tab uzupełnia slug aktywnej komendy w drafcie (jak shell).
+          e.preventDefault()
+          const cmd = slashCommands[slashActiveIndex] ?? slashCommands[0]
+          if (cmd) setDraft(`/${cmd.slug} `)
+          return
+        }
+      }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         void handleSend(draft)
       }
     },
-    [draft, handleSend],
+    [
+      draft,
+      handleSend,
+      slashOpen,
+      slashCommands,
+      slashActiveIndex,
+      handleSelectSlashCommand,
+    ],
   )
 
   const canClear = hasMessages || isTyping
@@ -277,25 +350,62 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
 
       <div className="shrink-0 border-t border-zinc-200/70 bg-zinc-50/85 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/85">
         <div className="mx-auto w-full max-w-3xl px-4 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4">
-          <form onSubmit={onSubmitForm} className="flex items-end gap-2">
+          {/*
+            `relative` wrapper jest anchorem dla `SlashCommandMenu`, który
+            renderuje się `absolute bottom-full` (czyli NAD inputem). Bez tego
+            menu by uciekło do prawego krańca viewportu.
+          */}
+          <form onSubmit={onSubmitForm} className="relative flex items-end gap-2">
+            {slashOpen && (
+              <SlashCommandMenu
+                commands={slashCommands}
+                activeIndex={slashActiveIndex}
+                onActiveIndexChange={setSlashActiveIndex}
+                onSelect={handleSelectSlashCommand}
+                onClose={() => setDraft('')}
+              />
+            )}
+            <ChatVoiceButton
+              onTranscript={(text) => {
+                // UX: nie auto-sendujemy — wkładamy tekst w composer żeby user
+                // mógł doszlifować przed wysłaniem. To istotne dla PL Whispera,
+                // który potrafi pomylić nazwy własne (WZIKS, MISH, etc.).
+                setDraft((prev) => (prev ? prev + ' ' + text : text))
+                window.setTimeout(() => inputRef.current?.focus(), 0)
+              }}
+              disabled={isTyping}
+              size="regular"
+            />
             <textarea
               ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDownTextarea}
-              placeholder="Napisz wiadomość..."
+              placeholder="Napisz wiadomość lub wpisz / dla komend..."
               rows={1}
               disabled={isTyping}
               className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl border border-zinc-200 bg-white/90 p-3 text-sm text-fg-primary shadow-sm outline-none transition-colors focus:border-logo-navy focus:ring-2 focus:ring-logo-navy/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/80 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"
             />
-            <button
-              type="submit"
-              aria-label="Wyślij wiadomość"
-              disabled={isTyping || draft.trim().length === 0}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-logo-navy text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
-            >
-              <Send size={18} strokeWidth={2} />
-            </button>
+            {isTyping ? (
+              <button
+                type="button"
+                onClick={cancel}
+                aria-label="Zatrzymaj odpowiedź"
+                title="Zatrzymaj odpowiedź"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
+              >
+                <Square size={16} strokeWidth={2.5} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                aria-label="Wyślij wiadomość"
+                disabled={draft.trim().length === 0}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-logo-navy text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+              >
+                <Send size={18} strokeWidth={2} />
+              </button>
+            )}
           </form>
           <p className="mt-2 text-center text-[11px] text-fg-secondary">
             Asystent UJverse może się mylić — sprawdzaj ważne informacje.
