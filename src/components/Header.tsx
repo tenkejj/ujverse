@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bell, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sparkles, Sun, Tag, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
@@ -7,6 +8,8 @@ import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import ClubsModal from './ClubsModal'
 import OmniSearchHub from './OmniSearchHub'
+import LevelBadge from './gamification/LevelBadge'
+import StreakBadge from './gamification/StreakBadge'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
@@ -80,6 +83,7 @@ export default function Header({
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const navigate = useNavigate()
   const { theme: colorMode, toggleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const [clubsModalOpen, setClubsModalOpen] = useState(false)
@@ -280,6 +284,13 @@ export default function Header({
           >
             <Tag size={20} strokeWidth={2} />
           </button>
+
+          {/* Gamification mini-badges (level + streak). Renderują się tylko
+              gdy GamificationProvider jest aktywny (zalogowany user). */}
+          <div className="flex items-center gap-1">
+            <StreakBadge variant="small" onClick={() => navigate('/profile')} />
+            <LevelBadge variant="compact" onClick={() => navigate('/profile')} />
+          </div>
 
           <button
             type="button"

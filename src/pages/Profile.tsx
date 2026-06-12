@@ -25,6 +25,7 @@ import PostsPanel from '../components/profile/panels/PostsPanel'
 import MediaPanel from '../components/profile/panels/MediaPanel'
 import RepliesPanel, { type ReplyThread } from '../components/profile/panels/RepliesPanel'
 import EventsPanel from '../components/profile/panels/EventsPanel'
+import ProfileAchievementsPanel from '../components/profile/panels/ProfileAchievementsPanel'
 import { PROFILE_MOBILE } from '../styles/mobile-theme'
 import type { Database } from '../types/database'
 
@@ -810,6 +811,13 @@ export default function Profile({
               loading={externalEventsLoading}
               isOwn={isOwn}
               onNavigateToEvents={onNavigateToEvents}
+            />
+          )}
+
+          {activeTab === 'achievements' && (
+            <ProfileAchievementsPanel
+              targetUserId={profileForDisplay?.id ?? null}
+              isOwn={isOwn}
             />
           )}
         </ProfileTabPanel>

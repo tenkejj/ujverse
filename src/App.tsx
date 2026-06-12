@@ -49,6 +49,8 @@ import GroupView from './components/GroupView'
 import GroupsIndexView from './components/GroupsIndexView'
 import MojPlanView from './components/MojPlanView'
 import { LecturerSubscriptionsProvider } from './lib/lecturerSubscriptionsContext'
+import { GamificationProvider, useGamificationContext } from './lib/gamificationContext'
+import { useOnboarding } from './hooks/useOnboarding'
 import {
   isGroupIndexPath,
   slugFromGroupPath,
@@ -61,6 +63,9 @@ const SaleFinderView = lazy(() => import('./components/sale-finder/SaleFinderVie
 const WeeklyBriefingView = lazy(() => import('./components/briefing/WeeklyBriefingView'))
 const DzisView = lazy(() => import('./components/DzisView'))
 const ZniskiView = lazy(() => import('./components/discounts/ZniskiView'))
+const XpToastStack = lazy(() => import('./components/gamification/XpToastStack'))
+const AchievementUnlockedModal = lazy(() => import('./components/gamification/AchievementUnlockedModal'))
+const OnboardingTour = lazy(() => import('./components/onboarding/OnboardingTour'))
 
 type AppShellView =
   | 'feed'
@@ -1507,8 +1512,21 @@ function App() {
   return (
     <EventsProvider>
     <LecturerSubscriptionsProvider userId={session.user.id}>
+    <GamificationProvider userId={session.user.id}>
     <>
       <Analytics />
+      {/* Gamification overlays — pływające, niezależne od routingu. */}
+      <Suspense fallback={null}>
+        <XpToastStack />
+        <AchievementUnlockedModal />
+      </Suspense>
+      <AppGamificationGate
+        userId={session.user.id}
+        myProfile={myProfile}
+        onProfilePatch={(patch) =>
+          setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
+        }
+      />
       {profileModalOpen && (
         <ProfileModal
           session={session}
@@ -1626,7 +1644,8 @@ function App() {
                         effectiveActiveView === 'sale' ||
                         effectiveActiveView === 'mojPlan' ||
                         effectiveActiveView === 'znizki' ||
-                        effectiveActiveView === 'dzis'
+                        effectiveActiveView === 'dzis' ||
+                        effectiveActiveView === 'briefing'
                       ? 'max-w-7xl px-4 lg:px-6'
                       : effectiveActiveView === 'settings'
                         ? 'max-w-2xl px-4 space-y-0'
@@ -1688,8 +1707,52 @@ function App() {
         />
       </Suspense>
     </>
+    </GamificationProvider>
     </LecturerSubscriptionsProvider>
     </EventsProvider>
+  )
+}
+
+/**
+ * AppGamificationGate — pojedyncze "control center" gamifikacji:
+ *   • triggeruje `updateStreakOnce` przy pierwszym mount sesji (daily login
+ *     XP + streak += 1)
+ *   • montuje OnboardingTour jeśli `useOnboarding.shouldShow`
+ *
+ * Wydzielone do osobnego komponentu, bo musi siedzieć WEWNĄTRZ
+ * `GamificationProvider` żeby skonsumować context — `App` to provider
+ * mountuje wyżej w drzewie.
+ */
+function AppGamificationGate({
+  userId,
+  myProfile,
+  onProfilePatch,
+}: {
+  userId: string
+  myProfile: Profile | null
+  onProfilePatch: (patch: Partial<Pick<Profile, 'onboarding_completed_at' | 'onboarding_skipped_at'>>) => void
+}) {
+  const gam = useGamificationContext()
+  const onboarding = useOnboarding({ userId, myProfile, onProfilePatch })
+
+  useEffect(() => {
+    if (!gam) return
+    void gam.updateStreakOnce()
+  }, [gam])
+
+  return (
+    <Suspense fallback={null}>
+      {onboarding.shouldShow && (
+        <OnboardingTour
+          onComplete={() => {
+            void onboarding.complete()
+          }}
+          onSkip={() => {
+            void onboarding.skip()
+          }}
+        />
+      )}
+    </Suspense>
   )
 }
 

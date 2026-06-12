@@ -58,6 +58,7 @@ import AiInsightModal from './AiInsightModal'
 import { AulaAiService } from '../../services/ai/AulaAiService'
 import type { AulaAiTask } from '../../lib/aulaAiPrompts'
 import { toast } from '../../lib/appToast'
+import { useGamificationContext } from '../../lib/gamificationContext'
 
 type ProfilePatch = Partial<
   Pick<Profile, 'department' | 'study_program' | 'year_started' | 'study_mode'>
@@ -783,14 +784,34 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   const canManageActive =
     !!activeChannel && activeChannel.created_by === currentUserId
 
+  const gam = useGamificationContext()
+
   const handleSendMessage = async (
     content: string,
     attachments?: Parameters<typeof sendMessage>[2],
     poll?: Parameters<typeof sendMessage>[3],
   ) => {
     if (isArchivedActive) return
-    await sendMessage(content, replyTarget?.id ?? null, attachments, poll)
+    const newId = await sendMessage(content, replyTarget?.id ?? null, attachments, poll)
     setReplyTarget(null)
+
+    // ── Gamification triggery (fire-and-forget, idempotent na ref_id) ──
+    if (newId != null && gam) {
+      // 2 XP za każdą wiadomość, ref_id = messageId → idempotent.
+      void gam.awardXp('aula_message', 2, String(newId))
+      // Milestone unlocks — server-side RPC sam zwróci `false` jeśli już było.
+      void gam.unlockAchievement('first_message')
+      // Voice / poll bonus unlocks (gdy w wiadomości była głosówka / ankieta).
+      const hasVoice = attachments?.some((a) => a.mimeType?.startsWith('audio/'))
+      if (hasVoice) {
+        void gam.awardXp('aula_voice_sent', 5, String(newId))
+        void gam.unlockAchievement('voice_speaker')
+      }
+      if (poll) {
+        void gam.awardXp('aula_poll_created', 5, String(newId))
+        void gam.unlockAchievement('poll_creator')
+      }
+    }
   }
 
   if (!cohort) {
@@ -919,6 +940,11 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             if (!tasksOpen) setNotesOpen(false)
           }}
           onSummarizeAi={() => {
+            // Gamification — odznaka "ai_curious" + 5 XP one-shot.
+            if (gam) {
+              void gam.awardXp('ai_used', 5)
+              void gam.unlockAchievement('ai_curious')
+            }
             // Snapshot ostatnich do ~30 wiadomości aktywnej sali, top-level i
             // odpowiedzi razem, w kolejności chronologicznej. Pomijamy
             // wiadomości usunięte (deleted_at != null) i puste contenty (np.
@@ -1029,6 +1055,10 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
                   onVotePoll={votePoll}
                   onClosePoll={closePollAction}
                   onAiAction={(action, payload) => {
+                    if (gam) {
+                      void gam.awardXp('ai_used', 3, `msg-${payload.messageId}-${action}`)
+                      void gam.unlockAchievement('ai_curious')
+                    }
                     // Truncated preview do subtitle — żeby user wiedział, co
                     // konkretnie idzie do AI (nie więcej niż 90 znaków, jeden
                     // wiersz). Pełna treść leci do API; tu tylko UX-owy hint.

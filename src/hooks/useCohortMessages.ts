@@ -202,7 +202,7 @@ export function useCohortMessages({ cohortId, currentUserId, myProfile, channelI
       const trimmed = content.trim()
       const hasAttachments = (attachmentInputs?.length ?? 0) > 0
       const hasPoll = pollInput != null
-      if ((!trimmed && !hasAttachments && !hasPoll) || !cohortId) return
+      if ((!trimmed && !hasAttachments && !hasPoll) || !cohortId) return null
 
       const tempId = -Date.now()
       const optimistic: CohortMessageWithAuthor = {
@@ -232,7 +232,7 @@ export function useCohortMessages({ cohortId, currentUserId, myProfile, channelI
       if (error || !data) {
         setMessages((prev) => prev.filter((m) => m.id !== tempId))
         toast.error('Nie udało się wysłać wiadomości.')
-        return
+        return null
       }
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...data, profiles: data.profiles ?? myProfile } : m)),
@@ -278,6 +278,9 @@ export function useCohortMessages({ cohortId, currentUserId, myProfile, channelI
           toast.error('Wiadomość wysłana, ale nie udało się dodać ankiety.')
         }
       }
+
+      // Zwracamy id wiadomości żeby caller mógł triggerować XP / track post-send.
+      return data.id
     },
     [cohortId, currentUserId, myProfile, activeChannelId],
   )

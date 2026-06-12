@@ -22,6 +22,10 @@ export type Profile = {
   year_started?: number | null
   /** Tryb studiów (Aula → rocznik). */
   study_mode?: 'stacjonarne' | 'niestacjonarne' | 'doktoranckie' | null
+  /** Timestamp ukończenia interaktywnego onboardingu (gamifikacja). */
+  onboarding_completed_at?: string | null
+  /** Timestamp gdy user wybrał „Pomiń tour" — nie pokazujemy ponownie auto. */
+  onboarding_skipped_at?: string | null
 }
 
 export type Post = {

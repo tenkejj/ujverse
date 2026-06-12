@@ -28,7 +28,8 @@ import { DiscountsService } from '../../services/DiscountsService'
 type Props = {
   userId: string
   onClose: () => void
-  onCreated: () => void
+  /** Opcjonalne `discountId` po sukcesie — caller używa np. do gamifikacji idempotency. */
+  onCreated: (discountId?: string) => void
 }
 
 export default function DiscountFormModal({ userId, onClose, onCreated }: Props) {
@@ -56,7 +57,7 @@ export default function DiscountFormModal({ userId, onClose, onCreated }: Props)
     if (!canSubmit) return
     setSubmitting(true)
     setError(null)
-    const { error: err } = await DiscountsService.create({
+    const { data: created, error: err } = await DiscountsService.create({
       createdBy: userId,
       businessName: businessName.trim(),
       discountHeadline: headline.trim(),
@@ -73,7 +74,7 @@ export default function DiscountFormModal({ userId, onClose, onCreated }: Props)
       setError(err.message)
       return
     }
-    onCreated()
+    onCreated(created?.id)
   }
 
   return createPortal(

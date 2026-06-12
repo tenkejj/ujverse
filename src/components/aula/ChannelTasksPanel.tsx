@@ -35,6 +35,7 @@ import {
   X,
 } from 'lucide-react'
 import { useChannelTasks } from '../../hooks/useChannelTasks'
+import { useGamificationContext } from '../../lib/gamificationContext'
 import { relativeTime } from '../../lib/utils'
 import type { CohortTaskAggregate } from '../../types/database'
 import TaskPriorityPill from './TaskPriorityPill'
@@ -319,6 +320,7 @@ function ChannelTasksEditor({
     channelId,
     currentUserId,
   })
+  const gam = useGamificationContext()
   const [creatorOpen, setCreatorOpen] = useState(false)
   const [filter, setFilter] = useState<TaskFilter>('all')
 
@@ -474,7 +476,17 @@ function ChannelTasksEditor({
                 aggregate={agg}
                 currentUserId={currentUserId}
                 userNames={userNames}
-                onToggleMine={toggleMyCompletion}
+                onToggleMine={async (taskId) => {
+                  await toggleMyCompletion(taskId)
+                  if (gam) {
+                    // 3 XP za ukończenie + first/master milestones.
+                    // `mine_${taskId}` jako ref → re-toggle nie naliczy
+                    // ponownie. Akceptujemy że "odznaczenie + nowy check"
+                    // też daje XP tylko raz (intencja anti-farm).
+                    void gam.awardXp('task_completed', 3, `mine-${taskId}`)
+                    void gam.unlockAchievement('task_done_first')
+                  }
+                }}
                 onToggleGlobal={toggleGlobalDone}
                 onDelete={deleteTask}
               />
@@ -486,7 +498,14 @@ function ChannelTasksEditor({
       {creatorOpen && (
         <TaskCreator
           onClose={() => setCreatorOpen(false)}
-          onConfirm={(payload) => void createTask(payload)}
+          onConfirm={async (payload) => {
+            await createTask(payload)
+            if (gam) {
+              // ref_id = title+now() — anti-spam, ale każde NOWE zadanie liczy.
+              void gam.awardXp('task_created', 5, `${Date.now()}-${payload.title.slice(0, 32)}`)
+              void gam.unlockAchievement('task_first')
+            }
+          }}
         />
       )}
     </div>
