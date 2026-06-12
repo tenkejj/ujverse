@@ -422,6 +422,7 @@ class CohortServiceImpl {
     sizeBytes: number
     width: number | null
     height: number | null
+    durationSeconds?: number | null
   }): Promise<{ data: CohortMessageAttachment | null; error: PostgrestError | null }> {
     const { data, error } = await supabase
       .from('cohort_message_attachments')
@@ -434,8 +435,9 @@ class CohortServiceImpl {
         size_bytes: params.sizeBytes,
         width: params.width,
         height: params.height,
+        duration_seconds: params.durationSeconds ?? null,
       })
-      .select('id, message_id, cohort_id, user_id, storage_path, file_name, mime_type, size_bytes, width, height, created_at')
+      .select('id, message_id, cohort_id, user_id, storage_path, file_name, mime_type, size_bytes, width, height, duration_seconds, created_at')
       .single()
     return { data, error }
   }
@@ -447,7 +449,7 @@ class CohortServiceImpl {
   ): Promise<{ data: CohortMessageAttachment[]; error: PostgrestError | null }> {
     let query = supabase
       .from('cohort_message_attachments')
-      .select('id, message_id, cohort_id, user_id, storage_path, file_name, mime_type, size_bytes, width, height, created_at')
+      .select('id, message_id, cohort_id, user_id, storage_path, file_name, mime_type, size_bytes, width, height, duration_seconds, created_at')
       .eq('cohort_id', cohortId)
       .order('created_at', { ascending: true })
       .limit(1000)
@@ -470,7 +472,7 @@ class CohortServiceImpl {
     const { data, error } = await supabase
       .from('cohort_message_attachments')
       .select(
-        `id, message_id, cohort_id, user_id, storage_path, file_name, mime_type, size_bytes, width, height, created_at,
+        `id, message_id, cohort_id, user_id, storage_path, file_name, mime_type, size_bytes, width, height, duration_seconds, created_at,
          profiles!cohort_message_attachments_user_id_fkey(id, full_name, username, avatar_url, department)`,
       )
       .eq('cohort_id', cohortId)
@@ -494,6 +496,7 @@ class CohortServiceImpl {
           size_bytes: Number(row.size_bytes),
           width: row.width == null ? null : Number(row.width),
           height: row.height == null ? null : Number(row.height),
+          duration_seconds: row.duration_seconds == null ? null : Number(row.duration_seconds),
           created_at: String(row.created_at),
           profiles: profile,
         }

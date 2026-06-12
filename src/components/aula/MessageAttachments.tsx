@@ -7,8 +7,9 @@
  * License: Proprietary — see LICENSE in repo root.
  */
 import { Download, Trash2 } from 'lucide-react'
-import { formatFileSize, getFileIcon, isImageMime } from '../../lib/aulaUpload'
+import { formatFileSize, getFileIcon, isAudioMime, isImageMime } from '../../lib/aulaUpload'
 import type { CohortMessageAttachment } from '../../types/database'
+import VoiceMessagePlayer from './VoiceMessagePlayer'
 
 type Props = {
   attachments: CohortMessageAttachment[]
@@ -144,8 +145,14 @@ export default function MessageAttachments({
 }: Props) {
   if (attachments.length === 0) return null
 
+  // 3 grupy: obrazki (grid), głosówki (pełnowymiarowy player), reszta (file card).
+  // Audio renderujemy ZAWSZE jako player, nawet gdyby case był taki że ktoś
+  // wrzuci mp3 z pickerze (obecnie zabronione, ale ochrona forward-compat).
   const images = attachments.filter((a) => isImageMime(a.mime_type))
-  const files = attachments.filter((a) => !isImageMime(a.mime_type))
+  const audios = attachments.filter((a) => isAudioMime(a.mime_type))
+  const files = attachments.filter(
+    (a) => !isImageMime(a.mime_type) && !isAudioMime(a.mime_type),
+  )
 
   return (
     <div className="mt-2 space-y-2">
@@ -153,6 +160,19 @@ export default function MessageAttachments({
         <div className={`grid gap-1.5 ${imageGridColumnsClass(images.length)}`}>
           {images.map((a) => (
             <ImageTile
+              key={a.id}
+              attachment={a}
+              url={getSignedUrl(a.storage_path)}
+              isOwner={isOwner}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+      {audios.length > 0 && (
+        <div className="space-y-1.5">
+          {audios.map((a) => (
+            <VoiceMessagePlayer
               key={a.id}
               attachment={a}
               url={getSignedUrl(a.storage_path)}

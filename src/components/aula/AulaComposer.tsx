@@ -7,13 +7,14 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from 'react'
-import { BarChart3, Loader2, Paperclip, SendHorizonal, X } from 'lucide-react'
+import { BarChart3, Loader2, Mic, Paperclip, SendHorizonal, X } from 'lucide-react'
 import { findMentionTrigger } from '../../lib/aulaMentions'
 import {
   ACCEPT_ATTR,
   formatFileSize,
   getFileIcon,
   isImageMime,
+  MAX_VOICE_SIZE_BYTES,
   uploadAulaFile,
   validateFile,
 } from '../../lib/aulaUpload'
@@ -22,6 +23,8 @@ import type { CohortMemberProfile } from '../../services/CohortService'
 import type { Profile } from '../../types'
 import UserAvatar from '../UserAvatar'
 import PollCreator, { type PollCreatorPayload } from './PollCreator'
+import VoiceRecorderInline from './VoiceRecorderInline'
+import { useVoiceRecorder, type RecordedVoice } from '../../hooks/useVoiceRecorder'
 
 type ReplyTarget = { id: number; authorName: string } | null
 
@@ -32,6 +35,8 @@ export type ComposerAttachmentInput = {
   sizeBytes: number
   width: number | null
   height: number | null
+  /** Czas trwania w sekundach — tylko dla nagrań głosowych (`audio/*`). */
+  durationSeconds?: number | null
 }
 
 export type ComposerPollInput = PollCreatorPayload
@@ -242,9 +247,11 @@ export default function AulaComposer({
   const [dragging, setDragging] = useState(false)
   const [poll, setPoll] = useState<ComposerPollInput | null>(null)
   const [pollOpen, setPollOpen] = useState(false)
+  const [voicePreview, setVoicePreview] = useState<RecordedVoice | null>(null)
   const dragDepthRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const voiceRecorder = useVoiceRecorder()
 
   const mentionableMembers = useMemo(() => {
     if (!members) return []
@@ -376,12 +383,52 @@ export default function AulaComposer({
   const submit = async () => {
     const trimmed = value.trim()
     if (sending || disabled) return
-    if (!trimmed && pending.length === 0 && !poll) return
+    if (!trimmed && pending.length === 0 && !poll && !voicePreview) return
     if (!cohortId || !currentUserId) return
 
     setSending(true)
     try {
       let attachments: ComposerAttachmentInput[] | undefined
+
+      // Voice note upload — voicePreview ma blob+duration z hooka. Tworzymy
+      // syntetyczny `File` żeby przejść przez `uploadAulaFile` (które
+      // sanityzuje nazwę i buduje path zgodny z RLS). Nazwa pliku zawiera
+      // timestamp dla unikalności i czytelności (np. "voice-2026-06-12-1730.webm").
+      let voiceAttachment: ComposerAttachmentInput | null = null
+      if (voicePreview) {
+        try {
+          const ext = voicePreview.mimeType.includes('mp4')
+            ? 'm4a'
+            : voicePreview.mimeType.includes('ogg')
+              ? 'ogg'
+              : voicePreview.mimeType.includes('mpeg')
+                ? 'mp3'
+                : 'webm'
+          if (voicePreview.blob.size > MAX_VOICE_SIZE_BYTES) {
+            toast.error('Nagranie za duże (>10 MB). Spróbuj krócej.')
+            return
+          }
+          const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+          const file = new File([voicePreview.blob], `voice-${stamp}.${ext}`, {
+            type: voicePreview.mimeType,
+          })
+          const res = await uploadAulaFile(file, cohortId, currentUserId, {
+            durationSeconds: voicePreview.durationSeconds,
+          })
+          voiceAttachment = {
+            storagePath: res.path,
+            fileName: file.name,
+            mimeType: voicePreview.mimeType,
+            sizeBytes: file.size,
+            width: null,
+            height: null,
+            durationSeconds: voicePreview.durationSeconds,
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Nie udało się wysłać głosówki.')
+          return
+        }
+      }
 
       if (pending.length > 0) {
         // Mark all pending as uploading.
@@ -441,6 +488,13 @@ export default function AulaComposer({
           .map((r) => r.input)
       }
 
+      // Doklej głosówkę (jeśli była) na koniec listy attachmentów — message
+      // renderer prioritetowo wyświetla voice player gdy zobaczy `audio/*` mime,
+      // niezależnie od pozycji w array.
+      if (voiceAttachment) {
+        attachments = attachments ? [...attachments, voiceAttachment] : [voiceAttachment]
+      }
+
       await onSend(trimmed, attachments, poll ?? undefined)
 
       // Cleanup po sukcesie.
@@ -451,6 +505,7 @@ export default function AulaComposer({
       setValue('')
       setMention({ open: false })
       setPoll(null)
+      setVoicePreview(null)
     } finally {
       setSending(false)
     }
@@ -522,7 +577,18 @@ export default function AulaComposer({
   }
 
   const canSend =
-    !sending && !disabled && (value.trim().length > 0 || pending.length > 0 || poll != null)
+    !sending &&
+    !disabled &&
+    (value.trim().length > 0 ||
+      pending.length > 0 ||
+      poll != null ||
+      voicePreview != null)
+
+  const isRecordingActive =
+    voiceRecorder.status === 'recording' ||
+    voiceRecorder.status === 'requesting' ||
+    voiceRecorder.status === 'denied' ||
+    voiceRecorder.status === 'error'
 
   return (
     <div
@@ -567,6 +633,60 @@ export default function AulaComposer({
           {pending.map((p) => (
             <AttachmentChip key={p.id} pending={p} onRemove={() => removeChip(p.id)} />
           ))}
+        </div>
+      )}
+
+      {/* Live recording overlay (recording / requesting permission / error). */}
+      {isRecordingActive && (
+        <div className="mb-2">
+          <VoiceRecorderInline
+            status={voiceRecorder.status}
+            errorMsg={voiceRecorder.errorMsg}
+            seconds={voiceRecorder.seconds}
+            volume={voiceRecorder.volume}
+            onStop={voiceRecorder.stop}
+            onCancel={voiceRecorder.cancel}
+            onTooShort={() => toast.error('Naciśnij i mów — nagranie za krótkie.')}
+            onConfirm={(rec) => setVoicePreview(rec)}
+          />
+        </div>
+      )}
+
+      {/* Preview nagranej głosówki (przed wysłaniem). */}
+      {voicePreview && !isRecordingActive && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#1e293b]/15 bg-[#1e293b]/[0.04] px-3 py-2 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06]">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
+            <Mic size={14} strokeWidth={2.25} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-fg-primary">
+              Głosówka gotowa do wysłania
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+              {Math.floor(voicePreview.durationSeconds / 60)}:
+              {(voicePreview.durationSeconds % 60).toString().padStart(2, '0')}
+              {' · '}
+              {(voicePreview.blob.size / 1024).toFixed(0)} KB
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setVoicePreview(null)
+              void voiceRecorder.start()
+            }}
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-zinc-600 hover:bg-black/[0.04] dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+          >
+            Nagraj ponownie
+          </button>
+          <button
+            type="button"
+            onClick={() => setVoicePreview(null)}
+            aria-label="Usuń głosówkę"
+            className="shrink-0 rounded p-1 text-zinc-400 hover:bg-black/5 hover:text-zinc-700 dark:hover:bg-white/5 dark:hover:text-zinc-200"
+          >
+            <X size={13} />
+          </button>
         </div>
       )}
 
@@ -622,7 +742,7 @@ export default function AulaComposer({
         <button
           type="button"
           onClick={() => setPollOpen(true)}
-          disabled={disabled || sending || !cohortId}
+          disabled={disabled || sending || !cohortId || isRecordingActive}
           aria-label={poll ? 'Edytuj ankietę' : 'Dodaj ankietę'}
           title={poll ? 'Edytuj ankietę' : 'Dodaj ankietę'}
           className={[
@@ -633,6 +753,46 @@ export default function AulaComposer({
           ].join(' ')}
         >
           <BarChart3 size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (isRecordingActive) {
+              voiceRecorder.cancel()
+              return
+            }
+            if (voicePreview) {
+              setVoicePreview(null)
+              void voiceRecorder.start()
+              return
+            }
+            void voiceRecorder.start()
+          }}
+          disabled={disabled || sending || !cohortId}
+          aria-label={
+            isRecordingActive
+              ? 'Anuluj nagrywanie'
+              : voicePreview
+                ? 'Nagraj ponownie'
+                : 'Nagraj głosówkę'
+          }
+          title={
+            isRecordingActive
+              ? 'Anuluj'
+              : voicePreview
+                ? 'Nagraj ponownie'
+                : 'Nagraj głosówkę'
+          }
+          className={[
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            isRecordingActive
+              ? 'border-rose-400 bg-rose-500/10 text-rose-600 hover:bg-rose-500/15 dark:border-rose-300/50 dark:bg-rose-400/10 dark:text-rose-300'
+              : voicePreview
+                ? 'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] hover:bg-[#1e293b]/[0.1] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.15]'
+                : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] hover:text-[#1e293b] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright',
+          ].join(' ')}
+        >
+          {isRecordingActive ? <X size={18} /> : <Mic size={18} />}
         </button>
         <input
           ref={fileInputRef}

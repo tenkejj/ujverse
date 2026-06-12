@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
   FileText,
   Image as ImageIcon,
+  Mic,
   Presentation,
   type LucideIcon,
 } from 'lucide-react'
@@ -21,6 +22,14 @@ import { supabase } from '../supabaseClient'
 export const AULA_BUCKET = 'aula-files'
 
 export const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
+
+/**
+ * Voice note cap: 5 minut (300s) + 10 MB. Wartości twarde po stronie klienta
+ * (UI hard-stop nagrywania + walidacja blob.size). Bucket file_size_limit
+ * w storage.buckets (25 MB) jest większy żeby zostawić bufor na metadane.
+ */
+export const MAX_VOICE_DURATION_S = 300
+export const MAX_VOICE_SIZE_BYTES = 10 * 1024 * 1024
 
 /** MIRROR migracji `allowed_mime_types` — trzymaj zsynchronizowane. */
 export const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
@@ -38,13 +47,37 @@ export const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
   'text/plain',
   'text/markdown',
   'application/zip',
+  'audio/webm',
+  'audio/mp4',
+  'audio/ogg',
+  'audio/mpeg',
 ])
 
-/** Lista do `<input accept="...">`. */
-export const ACCEPT_ATTR = Array.from(ALLOWED_MIME_TYPES).join(',')
+/**
+ * Lista do `<input accept="...">` — tylko typy NIE-audio. Voice notes mają
+ * dedykowany flow (MediaRecorder), nie przechodzą przez `<input type="file">`,
+ * więc nie chcemy ich w pickerze plików (mylące UX).
+ */
+export const ACCEPT_ATTR = Array.from(ALLOWED_MIME_TYPES)
+  .filter((m) => !m.startsWith('audio/'))
+  .join(',')
 
 export function isImageMime(mime: string): boolean {
   return mime.startsWith('image/')
+}
+
+/** Wykrywa nagranie głosowe — wspierany podzbiór `audio/*`. */
+export function isAudioMime(mime: string): boolean {
+  return mime.startsWith('audio/')
+}
+
+/** Format `m:ss` dla durationu w sekundach (Inf/NaN → "0:00"). */
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+  const total = Math.round(seconds)
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 export function formatFileSize(bytes: number): string {
@@ -55,6 +88,7 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function getFileIcon(mime: string): LucideIcon {
+  if (isAudioMime(mime)) return Mic
   if (isImageMime(mime)) return ImageIcon
   if (mime === 'application/pdf') return FileText
   if (mime.includes('spreadsheet') || mime === 'application/vnd.ms-excel') {
@@ -148,6 +182,13 @@ export type UploadResult = {
   path: string
   width: number | null
   height: number | null
+  /**
+   * Czas trwania w sekundach — wyciągamy tylko dla nagrań audio (przez
+   * `MediaRecorder` w composerze). `uploadAulaFile` nie liczy go sam,
+   * przepuszczamy go tylko dalej jeśli caller podał. Dla plików non-audio
+   * zawsze null.
+   */
+  durationSeconds: number | null
 }
 
 /**
@@ -162,6 +203,7 @@ export async function uploadAulaFile(
   file: File,
   cohortId: string,
   userId: string,
+  opts?: { durationSeconds?: number | null },
 ): Promise<UploadResult> {
   const v = validateFile(file)
   if (!v.ok) throw new Error(v.reason)
@@ -182,5 +224,6 @@ export async function uploadAulaFile(
     path,
     width: dims?.width ?? null,
     height: dims?.height ?? null,
+    durationSeconds: opts?.durationSeconds ?? null,
   }
 }

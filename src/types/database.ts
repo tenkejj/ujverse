@@ -333,6 +333,13 @@ export type Database = {
           size_bytes: number
           width: number | null
           height: number | null
+          /**
+           * Czas trwania w sekundach — tylko dla nagrań głosowych (`audio/*`)
+           * i opcjonalnie video. Wprowadzone migracją
+           * [20260623100000_aula_voice_notes.sql](supabase/migrations/20260623100000_aula_voice_notes.sql).
+           * Dla pozostałych typów (image/pdf/doc) zawsze NULL.
+           */
+          duration_seconds: number | null
           created_at: string
         }
         Insert: {
@@ -346,6 +353,7 @@ export type Database = {
           size_bytes: number
           width?: number | null
           height?: number | null
+          duration_seconds?: number | null
           created_at?: string
         }
         Update: {
@@ -359,6 +367,7 @@ export type Database = {
           size_bytes?: number
           width?: number | null
           height?: number | null
+          duration_seconds?: number | null
           created_at?: string
         }
       }
