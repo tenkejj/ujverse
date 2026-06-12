@@ -430,6 +430,43 @@ ISI/WZiKS (rzadkie ale możliwe).
 
 ---
 
+## Study Spots (miejsca do nauki w Krakowie)
+
+Community-driven katalog miejsc do nauki: biblioteki UJ (BJ, czytelnie wydziałowe), kawiarnie przyjazne laptopom, coworking, dziedzińce + **live presence** ("kto teraz tam jest") + oceny "wifi/cisza/gniazdka/komfort". Route `/miejsca` (alias `/sale-nauki`).
+
+### SQL
+
+- [20260629100000_study_spots.sql](supabase/migrations/20260629100000_study_spots.sql) — `study_spots` (curated + community contributions, RLS owner-edit), `study_spot_checkins` (live presence, unique constraint na `user_id WHERE checked_out_at IS NULL` = user w max 1 miejscu, auto-expire 3h), `study_spot_ratings` (1-5 overall + opcjonalne wifi/silence/sockets/comfort, unique per (spot_id, user_id)).
+- Triggery DB: `recalc_study_spot_rating` (sync `rating_avg`/`rating_count`), `recalc_study_spot_active_checkins` (sync `active_checkins_count`). Funkcja `expire_old_study_checkins()` do okresowego sprzątania (TODO: cron lub on-demand z client).
+- RPC: `get_study_spots_full(p_user_id)` — jeden strzał z all spots + my_rating + my_active_checkin (no N+1).
+- Realtime publication na `study_spots` i `study_spot_checkins`.
+- Seed: 20 znanych miejsc Krakowa (BJ + czytelnie + Massolit + Cheder + Hevre + Karma + Cytat + Auditorium Maximum + dziedziniec Collegium Maius + Planty + Drukarnia Podgórze + Tea Time + Wisła Studio + Le Scandale + House of Beer + ...).
+
+### Frontend
+
+- [types/studySpots.ts](src/types/studySpots.ts) — `STUDY_SPOT_KINDS` (library_uj/library_other/cafe/coworking/courtyard/akademik/other), `STUDY_SPOT_MOODS` (focus/casual/group), `STUDY_SPOT_KIND_META` (icon + label + tint), helpery `formatTimeRemaining`, `timeRemainingMs`.
+- [services/StudySpotsService.ts](src/services/StudySpotsService.ts) — `getAllWithMyState`, `checkIn` (auto-checkout poprzedniego), `checkoutActive`, `upsertRating`, `getRatingsForSpot`, `create`.
+- [hooks/useStudySpots.ts](src/hooks/useStudySpots.ts) — RPC fetch + Realtime subscription na `study_spot_checkins`/`study_spot_ratings` (debounce 500-800ms → refetch). Optymistyczny `toggleCheckIn` z rollback. Filtering po stronie klienta (kind/freeOnly/withPeopleOnly/search/sort).
+- [components/study-spots/MiejscaNaukiView.tsx](src/components/study-spots/MiejscaNaukiView.tsx) — main view, design wyrównany z `UsosRegistrationsView` (EVENTS_HUB + FILTER_PILL + HorizontalPillScroller). Sekcje: toolbar pills (Live teraz / Darmowe) + aktywny check-in banner + top live scroller + typy pills + grid kart.
+- [components/study-spots/StudySpotCard.tsx](src/components/study-spots/StudySpotCard.tsx) — karta z kind pill + nazwa + adres + stats (Wi-Fi/Cisza/Gniazdka) + rating + check-in CTA (toggle).
+- [components/study-spots/StudySpotDetailModal.tsx](src/components/study-spots/StudySpotDetailModal.tsx) — modal z opisem + tagami + sekcją check-in (z mood picker) + rating form (gwiazdki + komentarz) + linki Google Maps/strona.
+- [components/study-spots/StudySpotFormModal.tsx](src/components/study-spots/StudySpotFormModal.tsx) — community contribution form (lat/lng manual z prompt'em "Google Maps → prawym przyciskiem → 'Co tu jest?'").
+
+### Entry points
+
+- Header pill: BookOpen (między AlarmClock USOS a Theme toggle), `onNavigateToMiejsca`.
+- MobileDashboard tile: BookOpen "Miejsca".
+- Route: `/miejsca` (alias `/sale-nauki`), `view: 'miejsca'` w `AppShellView`.
+
+### Invariants
+
+- **Unique active check-in per user**: `study_spot_checkins_one_active_per_user_uidx` (partial UNIQUE WHERE checked_out_at IS NULL) — service `checkIn()` zawsze najpierw `checkoutActive(userId)` defense in depth.
+- **Rating recalc atomic**: triggery `recalc_study_spot_rating` ALL po insert/update/delete, FE może liczyć na świeży `rating_avg`/`rating_count` po commit.
+- **Kind enum sync**: `STUDY_SPOT_KINDS` w TS MUSI matchować `CHECK (kind in (...))` w migracji.
+- **Realtime presence**: hook subskrybuje `study_spot_checkins` channel + debounce 500ms → refetch (cheap RPC). Optimistic toggle z 'pending' placeholder dla checkin_id przed refetch'em.
+
+---
+
 ## API surface
 
 - **[api/daily-brief.ts](api/daily-brief.ts)** — **Edge** endpoint (`fra1`) generujący "morning brief" dla widoku `/dzis`. Reuse infrastruktury: `GroqProvider`, `extractRequestUser`, `checkAndConsumeRateLimit` (5 req/min per user, 1 req/12s refill). Pojedynczy task — payload `DailyBriefInput` (classes + tasks + announcements) zbudowany po stronie klienta przez [`useDailyBrief.toBriefPayload()`](src/hooks/useDailyBrief.ts), prompty z [`src/lib/dailyBriefPrompts.ts`](src/lib/dailyBriefPrompts.ts). Streamuje SSE w formacie OpenAI delta + filtr `<think>` (think-stripping copy z `aula-ai.ts`). Klient: [`DailyBriefService`](src/services/ai/DailyBriefService.ts) → `AsyncGenerator<string>` zużywane przez [`AiInsightModal`](src/components/aula/AiInsightModal.tsx). Hook agregujący [`useDailyBrief`](src/hooks/useDailyBrief.ts) tickuje co 60s (countdown), korzysta z [`useTodayClasses`](src/hooks/useTodayClasses.ts) (re-export anulacji przez RPC `get_timetable_for_range`) + [`CohortService.listOpenTasksForCohort`](src/services/CohortService.ts) (NEW: filtr per-user completions JS-side; sort `due_at NULLS LAST`) + [`AnnouncementsAdapter.fetch`](src/services/adapters/AnnouncementsAdapter.ts) (ostatnie 48h). Entry points: header pill `Dziś` (Sparkles, golden tint) w [`Header.tsx`](src/components/Header.tsx), mobile rail tile w [`MobileDashboard.tsx`](src/components/mobile/MobileDashboard.tsx). Route `/dzis` w [`App.tsx`](src/App.tsx) `parseAppRoute` + `navigateToMainView`; renderowany przez lazy [`DzisView`](src/components/DzisView.tsx).

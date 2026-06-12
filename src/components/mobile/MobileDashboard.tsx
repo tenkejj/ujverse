@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlarmClock, ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles, Tag } from 'lucide-react'
+import { AlarmClock, BookOpen, ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles, Tag } from 'lucide-react'
 import { NIEZBEDNIK_LINKS } from '../Niezbednik'
 import {
   OFFICIAL_TAG_META,
@@ -158,6 +158,16 @@ export default function MobileDashboard({
           >
             <AlarmClock size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
             <span className={LABEL_CLS}>USOS</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/miejsca')}
+            aria-label="Miejsca do nauki w Krakowie"
+            title="Miejsca do nauki — biblioteki, kawiarnie, dziedzińce"
+            className={`relative ${ITEM_CLS}`}
+          >
+            <BookOpen size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
+            <span className={LABEL_CLS}>Miejsca</span>
           </button>
           <button
             type="button"

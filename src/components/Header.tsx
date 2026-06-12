@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { AlarmClock, Bell, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sparkles, Sun, Tag, User, Users } from 'lucide-react'
+import { AlarmClock, Bell, BookOpen, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sparkles, Sun, Tag, User, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -14,7 +14,7 @@ import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing' | 'dzis' | 'znizki' | 'usos'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing' | 'dzis' | 'znizki' | 'usos' | 'miejsca'
 
 type Props = {
   myProfile: Profile | null
@@ -37,6 +37,7 @@ type Props = {
   onNavigateToDzis: () => void
   onNavigateToZnizki: () => void
   onNavigateToUsos: () => void
+  onNavigateToMiejsca: () => void
   onNavigateToSearch: (query?: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
@@ -70,6 +71,7 @@ export default function Header({
   onNavigateToDzis,
   onNavigateToZnizki,
   onNavigateToUsos,
+  onNavigateToMiejsca,
   onNavigateToSearch,
   onNavigateToUser,
   onNavigateToPost,
@@ -295,6 +297,20 @@ export default function Header({
             title="Rejestracje USOS"
           >
             <AlarmClock size={20} strokeWidth={2} />
+          </button>
+
+          <button
+            type="button"
+            onClick={onNavigateToMiejsca}
+            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
+              activeView === 'miejsca'
+                ? 'text-[#1e293b] dark:text-accent-interactive'
+                : 'text-[#1e293b] dark:text-gray-400'
+            }`}
+            aria-label="Miejsca do nauki w Krakowie"
+            title="Miejsca do nauki — live presence"
+          >
+            <BookOpen size={20} strokeWidth={2} />
           </button>
 
           <button

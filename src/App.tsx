@@ -64,6 +64,7 @@ const DzisView = lazy(() => import('./components/DzisView'))
 const ZniskiView = lazy(() => import('./components/discounts/ZniskiView'))
 const UsosRegistrationsView = lazy(() => import('./components/usos/UsosRegistrationsView'))
 const UsosAlarmBanner = lazy(() => import('./components/usos/UsosAlarmBanner'))
+const MiejscaNaukiView = lazy(() => import('./components/study-spots/MiejscaNaukiView'))
 const OnboardingTour = lazy(() => import('./components/onboarding/OnboardingTour'))
 
 type AppShellView =
@@ -84,6 +85,7 @@ type AppShellView =
   | 'dzis'
   | 'znizki'
   | 'usos'
+  | 'miejsca'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -164,6 +166,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/usos' || normalizedPath === '/rejestracje') {
     return { kind: 'ok', view: 'usos', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/miejsca' || normalizedPath === '/sale-nauki') {
+    return { kind: 'ok', view: 'miejsca', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -1282,7 +1287,8 @@ function App() {
     navActiveView === 'briefing' ||
     navActiveView === 'dzis' ||
     navActiveView === 'znizki' ||
-    navActiveView === 'usos'
+    navActiveView === 'usos' ||
+    navActiveView === 'miejsca'
       ? 'feed'
       : navActiveView
 
@@ -1527,6 +1533,14 @@ function App() {
             </Suspense>
           </ViewErrorBoundary>
         )
+      case 'miejsca':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <Suspense fallback={null}>
+              <MiejscaNaukiView session={session} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
       default:
         return null
     }
@@ -1628,6 +1642,7 @@ function App() {
           onNavigateToDzis={() => navigateToMainView('dzis')}
           onNavigateToZnizki={() => navigateToMainView('znizki')}
           onNavigateToUsos={() => navigateToMainView('usos')}
+          onNavigateToMiejsca={() => navigateToMainView('miejsca')}
           onNavigateToSearch={(query) => {
             const normalized = (query ?? '').trim()
             if (!normalized) {
