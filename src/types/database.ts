@@ -394,6 +394,38 @@ export type Database = {
           created_at?: string
         }
       }
+      cohort_channel_notes: {
+        Row: {
+          id: number
+          cohort_id: string
+          channel_id: number | null
+          content: string
+          version: number
+          last_edited_by: string | null
+          last_edited_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          cohort_id: string
+          channel_id?: number | null
+          content?: string
+          version?: number
+          last_edited_by?: string | null
+          last_edited_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          cohort_id?: string
+          channel_id?: number | null
+          content?: string
+          version?: number
+          last_edited_by?: string | null
+          last_edited_at?: string
+          created_at?: string
+        }
+      }
       cohort_poll_votes: {
         Row: {
           poll_id: number
@@ -457,6 +489,20 @@ export type Database = {
           p_poll_id: number
         }
         Returns: void
+      }
+      update_channel_note: {
+        Args: {
+          p_cohort_id: string
+          p_channel_id: number | null
+          p_expected_version: number
+          p_content: string
+        }
+        Returns: {
+          version: number
+          content: string
+          last_edited_by: string | null
+          last_edited_at: string
+        }
       }
     }
   }
@@ -564,4 +610,26 @@ export type CohortPollAggregate = {
   /** Łączna liczba unikalnych głosów (= suma counts, single-select). */
   totalVotes: number
   myVoteIndex: number | null
+}
+
+/**
+ * Wiersz `public.cohort_channel_notes` — wspólna notatka per sala
+ * (Markdown scratchpad). 1 notatka per `(cohort_id, channel_id)`;
+ * `channel_id IS NULL` = notatka Sali głównej.
+ *
+ * `version` jest BIGINT inkrementowanym przez RPC `update_channel_note` —
+ * concurrency LWW z conflict detection (RPC RAISE `'conflict:<current>'`
+ * gdy expected != current). Klient na conflict reload'uje fresh wartość.
+ */
+export type CohortChannelNote = TablesRow<'cohort_channel_notes'>
+
+/**
+ * Snapshot zwracany przez RPC `update_channel_note` przy sukcesie.
+ * NIE zawiera `id`/`cohort_id`/`channel_id` bo klient już je zna z params.
+ */
+export type ChannelNoteUpdateResult = {
+  version: number
+  content: string
+  last_edited_by: string | null
+  last_edited_at: string
 }

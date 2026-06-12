@@ -22,6 +22,7 @@ import {
   GraduationCap,
   Pencil,
   Settings,
+  StickyNote,
 } from 'lucide-react'
 import type { ChannelMuteMode, CohortChannel } from '../../types/database'
 import type { TypingUser } from '../../hooks/useChannelTyping'
@@ -48,6 +49,9 @@ type Props = {
    * obie wersje to 1 linia).
    */
   typingUsers?: TypingUser[]
+  /** Toggle prawego panelu notatek (desktop) / mobile sheet. */
+  notesOpen?: boolean
+  onToggleNotes?: () => void
 }
 
 function formatTypingLabel(users: TypingUser[]): string {
@@ -69,6 +73,8 @@ export default function ChannelHeader({
   mutedUntil = null,
   onChangeMute,
   typingUsers,
+  notesOpen = false,
+  onToggleNotes,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [muteMenuOpen, setMuteMenuOpen] = useState(false)
@@ -133,6 +139,24 @@ export default function ChannelHeader({
           <p className="mt-0.5 truncate text-xs text-fg-secondary">{description}</p>
         ) : null}
       </div>
+
+      {onToggleNotes && (
+        <button
+          type="button"
+          onClick={onToggleNotes}
+          aria-pressed={notesOpen}
+          aria-label={notesOpen ? 'Zamknij notatki' : 'Otwórz wspólne notatki sali'}
+          title={notesOpen ? 'Zamknij notatki' : 'Wspólne notatki sali'}
+          className={[
+            'inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 transition-colors',
+            notesOpen
+              ? 'bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
+              : 'text-zinc-500 hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200',
+          ].join(' ')}
+        >
+          <StickyNote size={14} />
+        </button>
+      )}
 
       {onChangeMute && (
         <div ref={muteWrapRef} className="relative shrink-0">

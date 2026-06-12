@@ -8,9 +8,11 @@ import { supabase } from '../supabaseClient'
 import type {
   ChannelKind,
   ChannelMuteMode,
+  ChannelNoteUpdateResult,
   Cohort,
   CohortChannel,
   CohortChannelMute,
+  CohortChannelNote,
   CohortMessage,
   CohortMessageAttachment,
   CohortMessagePoll,
@@ -917,6 +919,101 @@ class CohortServiceImpl {
             handlers.onVoteInsert?.(payload.new as CohortPollVote)
           } else if (payload.eventType === 'DELETE') {
             handlers.onVoteDelete?.(payload.old as CohortPollVote)
+          }
+        },
+      )
+      .subscribe((status) => onStatus?.(status))
+    return channel
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Channel notes (wspólne notatki per sala — Markdown scratchpad)
+  // ────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Pobierz aktualną notatkę dla (cohort, channel). `channelId === null` =
+   * notatka Sali głównej. Zwraca `null` gdy notatka jeszcze nie istnieje
+   * (klient pokazuje pusty editor z `version=0` jako "expected" w 1. save).
+   */
+  async getChannelNote(
+    cohortId: string,
+    channelId: number | null,
+  ): Promise<{ data: CohortChannelNote | null; error: PostgrestError | null }> {
+    let query = supabase
+      .from('cohort_channel_notes')
+      .select('id, cohort_id, channel_id, content, version, last_edited_by, last_edited_at, created_at')
+      .eq('cohort_id', cohortId)
+      .limit(1)
+
+    // `.eq('channel_id', null)` w PostgREST nie działa (filtruje na `= NULL`
+    // które jest zawsze UNKNOWN); używamy `is.null` dla NULL i `eq.N` inaczej.
+    query = channelId == null ? query.is('channel_id', null) : query.eq('channel_id', channelId)
+
+    const { data, error } = await query.maybeSingle()
+    return { data: (data as CohortChannelNote | null) ?? null, error }
+  }
+
+  /**
+   * Wywołaj RPC `update_channel_note`. Przy konflikcie (RAISE
+   * 'conflict:<current>') wyłuskuje current_version do `conflictVersion`,
+   * żeby klient mógł od razu odświeżyć bez kolejnej query.
+   */
+  async updateChannelNote(params: {
+    cohortId: string
+    channelId: number | null
+    expectedVersion: number
+    content: string
+  }): Promise<{
+    data: ChannelNoteUpdateResult | null
+    error: PostgrestError | null
+    conflictVersion: number | null
+  }> {
+    const { data, error } = await supabase.rpc('update_channel_note', {
+      p_cohort_id: params.cohortId,
+      p_channel_id: params.channelId,
+      p_expected_version: params.expectedVersion,
+      p_content: params.content,
+    })
+
+    if (error) {
+      // PostgREST przepuszcza `RAISE EXCEPTION 'conflict:N'` jako `message:
+      // "conflict:N"`. Parsujemy żeby klient nie musiał drugiego round-trip.
+      const m = /^conflict:(\d+)$/.exec(error.message ?? '')
+      const conflictVersion = m ? Number(m[1]) : null
+      return { data: null, error, conflictVersion }
+    }
+    return { data: data as ChannelNoteUpdateResult, error: null, conflictVersion: null }
+  }
+
+  /**
+   * Realtime na `cohort_channel_notes` per cohort. Filter po `cohort_id`;
+   * konsument (`useChannelNote`) sam ignoruje events dla innych channelów.
+   * `*` event, bo Realtime daje INSERT (pierwsza notatka tworzona przez RPC)
+   * i UPDATE (kolejne zapisy).
+   */
+  subscribeToChannelNotes(
+    cohortId: string,
+    handlers: {
+      onInsert?: (row: CohortChannelNote) => void
+      onUpdate?: (row: CohortChannelNote) => void
+    },
+    onStatus?: (status: string) => void,
+  ): RealtimeChannel {
+    const channel = supabase
+      .channel(`aula-channel-notes-${cohortId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cohort_channel_notes',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            handlers.onInsert?.(payload.new as CohortChannelNote)
+          } else if (payload.eventType === 'UPDATE') {
+            handlers.onUpdate?.(payload.new as CohortChannelNote)
           }
         },
       )

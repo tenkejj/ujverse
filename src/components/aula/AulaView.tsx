@@ -19,6 +19,7 @@ import { useCohortReactions } from '../../hooks/useCohortReactions'
 import { useAulaPresence } from '../../hooks/useAulaPresence'
 import { useCohortAttachments } from '../../hooks/useCohortAttachments'
 import { useCohortPolls } from '../../hooks/useCohortPolls'
+import { ChannelNotePanel, ChannelNoteSheet } from './ChannelNotePanel'
 import {
   useCohortChannels,
   GENERAL_SLUG,
@@ -293,6 +294,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   const [replyTarget, setReplyTarget] = useState<{ id: number; authorName: string } | null>(null)
   const [membersSheetOpen, setMembersSheetOpen] = useState(false)
   const [channelsSheetOpen, setChannelsSheetOpen] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
   const [recentFilesOpen, setRecentFilesOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [createChannelOpen, setCreateChannelOpen] = useState(false)
@@ -876,6 +878,8 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             void setChannelMute(activeChannelId, mode, snoozeHours)
           }}
           typingUsers={typingUsers}
+          notesOpen={notesOpen}
+          onToggleNotes={() => setNotesOpen((v) => !v)}
         />
 
         <PinnedMessagesStrip pinned={pinned} onJump={jumpToMessage} />
@@ -989,7 +993,30 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
         />
       </section>
 
+      {/* Desktop right panel — wspólne notatki per sala (toggle z ChannelHeader) */}
+      {notesOpen && cohortId && (
+        <ChannelNotePanel
+          cohortId={cohortId}
+          channelId={activeChannelId}
+          channelName={activeChannel?.name ?? 'Sala główna'}
+          currentUserId={currentUserId}
+          userNames={userNames}
+          onClose={() => setNotesOpen(false)}
+        />
+      )}
+
       <AnimatePresence>
+        {notesOpen && cohortId && (
+          <ChannelNoteSheet
+            key="note-sheet"
+            cohortId={cohortId}
+            channelId={activeChannelId}
+            channelName={activeChannel?.name ?? 'Sala główna'}
+            currentUserId={currentUserId}
+            userNames={userNames}
+            onClose={() => setNotesOpen(false)}
+          />
+        )}
         {membersSheetOpen && (
           <MembersSheet
             members={members}
