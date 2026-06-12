@@ -1,5 +1,18 @@
-import { useMemo, useState, type KeyboardEvent } from 'react'
-import { Check, CornerUpLeft, Pencil, Pin, PinOff, SmilePlus, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  Check,
+  CornerUpLeft,
+  Languages,
+  Lightbulb,
+  Pencil,
+  Pin,
+  PinOff,
+  Scissors,
+  SmilePlus,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -131,6 +144,16 @@ type Props = {
   onVotePoll?: (messageId: number, optionIndex: number | null) => void
   /** Zamknij poll (creator only — RPC i tak enforce'uje). */
   onClosePoll?: (messageId: number) => void
+  /**
+   * AI quick action na treści wiadomości. Tryb `'explain' | 'simplify' |
+   * 'translate'`. Brak handlera = przycisk AI w hover-actions nie pojawia się
+   * (graceful degradation gdy AI niedostępne / wyłączone na danym widoku).
+   * Wywoływane tylko dla NIE-usuniętych wiadomości z niepustą treścią.
+   */
+  onAiAction?: (
+    action: 'explain' | 'simplify' | 'translate',
+    payload: { messageId: number; text: string; authorName: string },
+  ) => void
 }
 
 const MAX_DEPTH = 2
@@ -155,10 +178,24 @@ export default function AulaMessageItem({
   pollsByMessage,
   onVotePoll,
   onClosePoll,
+  onAiAction,
 }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(node.content)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [aiMenuOpen, setAiMenuOpen] = useState(false)
+  const aiMenuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!aiMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (aiMenuRef.current && !aiMenuRef.current.contains(e.target as Node)) {
+        setAiMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [aiMenuOpen])
 
   const author = node.profiles ?? null
   const authorName = author?.full_name || author?.username || 'Użytkownik'
@@ -336,6 +373,63 @@ export default function AulaMessageItem({
                   )}
                 </button>
               )}
+              {onAiAction && node.content.trim().length > 0 && (
+                <div ref={aiMenuRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAiMenuOpen((v) => !v)}
+                    aria-haspopup="menu"
+                    aria-expanded={aiMenuOpen}
+                    title="AI: wyjaśnij / streść / przetłumacz"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-violet-600 dark:text-zinc-400 dark:hover:text-violet-300"
+                  >
+                    <Sparkles size={12} /> AI
+                  </button>
+                  {aiMenuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-bg-card"
+                    >
+                      <AiMenuItem
+                        icon={<Lightbulb size={13} />}
+                        label="Wyjaśnij prościej"
+                        onClick={() => {
+                          setAiMenuOpen(false)
+                          onAiAction('explain', {
+                            messageId: node.id,
+                            text: node.content,
+                            authorName,
+                          })
+                        }}
+                      />
+                      <AiMenuItem
+                        icon={<Scissors size={13} />}
+                        label="Streść w 2 zdaniach"
+                        onClick={() => {
+                          setAiMenuOpen(false)
+                          onAiAction('simplify', {
+                            messageId: node.id,
+                            text: node.content,
+                            authorName,
+                          })
+                        }}
+                      />
+                      <AiMenuItem
+                        icon={<Languages size={13} />}
+                        label="Przetłumacz na EN"
+                        onClick={() => {
+                          setAiMenuOpen(false)
+                          onAiAction('translate', {
+                            messageId: node.id,
+                            text: node.content,
+                            authorName,
+                          })
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               {isOwn && (
                 <>
                   <button
@@ -390,10 +484,35 @@ export default function AulaMessageItem({
               pollsByMessage={pollsByMessage}
               onVotePoll={onVotePoll}
               onClosePoll={onClosePoll}
+              onAiAction={onAiAction}
             />
           ))}
         </div>
       )}
     </div>
+  )
+}
+
+function AiMenuItem({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-zinc-700 transition-colors hover:bg-violet-500/10 hover:text-violet-700 dark:text-zinc-200 dark:hover:bg-violet-400/10 dark:hover:text-violet-200"
+    >
+      <span className="inline-flex h-5 w-5 items-center justify-center text-violet-500 dark:text-violet-300">
+        {icon}
+      </span>
+      {label}
+    </button>
   )
 }

@@ -23,6 +23,7 @@ import {
   GraduationCap,
   Pencil,
   Settings,
+  Sparkles,
   StickyNote,
 } from 'lucide-react'
 import type { ChannelMuteMode, CohortChannel } from '../../types/database'
@@ -56,6 +57,12 @@ type Props = {
   /** Toggle prawego panelu zadań (mutex z notatkami w AulaView). */
   tasksOpen?: boolean
   onToggleTasks?: () => void
+  /**
+   * Akcja "Podsumuj salę" przez AI — handler open modal w `AulaView`.
+   * Brak handlera = przycisk nie pojawia się (graceful degradation gdy AI
+   * tymczasowo niedostępne / pre-MVP).
+   */
+  onSummarizeAi?: () => void
 }
 
 function formatTypingLabel(users: TypingUser[]): string {
@@ -81,6 +88,7 @@ export default function ChannelHeader({
   onToggleNotes,
   tasksOpen = false,
   onToggleTasks,
+  onSummarizeAi,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [muteMenuOpen, setMuteMenuOpen] = useState(false)
@@ -145,6 +153,18 @@ export default function ChannelHeader({
           <p className="mt-0.5 truncate text-xs text-fg-secondary">{description}</p>
         ) : null}
       </div>
+
+      {onSummarizeAi && (
+        <button
+          type="button"
+          onClick={onSummarizeAi}
+          aria-label="Podsumuj salę przez AI"
+          title="Podsumuj salę (AI)"
+          className="group inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-zinc-500 transition-colors hover:bg-violet-500/10 hover:text-violet-600 dark:text-zinc-400 dark:hover:bg-violet-400/10 dark:hover:text-violet-300"
+        >
+          <Sparkles size={14} className="transition-transform group-hover:scale-110" />
+        </button>
+      )}
 
       {onToggleTasks && (
         <button

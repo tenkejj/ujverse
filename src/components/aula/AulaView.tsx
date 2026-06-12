@@ -51,8 +51,11 @@ import RecentFilesPanel from './RecentFilesPanel'
 import AulaSearchModal from './AulaSearchModal'
 import ChannelRail from './ChannelRail'
 import ChannelHeader from './ChannelHeader'
-import ChannelKindPill from './ChannelKindPill'
+import ChannelKindPill, { CHANNEL_KIND_META } from './ChannelKindPill'
 import CreateChannelModal from './CreateChannelModal'
+import AiInsightModal from './AiInsightModal'
+import { AulaAiService } from '../../services/ai/AulaAiService'
+import type { AulaAiTask } from '../../lib/aulaAiPrompts'
 import { toast } from '../../lib/appToast'
 
 type ProfilePatch = Partial<
@@ -303,6 +306,19 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   const [searchOpen, setSearchOpen] = useState(false)
   const [createChannelOpen, setCreateChannelOpen] = useState(false)
   const [editingChannel, setEditingChannel] = useState<CohortChannel | null>(null)
+  /**
+   * AI modal config — `null` = closed. `start` to fabryka generatora dla
+   * `AiInsightModal` (factory zamiast generatora, żeby retry mogło wywołać
+   * fresh stream). Każdy task (summarize / explain / ...) ustawia własną
+   * konfigurację przed open.
+   */
+  const [aiModalConfig, setAiModalConfig] = useState<{
+    title: string
+    subtitle?: string
+    start: () => AsyncGenerator<string, void, void>
+    /** Diagnostyka — który task otwarł modal (do telemetry, na razie unused). */
+    task: AulaAiTask
+  } | null>(null)
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [showNewBadge, setShowNewBadge] = useState(false)
   const [pinned, setPinned] = useState<CohortMessageWithAuthor[]>([])
@@ -933,6 +949,45 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             setTasksOpen((v) => !v)
             if (!tasksOpen) setNotesOpen(false)
           }}
+          onSummarizeAi={() => {
+            // Snapshot ostatnich do ~30 wiadomości aktywnej sali, top-level i
+            // odpowiedzi razem, w kolejności chronologicznej. Pomijamy
+            // wiadomości usunięte (deleted_at != null) i puste contenty (np.
+            // sam załącznik) — model nic z nich nie wyciśnie.
+            const channelLabel = activeChannel?.name ?? 'Sala główna'
+            const kindLabel = activeChannel?.kind
+              ? (CHANNEL_KIND_META[activeChannel.kind]?.long ?? null)
+              : null
+
+            const transcript = messages
+              .filter((m) => !m.deleted_at && m.content && m.content.trim().length > 0)
+              .slice(-30)
+              .map((m) => ({
+                authorName:
+                  userNames.get(m.user_id) || m.profiles?.full_name || m.profiles?.username || 'Użytkownik',
+                content: m.content,
+                timestamp: m.created_at,
+              }))
+
+            if (transcript.length === 0) {
+              toast('Brak wiadomości do streszczenia w tej sali.')
+              return
+            }
+
+            setAiModalConfig({
+              task: 'summarize_channel',
+              title: 'Streszczenie sali',
+              subtitle: kindLabel
+                ? `${kindLabel} • ${channelLabel} • ostatnie ${transcript.length} wiadomości`
+                : `${channelLabel} • ostatnie ${transcript.length} wiadomości`,
+              start: () =>
+                AulaAiService.summarizeChannel({
+                  channelName: channelLabel,
+                  channelKindLabel: kindLabel,
+                  messages: transcript,
+                }),
+            })
+          }}
         />
 
         <PinnedMessagesStrip pinned={pinned} onJump={jumpToMessage} />
@@ -1004,6 +1059,54 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
                   pollsByMessage={pollsByMessage}
                   onVotePoll={votePoll}
                   onClosePoll={closePollAction}
+                  onAiAction={(action, payload) => {
+                    // Truncated preview do subtitle — żeby user wiedział, co
+                    // konkretnie idzie do AI (nie więcej niż 90 znaków, jeden
+                    // wiersz). Pełna treść leci do API; tu tylko UX-owy hint.
+                    const previewSrc = payload.text.replace(/\s+/g, ' ').trim()
+                    const preview =
+                      previewSrc.length > 90 ? previewSrc.slice(0, 90) + '…' : previewSrc
+
+                    const channelLabel = activeChannel?.name ?? 'Sala główna'
+
+                    if (action === 'explain') {
+                      setAiModalConfig({
+                        task: 'explain_message',
+                        title: `Wyjaśnienie wiadomości od ${payload.authorName}`,
+                        subtitle: preview,
+                        start: () =>
+                          AulaAiService.explainText({
+                            text: payload.text,
+                            channelName: channelLabel,
+                          }),
+                      })
+                      return
+                    }
+                    if (action === 'simplify') {
+                      setAiModalConfig({
+                        task: 'simplify_message',
+                        title: `Streszczenie wiadomości od ${payload.authorName}`,
+                        subtitle: preview,
+                        start: () =>
+                          AulaAiService.simplifyText({
+                            text: payload.text,
+                            channelName: channelLabel,
+                          }),
+                      })
+                      return
+                    }
+                    // translate (default EN — MVP; przyszłość: lang picker w menu)
+                    setAiModalConfig({
+                      task: 'translate_message',
+                      title: `Tłumaczenie wiadomości od ${payload.authorName}`,
+                      subtitle: preview,
+                      start: () =>
+                        AulaAiService.translateText({
+                          text: payload.text,
+                          targetLang: 'en',
+                        }),
+                    })
+                  }}
                 />
               ))}
             </div>
@@ -1172,6 +1275,16 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             onSubmit={async ({ name, description, kind }) => {
               await updateChannel(editingChannel.id, { name, description, kind })
             }}
+          />
+        )}
+
+        {aiModalConfig && (
+          <AiInsightModal
+            key={aiModalConfig.task + ':' + (aiModalConfig.subtitle ?? '')}
+            title={aiModalConfig.title}
+            subtitle={aiModalConfig.subtitle}
+            start={aiModalConfig.start}
+            onClose={() => setAiModalConfig(null)}
           />
         )}
       </AnimatePresence>
