@@ -19,6 +19,7 @@ import {
   Info,
   Languages,
   LightbulbIcon,
+  Radio,
   Sparkles,
   Tag,
   Users,
@@ -179,7 +180,15 @@ export default function UsosRegistrationDetailModal({ registration, subscribed, 
               <Users size={13} strokeWidth={2.3} />
               <span className="tabular-nums">{registration.subscriber_count}</span> osób ma alarm
             </span>
-            {registration.source_announcement_id && (
+            {registration.source_usos_tura_id ? (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[11.5px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                title="Wpis pobierany codziennie LIVE z USOSweb"
+              >
+                <Radio size={12} strokeWidth={2.4} />
+                {registration.source_label ?? 'Live · USOSweb'}
+              </span>
+            ) : registration.source_announcement_id ? (
               <span
                 className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-[11.5px] font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
                 title="Wpis wygenerowany przez AI z oryginalnego ogłoszenia wydziałowego"
@@ -187,7 +196,7 @@ export default function UsosRegistrationDetailModal({ registration, subscribed, 
                 <Bot size={12} strokeWidth={2.4} />
                 {registration.source_label ?? 'AI · ogłoszenie wydziału'}
               </span>
-            )}
+            ) : null}
           </div>
         </div>
 

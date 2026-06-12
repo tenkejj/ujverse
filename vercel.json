@@ -3,11 +3,23 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
+  "functions": {
+    "api/scrape-usos-registrations.ts": {
+      "maxDuration": 60
+    },
+    "api/scrape-uj-events.ts": {
+      "maxDuration": 60
+    },
+    "api/scrape-wziks.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     { "path": "/api/scrape-uj-events", "schedule": "0 5 * * *" },
     { "path": "/api/scrape-wziks", "schedule": "0 6 * * *" },
+    { "path": "/api/scrape-usos-registrations", "schedule": "15 6 * * *" },
+    { "path": "/api/scrape-usos-registrations", "schedule": "0 19 * * *" },
     { "path": "/api/extract-usos-registrations", "schedule": "30 6 * * *" },
-    { "path": "/api/extract-usos-registrations", "schedule": "0 18 * * *" },
     { "path": "/api/generate-briefings", "schedule": "0 6 * * 1" }
   ]
 }

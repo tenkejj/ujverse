@@ -58,9 +58,15 @@ export type UsosRegistration = {
   kind: RegistrationKind
   subscriber_count: number
   /** FK do `announcements.id` jeśli wpis powstał automatycznie z ogłoszenia
-   *  wydziałowego (AI extractor). NULL = community-driven lub seed. */
+   *  wydziałowego (AI extractor — fallback dla rejestracji wspomnianych w komunikatach).
+   *  NULL = wpis community / seed / USOSweb live. */
   source_announcement_id?: string | null
-  /** Krótka etykieta źródła (np. "AI · ogłoszenie wydziału"). Pomaga w UI badge. */
+  /** `tura_id` z USOSweb katalogu rejestracji (np. "45118"). NOT NULL = wpis
+   *  scrapowany live z USOSweb (najbardziej autorytatywne źródło). */
+  source_usos_tura_id?: string | null
+  /** Kod jednostki UJ z USOSweb (np. "UJ.WF.IFA"). Współwystępuje z `source_usos_tura_id`. */
+  source_unit_code?: string | null
+  /** Krótka etykieta źródła ("Live · USOSweb · {nazwa jednostki}" / "AI · ogłoszenie wydziału"). */
   source_label?: string | null
   created_at: string
   updated_at: string

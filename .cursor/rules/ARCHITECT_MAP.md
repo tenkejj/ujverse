@@ -388,13 +388,37 @@ Module **Aula** = live chat per study-year cohort. **Independent** from `groups`
 - [`types/usosRegistrations.ts`](src/types/usosRegistrations.ts) — `RegistrationKind` enum (sync z DB CHECK), `REGISTRATION_KIND_META` (label + lucide icon + tint), `computeCountdown` (helper liczący phase + label + compact `Xd Yh`/`Yh Zm`/`Zm`), `pluralPL` (rok/dni).
 - Entry points: header pill `AlarmClock` ikon w [`Header.tsx`](src/components/Header.tsx) (prop `onNavigateToUsos`), mobile rail tile w [`MobileDashboard.tsx`](src/components/mobile/MobileDashboard.tsx). Route `/usos` (alias `/rejestracje`) w [`App.tsx`](src/App.tsx) `parseAppRoute` + `navigateToMainView`.
 
-### AI source tracking (Vercel Cron)
+### LIVE source: USOSweb scraper (Vercel Cron) — PRIMARY
+
+- Discovery (2026-06-12): USOSweb UJ publikuje publicznie (bez logowania)
+  pełen katalog rejestracji per jednostka:
+  `https://www.usosweb.uj.edu.pl/kontroler.php?_action=news/rejestracje/rejJednostki&jed_org_kod=UJ.WF.IFA`
+  z `tura_id` + `<local-time>` ramami czasowymi.
+- [20260628110000_usos_registrations_live_source.sql](supabase/migrations/20260628110000_usos_registrations_live_source.sql) —
+  `usos_registrations` += `source_usos_tura_id` (text, partial UNIQUE) +
+  `source_unit_code` (kod jednostki UJ). Plus tabela audit-logu
+  `usos_scraper_runs` (per-unit success/error/empty/upserted_count).
+- [api/scrape-usos-registrations.ts](api/scrape-usos-registrations.ts) — Vercel cron
+  handler. Flow: fetch listy jednostek z `news/rejestracje/index` →
+  Promise.all batch po 5 jednostek → cheerio parsing `<h2>+<table>` →
+  upsert `ON CONFLICT (source_usos_tura_id)`. Status `zakończona` skip.
+  Strefa: heurystyczna DST (marzec-październik +02:00, inaczej +01:00).
+  Classifier `kind` na podstawie regex'ów na nazwie rejestracji.
+- [vercel.json](vercel.json) — `maxDuration: 60` (50 jednostek × parallel 5 ≈ 15s)
+  + cron `15 6 * * *` (po `scrape-wziks`) i `0 19 * * *` (wieczór).
+
+### AI source: fallback z ogłoszeń (Vercel Cron) — SECONDARY
+
+Zostawione na wypadek gdyby coś rejestracyjnego pojawiło się w komunikatach
+ISI/WZiKS (rzadkie ale możliwe).
 
 - [20260628100000_usos_registrations_source.sql](supabase/migrations/20260628100000_usos_registrations_source.sql) — `usos_registrations` += `source_announcement_id` (FK na `announcements`, partial UNIQUE) + `source_label`. `announcements` += `usos_extraction_attempted_at` (queue flag) + partial index na NULL.
 - [api/_lib/usosExtraction.ts](api/_lib/usosExtraction.ts) — `extractUsosRegistrationFromAnnouncement(provider, body)` analogiczny do `calendarExtraction.ts`: system prompt z zasadami "kiedy wyciągać", validator `kind` enum + dat + URL, próg `minConfidence` 0.6.
-- [api/extract-usos-registrations.ts](api/extract-usos-registrations.ts) — Vercel cron handler (`BATCH_SIZE=12` per run, sequential żeby nie palić Groq quoty, rate-limit early-exit). Auth: `CRON_SECRET` (Bearer header lub `?token=`). Idempotencja: partial UNIQUE na `source_announcement_id` + zawsze updateuje `usos_extraction_attempted_at` (nawet negatywne).
-- [vercel.json](vercel.json) — cron 2x dziennie (`30 6 * * *` rano po `scrape-wziks 0 6`, `0 18 * * *` wieczorem na świeże ogłoszenia).
-- UI: badge "AI" w `UsosRegistrationCard` (violet pill) + pełna etykieta "AI · ogłoszenie wydziału" w `UsosRegistrationDetailModal` przy stats.
+- [api/extract-usos-registrations.ts](api/extract-usos-registrations.ts) — Vercel cron handler (`BATCH_SIZE=12` per run, sequential żeby nie palić Groq quoty, rate-limit early-exit). Auth: `CRON_SECRET`. Idempotencja: partial UNIQUE na `source_announcement_id` + zawsze updateuje `usos_extraction_attempted_at`.
+- UI badges:
+  - **Live** (emerald) — `source_usos_tura_id != null` (USOSweb scraper)
+  - **AI** (violet) — `source_announcement_id != null` (Groq z ogłoszenia)
+  - Bez badge'a — community wpis lub seed
 
 ### Invariants
 

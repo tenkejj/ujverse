@@ -117,6 +117,7 @@ export default function Campus3DView(_props: Props) {
   } = c3d
 
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const detailRef = useRef<HTMLDivElement | null>(null)
 
   // Mobile-only: full-screen map mode. Default off (compact map with list
   // below); user može toggle przyciskiem expand żeby dostać większy
@@ -154,6 +155,20 @@ export default function Campus3DView(_props: Props) {
       cancelled = true
     }
   }, [selectedBuilding])
+
+  // Mobile: auto-scroll do detail card po wyborze budynku — bo detal jest
+  // POD mapą, więc bez scrollu user nie wie że coś się zmieniło.
+  // Skip gdy mapa expanded (już zajmuje cały viewport).
+  useEffect(() => {
+    if (!selectedBuildingId || mobileMapExpanded) return
+    if (typeof window === 'undefined') return
+    if (!window.matchMedia('(max-width: 1023px)').matches) return
+    // Delay żeby DOM zdążył wyrenderować detal po state-change.
+    const handle = window.setTimeout(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+    return () => window.clearTimeout(handle)
+  }, [selectedBuildingId, mobileMapExpanded])
 
   // ── Lista budynków po kampusie ────────────────────────────────────────
   const buildingsByCampus = useMemo(() => {
@@ -450,7 +465,10 @@ export default function Campus3DView(_props: Props) {
         </div>
 
         {/* Lista / Detal — kolejność CSS: desktop=1 (po lewej), mobile=2 */}
-        <div className="min-w-0 space-y-3 order-2 lg:order-1 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:pr-1">
+        <div
+          ref={detailRef}
+          className="min-w-0 space-y-3 order-2 lg:order-1 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:pr-1 scroll-mt-4"
+        >
           {buildingsError && (
             <BaseCard variant="default" className="p-4 text-sm text-red-600 dark:text-red-400">
               {buildingsError}

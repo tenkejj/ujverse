@@ -22,6 +22,7 @@ import {
   ExternalLink,
   GraduationCap,
   Languages,
+  Radio,
   Sparkles,
   Tag,
   Users,
@@ -154,7 +155,15 @@ function UsosRegistrationCardImpl({ registration, subscribed, onOpenDetail, onTo
             <Users size={12} strokeWidth={2.2} />
             <span className="tabular-nums">{registration.subscriber_count}</span>
           </span>
-          {registration.source_announcement_id && (
+          {registration.source_usos_tura_id ? (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+              title={registration.source_label ?? 'Pobrane na żywo z USOSweb'}
+            >
+              <Radio size={9} strokeWidth={2.6} />
+              Live
+            </span>
+          ) : registration.source_announcement_id ? (
             <span
               className="inline-flex items-center gap-0.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
               title={registration.source_label ?? 'Wyciągnięte przez AI z ogłoszenia wydziałowego'}
@@ -162,7 +171,7 @@ function UsosRegistrationCardImpl({ registration, subscribed, onOpenDetail, onTo
               <Bot size={9} strokeWidth={2.6} />
               AI
             </span>
-          )}
+          ) : null}
         </span>
 
         <div className="flex items-center gap-1.5">
