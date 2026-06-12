@@ -50,7 +50,6 @@ import DiscountCard from './DiscountCard'
 import DiscountDetailModal from './DiscountDetailModal'
 import DiscountFormModal from './DiscountFormModal'
 import { useDiscounts } from '../../hooks/useDiscounts'
-import { useGamificationContext } from '../../lib/gamificationContext'
 import {
   DISCOUNT_CATEGORIES,
   DISCOUNT_CATEGORY_META,
@@ -119,23 +118,11 @@ export default function ZniskiView({ userId }: Props) {
     [discounts],
   )
 
-  const gam = useGamificationContext()
-
-  const handleCreated = useCallback(
-    (discountId?: string) => {
-      setFormOpen(false)
-      void refresh()
-      void refreshTrending()
-      // Gamifikacja: 15 XP per zniżka + unlock badge. ref_id = discountId
-      // (gdy mamy), inaczej brak ref → unique constraint zablokuje drugi
-      // strzał z pustym ref dla tego samego usera (i tak nie chcemy spamu).
-      if (gam) {
-        void gam.awardXp('discount_added', 15, discountId)
-        void gam.unlockAchievement('discount_finder')
-      }
-    },
-    [refresh, refreshTrending, gam],
-  )
+  const handleCreated = useCallback(() => {
+    setFormOpen(false)
+    void refresh()
+    void refreshTrending()
+  }, [refresh, refreshTrending])
 
   const hasGeo = geoStatus === 'ok' && geo != null
 
