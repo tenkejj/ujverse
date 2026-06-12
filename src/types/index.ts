@@ -51,14 +51,42 @@ export type Comment = {
 export type AppNotification = {
   id: string
   user_id: string
-  actor_id: string
-  type: 'like' | 'comment' | 'reply_aula' | 'mention_aula'
+  /**
+   * Powiadomienia od scrapera (`lecturer_announcement`) NIE mają autora-osoby,
+   * więc `actor_id` jest nullowalne po migracji 20260615100000.
+   */
+  actor_id: string | null
+  type: 'like' | 'comment' | 'reply_aula' | 'mention_aula' | 'lecturer_announcement'
   post_id: string | null
   /** Referencja do wiadomości w Auli (tylko dla `reply_aula`). */
   cohort_message_id?: number | null
+  /** Referencja do komunikatu (`announcements.id`) — tylko dla `lecturer_announcement`. */
+  announcement_id?: string | null
   is_read: boolean
   created_at: string
   actor?: Profile | null
+  /** Embed danych komunikatu dla powiadomień typu `lecturer_announcement`. */
+  announcement?: {
+    id: string
+    lecturer_name: string
+    body: string
+    status: 'cancelled' | 'remote' | 'duty'
+    department: string | null
+    created_at: string
+  } | null
+}
+
+/**
+ * Subskrypcja użytkownika na nazwisko wykładowcy. `lecturer_key` jest
+ * stabilnym kluczem matchingu (lower + bez diakrytyków + bez tytułów) —
+ * po stronie serwera generowany przez `public.lecturer_name_key()`.
+ */
+export type LecturerSubscription = {
+  id: number
+  user_id: string
+  display_name: string
+  lecturer_key: string
+  created_at: string
 }
 
 /**

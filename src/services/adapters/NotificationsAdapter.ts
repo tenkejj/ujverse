@@ -5,6 +5,14 @@ import type { AppNotification } from '../../types'
 const ACTOR_EMBED =
   'actor:profiles!notifications_actor_id_fkey(id, full_name, username, avatar_url, department)'
 
+/**
+ * Embed komunikatu dla powiadomień typu `lecturer_announcement`. Łączymy
+ * po FK `notifications.announcement_id -> announcements.id`. Dla innych
+ * typów pole jest po prostu NULL — żaden round-trip ekstra po stronie UI.
+ */
+const ANNOUNCEMENT_EMBED =
+  'announcement:announcements!notifications_announcement_id_fkey(id, lecturer_name, body, status, department, created_at)'
+
 class NotificationsAdapterImpl {
   async listForUser(
     userId: string,
@@ -12,7 +20,7 @@ class NotificationsAdapterImpl {
   ): Promise<{ data: AppNotification[]; error: PostgrestError | null }> {
     const { data, error } = await supabase
       .from('notifications')
-      .select(`*, ${ACTOR_EMBED}`)
+      .select(`*, ${ACTOR_EMBED}, ${ANNOUNCEMENT_EMBED}`)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)

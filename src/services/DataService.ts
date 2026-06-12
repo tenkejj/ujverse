@@ -17,6 +17,11 @@ import { ClubsAdapter } from './adapters/ClubsAdapter'
 import { EventsAdapter } from './adapters/EventsAdapter'
 import { PostsAdapter } from './adapters/PostsAdapter'
 import { NotificationsAdapter } from './adapters/NotificationsAdapter'
+import {
+  LecturerSubscriptionsAdapter,
+  type LecturerSuggestion,
+  type LecturerSubscriptionAnnouncement,
+} from './adapters/LecturerSubscriptionsAdapter'
 import type { Unsubscribe } from './adapters/BaseAdapter'
 import { canonicalDepartment } from '../lib/departments'
 
@@ -122,6 +127,30 @@ class DataServiceImpl {
 
   async clearAllNotificationsForUser(userId: string) {
     return NotificationsAdapter.deleteAllForUser(userId)
+  }
+
+  /* „Mój Plan" — subskrypcje wykładowców (CRUD + autocomplete + feed). */
+  async listLecturerSubscriptions(userId: string) {
+    return LecturerSubscriptionsAdapter.listForUser(userId)
+  }
+
+  async subscribeLecturer(userId: string, displayName: string) {
+    return LecturerSubscriptionsAdapter.subscribe(userId, displayName)
+  }
+
+  async unsubscribeLecturer(userId: string, id: number) {
+    return LecturerSubscriptionsAdapter.unsubscribe(userId, id)
+  }
+
+  async suggestLecturers(query: string, limit?: number): Promise<LecturerSuggestion[]> {
+    return LecturerSubscriptionsAdapter.suggest(query, limit)
+  }
+
+  async listAnnouncementsForLecturerKeys(
+    keys: readonly string[],
+    limit?: number,
+  ): Promise<LecturerSubscriptionAnnouncement[]> {
+    return LecturerSubscriptionsAdapter.listAnnouncementsForKeys(keys, limit)
   }
 
   /* Mapowanie wydarzeń z kontekstu do UnifiedContent. */
