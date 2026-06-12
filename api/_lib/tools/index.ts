@@ -15,6 +15,9 @@
 import './getLatestAnnouncements.js'
 import './searchEvents.js'
 import './getLatestPosts.js'
+import './getMyUserContext.js'
+import './getMyAulaOverview.js'
+import './findUser.js'
 
 export {
   type Tool,

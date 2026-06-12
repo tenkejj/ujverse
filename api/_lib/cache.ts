@@ -38,6 +38,14 @@ export const TOOL_TTL_MS: Record<string, number> = {
   get_latest_announcements: 60_000,
   search_events: 300_000,
   get_latest_posts: 30_000,
+  // Personal tools — TTL dobrany pod dynamikę i koszt re-fetch:
+  // - user_context: profile zmienia się rzadko (onboarding + edycja settings)
+  // - aula_overview: deadliney + polle to dynamic state — chcemy świeżość ~30s
+  // - find_user: imiona/usernames są stabilne, ale exposure ~publiczna search
+  //   (RLS bypass przez supabaseAdmin) — 60s równoważy świeżość i koszt
+  get_my_user_context: 300_000,
+  get_my_aula_overview: 30_000,
+  find_user: 60_000,
 }
 
 export function ttlForTool(name: string): number {
