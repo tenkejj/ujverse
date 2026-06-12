@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Building2,
@@ -8,6 +8,8 @@ import {
   Hash,
   Layers,
   MapPin,
+  Maximize2,
+  Ruler,
   Search,
   Sparkles,
   Users,
@@ -22,6 +24,10 @@ import {
   type Room,
   type SearchResult,
 } from '../../services/SaleFinderService'
+import {
+  loadFootprintMetadata,
+  type FootprintMetadata,
+} from '../../services/Campus3DService'
 import BaseCard from '../ui/BaseCard'
 import { theme } from '../../styles/theme'
 import { sectionTitleCls, sideMutedCls, widgetGoldCls } from '../../lib/sidePanelStyles'
@@ -112,9 +118,42 @@ export default function Campus3DView(_props: Props) {
 
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  // Mobile-only: full-screen map mode. Default off (compact map with list
+  // below); user može toggle przyciskiem expand żeby dostać większy
+  // widok na phonach (klasyczne map-first UX).
+  const [mobileMapExpanded, setMobileMapExpanded] = useState(false)
+
+  // Footprint metadata dla aktualnie wybranego budynku — używane w
+  // BuildingDetailCard do pokazania liczb pięter, wysokości, powierzchni.
+  const [footprintMeta, setFootprintMeta] = useState<FootprintMetadata | null>(null)
+
   useEffect(() => {
-    inputRef.current?.focus()
+    // Auto-focus search input tylko na desktop — na mobile nie chcemy
+    // od razu wyciągnąć klawiatury żeby nie ukryć mapy.
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      inputRef.current?.focus()
+    }
   }, [])
+
+  // Ładuj footprint metadata gdy zmienia się selected building.
+  useEffect(() => {
+    let cancelled = false
+    if (!selectedBuilding) {
+      setFootprintMeta(null)
+      return
+    }
+    void loadFootprintMetadata(
+      selectedBuilding.id,
+      selectedBuilding.lat,
+      selectedBuilding.lng,
+    ).then((m) => {
+      if (cancelled) return
+      setFootprintMeta(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBuilding])
 
   // ── Lista budynków po kampusie ────────────────────────────────────────
   const buildingsByCampus = useMemo(() => {
@@ -301,16 +340,16 @@ export default function Campus3DView(_props: Props) {
 
   return (
     <div className="w-full">
-      {/* Hero */}
-      <div className="mb-4">
+      {/* Hero — bardziej kompaktowy na mobile */}
+      <div className="mb-3 md:mb-4">
         <div className="flex items-center gap-2 mb-1.5">
           <MapPin size={14} strokeWidth={2} className={widgetGoldCls} aria-hidden />
           <span className={sectionTitleCls}>Mapa 3D · Kampus UJ</span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
+        <h1 className="text-xl md:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
           Znajdź salę, budynek, idź na zajęcia
         </h1>
-        <p className={`mt-1 text-sm ${sideMutedCls}`}>
+        <p className={`mt-1 hidden md:block text-sm ${sideMutedCls}`}>
           Mapa 3D Krakowa z wszystkimi budynkami UJ. Kliknij na bryłę żeby zobaczyć
           szczegóły, otwórz wnętrza żeby zobaczyć układ pięter i sal.
         </p>
@@ -333,10 +372,10 @@ export default function Campus3DView(_props: Props) {
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="shrink-0 p-1.5 rounded-full text-zinc-500 hover:bg-black/5 hover:text-zinc-700 dark:hover:bg-white/5 dark:hover:text-zinc-200"
+              className="shrink-0 p-2 rounded-full text-zinc-500 hover:bg-black/5 hover:text-zinc-700 dark:hover:bg-white/5 dark:hover:text-zinc-200"
               aria-label="Wyczyść"
             >
-              <X size={16} strokeWidth={2.25} />
+              <X size={18} strokeWidth={2.25} />
             </button>
           )}
         </div>
@@ -347,7 +386,7 @@ export default function Campus3DView(_props: Props) {
         <button
           type="button"
           onClick={requestGeo}
-          className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/25 bg-white/70 px-3 py-1.5 text-xs font-semibold text-[#1e293b] backdrop-blur-md transition-colors hover:bg-white/95 dark:border-brand-gold/35 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/55"
+          className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/25 bg-white/70 px-3 py-2 text-xs font-semibold text-[#1e293b] backdrop-blur-md transition-colors hover:bg-white/95 dark:border-brand-gold/35 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/55"
         >
           <Crosshair size={14} strokeWidth={2.25} aria-hidden />
           Pokaż dystans do każdej sali
@@ -360,10 +399,58 @@ export default function Campus3DView(_props: Props) {
         <p className="mb-3 text-xs text-amber-600 dark:text-amber-400">{geo.message}</p>
       )}
 
-      {/* Main layout: list (left) + map (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)] gap-4">
-        {/* Left column — lista / search */}
-        <div className="min-w-0 space-y-3 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:pr-1">
+      {/* ── MOBILE-FIRST: mapa na górze, lista/detal pod spodem ───────────
+          DESKTOP (lg+): grid 2-kolumnowy z listą po lewej i mapą po prawej */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)] gap-3 lg:gap-4">
+
+        {/* Mapa — kolejność CSS: desktop=2 (po prawej), mobile=1 (na górze) */}
+        <div className="min-w-0 order-1 lg:order-2">
+          <div
+            className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-[#0a0f2a]"
+            style={{
+              height: mobileMapExpanded
+                ? 'calc(100vh - 220px)'
+                : 'min(54vh, 720px)',
+            }}
+          >
+            <MapLibreCanvas
+              buildings={buildings}
+              selectedBuildingId={selectedBuildingId}
+              hoveredBuildingId={hoveredBuildingId}
+              onSelectBuilding={selectBuilding}
+              onHoverBuilding={setHoveredBuildingId}
+            />
+
+            {/* Toggle "expand" tylko na mobile (lg:hidden) */}
+            <button
+              type="button"
+              onClick={() => setMobileMapExpanded((v) => !v)}
+              className="lg:hidden absolute top-3 left-3 z-10 inline-flex items-center gap-1 rounded-full bg-black/70 text-white backdrop-blur-md px-3 py-2 text-[11px] font-semibold shadow-sm"
+              aria-label={mobileMapExpanded ? 'Zmniejsz mapę' : 'Powiększ mapę'}
+            >
+              <Maximize2 size={14} strokeWidth={2.25} aria-hidden />
+              {mobileMapExpanded ? 'Zwiń mapę' : 'Powiększ'}
+            </button>
+
+            {/* HUD — instrukcja, tylko gdy nic nie wybrane */}
+            {!selectedBuildingId && !buildingsLoading && (
+              <div className="pointer-events-none absolute bottom-3 left-3 right-3 sm:right-auto sm:max-w-xs rounded-xl bg-white/85 px-3 py-2 text-[11px] backdrop-blur-md shadow-sm dark:bg-black/65">
+                <p className="font-semibold text-[#1e293b] dark:text-brand-gold-bright">
+                  Kliknij budynek żeby zobaczyć szczegóły
+                </p>
+                <p className="hidden sm:block mt-0.5 text-zinc-600 dark:text-zinc-400">
+                  Przytrzymaj prawy przycisk + myszka żeby obrócić widok.
+                </p>
+                <p className="sm:hidden mt-0.5 text-zinc-600 dark:text-zinc-400">
+                  Dwa palce: obrót / zoom.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Lista / Detal — kolejność CSS: desktop=1 (po lewej), mobile=2 */}
+        <div className="min-w-0 space-y-3 order-2 lg:order-1 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:pr-1">
           {buildingsError && (
             <BaseCard variant="default" className="p-4 text-sm text-red-600 dark:text-red-400">
               {buildingsError}
@@ -408,6 +495,8 @@ export default function Campus3DView(_props: Props) {
               onToggleExploded={toggleExploded}
               onPickRoom={(roomId) => selectRoom(roomId)}
               onClear={clear}
+              distanceKm={distanceKmTo(selectedBuilding)}
+              footprintMeta={footprintMeta}
             />
           ) : (
             !buildingsLoading &&
@@ -427,36 +516,10 @@ export default function Campus3DView(_props: Props) {
             ))
           )}
         </div>
-
-        {/* Right column — mapa 3D */}
-        <div className="min-w-0">
-          <div
-            className="relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-[#0a0f2a]"
-            style={{ height: 'min(72vh, 720px)' }}
-          >
-            <MapLibreCanvas
-              buildings={buildings}
-              selectedBuildingId={selectedBuildingId}
-              hoveredBuildingId={hoveredBuildingId}
-              onSelectBuilding={selectBuilding}
-              onHoverBuilding={setHoveredBuildingId}
-            />
-            {/* Heads-up display: kierunek "kompasu" przypomnienie */}
-            {!selectedBuildingId && !buildingsLoading && (
-              <div className="pointer-events-none absolute bottom-3 left-3 max-w-xs rounded-xl bg-white/85 px-3 py-2 text-[11px] backdrop-blur-md shadow-sm dark:bg-black/65">
-                <p className="font-semibold text-[#1e293b] dark:text-brand-gold-bright">
-                  Kliknij budynek żeby zobaczyć szczegóły
-                </p>
-                <p className="mt-0.5 text-zinc-600 dark:text-zinc-400">
-                  Przytrzymaj prawy przycisk + myszka żeby obrócić widok.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
-      {/* Exploded view modal (lazy) */}
+      {/* Exploded view modal (lazy) — pełnoekranowy, większe tap targets
+          dla mobile. */}
       <AnimatePresence>
         {exploded && selectedBuilding && (
           <motion.div
@@ -473,22 +536,25 @@ export default function Campus3DView(_props: Props) {
               onClick={() => setExploded(false)}
             />
             <div className="relative z-10 flex h-full flex-col">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 bg-linear-to-b from-black/70 to-transparent">
+              <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6 bg-linear-to-b from-black/70 to-transparent">
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-brand-gold-bright font-bold">
                     Wnętrza · układ schematyczny
                   </p>
-                  <h2 className="text-lg sm:text-2xl font-extrabold text-white truncate">
-                    {selectedBuilding.name}
+                  <h2 className="text-base sm:text-2xl font-extrabold text-white truncate">
+                    {selectedBuilding.short_name
+                      ? `${selectedBuilding.short_name} · ${selectedBuilding.name}`
+                      : selectedBuilding.name}
                   </h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setExploded(false)}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-white"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md px-3 py-2 sm:py-1.5 text-xs sm:text-xs font-semibold text-white min-h-[40px] sm:min-h-0"
+                  aria-label="Zwiń widok wnętrz"
                 >
-                  <X size={14} strokeWidth={2.5} />
-                  Zwiń
+                  <X size={16} strokeWidth={2.5} />
+                  <span className="hidden sm:inline">Zwiń</span>
                 </button>
               </div>
               <div className="relative flex-1">
@@ -537,6 +603,8 @@ type BuildingDetailCardProps = {
   onToggleExploded: () => void
   onPickRoom: (roomId: string) => void
   onClear: () => void
+  distanceKm: number | null
+  footprintMeta: FootprintMetadata | null
 }
 
 function BuildingDetailCard({
@@ -550,6 +618,8 @@ function BuildingDetailCard({
   onToggleExploded,
   onPickRoom,
   onClear,
+  distanceKm,
+  footprintMeta,
 }: BuildingDetailCardProps) {
   const directionsHref = googleMapsDirectionsUrl(
     { lat: building.lat, lng: building.lng },
@@ -569,6 +639,40 @@ function BuildingDetailCard({
       .sort(([a], [b]) => a - b)
       .map(([level, rs]) => ({ level, rooms: rs }))
   }, [rooms])
+
+  // Stats — pokazujemy 2-4 metryki w grid'zie na górze.
+  const stats = useMemo(() => {
+    const items: Array<{ label: string; value: string; icon: typeof Layers }> = []
+    if (footprintMeta?.levels) {
+      items.push({
+        label: 'Pięter',
+        value: `${footprintMeta.levels}`,
+        icon: Layers,
+      })
+    }
+    if (footprintMeta?.heightM) {
+      items.push({
+        label: 'Wysokość',
+        value: `${Math.round(footprintMeta.heightM)} m`,
+        icon: Ruler,
+      })
+    }
+    if (rooms.length > 0) {
+      items.push({
+        label: 'Sale',
+        value: `${rooms.length}`,
+        icon: Building2,
+      })
+    }
+    if (distanceKm !== null) {
+      items.push({
+        label: 'Dystans',
+        value: formatDistance(distanceKm),
+        icon: Crosshair,
+      })
+    }
+    return items
+  }, [footprintMeta, rooms.length, distanceKm])
 
   return (
     <BaseCard variant="default" className="p-0 overflow-hidden">
@@ -592,39 +696,69 @@ function BuildingDetailCard({
               {building.description}
             </p>
           )}
-          <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-zinc-700 dark:text-zinc-300">
-            <MapPin size={14} strokeWidth={2} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
-            {building.address}
+          <p className="mt-2 inline-flex items-start gap-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+            <MapPin size={14} strokeWidth={2} className="shrink-0 mt-0.5 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
+            <span className="wrap-break-word">{building.address}</span>
           </p>
+          {distanceKm !== null && (
+            <p className="mt-1 text-xs font-medium text-[#1e293b] dark:text-brand-gold-bright">
+              {formatDistance(distanceKm)} · ~{walkingMinutes(distanceKm)} min pieszo
+            </p>
+          )}
         </div>
         <button
           type="button"
           onClick={onClear}
-          className="shrink-0 p-1.5 rounded-full text-zinc-500 hover:bg-black/5 hover:text-zinc-700 dark:hover:bg-white/5 dark:hover:text-zinc-200"
+          className="shrink-0 p-2 rounded-full text-zinc-500 hover:bg-black/5 hover:text-zinc-700 dark:hover:bg-white/5 dark:hover:text-zinc-200"
           aria-label="Zamknij podgląd"
         >
-          <X size={16} strokeWidth={2.25} />
+          <X size={18} strokeWidth={2.25} />
         </button>
       </div>
 
-      {/* Akcje */}
+      {/* Statystyki — pięter, wysokość, sale, dystans */}
+      {stats.length > 0 && (
+        <div className="px-4 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          {stats.map((s, i) => {
+            const Icon = s.icon
+            return (
+              <div
+                key={i}
+                className="rounded-xl border border-zinc-200 bg-white/60 px-2.5 py-2 dark:border-white/10 dark:bg-black/30"
+              >
+                <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-zinc-500 dark:text-zinc-400">
+                  <Icon size={10} strokeWidth={2.5} aria-hidden />
+                  {s.label}
+                </div>
+                <p className="mt-0.5 text-sm font-bold text-zinc-900 dark:text-white">
+                  {s.value}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Akcje — większe tap targets dla mobile (py-2.5 zamiast py-2) */}
       <div className="px-4 mt-1 mb-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onToggleExploded}
-          className={`${theme.button.primary} px-3 py-2 text-xs`}
+          className={`${theme.button.primary} px-4 py-2.5 text-xs flex-1 sm:flex-none min-w-0 justify-center`}
         >
-          <Sparkles size={13} strokeWidth={2.25} aria-hidden />
-          {exploded ? 'Zwiń wnętrza' : 'Pokaż wnętrza 3D'}
+          <Sparkles size={14} strokeWidth={2.25} aria-hidden />
+          <span className="truncate">
+            {exploded ? 'Zwiń wnętrza' : 'Pokaż wnętrza 3D'}
+          </span>
         </button>
         <a
           href={directionsHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#1e293b]/35 bg-white px-3 py-2 text-xs font-semibold text-[#1e293b] hover:bg-[#1e293b]/5 dark:border-brand-gold/45 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/60"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#1e293b]/35 bg-white px-4 py-2.5 text-xs font-semibold text-[#1e293b] hover:bg-[#1e293b]/5 dark:border-brand-gold/45 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/60"
         >
-          <ExternalLink size={12} strokeWidth={2.25} aria-hidden />
-          Otwórz w Mapach
+          <ExternalLink size={13} strokeWidth={2.25} aria-hidden />
+          <span className="hidden sm:inline">Otwórz w </span>Mapach
         </a>
       </div>
 

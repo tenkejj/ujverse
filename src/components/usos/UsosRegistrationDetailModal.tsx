@@ -11,6 +11,7 @@ import {
   Bell,
   BellOff,
   BookOpen,
+  Bot,
   Clock,
   Dumbbell,
   ExternalLink,
@@ -173,11 +174,20 @@ export default function UsosRegistrationDetailModal({ registration, subscribed, 
           </div>
 
           {/* Stats */}
-          <div className={`flex items-center gap-4 text-[12px] ${theme.text.muted}`}>
+          <div className={`flex flex-wrap items-center gap-4 text-[12px] ${theme.text.muted}`}>
             <span className="inline-flex items-center gap-1.5">
               <Users size={13} strokeWidth={2.3} />
               <span className="tabular-nums">{registration.subscriber_count}</span> osób ma alarm
             </span>
+            {registration.source_announcement_id && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-[11.5px] font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+                title="Wpis wygenerowany przez AI z oryginalnego ogłoszenia wydziałowego"
+              >
+                <Bot size={12} strokeWidth={2.4} />
+                {registration.source_label ?? 'AI · ogłoszenie wydziału'}
+              </span>
+            )}
           </div>
         </div>
 

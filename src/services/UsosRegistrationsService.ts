@@ -24,7 +24,7 @@ import type {
 } from '../types/usosRegistrations'
 
 const REGISTRATION_SELECT_FIELDS =
-  'id, created_by, title, description, study_program, year, audience_label, opens_at, closes_at, registration_url, info_url, kind, subscriber_count, created_at, updated_at'
+  'id, created_by, title, description, study_program, year, audience_label, opens_at, closes_at, registration_url, info_url, kind, subscriber_count, source_announcement_id, source_label, created_at, updated_at'
 
 class UsosRegistrationsServiceImpl {
   // -------------------------------------------------------------------

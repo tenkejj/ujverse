@@ -388,12 +388,21 @@ Module **Aula** = live chat per study-year cohort. **Independent** from `groups`
 - [`types/usosRegistrations.ts`](src/types/usosRegistrations.ts) — `RegistrationKind` enum (sync z DB CHECK), `REGISTRATION_KIND_META` (label + lucide icon + tint), `computeCountdown` (helper liczący phase + label + compact `Xd Yh`/`Yh Zm`/`Zm`), `pluralPL` (rok/dni).
 - Entry points: header pill `AlarmClock` ikon w [`Header.tsx`](src/components/Header.tsx) (prop `onNavigateToUsos`), mobile rail tile w [`MobileDashboard.tsx`](src/components/mobile/MobileDashboard.tsx). Route `/usos` (alias `/rejestracje`) w [`App.tsx`](src/App.tsx) `parseAppRoute` + `navigateToMainView`.
 
+### AI source tracking (Vercel Cron)
+
+- [20260628100000_usos_registrations_source.sql](supabase/migrations/20260628100000_usos_registrations_source.sql) — `usos_registrations` += `source_announcement_id` (FK na `announcements`, partial UNIQUE) + `source_label`. `announcements` += `usos_extraction_attempted_at` (queue flag) + partial index na NULL.
+- [api/_lib/usosExtraction.ts](api/_lib/usosExtraction.ts) — `extractUsosRegistrationFromAnnouncement(provider, body)` analogiczny do `calendarExtraction.ts`: system prompt z zasadami "kiedy wyciągać", validator `kind` enum + dat + URL, próg `minConfidence` 0.6.
+- [api/extract-usos-registrations.ts](api/extract-usos-registrations.ts) — Vercel cron handler (`BATCH_SIZE=12` per run, sequential żeby nie palić Groq quoty, rate-limit early-exit). Auth: `CRON_SECRET` (Bearer header lub `?token=`). Idempotencja: partial UNIQUE na `source_announcement_id` + zawsze updateuje `usos_extraction_attempted_at` (nawet negatywne).
+- [vercel.json](vercel.json) — cron 2x dziennie (`30 6 * * *` rano po `scrape-wziks 0 6`, `0 18 * * *` wieczorem na świeże ogłoszenia).
+- UI: badge "AI" w `UsosRegistrationCard` (violet pill) + pełna etykieta "AI · ogłoszenie wydziału" w `UsosRegistrationDetailModal` przy stats.
+
 ### Invariants
 
-- **Kind enum sync**: `REGISTRATION_KINDS` w `types/usosRegistrations.ts` MUSI matchować `CHECK (kind in (...))` w migracji.
+- **Kind enum sync**: `REGISTRATION_KINDS` w `types/usosRegistrations.ts` MUSI matchować `CHECK (kind in (...))` w migracji ORAZ `ALLOWED_KINDS` w `usosExtraction.ts`.
 - **subscriber_count**: source of truth = trigger DB. Klient robi optimistic bump w `toggleSubscribe`, ale po requeście backend jest autorytetem.
 - **Countdown phase**: zmienia się czasowo bez interakcji usera — komponenty muszą tickować (`useCountdownTick` 30s/1s, banner 30s polling state + 5min RPC poll).
 - **Dismissed-set**: banner-dismiss jest *session-scoped* (sessionStorage); pełny dismiss z trwałością przez `markDismissed` (RPC `dismissed_at`). Nie używamy localStorage żeby kolejnego dnia user dostał ponowny alarm.
+- **AI extractor idempotencja**: `usos_extraction_attempted_at` ZAWSZE zapisywany po pojedynczym calls (sukces/null/duplicate). Tylko `status === 'error'` lub `'rate_limited'` pozwala retry przy kolejnym cronie.
 
 ---
 

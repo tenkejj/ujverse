@@ -6,6 +6,8 @@
   "crons": [
     { "path": "/api/scrape-uj-events", "schedule": "0 5 * * *" },
     { "path": "/api/scrape-wziks", "schedule": "0 6 * * *" },
+    { "path": "/api/extract-usos-registrations", "schedule": "30 6 * * *" },
+    { "path": "/api/extract-usos-registrations", "schedule": "0 18 * * *" },
     { "path": "/api/generate-briefings", "schedule": "0 6 * * 1" }
   ]
 }

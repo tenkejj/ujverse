@@ -67,7 +67,7 @@
     "levels": 3,
     "height_m": 12,
     "source": "overpass",
-    "match_strategy": "radius",
-    "generated_at": "2026-06-12T20:38:40.368Z"
+    "match_strategy": "osm_id",
+    "generated_at": "2026-06-12T20:55:42.222Z"
   }
 }

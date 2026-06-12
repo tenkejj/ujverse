@@ -144,46 +144,61 @@ export default function ExplodedBuildingView({
     )
   }
 
+  // Mobile detection — używamy do skalowania controls + canvas perf.
+  const isMobile = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(max-width: 640px)').matches
+  }, [])
+
   return (
     <div className="relative h-full w-full">
-      {/* Mode toggle (compact / exploded) */}
+      {/* Mode toggle (compact / exploded) — większe tap targets na mobile */}
       <div className="absolute top-3 left-3 z-10 flex rounded-full overflow-hidden border border-white/15 backdrop-blur-md shadow-md">
         <button
           type="button"
           onClick={() => setMode('exploded')}
-          className={`px-3 py-1.5 text-[11px] font-bold inline-flex items-center gap-1.5 transition-colors ${
+          className={`px-3 py-2 sm:py-1.5 text-[11px] font-bold inline-flex items-center gap-1.5 transition-colors min-h-[40px] sm:min-h-0 ${
             mode === 'exploded'
               ? 'bg-brand-gold-bright text-black'
-              : 'bg-black/65 text-white/80 hover:bg-black/85'
+              : 'bg-black/65 text-white/80 hover:bg-black/85 active:bg-black/95'
           }`}
         >
-          <Layers size={12} strokeWidth={2.5} aria-hidden />
+          <Layers size={14} strokeWidth={2.5} aria-hidden />
           Rozsunięte
         </button>
         <button
           type="button"
           onClick={() => setMode('compact')}
-          className={`px-3 py-1.5 text-[11px] font-bold inline-flex items-center gap-1.5 transition-colors ${
+          className={`px-3 py-2 sm:py-1.5 text-[11px] font-bold inline-flex items-center gap-1.5 transition-colors min-h-[40px] sm:min-h-0 ${
             mode === 'compact'
               ? 'bg-brand-gold-bright text-black'
-              : 'bg-black/65 text-white/80 hover:bg-black/85'
+              : 'bg-black/65 text-white/80 hover:bg-black/85 active:bg-black/95'
           }`}
         >
-          <Users size={12} strokeWidth={2.5} aria-hidden />
+          <Users size={14} strokeWidth={2.5} aria-hidden />
           Zwarte
         </button>
       </div>
 
       {footprintLoading && (
-        <div className="absolute top-3 right-3 z-10 rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur-md">
+        <div className="absolute top-3 right-3 z-10 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white/85 backdrop-blur-md">
           Ładuję footprint…
         </div>
       )}
 
       <Canvas
-        shadows
-        camera={{ position: [40, 35, 50], fov: 45, near: 0.1, far: 500 }}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        shadows={!isMobile}
+        camera={{
+          position: isMobile ? [55, 50, 70] : [40, 35, 50],
+          fov: isMobile ? 52 : 45,
+          near: 0.1,
+          far: 500,
+        }}
+        gl={{
+          antialias: !isMobile,
+          powerPreference: isMobile ? 'low-power' : 'high-performance',
+        }}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
         style={{
           background: theme === 'dark' ? '#070a18' : '#dbe7f3',
         }}
@@ -256,16 +271,23 @@ export default function ExplodedBuildingView({
           makeDefault
           enableDamping
           dampingFactor={0.08}
-          minDistance={10}
-          maxDistance={200}
+          minDistance={isMobile ? 15 : 10}
+          maxDistance={isMobile ? 260 : 200}
           maxPolarAngle={Math.PI / 2.05}
           target={[0, ((floorGroups.length - 1) * spacing) / 2, 0]}
+          touches={{
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN,
+          }}
+          enablePan={!isMobile /* na mobile pan często konfliktuje z scrollem */}
         />
       </Canvas>
 
-      {/* Footer hint */}
-      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-[10px] text-white/70 backdrop-blur-md">
-        Lewy klik + drag — obrót · prawy klik — pan · scroll — zoom
+      {/* Footer hint — różne wskazówki na mobile vs desktop */}
+      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1.5 text-[10px] text-white/70 backdrop-blur-md whitespace-nowrap">
+        {isMobile
+          ? '1 palec — obrót · 2 palce — zoom'
+          : 'Lewy klik + drag — obrót · prawy klik — pan · scroll — zoom'}
       </div>
     </div>
   )

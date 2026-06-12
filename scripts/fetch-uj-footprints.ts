@@ -166,9 +166,11 @@ const UJ_BUILDINGS: UJBuilding[] = [
     id: 'gronostajowa-3a', name: 'WGG',
     lat: 50.027436, lng: 19.903726,
     street: 'Gronostajowa', housenumber: '3a',
-    // WGG nie ma własnego footprintu w OSM (tylko address node +
-    // amenity node "Instytut Botaniki"). Default rectangle dla
-    // wizualizacji.
+    // OSM ma multipolygon relację 3138933 dla budynku WGG (znalezione
+    // przez radius w pierwszym runie, 19.8m od adresu). Pinujemy
+    // explicitly żeby było deterministyczne.
+    osmRelationId: 3138933,
+    // Default rectangle gdyby relacja kiedyś zniknęła z OSM.
     fallbackRectangle: { widthM: 60, depthM: 25 },
     manualLevels: 3, manualHeightM: 12,
   },
@@ -194,9 +196,9 @@ const UJ_BUILDINGS: UJBuilding[] = [
     id: 'ingardena-6', name: 'WFz',
     lat: 50.061626, lng: 19.920077,
     street: 'Ingardena', housenumber: '6',
-    // Nominatim: amenity node 9152279656 "Instytut Psychologii UJ" —
-    // sam budynek nie ma jednoznacznego way; bierzemy z bliższego
-    // namiaru po adresie/promieniu.
+    // Way 231815922 znaleziony przez address query (21.5m od centroidu
+    // amenity node "Instytut Psychologii UJ" 9152279656). Pinujemy.
+    osmWayId: 231815922,
     manualLevels: 4, manualHeightM: 14,
   },
 

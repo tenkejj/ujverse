@@ -16,6 +16,7 @@ import {
   Bell,
   BellOff,
   BookOpen,
+  Bot,
   Clock,
   Dumbbell,
   ExternalLink,
@@ -148,9 +149,20 @@ function UsosRegistrationCardImpl({ registration, subscribed, onOpenDetail, onTo
       </div>
 
       <div className={`relative z-10 mt-auto flex items-center justify-between gap-2 pt-2 text-[11.5px] ${theme.text.muted}`}>
-        <span className="inline-flex items-center gap-1" title="Liczba subskrybentów alarmu">
-          <Users size={12} strokeWidth={2.2} />
-          <span className="tabular-nums">{registration.subscriber_count}</span>
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center gap-1" title="Liczba subskrybentów alarmu">
+            <Users size={12} strokeWidth={2.2} />
+            <span className="tabular-nums">{registration.subscriber_count}</span>
+          </span>
+          {registration.source_announcement_id && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300"
+              title={registration.source_label ?? 'Wyciągnięte przez AI z ogłoszenia wydziałowego'}
+            >
+              <Bot size={9} strokeWidth={2.6} />
+              AI
+            </span>
+          )}
         </span>
 
         <div className="flex items-center gap-1.5">

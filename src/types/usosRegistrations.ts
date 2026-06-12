@@ -57,6 +57,11 @@ export type UsosRegistration = {
   info_url: string | null
   kind: RegistrationKind
   subscriber_count: number
+  /** FK do `announcements.id` jeśli wpis powstał automatycznie z ogłoszenia
+   *  wydziałowego (AI extractor). NULL = community-driven lub seed. */
+  source_announcement_id?: string | null
+  /** Krótka etykieta źródła (np. "AI · ogłoszenie wydziału"). Pomaga w UI badge. */
+  source_label?: string | null
   created_at: string
   updated_at: string
 }

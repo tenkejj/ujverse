@@ -42,7 +42,18 @@ export type FootprintProps = {
   levels: number | null
   height_m: number | null
   source: string
+  /**
+   * Strategia z którą scraper znalazł ten footprint. Wpływa na confidence:
+   *   - `osm_id` — manualnie zweryfikowane OSM way/relation (najwyższe)
+   *   - `address` — match po `addr:street`+`addr:housenumber`
+   *   - `radius` — heurystyka po najbliższym budynku w promieniu
+   *   - `synthetic` — wygenerowany prostokąt (brak danych w OSM)
+   */
+  match_strategy?: 'osm_id' | 'address' | 'radius' | 'synthetic'
   generated_at: string
+  /** Dodawane runtime przez MapLibreCanvas (z DB buildings). */
+  short_name?: string | null
+  full_name?: string
 }
 
 export type FootprintFeature = {
@@ -106,6 +117,42 @@ export async function loadFootprintCollection(
   const results = await Promise.all(buildings.map((b) => loadFootprint(b.id)))
   const features = results.filter((f): f is FootprintFeature => f !== null)
   return { type: 'FeatureCollection', features }
+}
+
+export type FootprintMetadata = {
+  levels: number | null
+  heightM: number | null
+  matchStrategy: FootprintProps['match_strategy']
+  /** Powierzchnia footprintu w m² (Polygon area, niezbyt precyzyjne). */
+  areaM2: number | null
+}
+
+/**
+ * Pobiera metadata footprintu (bez geometrii) — używane przez UI
+ * do pokazania statystyk budynku w detail card. Cache wspólny z
+ * `loadFootprint`, więc nie ma duplikatu requestu.
+ */
+export async function loadFootprintMetadata(
+  buildingId: string,
+  centerLat: number,
+  centerLng: number,
+): Promise<FootprintMetadata | null> {
+  const fp = await loadFootprint(buildingId)
+  if (!fp) return null
+  const project = localProjection(centerLat, centerLng)
+  const outerMeters = ringToMeters(fp.geometry.coordinates[0], project)
+  let area = 0
+  for (let i = 0; i < outerMeters.length; i++) {
+    const a = outerMeters[i]
+    const b = outerMeters[(i + 1) % outerMeters.length]
+    area += a.x * b.z - b.x * a.z
+  }
+  return {
+    levels: fp.properties.levels,
+    heightM: fp.properties.height_m,
+    matchStrategy: fp.properties.match_strategy,
+    areaM2: Math.abs(area / 2) || null,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
