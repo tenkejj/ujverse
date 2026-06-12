@@ -88,9 +88,10 @@ create index if not exists usos_registrations_opens_idx
   on public.usos_registrations (opens_at desc);
 create index if not exists usos_registrations_program_year_idx
   on public.usos_registrations (study_program, year);
-create index if not exists usos_registrations_upcoming_idx
-  on public.usos_registrations (opens_at)
-  where opens_at > now();
+-- NB: pierwotnie tutaj był partial index `WHERE opens_at > now()`, ale
+-- Postgres wymaga IMMUTABLE w predykatach index'a — `now()` jest VOLATILE.
+-- Pełen index po `opens_at` (powyżej) wystarczy do queries "upcoming",
+-- planner i tak skipuje większość wpisów po seek'u w btree.
 
 alter table public.usos_registrations enable row level security;
 
