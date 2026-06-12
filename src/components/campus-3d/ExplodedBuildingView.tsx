@@ -226,7 +226,10 @@ export default function ExplodedBuildingView({
       )}
 
       <Canvas
-        shadows={!isMobile}
+        // Shadows wyłączone — przy 100+ salach na piętro shadow map render
+        // robi wąskie gardło. Wizualnie i tak nic nie tracimy (boxy są flat
+        // shaded, źródło światła z góry, brak dramatic dropshadows).
+        shadows={false}
         camera={{
           position: isMobile ? [55, 50, 70] : [40, 35, 50],
           fov: isMobile ? 52 : 45,

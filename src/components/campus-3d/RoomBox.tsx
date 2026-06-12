@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Edges, Html } from '@react-three/drei'
+import { Edges, Html, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Room } from '../../services/SaleFinderService'
 import type { RoomBoxLayout } from '../../services/Campus3DService'
@@ -48,16 +48,29 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
 
   const palette = PALETTE[layout.kind] ?? PALETTE.standard
 
+  // useFrame budget: każda sala odpala lerpy 60×/s. Przy 100+ sal/piętro
+  // to mnoży się na 6000+ ops/s → CPU bottleneck → lag.
+  // Early-exit: jeśli sala NIE jest hovered/selected i już settle'owała
+  // do scale=1 + emissive=0, kompletnie pomijamy frame'a.
   useFrame((_, delta) => {
     if (!meshRef.current || !matRef.current) return
     const target = isSelected ? 1.15 : hovered ? 1.07 : 1
-    const speed = Math.min(1, delta * 8)
     const cur = meshRef.current.scale.x
+    const eCur = matRef.current.emissiveIntensity
+    const eTarget = isSelected ? 1.0 : hovered ? 0.3 : 0
+    // Idle + settled → skip cały frame (zero pracy na GPU/CPU).
+    if (
+      !isSelected &&
+      !hovered &&
+      Math.abs(cur - 1) < 0.005 &&
+      eCur < 0.005
+    ) {
+      return
+    }
+    const speed = Math.min(1, delta * 8)
     const next = cur + (target - cur) * speed
     meshRef.current.scale.setScalar(next)
 
-    const eTarget = isSelected ? 1.0 : hovered ? 0.3 : 0
-    const eCur = matRef.current.emissiveIntensity
     matRef.current.emissiveIntensity = eCur + (eTarget - eCur) * speed
 
     const colorHex = isSelected ? palette.selected : hovered ? palette.hover : palette.idle
@@ -82,8 +95,6 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
           setHovered(false)
           document.body.style.cursor = ''
         }}
-        castShadow
-        receiveShadow
       >
         <boxGeometry args={[layout.width, layout.height, layout.depth]} />
         <meshStandardMaterial
@@ -106,51 +117,47 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
         />
       </mesh>
 
-      {/* HTML label — kod sali. `distanceFactor` wyższy = label większy
-          (formula: scale = distanceFactor / distance). Wcześniej `20`
-          dawało mikroskopijne labelki przy `<Bounds fit>` które ustawia
-          kamerę 60-120m od budynku. Bump do 60 + większy font. */}
-      <Html
-        position={[0, layout.height / 2 + 0.25, 0]}
-        center
-        distanceFactor={60}
-        zIndexRange={[40, 0]}
-        style={{ pointerEvents: 'none' }}
-      >
-        <div
-          className={`select-none rounded-md border px-2 py-1 text-center transition-all ${
-            isSelected
-              ? 'border-brand-gold-bright bg-black/95 text-brand-gold-bright shadow-lg'
-              : hovered
-              ? 'border-brand-gold/75 bg-black/90 text-white'
-              : layout.kind === 'aula'
-              ? 'border-amber-400/80 bg-black/85 text-amber-100'
-              : 'border-white/25 bg-black/80 text-white'
-          }`}
-          style={{
-            fontSize: isSelected ? 16 : 14,
-            fontWeight: 800,
-            letterSpacing: '0.04em',
-            whiteSpace: 'nowrap',
-            backdropFilter: 'blur(4px)',
-          }}
+      {/* Labels: drei <Text> jako default (taniutkie, 3D mesh), <Html>
+          tylko dla hover/selected (drogi DOM, ale daje fancy badge z
+          dodatkowym info — capacity, display_name).
+          Przy 100+ sal default <Html> per box robił 6000+ DOM measurement
+          calls/s → killer lag. <Text> używa MSDF font, zero DOM. */}
+      {(isSelected || hovered) ? (
+        <Html
+          position={[0, layout.height / 2 + 0.25, 0]}
+          center
+          distanceFactor={60}
+          zIndexRange={[40, 0]}
+          style={{ pointerEvents: 'none' }}
         >
-          {room.code}
-          {layout.kind === 'aula' && room.capacity && (
-            <span
-              style={{
-                marginLeft: 5,
-                fontSize: 12,
-                fontWeight: 600,
-                opacity: 0.85,
-              }}
-            >
-              · {room.capacity} miejsc
-            </span>
-          )}
-          {(isSelected || hovered) &&
-            room.display_name &&
-            room.display_name !== `Sala ${room.code}` && (
+          <div
+            className={`select-none rounded-md border px-2 py-1 text-center ${
+              isSelected
+                ? 'border-brand-gold-bright bg-black/95 text-brand-gold-bright shadow-lg'
+                : 'border-brand-gold/75 bg-black/90 text-white'
+            }`}
+            style={{
+              fontSize: isSelected ? 16 : 14,
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              whiteSpace: 'nowrap',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            {room.code}
+            {room.capacity && (
+              <span
+                style={{
+                  marginLeft: 5,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  opacity: 0.85,
+                }}
+              >
+                · {room.capacity} miejsc
+              </span>
+            )}
+            {room.display_name && room.display_name !== `Sala ${room.code}` && (
               <div
                 style={{
                   fontSize: 12,
@@ -164,8 +171,23 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
                 {room.display_name}
               </div>
             )}
-        </div>
-      </Html>
+          </div>
+        </Html>
+      ) : (
+        <Text
+          position={[0, layout.height / 2 + 0.35, 0]}
+          fontSize={layout.kind === 'aula' ? 0.95 : 0.7}
+          color={layout.kind === 'aula' ? '#fef3c7' : '#fde68a'}
+          outlineColor="#09090b"
+          outlineWidth={0.05}
+          outlineOpacity={0.85}
+          anchorX="center"
+          anchorY="bottom"
+          maxWidth={layout.width * 1.5}
+        >
+          {room.code}
+        </Text>
+      )}
     </group>
   )
 }

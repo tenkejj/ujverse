@@ -212,14 +212,14 @@ export default function BuildingDirectoryView({
             </p>
           </div>
 
-          {/* Quick-actions row — close button na końcu, w tym samym flex
-              container'ze co Dojazd/3D, więc nie nachodzi. */}
+          {/* Quick-actions — Dojazd (primary), Widok 3D (secondary, bardziej
+              widoczny niż wcześniej), close button (icon-only). */}
           <div className="flex items-center gap-2 shrink-0">
             <a
               href={directionsHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] hover:bg-[#1e293b]/90 px-3 py-2 text-[11px] font-bold text-white transition-colors shadow-sm dark:bg-brand-gold-bright dark:text-zinc-900 dark:hover:bg-brand-gold"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] hover:bg-[#1e293b]/90 px-3.5 py-2 text-[11px] font-bold text-white transition-colors shadow-sm dark:bg-brand-gold-bright dark:text-zinc-900 dark:hover:bg-brand-gold"
             >
               <ExternalLink size={12} strokeWidth={2.5} aria-hidden />
               Dojazd
@@ -227,21 +227,23 @@ export default function BuildingDirectoryView({
             <button
               type="button"
               onClick={() => setViewMode('3d')}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#1e293b]/40 bg-white/70 hover:bg-white px-3 py-2 text-[11px] font-bold text-[#1e293b] dark:border-brand-gold/40 dark:bg-zinc-900/70 dark:text-brand-gold-bright dark:hover:bg-zinc-800"
-              title="Schemat 3D (opcjonalny widok)"
+              className="group inline-flex items-center gap-1.5 rounded-full border-2 border-[#1e293b]/30 bg-white/85 hover:border-[#1e293b]/60 hover:bg-white px-3.5 py-1.5 text-[11px] font-bold text-[#1e293b] transition-colors dark:border-brand-gold/45 dark:bg-zinc-900/70 dark:text-brand-gold-bright dark:hover:border-brand-gold dark:hover:bg-zinc-800"
+              title="Pokaż schemat 3D budynku"
             >
-              <Box size={12} strokeWidth={2.5} aria-hidden />
-              <span className="hidden sm:inline">Schemat </span>3D
+              <Box size={13} strokeWidth={2.5} aria-hidden />
+              Widok 3D
+              <span className="hidden sm:inline rounded-full bg-[#1e293b]/10 px-1.5 py-px text-[9px] font-bold tracking-wider dark:bg-brand-gold/15">
+                PODGLĄD
+              </span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white/80 hover:bg-white px-3 py-2 text-[11px] font-bold text-zinc-700 dark:border-white/15 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="ml-1 inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white/80 hover:bg-white p-2 text-zinc-700 transition-colors dark:border-white/15 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
               aria-label="Zamknij katalog budynku"
               title="Zamknij (Esc)"
             >
-              <X size={12} strokeWidth={2.5} aria-hidden />
-              <span className="hidden sm:inline">Zamknij</span>
+              <X size={14} strokeWidth={2.5} aria-hidden />
             </button>
           </div>
         </div>
@@ -318,8 +320,27 @@ export default function BuildingDirectoryView({
         )}
       </div>
 
-      {/* ── Body: room grid ─────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* ── Body: room grid + floating 3D button ───────────────────── */}
+      <div className="relative flex-1 min-h-0 overflow-y-auto">
+        {/* Floating FAB — "Widok 3D" zawsze widoczny w prawym dolnym rogu,
+            niezależnie od scroll'a. Ekspozycja opcji bez chowania jej
+            w bannerze. Hidden gdy brak sal (wtedy 3D nie ma sensu). */}
+        {!roomsLoading && rooms.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setViewMode('3d')}
+            className="fixed sm:absolute bottom-12 right-4 sm:bottom-6 sm:right-6 z-30 inline-flex items-center gap-2 rounded-full bg-[#1e293b] hover:bg-[#1e293b]/90 px-4 py-3 text-xs font-bold text-white shadow-xl shadow-black/40 ring-2 ring-white/20 transition-all hover:scale-[1.03] active:scale-95 dark:bg-brand-gold-bright dark:text-zinc-900 dark:hover:bg-brand-gold dark:ring-brand-gold/30"
+            aria-label="Pokaż schemat 3D budynku"
+            title="Schemat 3D — wizualizacja pięter i sal"
+          >
+            <Box size={16} strokeWidth={2.5} aria-hidden />
+            <span>Schemat 3D</span>
+            <span className="rounded-full bg-white/15 px-1.5 py-px text-[9px] font-bold tracking-wider dark:bg-zinc-900/30">
+              PODGLĄD
+            </span>
+          </button>
+        )}
+
         {roomsLoading && rooms.length === 0 && (
           <DirectoryLoader text="Ładuję sale…" />
         )}
