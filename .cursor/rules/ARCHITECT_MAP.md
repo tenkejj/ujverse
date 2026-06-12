@@ -413,6 +413,7 @@ Zostawione na wypadek gdyby coś rejestracyjnego pojawiło się w komunikatach
 ISI/WZiKS (rzadkie ale możliwe).
 
 - [20260628100000_usos_registrations_source.sql](supabase/migrations/20260628100000_usos_registrations_source.sql) — `usos_registrations` += `source_announcement_id` (FK na `announcements`, partial UNIQUE) + `source_label`. `announcements` += `usos_extraction_attempted_at` (queue flag) + partial index na NULL.
+- [20260629110000_usos_unique_full_index.sql](supabase/migrations/20260629110000_usos_unique_full_index.sql) — **FIX**: rebuild `usos_registrations_source_tura_uidx` i `usos_registrations_source_announcement_uidx` jako **full** UNIQUE (bez `WHERE col IS NOT NULL`). Partial index nie matchował `ON CONFLICT (col)` bez WHERE w insercie → scraper i AI extractor wybuchały. PG i tak traktuje wiele NULL jako różne w UNIQUE, więc seed/community wpisy z NULL-em dalej działają. Recovery na remote: [scripts/fix-usos-unique-constraints.sql](scripts/fix-usos-unique-constraints.sql) (manual run w Supabase SQL Editor).
 - [api/_lib/usosExtraction.ts](api/_lib/usosExtraction.ts) — `extractUsosRegistrationFromAnnouncement(provider, body)` analogiczny do `calendarExtraction.ts`: system prompt z zasadami "kiedy wyciągać", validator `kind` enum + dat + URL, próg `minConfidence` 0.6.
 - [api/extract-usos-registrations.ts](api/extract-usos-registrations.ts) — Vercel cron handler (`BATCH_SIZE=12` per run, sequential żeby nie palić Groq quoty, rate-limit early-exit). Auth: `CRON_SECRET`. Idempotencja: partial UNIQUE na `source_announcement_id` + zawsze updateuje `usos_extraction_attempted_at`.
 - UI badges:
@@ -441,16 +442,23 @@ Community-driven katalog miejsc do nauki: biblioteki UJ (BJ, czytelnie wydziało
 - RPC: `get_study_spots_full(p_user_id)` — jeden strzał z all spots + my_rating + my_active_checkin (no N+1).
 - Realtime publication na `study_spots` i `study_spot_checkins`.
 - Seed: 20 znanych miejsc Krakowa (BJ + czytelnie + Massolit + Cheder + Hevre + Karma + Cytat + Auditorium Maximum + dziedziniec Collegium Maius + Planty + Drukarnia Podgórze + Tea Time + Wisła Studio + Le Scandale + House of Beer + ...).
+- [20260629100100_study_spots_more_seed.sql](supabase/migrations/20260629100100_study_spots_more_seed.sql) — +30 dodatkowych rzetelnych lokalizacji (UJ libraries, biblioteki publiczne, kawiarnie, coworking, parki/dziedzińce, sale nauki w akademikach). `INSERT ... WHERE NOT EXISTS` (idempotentne).
+- [20260630100000_study_spots_drop2.sql](supabase/migrations/20260630100000_study_spots_drop2.sql) — **Drop 2**: bucket `study-spots-photos` (public read, owner-path write, 8MB, image/*), RLS policies, RPC `get_active_checkins_with_profiles(p_spot_id)` joinuje `study_spot_checkins` + `profiles` (no N+1, omija RLS przez `security definer`).
 
 ### Frontend
 
 - [types/studySpots.ts](src/types/studySpots.ts) — `STUDY_SPOT_KINDS` (library_uj/library_other/cafe/coworking/courtyard/akademik/other), `STUDY_SPOT_MOODS` (focus/casual/group), `STUDY_SPOT_KIND_META` (icon + label + tint), helpery `formatTimeRemaining`, `timeRemainingMs`.
 - [services/StudySpotsService.ts](src/services/StudySpotsService.ts) — `getAllWithMyState`, `checkIn` (auto-checkout poprzedniego), `checkoutActive`, `upsertRating`, `getRatingsForSpot`, `create`.
 - [hooks/useStudySpots.ts](src/hooks/useStudySpots.ts) — RPC fetch + Realtime subscription na `study_spot_checkins`/`study_spot_ratings` (debounce 500-800ms → refetch). Optymistyczny `toggleCheckIn` z rollback. Filtering po stronie klienta (kind/freeOnly/withPeopleOnly/search/sort).
-- [components/study-spots/MiejscaNaukiView.tsx](src/components/study-spots/MiejscaNaukiView.tsx) — main view, design wyrównany z `UsosRegistrationsView` (EVENTS_HUB + FILTER_PILL + HorizontalPillScroller). Sekcje: toolbar pills (Live teraz / Darmowe) + aktywny check-in banner + top live scroller + typy pills + grid kart.
+- [components/study-spots/MiejscaNaukiView.tsx](src/components/study-spots/MiejscaNaukiView.tsx) — main view, 2-col EventsView layout (main + sticky side rail). Hero spotlight + sekcje per kind. Toggle Lista/Mapa (Drop 2). Lazy import `MiejscaMap` (Leaflet bundle ~140kB) tylko gdy user przełączy na mapę.
+- [components/study-spots/MiejscaMap.tsx](src/components/study-spots/MiejscaMap.tsx) — **Drop 2** interactive map (React-Leaflet). Custom markers kolorowane per `kind` + pulse ring dla spotów z `active_checkins_count > 0`. Popup z mini-detalami i CTA otwierającym `StudySpotDetailModal`. Center default = Rynek Główny, zoom 13.
 - [components/study-spots/StudySpotCard.tsx](src/components/study-spots/StudySpotCard.tsx) — karta z kind pill + nazwa + adres + stats (Wi-Fi/Cisza/Gniazdka) + rating + check-in CTA (toggle).
-- [components/study-spots/StudySpotDetailModal.tsx](src/components/study-spots/StudySpotDetailModal.tsx) — modal z opisem + tagami + sekcją check-in (z mood picker) + rating form (gwiazdki + komentarz) + linki Google Maps/strona.
+- [components/study-spots/StudySpotDetailModal.tsx](src/components/study-spots/StudySpotDetailModal.tsx) — modal z opisem + tagami + sekcją check-in (z mood picker) + rating form (gwiazdki + komentarz) + linki Google Maps/strona. **Drop 2**: osadza `StudySpotPhotos` (galeria + uploader) + `ActiveCheckinsList` (live presence z avatarami).
 - [components/study-spots/StudySpotFormModal.tsx](src/components/study-spots/StudySpotFormModal.tsx) — community contribution form (lat/lng manual z prompt'em "Google Maps → prawym przyciskiem → 'Co tu jest?'").
+- [components/study-spots/StudySpotPhotos.tsx](src/components/study-spots/StudySpotPhotos.tsx) — **Drop 2** galeria + uploader (drag&drop, walidacja MIME/8MB/limit 8 zdjęć), lightbox modal, owner-only delete. Korzysta z `studySpotUpload.ts`.
+- [components/study-spots/ActiveCheckinsList.tsx](src/components/study-spots/ActiveCheckinsList.tsx) — **Drop 2** live lista checkedin userów (avatar + nazwa + mood emoji + "X min temu"). RPC `get_active_checkins_with_profiles` + auto-refetch co 30s.
+- [components/study-spots/MiejscaHero.tsx](src/components/study-spots/MiejscaHero.tsx), [MiejscaSideRail.tsx](src/components/study-spots/MiejscaSideRail.tsx) — hero spotlight + sticky side rail (live status, stats, kind filters).
+- [lib/studySpotUpload.ts](src/lib/studySpotUpload.ts) — **Drop 2** helper photo upload/remove (`crypto.randomUUID()` paths, walidacja po stronie klienta, cleanup orphans przy update error).
 
 ### Entry points
 
@@ -464,6 +472,7 @@ Community-driven katalog miejsc do nauki: biblioteki UJ (BJ, czytelnie wydziało
 - **Rating recalc atomic**: triggery `recalc_study_spot_rating` ALL po insert/update/delete, FE może liczyć na świeży `rating_avg`/`rating_count` po commit.
 - **Kind enum sync**: `STUDY_SPOT_KINDS` w TS MUSI matchować `CHECK (kind in (...))` w migracji.
 - **Realtime presence**: hook subskrybuje `study_spot_checkins` channel + debounce 500ms → refetch (cheap RPC). Optimistic toggle z 'pending' placeholder dla checkin_id przed refetch'em.
+- **Photo upload paths**: zawsze `${userId}/${spotId}/${uuid}.${ext}` — pierwszy segment = `auth.uid()` (storage RLS wymaga). Service `uploadPhoto` najpierw uploaduje, potem appenduje URL do `photo_urls[]`; przy błędzie UPDATE wykonuje `removePhoto` cleanup (orphan-free).
 
 ---
 
