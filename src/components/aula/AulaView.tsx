@@ -20,6 +20,7 @@ import { useAulaPresence } from '../../hooks/useAulaPresence'
 import { useCohortAttachments } from '../../hooks/useCohortAttachments'
 import { useCohortPolls } from '../../hooks/useCohortPolls'
 import { ChannelNotePanel, ChannelNoteSheet } from './ChannelNotePanel'
+import { ChannelTasksPanel, ChannelTasksSheet } from './ChannelTasksPanel'
 import {
   useCohortChannels,
   GENERAL_SLUG,
@@ -295,6 +296,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   const [membersSheetOpen, setMembersSheetOpen] = useState(false)
   const [channelsSheetOpen, setChannelsSheetOpen] = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
+  const [tasksOpen, setTasksOpen] = useState(false)
   const [recentFilesOpen, setRecentFilesOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [createChannelOpen, setCreateChannelOpen] = useState(false)
@@ -879,7 +881,15 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           }}
           typingUsers={typingUsers}
           notesOpen={notesOpen}
-          onToggleNotes={() => setNotesOpen((v) => !v)}
+          onToggleNotes={() => {
+            setNotesOpen((v) => !v)
+            if (!notesOpen) setTasksOpen(false)
+          }}
+          tasksOpen={tasksOpen}
+          onToggleTasks={() => {
+            setTasksOpen((v) => !v)
+            if (!tasksOpen) setNotesOpen(false)
+          }}
         />
 
         <PinnedMessagesStrip pinned={pinned} onJump={jumpToMessage} />
@@ -993,7 +1003,8 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
         />
       </section>
 
-      {/* Desktop right panel — wspólne notatki per sala (toggle z ChannelHeader) */}
+      {/* Desktop right panel — wspólne notatki per sala (toggle z ChannelHeader,
+          mutex z tasksOpen) */}
       {notesOpen && cohortId && (
         <ChannelNotePanel
           cohortId={cohortId}
@@ -1002,6 +1013,18 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           currentUserId={currentUserId}
           userNames={userNames}
           onClose={() => setNotesOpen(false)}
+        />
+      )}
+
+      {/* Desktop right panel — zadania / deadliney per sala (mutex z notesOpen) */}
+      {tasksOpen && cohortId && (
+        <ChannelTasksPanel
+          cohortId={cohortId}
+          channelId={activeChannelId}
+          channelName={activeChannel?.name ?? 'Sala główna'}
+          currentUserId={currentUserId}
+          userNames={userNames}
+          onClose={() => setTasksOpen(false)}
         />
       )}
 
@@ -1015,6 +1038,17 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             currentUserId={currentUserId}
             userNames={userNames}
             onClose={() => setNotesOpen(false)}
+          />
+        )}
+        {tasksOpen && cohortId && (
+          <ChannelTasksSheet
+            key="tasks-sheet"
+            cohortId={cohortId}
+            channelId={activeChannelId}
+            channelName={activeChannel?.name ?? 'Sala główna'}
+            currentUserId={currentUserId}
+            userNames={userNames}
+            onClose={() => setTasksOpen(false)}
           />
         )}
         {membersSheetOpen && (

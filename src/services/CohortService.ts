@@ -13,11 +13,14 @@ import type {
   CohortChannel,
   CohortChannelMute,
   CohortChannelNote,
+  CohortChannelTask,
   CohortMessage,
   CohortMessageAttachment,
   CohortMessagePoll,
   CohortMessageReaction,
   CohortPollVote,
+  CohortTaskCompletion,
+  TaskPriority,
 } from '../types/database'
 import type { Profile } from '../types'
 import { AULA_BUCKET } from '../lib/aulaUpload'
@@ -1014,6 +1017,160 @@ class CohortServiceImpl {
             handlers.onInsert?.(payload.new as CohortChannelNote)
           } else if (payload.eventType === 'UPDATE') {
             handlers.onUpdate?.(payload.new as CohortChannelNote)
+          }
+        },
+      )
+      .subscribe((status) => onStatus?.(status))
+    return channel
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Tasks (zadania / deadlines per sala)
+  // ────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Lista zadań dla (cohort, channel). `channelId === null` = Sala główna.
+   * Sortowanie ASC po `due_at` (NULLS LAST) zachowuje hook (po pobraniu) —
+   * tutaj zostawiamy DB-default `created_at` żeby zachować chronologię tworzenia.
+   */
+  async listTasksForChannel(
+    cohortId: string,
+    channelId: number | null,
+  ): Promise<{ data: CohortChannelTask[]; error: PostgrestError | null }> {
+    let query = supabase
+      .from('cohort_channel_tasks')
+      .select('id, cohort_id, channel_id, created_by, title, description, due_at, priority, completed_at, completed_by, created_at')
+      .eq('cohort_id', cohortId)
+      .order('created_at', { ascending: false })
+      .limit(500)
+
+    query = channelId == null ? query.is('channel_id', null) : query.eq('channel_id', channelId)
+
+    const { data, error } = await query
+    return { data: (data ?? []) as CohortChannelTask[], error }
+  }
+
+  /** Wszystkie completions dla podanej listy taskId (batch fetch). */
+  async getCompletionsForTasks(
+    taskIds: number[],
+  ): Promise<{ data: CohortTaskCompletion[]; error: PostgrestError | null }> {
+    if (taskIds.length === 0) return { data: [], error: null }
+    const { data, error } = await supabase
+      .from('cohort_task_completions')
+      .select('task_id, user_id, cohort_id, completed_at')
+      .in('task_id', taskIds)
+    return { data: (data ?? []) as CohortTaskCompletion[], error }
+  }
+
+  async createTask(params: {
+    cohortId: string
+    channelId: number | null
+    createdBy: string
+    title: string
+    description: string | null
+    dueAt: string | null
+    priority: TaskPriority
+  }): Promise<{ data: CohortChannelTask | null; error: PostgrestError | null }> {
+    const { data, error } = await supabase
+      .from('cohort_channel_tasks')
+      .insert({
+        cohort_id: params.cohortId,
+        channel_id: params.channelId,
+        created_by: params.createdBy,
+        title: params.title,
+        description: params.description,
+        due_at: params.dueAt,
+        priority: params.priority,
+      })
+      .select('id, cohort_id, channel_id, created_by, title, description, due_at, priority, completed_at, completed_by, created_at')
+      .single()
+    return { data, error }
+  }
+
+  async deleteTask(taskId: number): Promise<{ error: PostgrestError | null }> {
+    const { error } = await supabase
+      .from('cohort_channel_tasks')
+      .delete()
+      .eq('id', taskId)
+    return { error }
+  }
+
+  /**
+   * Toggle "ja zrobiłem" — atomowy DELETE-or-INSERT w transakcji RPC.
+   * Zwraca finalny state (`true` = completed po wywołaniu).
+   */
+  async toggleMyTaskCompletion(
+    taskId: number,
+  ): Promise<{ data: boolean | null; error: PostgrestError | null }> {
+    const { data, error } = await supabase.rpc('toggle_my_task_completion', {
+      p_task_id: taskId,
+    })
+    return { data: (data as boolean | null) ?? null, error }
+  }
+
+  /**
+   * Toggle globalnego "deal done" — atomowy UPDATE `completed_at`.
+   * Zwraca nowy `completed_at` (`null` gdy odznaczono).
+   */
+  async toggleGlobalTaskDone(
+    taskId: number,
+  ): Promise<{ data: string | null; error: PostgrestError | null }> {
+    const { data, error } = await supabase.rpc('toggle_global_task_done', {
+      p_task_id: taskId,
+    })
+    return { data: (data as string | null) ?? null, error }
+  }
+
+  /**
+   * Realtime na tasks + completions per cohort. Filter po `cohort_id`;
+   * konsument (`useChannelTasks`) ignoruje events spoza aktywnego channelu
+   * (UPDATE może zmienić channel_id w przyszłości, INSERT przychodzi też
+   * z innych sal — hook filtruje sam).
+   */
+  subscribeToTasks(
+    cohortId: string,
+    handlers: {
+      onTaskInsert?: (row: CohortChannelTask) => void
+      onTaskUpdate?: (row: CohortChannelTask) => void
+      onTaskDelete?: (row: CohortChannelTask) => void
+      onCompletionInsert?: (row: CohortTaskCompletion) => void
+      onCompletionDelete?: (row: CohortTaskCompletion) => void
+    },
+    onStatus?: (status: string) => void,
+  ): RealtimeChannel {
+    const channel = supabase
+      .channel(`aula-tasks-${cohortId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cohort_channel_tasks',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            handlers.onTaskInsert?.(payload.new as CohortChannelTask)
+          } else if (payload.eventType === 'UPDATE') {
+            handlers.onTaskUpdate?.(payload.new as CohortChannelTask)
+          } else if (payload.eventType === 'DELETE') {
+            handlers.onTaskDelete?.(payload.old as CohortChannelTask)
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cohort_task_completions',
+          filter: `cohort_id=eq.${cohortId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            handlers.onCompletionInsert?.(payload.new as CohortTaskCompletion)
+          } else if (payload.eventType === 'DELETE') {
+            handlers.onCompletionDelete?.(payload.old as CohortTaskCompletion)
           }
         },
       )

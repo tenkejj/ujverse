@@ -394,6 +394,67 @@ export type Database = {
           created_at?: string
         }
       }
+      cohort_channel_tasks: {
+        Row: {
+          id: number
+          cohort_id: string
+          channel_id: number | null
+          created_by: string
+          title: string
+          description: string | null
+          due_at: string | null
+          priority: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          cohort_id: string
+          channel_id?: number | null
+          created_by: string
+          title: string
+          description?: string | null
+          due_at?: string | null
+          priority?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          cohort_id?: string
+          channel_id?: number | null
+          created_by?: string
+          title?: string
+          description?: string | null
+          due_at?: string | null
+          priority?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+        }
+      }
+      cohort_task_completions: {
+        Row: {
+          task_id: number
+          user_id: string
+          cohort_id: string
+          completed_at: string
+        }
+        Insert: {
+          task_id: number
+          user_id: string
+          cohort_id?: string
+          completed_at?: string
+        }
+        Update: {
+          task_id?: number
+          user_id?: string
+          cohort_id?: string
+          completed_at?: string
+        }
+      }
       cohort_channel_notes: {
         Row: {
           id: number
@@ -503,6 +564,18 @@ export type Database = {
           last_edited_by: string | null
           last_edited_at: string
         }
+      }
+      toggle_my_task_completion: {
+        Args: {
+          p_task_id: number
+        }
+        Returns: boolean
+      }
+      toggle_global_task_done: {
+        Args: {
+          p_task_id: number
+        }
+        Returns: string | null
       }
     }
   }
@@ -632,4 +705,45 @@ export type ChannelNoteUpdateResult = {
   content: string
   last_edited_by: string | null
   last_edited_at: string
+}
+
+/**
+ * Priority zadania w `cohort_channel_tasks`. CHECK constraint w DB
+ * blokuje wartości spoza enuma; UI mapuje na display label + color
+ * przez `TASK_PRIORITY_META` w
+ * [src/components/aula/TaskPriorityPill.tsx](src/components/aula/TaskPriorityPill.tsx).
+ */
+export type TaskPriority = 'low' | 'normal' | 'high'
+
+/**
+ * Wiersz `public.cohort_channel_tasks` — zadanie/deadline per sala.
+ *
+ * `channel_id IS NULL` = zadanie w Sali głównej (rocznikowe).
+ * `completed_at != NULL` = globalnie zamknięte ("deal done", każdy
+ * w cohorcie mógł zaznaczyć przez RPC `toggle_global_task_done`).
+ *
+ * `priority` to TaskPriority (CHECK w DB).
+ */
+export type CohortChannelTask = TablesRow<'cohort_channel_tasks'>
+
+/**
+ * Per-user "ja zrobiłem" — PRIMARY KEY (task_id, user_id) = jeden wpis
+ * per user per task (idempotent insert; toggle przez RPC robi DELETE-or-INSERT
+ * w transakcji).
+ */
+export type CohortTaskCompletion = TablesRow<'cohort_task_completions'>
+
+/**
+ * Agregat zadania na potrzeby renderowania w `TaskItem`. Zawiera task +
+ * counter "ile osób zaznaczyło ✓" + ID-ki tych osób (do tooltipa) + flag
+ * czy aktualny user już zaznaczył (i kiedy).
+ */
+export type CohortTaskAggregate = {
+  task: CohortChannelTask
+  /** Liczba unikalnych users co zaznaczyli `cohort_task_completions`. */
+  completionsCount: number
+  /** ID-ki tych users (do mini-awatarów / tooltip). */
+  completionUserIds: string[]
+  /** Timestamp gdy aktualny user zaznaczył, `null` gdy nie zaznaczył. */
+  myCompletedAt: string | null
 }
