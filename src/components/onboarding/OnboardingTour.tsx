@@ -156,20 +156,20 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
       >
         <motion.div
           /*
-            Czysta solidna karta — bez glassmorphism, bez backdrop-blur,
-            bez gradient-tintów. Po prostu surface'owy bg + cień.
-            Zinc-200 border w light, white/10 w dark — konsystencja z
-            BaseCard / Modal w reszcie aplikacji.
+            Borderless surface — tylko bg + zaokrąglenie + cień. Brak
+            border karty, brak divider'ów. Sekcje rozdziela sam padding.
+            Dark border zostaje (przy ciemnym backdropie potrzebne dla
+            edge-definition), light: czysto bez krawędzi.
           */
-          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl sm:max-w-2xl dark:border-white/10 dark:bg-zinc-900"
+          className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl sm:max-w-2xl dark:border dark:border-white/10 dark:bg-zinc-900"
           initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.97 }}
           animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
           exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
           transition={shouldReduceMotion ? { duration: 0.18 } : { duration: 0.28, ease: [0.32, 0.72, 0.34, 1] }}
         >
 
-          {/* Top bar — progress + skip */}
-          <div className="relative flex items-center justify-between gap-3 border-b border-zinc-200/70 px-4 py-3 sm:px-6 dark:border-white/10">
+          {/* Top bar — progress + skip. BRAK border-b — sekcje rozdziela padding. */}
+          <div className="relative flex items-center justify-between gap-3 px-4 pt-3 sm:px-6 sm:pt-4">
             <div className="flex items-center gap-1.5">
               {STEPS.map((s, i) => (
                 <motion.span
@@ -261,8 +261,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                       transition={shouldReduceMotion ? undefined : { delay: 0.22, duration: 0.26 }}
                       type="button"
                       onClick={() => current.ctaPath && visit(current.ctaPath)}
-                      whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
-                      className="group mt-6 inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[14px] font-semibold text-[#1e293b] transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100 dark:hover:border-white/15 dark:hover:bg-white/[0.07]"
+                      className="group mt-6 inline-flex items-center gap-1 text-[14px] font-semibold text-[#1e293b] transition-colors hover:text-zinc-600 dark:text-brand-gold-bright dark:hover:text-brand-gold"
                     >
                       {current.ctaLabel ?? 'Otwórz'}
                       <ArrowRight
@@ -276,15 +275,18 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
             </AnimatePresence>
           </div>
 
-          {/* Footer nav */}
-          <div className="relative flex items-center justify-between gap-2 border-t border-zinc-200 px-4 py-3.5 sm:px-6 dark:border-white/10">
+          {/* Footer nav. BRAK border-t — body content sam się zdystansuje. */}
+          <div className="relative flex items-center justify-between gap-2 px-4 pb-4 pt-1 sm:px-6 sm:pb-5">
             <button
               type="button"
               onClick={prev}
               disabled={isFirst}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[14px] font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-white/[0.06]"
+              className="group inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[14px] font-semibold text-zinc-500 transition-colors hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft
+                size={16}
+                className="transition-transform duration-200 group-hover:-translate-x-0.5"
+              />
               Wstecz
             </button>
             <span className="text-[12px] tabular-nums text-zinc-400 dark:text-zinc-500">
@@ -336,33 +338,29 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
     )
   }
 
+  // Ikona w czystym chip'ie navy — BRAK szarej tafelki w tle, BRAK
+  // border'ów chipa. Solid kolor + delikatny cień daje głębię.
   return (
-    <div className="relative flex h-44 w-full items-center justify-center sm:h-56">
-      {/* Neutralna tafelka w tle — daje głębię bez glassmorphismu */}
-      <div
-        aria-hidden
-        className="absolute inset-x-1 inset-y-1 rounded-3xl bg-zinc-50 dark:bg-white/[0.025]"
-      />
-
+    <div className="relative flex h-40 w-full items-center justify-center sm:h-52">
       {step.visual === 'bot' ? (
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
           animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
           transition={reduceMotion ? undefined : { duration: 0.32 }}
-          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
+          className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#1e293b] text-brand-gold-bright shadow-lg shadow-[#1e293b]/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
         >
-          <AnimatedBot size={48} strokeWidth={1.7} intensity="wave" />
+          <AnimatedBot size={48} strokeWidth={1.8} intensity="wave" />
         </motion.div>
       ) : (
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
           animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
           transition={reduceMotion ? undefined : { duration: 0.32 }}
-          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-3xl border border-zinc-200 bg-white text-[#1e293b] shadow-sm sm:h-28 sm:w-28 dark:border-white/10 dark:bg-zinc-800 dark:text-brand-gold-bright"
+          className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#1e293b] text-brand-gold-bright shadow-lg shadow-[#1e293b]/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
         >
           {(() => {
             const Icon = step.visual as LucideIcon
-            return <Icon size={44} strokeWidth={1.7} />
+            return <Icon size={44} strokeWidth={1.8} />
           })()}
         </motion.div>
       )}
@@ -375,15 +373,14 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
 /* -------------------------------------------------------------------- */
 
 /**
- * NextButton — solidny primary CTA. Bez gradientów, chipów, shimmer'ów.
- * Tylko proste rozwiązanie:
- *   • większy padding (px-6 py-2.5) i większy font (15px) — czytelność
- *   • solid navy (light) / brand-gold (dark) — spójne z resztą primary CTA
- *   • subtle hover lighten (bg-zinc-800) + arrow translate-x
- *   • focus ring zgodny z brand
+ * NextButton — ghost text-link styl. Po 3 próbach (solid, gradient pill,
+ * solid pill) okazało się, że "less is more" znaczy DOSŁOWNIE less:
+ *   • zero tła w idle
+ *   • bold navy text (light) / brand-gold-bright (dark)
+ *   • arrow inline z micro-translate na hover
+ *   • na ostatnim kroku — solid akcent (zachęca do confirm)
  *
- * Filozofia "less is more" — przycisk nie ma być atrakcją, ma być
- * niewidoczny ale skuteczny.
+ * Inspiracja: Apple SF Symbols continue links, Vercel CLI prompts.
  */
 function NextButton({
   isLast,
@@ -394,34 +391,36 @@ function NextButton({
   onClick: () => void
   reduceMotion: boolean
 }) {
+  // Last step → solid akcent (commit action). Pozostałe → ghost link.
+  if (isLast) {
+    return (
+      <motion.button
+        type="button"
+        onClick={onClick}
+        whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+        transition={reduceMotion ? undefined : { type: 'spring', stiffness: 500, damping: 30 }}
+        className="inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] px-5 py-2 text-[15px] font-bold text-white transition-colors hover:bg-[#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright dark:focus-visible:ring-brand-gold-bright/50"
+      >
+        <Check size={16} strokeWidth={2.6} />
+        Gotowe
+      </motion.button>
+    )
+  }
+
   return (
     <motion.button
       type="button"
       onClick={onClick}
       whileTap={reduceMotion ? undefined : { scale: 0.97 }}
       transition={reduceMotion ? undefined : { type: 'spring', stiffness: 500, damping: 30 }}
-      className={[
-        'group inline-flex items-center gap-1.5 rounded-full px-6 py-2.5 text-[15px] font-semibold tracking-tight transition-colors',
-        'bg-[#1e293b] text-white hover:bg-[#0f172a]',
-        'dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1e293b]/50 focus-visible:ring-offset-white dark:focus-visible:ring-brand-gold-bright/55 dark:focus-visible:ring-offset-zinc-900',
-      ].join(' ')}
+      className="group inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[15px] font-bold tracking-tight text-[#1e293b] transition-colors hover:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-brand-gold-bright dark:hover:text-brand-gold dark:focus-visible:ring-brand-gold-bright/40"
     >
-      {isLast ? (
-        <>
-          <Check size={16} strokeWidth={2.5} />
-          Gotowe
-        </>
-      ) : (
-        <>
-          Dalej
-          <ChevronRight
-            size={16}
-            strokeWidth={2.5}
-            className="transition-transform duration-200 group-hover:translate-x-0.5"
-          />
-        </>
-      )}
+      Dalej
+      <ChevronRight
+        size={17}
+        strokeWidth={2.6}
+        className="transition-transform duration-200 group-hover:translate-x-1"
+      />
     </motion.button>
   )
 }
