@@ -272,6 +272,32 @@ function TaskItem({
   )
 }
 
+type TaskFilter = 'all' | 'today' | 'overdue' | 'open' | 'closed'
+
+const FILTER_LABELS: Record<TaskFilter, string> = {
+  all: 'Wszystkie',
+  today: 'Dziś',
+  overdue: 'Spóźnione',
+  open: 'Otwarte',
+  closed: 'Zamknięte',
+}
+
+/**
+ * Zwraca true jeśli `iso` przypada między startOfToday a endOfToday w
+ * lokalnej strefie. `due_at == null` zawsze false (zadania bezterminowe
+ * nie wpadają w "dziś").
+ */
+function isDueToday(iso: string | null): boolean {
+  if (!iso) return false
+  const due = new Date(iso)
+  const now = new Date()
+  return (
+    due.getFullYear() === now.getFullYear() &&
+    due.getMonth() === now.getMonth() &&
+    due.getDate() === now.getDate()
+  )
+}
+
 function ChannelTasksEditor({
   cohortId,
   channelId,
@@ -285,12 +311,52 @@ function ChannelTasksEditor({
     currentUserId,
   })
   const [creatorOpen, setCreatorOpen] = useState(false)
+  const [filter, setFilter] = useState<TaskFilter>('all')
 
-  const openCount = useMemo(
-    () => tasks.filter((t) => t.task.completed_at == null).length,
-    [tasks],
-  )
-  const closedCount = tasks.length - openCount
+  // Liczniki per filter — używane do badge w tab bar. Liczymy raz, w jednym
+  // przebiegu (O(N)) zamiast 5x filter (5*O(N) = bez różnicy ale schludniej).
+  const counts = useMemo(() => {
+    const now = Date.now()
+    let all = 0
+    let today = 0
+    let overdue = 0
+    let open = 0
+    let closed = 0
+    for (const agg of tasks) {
+      all += 1
+      const isClosed = agg.task.completed_at != null
+      if (isClosed) {
+        closed += 1
+        continue
+      }
+      open += 1
+      if (agg.task.due_at) {
+        const due = new Date(agg.task.due_at).getTime()
+        if (due < now - 60_000) overdue += 1
+        if (isDueToday(agg.task.due_at)) today += 1
+      }
+    }
+    return { all, today, overdue, open, closed }
+  }, [tasks])
+
+  const filteredTasks = useMemo(() => {
+    if (filter === 'all') return tasks
+    const now = Date.now()
+    return tasks.filter((agg) => {
+      const isClosed = agg.task.completed_at != null
+      if (filter === 'closed') return isClosed
+      if (filter === 'open') return !isClosed
+      if (filter === 'today') return !isClosed && isDueToday(agg.task.due_at)
+      if (filter === 'overdue') {
+        if (isClosed) return false
+        if (!agg.task.due_at) return false
+        return new Date(agg.task.due_at).getTime() < now - 60_000
+      }
+      return true
+    })
+  }, [tasks, filter])
+
+  const FILTERS: TaskFilter[] = ['all', 'today', 'overdue', 'open', 'closed']
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -303,9 +369,9 @@ function ChannelTasksEditor({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-fg-primary">Zadania: {channelName}</p>
           <p className="mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-            {openCount === 0 && closedCount === 0
+            {counts.all === 0
               ? 'Brak zadań. Dodaj pierwsze!'
-              : `${openCount} otwarte · ${closedCount} zamknięte`}
+              : `${counts.open} otwarte · ${counts.closed} zamknięte`}
           </p>
         </div>
         <button
@@ -320,9 +386,55 @@ function ChannelTasksEditor({
         </button>
       </div>
 
+      {/* Filter tabs — pokazujemy tylko gdy są jakieś taski (UX: pusty rail
+          z 5 zerami to noise). Spóźnione mają czerwoną kropkę gdy > 0. */}
+      {counts.all > 0 && (
+        <div className="border-b border-zinc-200/70 px-2 py-1.5 dark:border-white/10">
+          <div className="custom-scrollbar flex items-center gap-1 overflow-x-auto">
+            {FILTERS.map((f) => {
+              const active = filter === f
+              const c = counts[f]
+              const isOverdueWithCount = f === 'overdue' && c > 0
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  aria-pressed={active}
+                  className={[
+                    'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition-colors',
+                    active
+                      ? 'bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-bg-card'
+                      : isOverdueWithCount
+                        ? 'bg-rose-500/15 text-rose-700 hover:bg-rose-500/20 dark:bg-rose-400/15 dark:text-rose-300 dark:hover:bg-rose-400/25'
+                        : 'bg-black/[0.04] text-zinc-600 hover:bg-black/[0.08] dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:bg-white/[0.08]',
+                  ].join(' ')}
+                >
+                  <span>{FILTER_LABELS[f]}</span>
+                  {c > 0 && (
+                    <span
+                      className={[
+                        'inline-flex min-w-[14px] items-center justify-center rounded-full px-1 text-[9px] leading-none',
+                        active
+                          ? 'bg-white/25 text-white dark:bg-bg-card/35 dark:text-bg-card'
+                          : isOverdueWithCount
+                            ? 'bg-rose-600/20 text-rose-700 dark:bg-rose-400/25 dark:text-rose-200'
+                            : 'bg-black/10 text-zinc-700 dark:bg-white/15 dark:text-zinc-200',
+                      ].join(' ')}
+                    >
+                      {c}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* List */}
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2">
-        {tasks.length === 0 ? (
+        {counts.all === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-3 text-center">
             <CheckCircle2 size={32} className="mb-2 text-zinc-300 dark:text-white/15" />
             <p className="text-sm font-semibold text-fg-primary">Brak zadań</p>
@@ -330,9 +442,24 @@ function ChannelTasksEditor({
               Dodaj pierwszy deadline — projekt, kolokwium, oddanie zadania…
             </p>
           </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center px-3 text-center">
+            <CheckCircle2 size={28} className="mb-2 text-zinc-300 dark:text-white/15" />
+            <p className="text-sm font-semibold text-fg-primary">Nic w tej kategorii</p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Zmień filter albo dodaj nowe zadanie.
+            </p>
+            <button
+              type="button"
+              onClick={() => setFilter('all')}
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#1e293b] underline-offset-2 hover:underline dark:text-brand-gold-bright"
+            >
+              Pokaż wszystkie
+            </button>
+          </div>
         ) : (
           <ul className="space-y-1.5">
-            {tasks.map((agg) => (
+            {filteredTasks.map((agg) => (
               <TaskItem
                 key={agg.task.id}
                 aggregate={agg}

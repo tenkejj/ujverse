@@ -1029,6 +1029,44 @@ class CohortServiceImpl {
   // ────────────────────────────────────────────────────────────────────────
 
   /**
+   * Pojedynczy task po ID — używane przez deep-link `?task=<id>` w `AulaView`
+   * (po notyfikacji `aula_task_new` z `NotificationsView`).
+   */
+  async getTaskById(
+    taskId: number,
+  ): Promise<{ data: CohortChannelTask | null; error: PostgrestError | null }> {
+    const { data, error } = await supabase
+      .from('cohort_channel_tasks')
+      .select('id, cohort_id, channel_id, created_by, title, description, due_at, priority, completed_at, completed_by, created_at')
+      .eq('id', taskId)
+      .maybeSingle()
+    return { data: (data as CohortChannelTask | null) ?? null, error }
+  }
+
+  /**
+   * Agregat zliczający otwarte zadania per channel (i NULL/Sala główna).
+   * Używane przez `useCohortChannelTaskCounts` do renderowania badge w `ChannelRail`.
+   * Returns: Map<channel_id|null, number_open_tasks>.
+   */
+  async getOpenTaskCountsForCohort(
+    cohortId: string,
+  ): Promise<{ data: Map<number | null, number>; error: PostgrestError | null }> {
+    const { data, error } = await supabase
+      .from('cohort_channel_tasks')
+      .select('channel_id')
+      .eq('cohort_id', cohortId)
+      .is('completed_at', null)
+
+    if (error) return { data: new Map(), error }
+    const counts = new Map<number | null, number>()
+    for (const row of (data ?? []) as Array<{ channel_id: number | null }>) {
+      const k = row.channel_id ?? null
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    return { data: counts, error: null }
+  }
+
+  /**
    * Lista zadań dla (cohort, channel). `channelId === null` = Sala główna.
    * Sortowanie ASC po `due_at` (NULLS LAST) zachowuje hook (po pobraniu) —
    * tutaj zostawiamy DB-default `created_at` żeby zachować chronologię tworzenia.

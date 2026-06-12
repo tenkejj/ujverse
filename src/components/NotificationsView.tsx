@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { AtSign, Bell, Check, GraduationCap, Heart, MessageCircle } from 'lucide-react'
+import { AtSign, Bell, Check, CheckSquare, GraduationCap, Heart, MessageCircle, Megaphone, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AppNotification } from '../types'
@@ -9,6 +9,11 @@ import EmptyState from './EmptyState'
 import BaseCard from './ui/BaseCard'
 import { theme } from '../styles/theme'
 import { PROFILE_MOBILE } from '../styles/mobile-theme'
+import {
+  ANNOUNCEMENT_STATUS_BADGE,
+  ANNOUNCEMENT_STATUS_DOT,
+  ANNOUNCEMENT_STATUS_LABEL,
+} from '../lib/announcementStatusStyles'
 
 type Props = {
   notifications: AppNotification[]
@@ -61,6 +66,27 @@ function ActionBadge({ type, clean }: { type: AppNotification['type']; clean?: b
         </span>
       )
     }
+    if (type === 'lecturer_announcement') {
+      return (
+        <span className={wrap} aria-hidden>
+          <Megaphone size={12} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.25} />
+        </span>
+      )
+    }
+    if (type === 'weekly_briefing') {
+      return (
+        <span className={wrap} aria-hidden>
+          <Sparkles size={12} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.25} />
+        </span>
+      )
+    }
+    if (type === 'aula_task_new') {
+      return (
+        <span className={wrap} aria-hidden>
+          <CheckSquare size={12} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
+        </span>
+      )
+    }
     return (
       <span className={wrap} aria-hidden>
         <MessageCircle size={12} className="text-sky-500 dark:text-sky-400" strokeWidth={2.25} />
@@ -92,6 +118,33 @@ function ActionBadge({ type, clean }: { type: AppNotification['type']; clean?: b
     return (
       <span className={`${base} border-white bg-slate-100 dark:border-slate-950 dark:bg-slate-800`} aria-hidden>
         <AtSign size={10} className="text-uj-blue dark:text-blue-400" strokeWidth={2.25} />
+      </span>
+    )
+  }
+  if (type === 'lecturer_announcement') {
+    return (
+      <span
+        className={`${base} border-white bg-gradient-to-br from-[#a48955] to-[#7a6b45] dark:border-slate-950 dark:from-brand-gold-bright dark:to-amber-400`}
+        aria-hidden
+      >
+        <Megaphone size={10} className="text-slate-900 dark:text-slate-950" strokeWidth={2.25} />
+      </span>
+    )
+  }
+  if (type === 'weekly_briefing') {
+    return (
+      <span
+        className={`${base} border-white bg-gradient-to-br from-[#a48955] to-[#7a6b45] dark:border-slate-950 dark:from-brand-gold-bright dark:to-amber-400`}
+        aria-hidden
+      >
+        <Sparkles size={10} className="text-slate-900 dark:text-slate-950" strokeWidth={2.25} />
+      </span>
+    )
+  }
+  if (type === 'aula_task_new') {
+    return (
+      <span className={`${base} border-white bg-slate-100 dark:border-slate-950 dark:bg-slate-800`} aria-hidden>
+        <CheckSquare size={10} className="text-uj-blue dark:text-blue-400" strokeWidth={2.25} />
       </span>
     )
   }
@@ -205,6 +258,193 @@ type CardProps = {
   cleanOverlay?: boolean
 }
 
+type LecturerRowProps = {
+  notif: AppNotification
+  onOpen: () => void
+  glassPanel?: boolean
+  fullScreenModal?: boolean
+  cleanOverlay?: boolean
+}
+
+function LecturerAnnouncementRow({
+  notif,
+  onOpen,
+  glassPanel,
+  fullScreenModal,
+  cleanOverlay,
+}: LecturerRowProps) {
+  const ann = notif.announcement
+  const lecturer = ann?.lecturer_name ?? 'Wykładowca'
+  const status = ann?.status ?? null
+  const preview = (ann?.body ?? '').replace(/\s+/g, ' ').trim().slice(0, 180)
+  const statusLabel = status ? ANNOUNCEMENT_STATUS_LABEL[status] : null
+  const statusBadge = status ? ANNOUNCEMENT_STATUS_BADGE[status] : ''
+  const statusDot = status ? ANNOUNCEMENT_STATUS_DOT[status] : ''
+
+  if (glassPanel) {
+    const cardGlass =
+      glassPanel && fullScreenModal
+        ? notif.is_read
+          ? 'border-0 bg-transparent shadow-none hover:bg-brand-gold/5 rounded-none'
+          : 'border-0 bg-white/[0.02] shadow-none hover:bg-brand-gold/5 rounded-none'
+        : notif.is_read
+          ? 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.09]'
+          : 'border-brand-gold/25 bg-brand-gold/[0.08] hover:bg-brand-gold/[0.12]'
+
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`group relative flex w-full items-start gap-3 border px-4 py-3.5 text-left transition-all duration-300 ${
+          fullScreenModal ? 'rounded-none' : 'rounded-2xl'
+        } ${glassPanel && fullScreenModal ? '' : 'hover:shadow-lg hover:border-white/15'} ${cardGlass}`}
+      >
+        <div className="relative shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#a48955]/30 to-[#7a6b45]/15 ring-2 ring-white/90 dark:ring-slate-950">
+            <GraduationCap size={18} className="text-brand-gold-bright" strokeWidth={2.25} />
+          </div>
+          <ActionBadge type={notif.type} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13.5px] leading-snug">
+            <span className="font-bold text-white">{lecturer}</span>{' '}
+            {statusLabel && (
+              <span className={`ml-1 inline-flex items-center gap-1 rounded-full border bg-transparent px-1.5 py-0.5 align-middle text-[9px] font-bold uppercase tracking-wide ${statusBadge}`}>
+                <span className={`inline-block size-1.5 rounded-full ${statusDot}`} aria-hidden />
+                {statusLabel}
+              </span>
+            )}
+          </p>
+          {preview && (
+            <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-slate-300/85">{preview}</p>
+          )}
+          <p className="mt-1 text-xs text-slate-500">{relativeTime(notif.created_at)}</p>
+        </div>
+      </button>
+    )
+  }
+
+  void cleanOverlay
+
+  const unreadRing = !notif.is_read
+    ? 'ring-1 ring-[#1e293b]/12 dark:ring-brand-gold-bright/25'
+    : ''
+
+  return (
+    <BaseCard
+      as="button"
+      type="button"
+      variant="default"
+      interactive
+      flush
+      onClick={onOpen}
+      className={`${floatingCardClass} ${unreadRing}`}
+    >
+      <div className="flex items-start gap-3 px-4 py-4">
+        <div className="relative shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#a48955]/30 to-[#7a6b45]/15 ring-1 ring-border-app dark:ring-white/10">
+            <GraduationCap size={18} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.25} />
+          </div>
+          <ActionBadge type={notif.type} clean />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[13.5px] leading-snug ${theme.text.primary}`}>
+            <span className="font-bold">{lecturer}</span>
+            {statusLabel && (
+              <span className={`ml-2 inline-flex items-center gap-1 rounded-full border bg-transparent px-1.5 py-0.5 align-middle text-[9px] font-bold uppercase tracking-wide ${statusBadge}`}>
+                <span className={`inline-block size-1.5 rounded-full ${statusDot}`} aria-hidden />
+                {statusLabel}
+              </span>
+            )}
+          </p>
+          {preview && (
+            <p className={`mt-1 line-clamp-2 text-[12.5px] leading-snug ${theme.text.muted}`}>{preview}</p>
+          )}
+          <p className={`mt-1 text-xs ${theme.text.muted}`}>{relativeTime(notif.created_at)}</p>
+        </div>
+      </div>
+    </BaseCard>
+  )
+}
+
+function WeeklyBriefingRow({
+  notif,
+  onOpen,
+  glassPanel,
+  fullScreenModal,
+  cleanOverlay,
+}: LecturerRowProps) {
+  // Soft contract z embedem `notif.briefing` — w MVP nie zaciągamy payloadu,
+  // tylko CTA „otwórz briefing". Cała wartość liczbowa jest w widoku /briefing.
+  const headline = 'Tygodniowy briefing jest gotowy'
+  const subline = 'Plan tygodnia, odwołania, najbliższy egzamin i komunikaty od Twoich wykładowców.'
+
+  if (glassPanel) {
+    const cardGlass =
+      glassPanel && fullScreenModal
+        ? notif.is_read
+          ? 'border-0 bg-transparent shadow-none hover:bg-brand-gold/5 rounded-none'
+          : 'border-0 bg-white/[0.02] shadow-none hover:bg-brand-gold/5 rounded-none'
+        : notif.is_read
+          ? 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.09]'
+          : 'border-brand-gold/25 bg-brand-gold/[0.08] hover:bg-brand-gold/[0.12]'
+
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`group relative flex w-full items-start gap-3 border px-4 py-3.5 text-left transition-all duration-300 ${
+          fullScreenModal ? 'rounded-none' : 'rounded-2xl'
+        } ${glassPanel && fullScreenModal ? '' : 'hover:shadow-lg hover:border-white/15'} ${cardGlass}`}
+      >
+        <div className="relative shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#a48955]/30 to-[#7a6b45]/15 ring-2 ring-white/90 dark:ring-slate-950">
+            <Sparkles size={18} className="text-brand-gold-bright" strokeWidth={2.25} />
+          </div>
+          <ActionBadge type={notif.type} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13.5px] font-bold leading-snug text-white">{headline}</p>
+          <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-slate-300/85">{subline}</p>
+          <p className="mt-1 text-xs text-slate-500">{relativeTime(notif.created_at)}</p>
+        </div>
+      </button>
+    )
+  }
+
+  void cleanOverlay
+
+  const unreadRing = !notif.is_read
+    ? 'ring-1 ring-[#1e293b]/12 dark:ring-brand-gold-bright/25'
+    : ''
+
+  return (
+    <BaseCard
+      as="button"
+      type="button"
+      variant="default"
+      interactive
+      flush
+      onClick={onOpen}
+      className={`${floatingCardClass} ${unreadRing}`}
+    >
+      <div className="flex items-start gap-3 px-4 py-4">
+        <div className="relative shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#a48955]/30 to-[#7a6b45]/15 ring-1 ring-border-app dark:ring-white/10">
+            <Sparkles size={18} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={2.25} />
+          </div>
+          <ActionBadge type={notif.type} clean />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[13.5px] font-bold leading-snug ${theme.text.primary}`}>{headline}</p>
+          <p className={`mt-1 line-clamp-2 text-[12.5px] leading-snug ${theme.text.muted}`}>{subline}</p>
+          <p className={`mt-1 text-xs ${theme.text.muted}`}>{relativeTime(notif.created_at)}</p>
+        </div>
+      </div>
+    </BaseCard>
+  )
+}
+
 function NotificationRow({
   notif,
   onMarkRead,
@@ -224,7 +464,15 @@ function NotificationRow({
         ? 'odpowiedział(a) Ci w Auli'
         : notif.type === 'mention_aula'
           ? 'wspomniał(a) Cię w Auli'
-          : 'skomentował(a) Twój wpis'
+          : notif.type === 'lecturer_announcement'
+            ? 'nowy komunikat wykładowcy'
+            : notif.type === 'weekly_briefing'
+              ? 'Twój tygodniowy briefing'
+              : notif.type === 'aula_task_new'
+                ? notif.task?.title
+                  ? `dodał(a) zadanie: ${notif.task.title}`
+                  : 'dodał(a) nowe zadanie w Auli'
+                : 'skomentował(a) Twój wpis'
 
   const handleOpen = () => {
     if (!notif.is_read) onMarkRead(notif.id)
@@ -232,7 +480,45 @@ function NotificationRow({
       navigate(notif.cohort_message_id ? `/aula?message=${notif.cohort_message_id}` : '/aula')
       return
     }
+    if (notif.type === 'lecturer_announcement') {
+      navigate(notif.announcement_id ? `/moj-plan?announcement=${notif.announcement_id}` : '/moj-plan')
+      return
+    }
+    if (notif.type === 'weekly_briefing') {
+      navigate('/briefing')
+      return
+    }
+    if (notif.type === 'aula_task_new') {
+      navigate(notif.task_id ? `/aula?task=${notif.task_id}` : '/aula')
+      return
+    }
     if (notif.post_id) onNavigateToPost(notif.post_id)
+  }
+
+  // Powiadomienia od scrapera nie mają autora-osoby; renderujemy dedykowany
+  // wiersz (lecturer + status badge + preview body) zamiast „Ktoś polubił".
+  if (notif.type === 'lecturer_announcement') {
+    return (
+      <LecturerAnnouncementRow
+        notif={notif}
+        onOpen={handleOpen}
+        glassPanel={glassPanel}
+        fullScreenModal={fullScreenModal}
+        cleanOverlay={cleanOverlay}
+      />
+    )
+  }
+
+  if (notif.type === 'weekly_briefing') {
+    return (
+      <WeeklyBriefingRow
+        notif={notif}
+        onOpen={handleOpen}
+        glassPanel={glassPanel}
+        fullScreenModal={fullScreenModal}
+        cleanOverlay={cleanOverlay}
+      />
+    )
   }
 
   if (glassPanel) {
@@ -266,7 +552,7 @@ function NotificationRow({
       >
         <div
           className="relative shrink-0 rounded-full"
-          onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+          onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id!) } : undefined}
         >
           <UserAvatar
             profile={actorProfile}
@@ -281,7 +567,7 @@ function NotificationRow({
           <p className="text-[13.5px] leading-snug">
             <span
               className={nameCls}
-              onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+              onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id!) } : undefined}
             >
               {actorName}
             </span>{' '}
@@ -313,7 +599,7 @@ function NotificationRow({
       <div className="flex items-center gap-3 px-4 py-4">
         <div
           className="relative shrink-0"
-          onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+          onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id!) } : undefined}
         >
           <UserAvatar
             profile={actorProfile}
@@ -327,7 +613,7 @@ function NotificationRow({
           <p className={`text-[13.5px] leading-snug ${theme.text.primary}`}>
             <span
               className={`font-semibold ${onNavigateToUser ? 'cursor-pointer group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright' : ''}`}
-              onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id) } : undefined}
+              onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id!) } : undefined}
             >
               {actorName}
             </span>{' '}

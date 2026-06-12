@@ -14,7 +14,7 @@
  * Każdy item jest klikalny → `onSelect(id | null)`. Aktywny ma highlight.
  */
 import { useMemo, useState } from 'react'
-import { Archive, BellMinus, BellOff, ChevronDown, ChevronRight, GraduationCap, Plus, X } from 'lucide-react'
+import { Archive, BellMinus, BellOff, CheckSquare, ChevronDown, ChevronRight, GraduationCap, Plus, X } from 'lucide-react'
 import type { ChannelKind, ChannelMuteMode, CohortChannel } from '../../types/database'
 import type { ActiveChannelId } from '../../hooks/useCohortChannels'
 import ChannelKindPill, { CHANNEL_KINDS } from './ChannelKindPill'
@@ -51,6 +51,11 @@ type Props = {
    * Sala główna. Brak callbacka = pomijamy renderowanie ikon (legacy mode).
    */
   getMuteMode?: (channelId: number | null) => ChannelMuteMode
+  /**
+   * Liczba OTWARTYCH zadań per sala (z `useCohortChannelTaskCounts`). `null` =
+   * Sala główna. Brak Mapy = nie renderujemy badge (legacy).
+   */
+  openTaskCounts?: ReadonlyMap<number | null, number>
 }
 
 export default function ChannelRail({
@@ -66,6 +71,7 @@ export default function ChannelRail({
   onToggleKind,
   onClearKindFilter,
   getMuteMode,
+  openTaskCounts,
 }: Props) {
   const [archivedOpen, setArchivedOpen] = useState(false)
 
@@ -74,6 +80,9 @@ export default function ChannelRail({
 
   const muteModeFor = (id: number | null): ChannelMuteMode =>
     getMuteMode ? getMuteMode(id) : 'all'
+
+  const openTasksFor = (id: number | null): number =>
+    openTaskCounts ? (openTaskCounts.get(id) ?? 0) : 0
 
   const filterActive = (kindFilter?.size ?? 0) > 0
   const showKindFilterRow =
@@ -150,6 +159,7 @@ export default function ChannelRail({
           active={activeChannelId === null}
           unread={isUnread(null)}
           muteMode={muteModeFor(null)}
+          openTasks={openTasksFor(null)}
           onClick={() => onSelect(null)}
         />
         {filteredChannels.map((c) => (
@@ -159,6 +169,7 @@ export default function ChannelRail({
             active={activeChannelId === c.id}
             unread={isUnread(c.id)}
             muteMode={muteModeFor(c.id)}
+            openTasks={openTasksFor(c.id)}
             onClick={() => onSelect(c.id)}
           />
         ))}
@@ -200,6 +211,7 @@ export default function ChannelRail({
                     active={activeChannelId === c.id}
                     unread={isUnread(c.id)}
                     muteMode={muteModeFor(c.id)}
+                    openTasks={openTasksFor(c.id)}
                     archived
                     onClick={() => onSelect(c.id)}
                   />
@@ -226,11 +238,13 @@ function GeneralRoomItem({
   active,
   unread,
   muteMode = 'all',
+  openTasks = 0,
   onClick,
 }: {
   active: boolean
   unread?: boolean
   muteMode?: ChannelMuteMode
+  openTasks?: number
   onClick: () => void
 }) {
   const showUnread = unread && !active
@@ -261,6 +275,7 @@ function GeneralRoomItem({
         className="shrink-0 text-[#1e293b]/70 dark:text-brand-gold-bright/80"
       />
       <span className="min-w-0 flex-1 truncate">Sala główna</span>
+      <TaskBadge count={openTasks} />
       <MuteIcon mode={muteMode} />
       {showUnread && (
         <span
@@ -278,6 +293,7 @@ function ChannelItem({
   archived,
   unread,
   muteMode = 'all',
+  openTasks = 0,
   onClick,
 }: {
   channel: CohortChannel
@@ -285,6 +301,7 @@ function ChannelItem({
   archived?: boolean
   unread?: boolean
   muteMode?: ChannelMuteMode
+  openTasks?: number
   onClick: () => void
 }) {
   // Unread NIE bumpuje wagi gdy sala jest aktywna — auto-mark useEffect i
@@ -309,6 +326,7 @@ function ChannelItem({
     >
       <ChannelKindPill kind={channel.kind} size="sm" />
       <span className="min-w-0 flex-1 truncate">{channel.name}</span>
+      <TaskBadge count={openTasks} />
       <MuteIcon mode={muteMode} />
       {showUnread && (
         <span
@@ -324,6 +342,26 @@ function ChannelItem({
         />
       )}
     </button>
+  )
+}
+
+/**
+ * Badge z liczbą otwartych zadań. Pomijamy gdy 0 (czysty rail). Tooltip
+ * pokazuje pełny tekst — UI pokazuje tylko liczbę (kompakt). 99+ cap.
+ */
+function TaskBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  const label = count === 1 ? '1 zadanie' : `${count} zadań`
+  const display = count > 99 ? '99+' : String(count)
+  return (
+    <span
+      title={`${label} do zrobienia`}
+      aria-label={`${label} do zrobienia`}
+      className="ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold leading-none text-amber-700 dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
+    >
+      <CheckSquare size={9} strokeWidth={2.5} />
+      {display}
+    </span>
   )
 }
 

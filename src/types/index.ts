@@ -56,12 +56,23 @@ export type AppNotification = {
    * więc `actor_id` jest nullowalne po migracji 20260615100000.
    */
   actor_id: string | null
-  type: 'like' | 'comment' | 'reply_aula' | 'mention_aula' | 'lecturer_announcement'
+  type:
+    | 'like'
+    | 'comment'
+    | 'reply_aula'
+    | 'mention_aula'
+    | 'lecturer_announcement'
+    | 'weekly_briefing'
+    | 'aula_task_new'
   post_id: string | null
   /** Referencja do wiadomości w Auli (tylko dla `reply_aula`). */
   cohort_message_id?: number | null
   /** Referencja do komunikatu (`announcements.id`) — tylko dla `lecturer_announcement`. */
   announcement_id?: string | null
+  /** Referencja do briefingu (`weekly_briefings.id`) — tylko dla `weekly_briefing`. */
+  briefing_id?: number | null
+  /** Referencja do zadania (`cohort_channel_tasks.id`) — tylko dla `aula_task_new`. */
+  task_id?: number | null
   is_read: boolean
   created_at: string
   actor?: Profile | null
@@ -73,6 +84,23 @@ export type AppNotification = {
     status: 'cancelled' | 'remote' | 'duty'
     department: string | null
     created_at: string
+  } | null
+  /** Embed briefingu — tylko week_start dla deep-linka, payload pobieramy osobno. */
+  briefing?: {
+    id: number
+    week_start: string
+  } | null
+  /**
+   * Embed zadania — tylko pola potrzebne do row rendera + deep-linka
+   * (title + due_at + channel_id + cohort_id). Pełen task pobiera dopiero
+   * hook `useChannelTasks` po wejściu w panel.
+   */
+  task?: {
+    id: number
+    title: string
+    due_at: string | null
+    channel_id: number | null
+    cohort_id: string
   } | null
 }
 

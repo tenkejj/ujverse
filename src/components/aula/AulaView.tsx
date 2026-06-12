@@ -30,6 +30,7 @@ import {
 import { useChannelUnread } from '../../hooks/useChannelUnread'
 import { useCohortChannelMutes } from '../../hooks/useCohortChannelMutes'
 import { useChannelTyping } from '../../hooks/useChannelTyping'
+import { useCohortChannelTaskCounts } from '../../hooks/useCohortChannelTaskCounts'
 import {
   CohortService,
   type CohortMemberProfile,
@@ -297,6 +298,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   const [channelsSheetOpen, setChannelsSheetOpen] = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
   const [tasksOpen, setTasksOpen] = useState(false)
+  const taskDeepLinkHandledForRef = useRef<number | null>(null)
   const [recentFilesOpen, setRecentFilesOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [createChannelOpen, setCreateChannelOpen] = useState(false)
@@ -362,6 +364,12 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
 
   const channelSlugFromUrl = useMemo(() => {
     return new URLSearchParams(location.search).get('channel')
+  }, [location.search])
+
+  const taskIdFromUrl = useMemo(() => {
+    const raw = new URLSearchParams(location.search).get('task')
+    const n = raw ? Number(raw) : NaN
+    return Number.isFinite(n) ? n : null
   }, [location.search])
 
   // URL → active channel sync. `?message=<id>` ma priorytet (deep-link
@@ -433,6 +441,10 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
     currentUserName,
   })
 
+  // Liczba otwartych zadań per sala — badge w ChannelRail/Sheet.
+  // Jeden subscribe per cohort (mała tabela, full refetch jest tani).
+  const { counts: openTaskCounts } = useCohortChannelTaskCounts({ cohortId })
+
   // Focus-textarea bump — odpalany TYLKO na explicit user-click w kanał
   // (w `setActiveChannelAndUrl`). NIE bumpujemy przy initial load / deep-
   // link / URL sync — tam scroll/highlight rządzi i kradzież focusu = UX bug.
@@ -477,6 +489,36 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
     // co zmiana stanu (uniknięcie loopa).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cohortId, highlightId])
+
+  // Deep-link `?task=<id>` (z NotificationsView) → fetch task → switch
+  // channel + otwórz panel zadań. Po obsłudze czyścimy `?task` z URL.
+  useEffect(() => {
+    if (!cohortId || taskIdFromUrl == null) return
+    if (taskDeepLinkHandledForRef.current === taskIdFromUrl) return
+    taskDeepLinkHandledForRef.current = taskIdFromUrl
+
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await CohortService.getTaskById(taskIdFromUrl)
+      if (cancelled) return
+      if (!error && data) {
+        const targetChannel = data.channel_id ?? null
+        if (targetChannel !== activeChannelId) setActiveChannelId(targetChannel)
+        setTasksOpen(true)
+        setNotesOpen(false)
+      }
+      // Zawsze czyścimy `?task` z URL żeby refresh nie wracał do deep-linka.
+      const sp = new URLSearchParams(location.search)
+      sp.delete('task')
+      const query = sp.toString()
+      navigate(`/aula${query ? `?${query}` : ''}`, { replace: true })
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cohortId, taskIdFromUrl])
 
   // Reset per-channel state przy switch kanału — bez tego:
   //   • `didInitialScrollRef` = true → auto-scroll-to-bottom NIE odpala w
@@ -762,6 +804,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           onToggleKind={toggleKindFilter}
           onClearKindFilter={clearKindFilter}
           getMuteMode={getMuteMode}
+          openTaskCounts={openTaskCounts}
           className="w-full"
         />
       </aside>
@@ -1077,6 +1120,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             onToggleKind={toggleKindFilter}
             onClearKindFilter={clearKindFilter}
             getMuteMode={getMuteMode}
+            openTaskCounts={openTaskCounts}
           />
         )}
         {recentFilesOpen && cohortId && (
@@ -1148,6 +1192,7 @@ function ChannelsSheet({
   onToggleKind,
   onClearKindFilter,
   getMuteMode,
+  openTaskCounts,
 }: {
   channels: CohortChannel[]
   archived: CohortChannel[]
@@ -1161,6 +1206,7 @@ function ChannelsSheet({
   onToggleKind?: (kind: ChannelKind) => void
   onClearKindFilter?: () => void
   getMuteMode?: (channelId: number | null) => ChannelMuteMode
+  openTaskCounts?: ReadonlyMap<number | null, number>
 }) {
   const shouldReduceMotion = useReducedMotion()
 
@@ -1240,6 +1286,7 @@ function ChannelsSheet({
             onToggleKind={onToggleKind}
             onClearKindFilter={onClearKindFilter}
             getMuteMode={getMuteMode}
+            openTaskCounts={openTaskCounts}
             className="h-full rounded-none border-0 bg-transparent"
           />
         </div>
