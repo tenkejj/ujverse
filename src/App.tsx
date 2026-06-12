@@ -1625,7 +1625,8 @@ function App() {
                         effectiveActiveView === 'group' ||
                         effectiveActiveView === 'sale' ||
                         effectiveActiveView === 'mojPlan' ||
-                        effectiveActiveView === 'znizki'
+                        effectiveActiveView === 'znizki' ||
+                        effectiveActiveView === 'dzis'
                       ? 'max-w-7xl px-4 lg:px-6'
                       : effectiveActiveView === 'settings'
                         ? 'max-w-2xl px-4 space-y-0'

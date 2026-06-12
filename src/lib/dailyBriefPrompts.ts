@@ -58,6 +58,12 @@ export type DailyBriefInput = {
   tasks: BriefTask[]
   /** Najświeższe ogłoszenia ostatnie 24-48h (max 10). */
   announcements: BriefAnnouncement[]
+  /**
+   * Opcjonalny dodatkowy prompt usera — np. z quick-promptu "Co jutro?",
+   * "Streść ogłoszenia". Doklejany do user message; model nadal trzyma się
+   * `RULES`, ale fokus odpowiedzi przesuwa się na ten cel.
+   */
+  userPrompt?: string | null
 }
 
 const PERSONA = `Jesteś asystentem AI dla UJverse — aplikacji studentów Uniwersytetu Jagiellońskiego. Generujesz codzienny "morning brief" — krótkie podsumowanie dnia studenta. Piszesz po polsku, w drugiej osobie ("Masz dziś...", "Czeka Cię..."). Konkretnie, bez wstępu, bez "Oczywiście, oto Twój brief". Od razu do meritum.`
@@ -149,9 +155,14 @@ export function buildDailyBriefMessages(input: DailyBriefInput): Array<{
     )
   }
 
-  const user = sections.length === 0
+  const baseUser = sections.length === 0
     ? 'Brak danych dla tego dnia.'
     : sections.join('\n\n')
+
+  const userPrompt = input.userPrompt?.trim()
+  const user = userPrompt
+    ? `${baseUser}\n\n---\nDodatkowe pytanie użytkownika (odpowiedź dostosuj pod to):\n${userPrompt}`
+    : baseUser
 
   return [
     { role: 'system', content: system },
