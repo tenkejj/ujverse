@@ -60,6 +60,7 @@ const AulaView = lazy(() => import('./components/aula/AulaView'))
 const SaleFinderView = lazy(() => import('./components/sale-finder/SaleFinderView'))
 const WeeklyBriefingView = lazy(() => import('./components/briefing/WeeklyBriefingView'))
 const DzisView = lazy(() => import('./components/DzisView'))
+const ZniskiView = lazy(() => import('./components/discounts/ZniskiView'))
 
 type AppShellView =
   | 'feed'
@@ -77,6 +78,7 @@ type AppShellView =
   | 'mojPlan'
   | 'briefing'
   | 'dzis'
+  | 'znizki'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -151,6 +153,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/dzis') {
     return { kind: 'ok', view: 'dzis', profileHandle: null, postId: null }
+  }
+  if (normalizedPath === '/znizki') {
+    return { kind: 'ok', view: 'znizki', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -683,6 +688,10 @@ function App() {
     }
     if (view === 'dzis') {
       if (p !== '/dzis') navigate('/dzis')
+      return
+    }
+    if (view === 'znizki') {
+      if (p !== '/znizki') navigate('/znizki')
       return
     }
     if (view === 'settings') {
@@ -1251,12 +1260,13 @@ function App() {
         ? 'profile'
         : effectiveActiveView
 
-  // BottomNav nie ma pigułki dla „Mój Plan", „Sal UJ", „Briefingu" ani „Dziś" —
-  // mapujemy na 'feed', żeby żadna ikona nie była błędnie podświetlona.
-  // Uwaga: 'sale' i 'aula' są już wyeliminowane wcześniej w navActiveView,
-  // więc tutaj filtrujemy tylko 'mojPlan' / 'briefing' / 'dzis'.
+  // BottomNav nie ma pigułki dla „Mój Plan", „Sal UJ", „Briefingu", „Dziś"
+  // ani „Zniżek" — mapujemy na 'feed', żeby żadna ikona nie była błędnie
+  // podświetlona. Uwaga: 'sale' i 'aula' są już wyeliminowane wcześniej
+  // w navActiveView, więc tutaj filtrujemy tylko 'mojPlan' / 'briefing' /
+  // 'dzis' / 'znizki'.
   const bottomNavActiveView =
-    navActiveView === 'mojPlan' || navActiveView === 'briefing' || navActiveView === 'dzis'
+    navActiveView === 'mojPlan' || navActiveView === 'briefing' || navActiveView === 'dzis' || navActiveView === 'znizki'
       ? 'feed'
       : navActiveView
 
@@ -1481,6 +1491,14 @@ function App() {
             </Suspense>
           </ViewErrorBoundary>
         )
+      case 'znizki':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <Suspense fallback={null}>
+              <ZniskiView userId={session.user.id} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
       default:
         return null
     }
@@ -1573,6 +1591,7 @@ function App() {
           aulaHasUnread={aulaHasUnread}
           onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
           onNavigateToDzis={() => navigateToMainView('dzis')}
+          onNavigateToZnizki={() => navigateToMainView('znizki')}
           onNavigateToSearch={(query) => {
             const normalized = (query ?? '').trim()
             if (!normalized) {

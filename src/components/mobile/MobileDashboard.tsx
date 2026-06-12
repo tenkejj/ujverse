@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles } from 'lucide-react'
+import { ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles, Tag } from 'lucide-react'
 import { NIEZBEDNIK_LINKS } from '../Niezbednik'
 import {
   OFFICIAL_TAG_META,
@@ -138,6 +138,16 @@ export default function MobileDashboard({
           >
             <Sparkles size={22} strokeWidth={1.95} className="shrink-0" aria-hidden />
             <span className={LABEL_CLS}>Dziś</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/znizki')}
+            aria-label="Couponek UJ — zniżki studenckie"
+            title="Couponek UJ"
+            className={`relative ${ITEM_CLS}`}
+          >
+            <Tag size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
+            <span className={LABEL_CLS}>Zniżki</span>
           </button>
           <button
             type="button"

@@ -332,6 +332,39 @@ Module **Aula** = live chat per study-year cohort. **Independent** from `groups`
 
 ---
 
+## Couponek UJ (zniżki studenckie)
+
+### SQL — [20260625100000_student_discounts.sql](supabase/migrations/20260625100000_student_discounts.sql)
+
+- `student_discounts` (główny katalog, snapshot agregaty `use_count` / `review_count` / `avg_rating` / `report_count` utrzymywane triggerami `tg_recalc_discount_*` z `security definer`).
+- `student_discount_uses` PK `(discount_id, user_id)` — idempotentny "wziąłem!" (1 use per user per discount, anti double-count).
+- `student_discount_reviews` UNIQUE `(discount_id, user_id)` — 1-5 gwiazdek + komentarz, upsert per user.
+- `student_discount_reports` — community reports (`nie_dziala`, `zmienione_warunki`, `zamkniete`, `spam`, `inne`).
+- **RPC `mark_discount_use(p_discount_id)`** — security definer, zwraca `(use_count, already_used)` dla optimistic UI cofania bumpa.
+- **RPC `trending_discounts(p_limit)`** — top N z ostatnich 7 dni (group by + count). Klient w `DiscountsService.trending()` merge'uje z pełnymi rekordami i sortuje JS-side wg `recent_uses`.
+- **RLS**: read = `authenticated`, write/update/delete = `created_by = auth.uid()` lub `is_profile_admin()`. Reviews/uses/reports — tylko własne rekordy.
+- **Realtime**: `student_discounts` i `student_discount_uses` w publication `supabase_realtime` (live bumping `use_count` w UI).
+- **Seed** w [20260625100100_student_discounts_seed.sql](supabase/migrations/20260625100100_student_discounts_seed.sql) — 15 realnych zniżek Kraków (Pizza Manzana, Cafe Camelot, Kino Pod Baranami, MPK semestralny, BJ, Karmelicka Tortilla, Filharmonia, Drukarnia UJ etc.). Wpisy seed mają `created_by = NULL` (kolumna NULLABLE z policy guard) + `verified_at = now()`.
+
+### Frontend
+
+- [`useDiscounts`](src/hooks/useDiscounts.ts) — agreguje list + trending + my-used IDs + geolokalizację (opt-in `requestGeo()` z 1h localStorage cache). Optimistic `markUse()` z rollbackiem na error i auto-cofnięciem na `already_used`. Realtime subskrypcja na `student_discounts INSERT` (prepend) + `student_discount_uses INSERT` (bump count, ignoruje własne — już zoptymalizowane).
+- [`DiscountsService`](src/services/DiscountsService.ts) — CRUD + `markUse` / `unmarkUse` + reviews upsert + reports. PostgREST embed reviews normalizujemy z `author: T | T[] | null` do flat `T | null`.
+- [`ZniskiView`](src/components/discounts/ZniskiView.tsx) — `/znizki` strona: hero CTA "Dodaj zniżkę", sekcja "Trending w 7 dni" (5 kart), filter bar (search + sort + verifiedOnly + geo toggle), kategoria pills (10 kategorii z `DISCOUNT_CATEGORY_META` tint), grid responsive 1/2/3 col.
+- [`DiscountCard`](src/components/discounts/DiscountCard.tsx) — `memo`, klikalna karta z absolute overlay button (cały obszar otwiera detail), `use_count` + `avg_rating` + dystans pill (≤500m → green).
+- [`DiscountDetailModal`](src/components/discounts/DiscountDetailModal.tsx) — portal modal z reviews list + form (1-5 stars + komentarz upsert) + report dropdown + Google Maps link (lat/lng → `?query=`).
+- [`DiscountFormModal`](src/components/discounts/DiscountFormModal.tsx) — formularz dodawania (business_name, headline, kategoria pill, opis, adres, links, requires_uj_id, valid_until).
+- [`types/discounts.ts`](src/types/discounts.ts) — `DiscountCategory` enum (musi być w sync z DB CHECK constraint), `DISCOUNT_CATEGORY_META` (label + lucide icon + tint), `StudentDiscount` / `DiscountReview` / `DiscountReportReason` / `DiscountWithDistance` (z `distanceMeters`).
+- Entry points: header pill `Tag` ikon w [`Header.tsx`](src/components/Header.tsx) (prop `onNavigateToZnizki`), mobile rail tile w [`MobileDashboard.tsx`](src/components/mobile/MobileDashboard.tsx). Route `/znizki` w [`App.tsx`](src/App.tsx) `parseAppRoute` + `navigateToMainView`.
+
+### Invariants
+
+- **Kategoria enum sync**: `DISCOUNT_CATEGORIES` w `types/discounts.ts` MUSI matchować `CHECK (category in (...))` w migracji. Dodanie nowej = update obu (i `DISCOUNT_CATEGORY_META` z icon + tint).
+- **Snapshot agregatów**: NIE czyść / nie inkrementuj ręcznie `use_count` / `avg_rating` w aplikacji — triggery DB są source of truth (klient robi optimistic w UI, ale po requesce dostaje server-truth z `mark_discount_use` RPC).
+- **Hidden discounts**: domyślnie `hidden_at IS NULL` w SELECT — to softdelete, NIE robimy hard `DELETE` z UI (oprócz admina przez `discounts_delete_owner` policy).
+
+---
+
 ## API surface
 
 - **[api/daily-brief.ts](api/daily-brief.ts)** — **Edge** endpoint (`fra1`) generujący "morning brief" dla widoku `/dzis`. Reuse infrastruktury: `GroqProvider`, `extractRequestUser`, `checkAndConsumeRateLimit` (5 req/min per user, 1 req/12s refill). Pojedynczy task — payload `DailyBriefInput` (classes + tasks + announcements) zbudowany po stronie klienta przez [`useDailyBrief.toBriefPayload()`](src/hooks/useDailyBrief.ts), prompty z [`src/lib/dailyBriefPrompts.ts`](src/lib/dailyBriefPrompts.ts). Streamuje SSE w formacie OpenAI delta + filtr `<think>` (think-stripping copy z `aula-ai.ts`). Klient: [`DailyBriefService`](src/services/ai/DailyBriefService.ts) → `AsyncGenerator<string>` zużywane przez [`AiInsightModal`](src/components/aula/AiInsightModal.tsx). Hook agregujący [`useDailyBrief`](src/hooks/useDailyBrief.ts) tickuje co 60s (countdown), korzysta z [`useTodayClasses`](src/hooks/useTodayClasses.ts) (re-export anulacji przez RPC `get_timetable_for_range`) + [`CohortService.listOpenTasksForCohort`](src/services/CohortService.ts) (NEW: filtr per-user completions JS-side; sort `due_at NULLS LAST`) + [`AnnouncementsAdapter.fetch`](src/services/adapters/AnnouncementsAdapter.ts) (ostatnie 48h). Entry points: header pill `Dziś` (Sparkles, golden tint) w [`Header.tsx`](src/components/Header.tsx), mobile rail tile w [`MobileDashboard.tsx`](src/components/mobile/MobileDashboard.tsx). Route `/dzis` w [`App.tsx`](src/App.tsx) `parseAppRoute` + `navigateToMainView`; renderowany przez lazy [`DzisView`](src/components/DzisView.tsx).
