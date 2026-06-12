@@ -28,16 +28,18 @@ type Props = {
   onClick: () => void
 }
 
-// Paleta kolorów per `kind` — wizualne odróżnienie auli od zwykłych sal.
-// Aula = bursztynowy (cieplejszy, "ważniejszy"), standard = złoty (UJ accent).
+// Paleta — UJ brand only (warm zinc + gold), no blue/sky/slate-navy.
+//   Aula     = bursztyn-gold (ciepły, "ważniejszy")
+//   Lab      = przygaszony warm zinc (na brand-grayscale, nie cool slate)
+//   Standard = brand-gold-bright (#e8c84a, UJ accent)
 const PALETTE = {
-  aula:     { idle: '#f59e0b', hover: '#fbbf24', selected: '#fcd34d' },
-  lab:      { idle: '#60a5fa', hover: '#93c5fd', selected: '#bfdbfe' },
+  aula:     { idle: '#f59e0b', hover: '#fbbf24', selected: '#fde68a' },
+  lab:      { idle: '#71717a', hover: '#a1a1aa', selected: '#d4d4d8' },
   standard: { idle: '#e8c84a', hover: '#f4d96b', selected: '#fde68a' },
 } as const
 
-const EMISSIVE_BASE = new THREE.Color('#1e293b')
-const EMISSIVE_SELECTED = new THREE.Color('#facc15')
+const EMISSIVE_BASE = new THREE.Color('#27272a')
+const EMISSIVE_SELECTED = new THREE.Color('#fde68a')
 
 export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -87,43 +89,46 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
         <meshStandardMaterial
           ref={matRef}
           color={palette.idle}
-          roughness={0.6}
-          metalness={0.1}
+          roughness={0.55}
+          metalness={0.05}
           emissive={EMISSIVE_BASE}
           emissiveIntensity={0}
           transparent
-          opacity={0.88}
+          opacity={0.95}
         />
-        {/* Edges — wyraźne kontury "ścian" sali. Bez nich boxy zlewają
-            się w jedno z sąsiadami przy ścisłym packingu. */}
+        {/* Edges — wyraźne kontury "ścian" sali. W dark scene używamy
+            warm cream/gold zamiast navy (`#0f172a` zlewało się z tłem),
+            żeby boxy nie znikały. */}
         <Edges
           threshold={15}
-          color={isSelected ? '#fde68a' : hovered ? '#fef9c3' : '#0f172a'}
-          lineWidth={isSelected ? 2 : 1}
+          color={isSelected ? '#fde68a' : hovered ? '#fef9c3' : '#fbbf24'}
+          lineWidth={isSelected ? 2.5 : 1.5}
         />
       </mesh>
 
-      {/* HTML label — kod sali. Zawsze widoczny, gdy selected/hover
-          bigger + display_name. */}
+      {/* HTML label — kod sali. `distanceFactor` wyższy = label większy
+          (formula: scale = distanceFactor / distance). Wcześniej `20`
+          dawało mikroskopijne labelki przy `<Bounds fit>` które ustawia
+          kamerę 60-120m od budynku. Bump do 60 + większy font. */}
       <Html
         position={[0, layout.height / 2 + 0.25, 0]}
         center
-        distanceFactor={20}
+        distanceFactor={60}
         zIndexRange={[40, 0]}
         style={{ pointerEvents: 'none' }}
       >
         <div
-          className={`select-none rounded-md border px-1.5 py-0.5 text-center transition-all ${
+          className={`select-none rounded-md border px-2 py-1 text-center transition-all ${
             isSelected
-              ? 'border-brand-gold-bright bg-black/90 text-brand-gold-bright shadow-lg'
+              ? 'border-brand-gold-bright bg-black/95 text-brand-gold-bright shadow-lg'
               : hovered
-              ? 'border-brand-gold/65 bg-black/80 text-white'
+              ? 'border-brand-gold/75 bg-black/90 text-white'
               : layout.kind === 'aula'
-              ? 'border-amber-400/70 bg-black/70 text-amber-100'
-              : 'border-white/15 bg-black/65 text-white/85'
+              ? 'border-amber-400/80 bg-black/85 text-amber-100'
+              : 'border-white/25 bg-black/80 text-white'
           }`}
           style={{
-            fontSize: isSelected ? 12 : 10,
+            fontSize: isSelected ? 16 : 14,
             fontWeight: 800,
             letterSpacing: '0.04em',
             whiteSpace: 'nowrap',
@@ -134,10 +139,10 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
           {layout.kind === 'aula' && room.capacity && (
             <span
               style={{
-                marginLeft: 4,
-                fontSize: 9,
+                marginLeft: 5,
+                fontSize: 12,
                 fontWeight: 600,
-                opacity: 0.8,
+                opacity: 0.85,
               }}
             >
               · {room.capacity} miejsc
@@ -148,10 +153,10 @@ export default function RoomBox({ layout, room, isSelected, onClick }: Props) {
             room.display_name !== `Sala ${room.code}` && (
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 12,
                   fontWeight: 500,
-                  marginTop: 2,
-                  opacity: 0.85,
+                  marginTop: 3,
+                  opacity: 0.9,
                   textTransform: 'none',
                   letterSpacing: 'normal',
                 }}

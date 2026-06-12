@@ -8,7 +8,6 @@ import {
   Hash,
   HelpCircle,
   Layers,
-  Map as MapIcon,
   MapPin,
   Maximize2,
   Ruler,
@@ -33,7 +32,7 @@ import BaseCard from '../ui/BaseCard'
 import { theme } from '../../styles/theme'
 import { sectionTitleCls, sideMutedCls, widgetGoldCls } from '../../lib/sidePanelStyles'
 import MapLibreCanvas from './MapLibreCanvas'
-import BuildingInteriorView from './BuildingInteriorView'
+import BuildingDirectoryView from './BuildingDirectoryView'
 
 /**
  * Campus3DView — top-level widok 3D mapy kampusu UJ.
@@ -600,38 +599,19 @@ export default function Campus3DView(_props: Props) {
               onClick={() => setExploded(false)}
             />
             <div className="relative z-10 flex h-full flex-col">
-              <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6 bg-linear-to-b from-black/80 to-transparent">
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-brand-gold-bright font-bold inline-flex items-center gap-1.5">
-                    <MapIcon size={11} strokeWidth={2.5} aria-hidden />
-                    Plan budynku
-                  </p>
-                  <h2 className="text-base sm:text-2xl font-extrabold text-white truncate">
-                    {selectedBuilding.name}
-                  </h2>
-                  {selectedBuilding.short_name && (
-                    <p className="text-[11px] sm:text-sm text-white/65 truncate">
-                      {selectedBuilding.short_name} · {selectedBuilding.address}
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setExploded(false)}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md px-3 py-2 sm:py-1.5 text-xs sm:text-xs font-semibold text-white min-h-[40px] sm:min-h-0"
-                  aria-label="Zwiń widok wnętrz"
-                >
-                  <X size={16} strokeWidth={2.5} />
-                  <span className="hidden sm:inline">Zwiń</span>
-                </button>
-              </div>
+              {/* Close button żyje teraz wewnątrz BuildingDirectoryView (w
+                  banner row, obok Dojazd/3D), więc nie nachodzi na nic.
+                  Esc też zamyka (handler globalny niżej). */}
               <div className="relative flex-1 min-h-0">
-                <BuildingInteriorView
+                <BuildingDirectoryView
                   building={selectedBuilding}
                   rooms={siblingRooms}
                   roomsLoading={siblingRoomsLoading}
                   selectedRoomId={selectedRoomId}
                   onPickRoom={(roomId) => selectRoom(roomId)}
+                  userLocation={userLocation}
+                  distanceKm={distanceKmTo(selectedBuilding)}
+                  onClose={() => setExploded(false)}
                 />
               </div>
             </div>
@@ -793,18 +773,16 @@ function BuildingDetailCard({
         </div>
       )}
 
-      {/* Akcje — primary = otwórz plan, secondary = mapy. CTA mocniejsze
-          żeby user wiedział "TU jest interakcja" (wcześniej Sparkles
-          sugerowało coś dekoracyjnego). */}
+      {/* Akcje — primary = katalog sal, secondary = mapy. */}
       <div className="px-4 mt-1 mb-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onToggleExploded}
           className={`${theme.button.primary} px-4 py-2.5 text-xs flex-1 sm:flex-none min-w-0 justify-center`}
         >
-          <MapIcon size={14} strokeWidth={2.25} aria-hidden />
+          <Building2 size={14} strokeWidth={2.25} aria-hidden />
           <span className="truncate">
-            {exploded ? 'Zwiń plan budynku' : 'Otwórz plan budynku'}
+            {exploded ? 'Zamknij katalog' : `Sale w budynku (${rooms.length})`}
           </span>
         </button>
         <a
@@ -817,14 +795,6 @@ function BuildingDetailCard({
           <span className="hidden sm:inline">Otwórz w </span>Mapach
         </a>
       </div>
-
-      {/* Mini-hint — co znajdziesz po otwarciu planu. Cienka linia info
-          żeby user nie był zaskoczony. */}
-      {!exploded && (
-        <p className="px-4 mb-3 -mt-1 text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug">
-          Plan piętra w 2D z klikalnymi salami · piętra przełączasz tabami · opcjonalny widok 3D
-        </p>
-      )}
 
       {/* Selected room highlight */}
       {selectedRoom && (

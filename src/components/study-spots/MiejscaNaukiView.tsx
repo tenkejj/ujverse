@@ -20,7 +20,7 @@
  *   │ Sekcja "Inne"                 │            │
  *   └───────────────────────────────┴────────────┘
  */
-import { useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BookOpen,
@@ -28,6 +28,8 @@ import {
   Coffee,
   Laptop,
   Library,
+  List,
+  Map as MapIcon,
   Plus,
   Radio,
   Search,
@@ -50,9 +52,14 @@ import {
   type StudySpotWithUserState,
 } from '../../types/studySpots'
 
+const MiejscaMap = lazy(() => import('./MiejscaMap'))
+
 type Props = {
   session: Session | null
+  onNavigateToProfile?: (username: string) => void
 }
+
+type ViewMode = 'list' | 'map'
 
 const SORT_LABELS: Record<StudySpotFilter['sort'], string> = {
   people: 'Live presence',
@@ -111,7 +118,7 @@ const SIDE_RAIL_FILTERS: { key: string; label: string }[] = [
   { key: 'other', label: STUDY_SPOT_KIND_META.other.label },
 ]
 
-export default function MiejscaNaukiView({ session }: Props) {
+export default function MiejscaNaukiView({ session, onNavigateToProfile }: Props) {
   const userId = session?.user?.id ?? null
   const {
     spots,
@@ -124,10 +131,13 @@ export default function MiejscaNaukiView({ session }: Props) {
     toggleCheckIn,
     submitRating,
     createSpot,
+    uploadPhoto,
+    removePhoto,
   } = useStudySpots({ session })
 
   const [detailSpot, setDetailSpot] = useState<StudySpotWithUserState | null>(null)
   const [formOpen, setFormOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   // Hero: aktywny check-in usera > top live > top rated > pierwszy
   const heroSpot = useMemo<StudySpotWithUserState | null>(() => {
@@ -209,6 +219,49 @@ export default function MiejscaNaukiView({ session }: Props) {
         <div className={EVENTS_HUB.toolbar.stickyWrapClass}>
           <div className={EVENTS_HUB.toolbar.rowClass}>
             <div className={EVENTS_HUB.toolbar.pillsWrapClass}>
+              {/* Segmented control: Lista / Mapa */}
+              <div
+                className="relative inline-flex items-stretch rounded-full border border-zinc-200/80 bg-white/85 p-0.5 backdrop-blur-md dark:border-white/10 dark:bg-bg-card/80"
+                role="tablist"
+                aria-label="Widok miejsc"
+              >
+                {[
+                  { key: 'list' as ViewMode, label: 'Lista', Icon: List },
+                  { key: 'map' as ViewMode, label: 'Mapa', Icon: MapIcon },
+                ].map(({ key, label, Icon }) => {
+                  const active = viewMode === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setViewMode(key)}
+                      className="relative inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold uppercase tracking-wide transition-colors"
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="miejsca-view-bg"
+                          className="absolute inset-0 rounded-full bg-[#1e293b] dark:bg-[#D4AF37]"
+                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                      <Icon
+                        size={13}
+                        strokeWidth={2.4}
+                        className={`relative z-[1] shrink-0 transition-colors ${active ? 'text-white dark:text-[#1e293b]' : 'text-zinc-600 dark:text-zinc-400'}`}
+                        aria-hidden
+                      />
+                      <span
+                        className={`relative z-[1] transition-colors ${active ? 'text-white dark:text-[#1e293b]' : 'text-zinc-600 dark:text-zinc-400'}`}
+                      >
+                        {label}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
               <button
                 type="button"
                 onClick={() => setFilter((f) => ({ ...f, withPeopleOnly: !f.withPeopleOnly }))}
@@ -317,9 +370,25 @@ export default function MiejscaNaukiView({ session }: Props) {
           </p>
         )}
 
-        {/* ── Body: loading / empty / hero + groups ────────────────── */}
+        {/* ── Body: loading / empty / hero+groups / mapa ──────────── */}
         <AnimatePresence mode="wait">
-          {loading && allSpots.length === 0 ? (
+          {viewMode === 'map' && !loading && spots.length > 0 ? (
+            <motion.div
+              key="map"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <Suspense
+                fallback={
+                  <div className="h-[68vh] min-h-[420px] animate-pulse rounded-3xl bg-black/[0.05] dark:bg-white/[0.04]" />
+                }
+              >
+                <MiejscaMap spots={spots} onPickSpot={handleOpenDetail} />
+              </Suspense>
+            </motion.div>
+          ) : loading && allSpots.length === 0 ? (
             <motion.div
               key="loading"
               initial={{ opacity: 0 }}
@@ -455,9 +524,13 @@ export default function MiejscaNaukiView({ session }: Props) {
 
       <StudySpotDetailModal
         spot={liveDetail}
+        currentUserId={userId}
         onClose={() => setDetailSpot(null)}
         onCheckIn={toggleCheckIn}
         onSubmitRating={(spotId, overall, extra) => submitRating(spotId, overall, extra)}
+        onUploadPhoto={uploadPhoto}
+        onRemovePhoto={removePhoto}
+        onNavigateToProfile={onNavigateToProfile}
       />
 
       <StudySpotFormModal

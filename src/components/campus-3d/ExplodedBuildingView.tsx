@@ -5,11 +5,13 @@ import * as THREE from 'three'
 import { Layers, Users } from 'lucide-react'
 import type { Building, Room } from '../../services/SaleFinderService'
 import {
-  footprintBbox,
+  bboxOfMeters,
+  computeFootprintOrientation,
   groupRoomsByFloor,
   loadFootprint,
   localProjection,
   ringToMeters,
+  rotateMeters,
   type FloorGroup,
   type FootprintFeature,
 } from '../../services/Campus3DService'
@@ -78,6 +80,16 @@ export default function ExplodedBuildingView({
   }, [building.id])
 
   // ── Compute footprint shape + dims in local meters ───────────────────
+  //
+  // Pipeline:
+  //   1. project lng/lat → metry (lokalny tangent plane).
+  //   2. compute orientation (kąt principal-axis budynku).
+  //   3. ROTATE meters by -orientation żeby budynek był axis-aligned.
+  //      Bez tego dla obróconych budynków (Łojasiewicza ~30°) layout sal
+  //      jest w axis-aligned gridzie a bbox jest dużo większy niż realny
+  //      kształt → sale wiszą poza polygon.
+  //   4. center geometrii w (0, 0).
+  //   5. tight bbox po rotacji = dokładne wymiary do layoutFloor.
   const { shape, width, depth } = useMemo(() => {
     if (!footprint) {
       return {
@@ -87,21 +99,19 @@ export default function ExplodedBuildingView({
       }
     }
     const outerRing = footprint.geometry.coordinates[0]
-    // Centroid budynku z UJ_buildings jako origin lokalnej projekcji.
-    // (Footprint może być przesunięty bo OSM mam inną dokładność, ale
-    // dla wizualizacji szczegółów nie ma to znaczenia — chcemy budynek
-    // wycentrowany w 0,0.)
     const project = localProjection(building.lat, building.lng)
-    const bbox = footprintBbox(outerRing, project)
-    const meters = ringToMeters(outerRing, project)
-    // Wycentruj geometrię w (0, 0).
+    const projected = ringToMeters(outerRing, project)
+    // Wyznacz orientację i obróć żeby budynek był wyrównany do osi X.
+    const orientation = computeFootprintOrientation(projected)
+    const aligned = rotateMeters(projected, -orientation)
+    const bbox = bboxOfMeters(aligned)
     const cx = (bbox.minX + bbox.maxX) / 2
     const cz = (bbox.minZ + bbox.maxZ) / 2
     const path = new THREE.Shape()
-    if (meters.length > 0) {
-      path.moveTo(meters[0].x - cx, meters[0].z - cz)
-      for (let i = 1; i < meters.length; i++) {
-        path.lineTo(meters[i].x - cx, meters[i].z - cz)
+    if (aligned.length > 0) {
+      path.moveTo(aligned[0].x - cx, aligned[0].z - cz)
+      for (let i = 1; i < aligned.length; i++) {
+        path.lineTo(aligned[i].x - cx, aligned[i].z - cz)
       }
       path.closePath()
     }
@@ -229,14 +239,16 @@ export default function ExplodedBuildingView({
         }}
         dpr={isMobile ? [1, 1.5] : [1, 2]}
         style={{
-          background: theme === 'dark' ? '#070a18' : '#dbe7f3',
+          // Warm charcoal background — zero blue channel bias.
+          background: theme === 'dark' ? '#0a0a0a' : '#e7eaf0',
         }}
       >
-        {/* Oświetlenie */}
-        <ambientLight intensity={theme === 'dark' ? 0.35 : 0.6} />
+        {/* Oświetlenie — bumpniete w dark żeby standard rooms były widoczne
+            (wcześniej rzeczy bez bright fill ginęły w czerni). */}
+        <ambientLight intensity={theme === 'dark' ? 0.7 : 0.7} />
         <directionalLight
           position={[30, 60, 30]}
-          intensity={theme === 'dark' ? 1.1 : 1.4}
+          intensity={theme === 'dark' ? 1.4 : 1.5}
           castShadow
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
@@ -246,18 +258,20 @@ export default function ExplodedBuildingView({
           shadow-camera-bottom={-50}
         />
 
-        {/* Sky-ish hemisphere */}
+        {/* Hemisphere — neutralne zinc tony zamiast navy slate. */}
         <hemisphereLight
           args={[
-            theme === 'dark' ? '#1e293b' : '#cfe0f2',
-            theme === 'dark' ? '#000000' : '#475569',
-            0.4,
+            theme === 'dark' ? '#3f3f46' : '#cfe0f2',
+            theme === 'dark' ? '#0a0a0a' : '#475569',
+            0.6,
           ]}
         />
 
         <Suspense fallback={null}>
-          {/* Bounds — auto-fit kamery do zawartości po zmianach mode/data */}
-          <Bounds fit clip observe margin={1.4}>
+          {/* Bounds — auto-fit kamery do zawartości po zmianach mode/data.
+              margin=1.1 = tylko 10% padding (wcześniej 1.4 = 40% padding
+              co odpychało kamerę i robiło sale mikroskopijne). */}
+          <Bounds fit clip observe margin={1.1}>
             <group>
               {allFloors.map(({ level, group, empty }) => {
                 const targetY = (level - minLevel) * spacing
@@ -288,7 +302,7 @@ export default function ExplodedBuildingView({
           >
             <planeGeometry args={[400, 400]} />
             <meshStandardMaterial
-              color={theme === 'dark' ? '#040714' : '#aabdd2'}
+              color={theme === 'dark' ? '#18181b' : '#aabdd2'}
               roughness={1}
               metalness={0}
               transparent

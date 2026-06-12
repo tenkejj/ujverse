@@ -25,15 +25,17 @@ import RoomBox from './RoomBox'
  */
 
 const FLOOR_THICKNESS = 0.4
+// Warm charcoal (zinc) zamiast navy slate — żeby cała scena nie była
+// "blue tinted".
 const FLOOR_COLOR_LIGHT = '#cbd5e1'
-const FLOOR_COLOR_DARK = '#1e293b'
+const FLOOR_COLOR_DARK = '#27272a' // zinc-800
 const OUTLINE_COLOR_LIGHT = '#475569'
 const OUTLINE_COLOR_DARK = '#fde68a'
 
 // Korytarz — wąski pas na podłodze, ciemniejszy/jaśniejszy niż reszta
 // piętra. Daje wrażenie "hallway" między salami.
 const CORRIDOR_COLOR_LIGHT = '#94a3b8'
-const CORRIDOR_COLOR_DARK = '#0f172a'
+const CORRIDOR_COLOR_DARK = '#18181b' // zinc-900
 
 type Props = {
   group: FloorGroup
@@ -137,14 +139,16 @@ export default function FloorPlane({
         </lineLoop>
       )}
 
-      {/* Etykieta piętra — z boku, na maksymalnym X. */}
+      {/* Etykieta piętra — z boku, na maksymalnym X. Większy font żeby
+          była czytelna z dystansu (Bounds.fit zwykle ustawia kamerę
+          dość daleko). */}
       <Text
-        position={[footprintWidth / 2 + 1.5, 1.2, 0]}
+        position={[footprintWidth / 2 + 2, 1.8, 0]}
         rotation={[0, -Math.PI / 2, 0]}
-        fontSize={1.4}
+        fontSize={2.4}
         color={theme === 'dark' ? '#fde68a' : '#0f172a'}
-        outlineColor={theme === 'dark' ? '#0b1226' : '#ffffff'}
-        outlineWidth={0.05}
+        outlineColor={theme === 'dark' ? '#09090b' : '#ffffff'}
+        outlineWidth={0.08}
         anchorX="left"
         anchorY="middle"
       >
@@ -197,10 +201,10 @@ export default function FloorPlane({
         <Text
           position={[0, 0.6, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.9}
-          color={theme === 'dark' ? '#64748b' : '#64748b'}
-          outlineColor={theme === 'dark' ? '#0b1226' : '#ffffff'}
-          outlineWidth={0.03}
+          fontSize={1.6}
+          color={theme === 'dark' ? '#a1a1aa' : '#52525b'}
+          outlineColor={theme === 'dark' ? '#09090b' : '#ffffff'}
+          outlineWidth={0.06}
           anchorX="center"
           anchorY="middle"
         >

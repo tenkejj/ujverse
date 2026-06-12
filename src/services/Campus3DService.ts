@@ -237,6 +237,92 @@ export function footprintBbox(
   }
 }
 
+/**
+ * Oblicza orientację budynku (radiany) — kąt najdłuższej krawędzi
+ * w stosunku do osi X.
+ *
+ * Po co? Budynki UJ na mapie są obrócone pod różnymi kątami (Łojasiewicza
+ * ~30°, Bracka pod 70°, itd.). `layoutFloor` placuje sale w axis-aligned
+ * gridzie (bbox-relative). Dla obróconego budynku axis-aligned bbox jest
+ * dużo większy niż realny kształt → sale wylatują poza polygon i wyglądają
+ * jakby wisiały w powietrzu.
+ *
+ * Rozwiązanie: obróć cały footprint o `-orientation` przed bbox/shape
+ * generowaniem. Wtedy budynek jest osiowo wyrównany, bbox jest ciasny,
+ * a sale lądują wewnątrz.
+ *
+ * Implementacja: weight'owana suma kątów wszystkich krawędzi (każda
+ * krawędź wnosi swój kąt * długość). Stable dla L/U-shaped builds gdzie
+ * główna oś nie jest jedną dominującą krawędzią. Kąty są mapowane modulo
+ * π/2 (90°) bo prostokąt ma 4 krawędzie pod 90° do siebie — wszystkie
+ * "głosują" na ten sam kierunek.
+ */
+export function computeFootprintOrientation(
+  meters: Array<{ x: number; z: number }>,
+): number {
+  if (meters.length < 3) return 0
+  // Sumujemy wektory (cos2θ, sin2θ) ważone długością krawędzi — kąty
+  // doubled żeby krawędź pod 0° i 90° (przeciwległe boki prostokąta)
+  // zmapowały się na ten sam vector. Następnie atan2/2 daje principal axis.
+  let sumCos = 0
+  let sumSin = 0
+  for (let i = 0; i < meters.length; i++) {
+    const a = meters[i]
+    const b = meters[(i + 1) % meters.length]
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const len = Math.hypot(dx, dz)
+    if (len < 0.1) continue
+    const angle = Math.atan2(dz, dx)
+    sumCos += Math.cos(2 * angle) * len
+    sumSin += Math.sin(2 * angle) * len
+  }
+  return Math.atan2(sumSin, sumCos) / 2
+}
+
+/**
+ * Obróć ring punktów {x,z} o `angle` (radiany) wokół (0,0).
+ * Używane w exploded view do wyrównania budynku do osi X.
+ */
+export function rotateMeters(
+  meters: Array<{ x: number; z: number }>,
+  angle: number,
+): Array<{ x: number; z: number }> {
+  if (Math.abs(angle) < 1e-6) return meters
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  return meters.map(({ x, z }) => ({
+    x: x * c - z * s,
+    z: x * s + z * c,
+  }))
+}
+
+/**
+ * Bbox dla już zaprojektowanego ringu meters (po opcjonalnej rotacji).
+ */
+export function bboxOfMeters(
+  meters: Array<{ x: number; z: number }>,
+): { width: number; depth: number; minX: number; maxX: number; minZ: number; maxZ: number } {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minZ = Infinity
+  let maxZ = -Infinity
+  for (const { x, z } of meters) {
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (z < minZ) minZ = z
+    if (z > maxZ) maxZ = z
+  }
+  return {
+    width: maxX - minX,
+    depth: maxZ - minZ,
+    minX,
+    maxX,
+    minZ,
+    maxZ,
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Exploded view — layout boxów per piętro
 // ─────────────────────────────────────────────────────────────────────────
@@ -295,12 +381,13 @@ function detectWing(code: string): string | null {
  *   - lab: "Pracownia", "Lab" w notes — w MVP używamy tylko nazwy
  *   - standard: reszta
  */
-function detectKind(
+export function detectKind(
   code: string,
   capacity: number | null,
 ): RoomBoxLayout['kind'] {
   const lower = code.toLowerCase()
   if (lower.includes('aula') || lower.includes('audytorium')) return 'aula'
+  if (lower.includes('lab') || lower.includes('pracownia')) return 'lab'
   if ((capacity ?? 0) >= 150) return 'aula'
   return 'standard'
 }

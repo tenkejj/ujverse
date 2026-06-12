@@ -230,6 +230,25 @@ export function useStudySpots({ session }: Options) {
     [userId, refetch],
   )
 
+  const uploadPhoto = useCallback(
+    async (spotId: string, file: File) => {
+      if (!userId) return { publicUrl: null, error: 'not-logged-in' }
+      const result = await StudySpotsService.uploadPhoto(spotId, userId, file)
+      if (!result.error) void refetch()
+      return result
+    },
+    [userId, refetch],
+  )
+
+  const removePhoto = useCallback(
+    async (spotId: string, photoUrl: string) => {
+      const result = await StudySpotsService.removePhoto(spotId, photoUrl)
+      if (!result.error) void refetch()
+      return result
+    },
+    [refetch],
+  )
+
   return {
     spots: filteredSpots,
     allSpots: spots,
@@ -242,5 +261,7 @@ export function useStudySpots({ session }: Options) {
     toggleCheckIn,
     submitRating,
     createSpot,
+    uploadPhoto,
+    removePhoto,
   }
 }

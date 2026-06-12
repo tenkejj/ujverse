@@ -1541,7 +1541,10 @@ function App() {
         return (
           <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
             <Suspense fallback={null}>
-              <MiejscaNaukiView session={session} />
+              <MiejscaNaukiView
+                session={session}
+                onNavigateToProfile={navigateToProfileByHandle}
+              />
             </Suspense>
           </ViewErrorBoundary>
         )

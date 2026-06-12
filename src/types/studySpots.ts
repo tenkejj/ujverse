@@ -126,6 +126,18 @@ export type StudySpotCheckin = {
   comment: string | null
 }
 
+/** Output z RPC `get_active_checkins_with_profiles(p_spot_id)`. */
+export type ActiveCheckinWithProfile = {
+  checkin_id: string
+  user_id: string
+  mood: StudySpotMood
+  checked_in_at: string
+  expires_at: string
+  full_name: string | null
+  username: string | null
+  avatar_url: string | null
+}
+
 export type StudySpotRating = {
   id: string
   spot_id: string

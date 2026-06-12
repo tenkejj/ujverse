@@ -27,9 +27,12 @@ import {
   type StudySpotMood,
   type StudySpotWithUserState,
 } from '../../types/studySpots'
+import ActiveCheckinsList from './ActiveCheckinsList'
+import StudySpotPhotos from './StudySpotPhotos'
 
 type Props = {
   spot: StudySpotWithUserState | null
+  currentUserId: string | null
   onClose: () => void
   onCheckIn: (
     spotId: string,
@@ -40,6 +43,15 @@ type Props = {
     overall: number,
     extra?: { comment?: string | null },
   ) => Promise<{ ok: boolean; error: string | null }>
+  onUploadPhoto: (
+    spotId: string,
+    file: File,
+  ) => Promise<{ publicUrl: string | null; error: string | null }>
+  onRemovePhoto: (
+    spotId: string,
+    photoUrl: string,
+  ) => Promise<{ error: string | null }>
+  onNavigateToProfile?: (username: string) => void
 }
 
 function StarPicker({
@@ -83,9 +95,13 @@ function StarPicker({
 
 export default function StudySpotDetailModal({
   spot,
+  currentUserId,
   onClose,
   onCheckIn,
   onSubmitRating,
+  onUploadPhoto,
+  onRemovePhoto,
+  onNavigateToProfile,
 }: Props) {
   const [busy, setBusy] = useState(false)
   const [selectedMood, setSelectedMood] = useState<StudySpotMood>('focus')
@@ -357,6 +373,22 @@ export default function StudySpotDetailModal({
                     </span>
                   </div>
                 </div>
+
+                {/* Active check-ins (kto teraz tutaj jest) */}
+                <ActiveCheckinsList
+                  spotId={spot.id}
+                  expectedCount={spot.active_checkins_count}
+                  onNavigateToProfile={onNavigateToProfile}
+                />
+
+                {/* Photos: gallery + uploader */}
+                <StudySpotPhotos
+                  spotId={spot.id}
+                  photos={spot.photo_urls}
+                  canUpload={!!currentUserId}
+                  onUpload={(file) => onUploadPhoto(spot.id, file)}
+                  onRemove={(url) => onRemovePhoto(spot.id, url)}
+                />
 
                 {/* External links */}
                 {(spot.google_maps_url || spot.website_url) && (

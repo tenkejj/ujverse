@@ -161,7 +161,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
             Dark border zostaje (przy ciemnym backdropie potrzebne dla
             edge-definition), light: czysto bez krawędzi.
           */
-          className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl sm:max-w-2xl dark:border dark:border-white/10 dark:bg-zinc-900"
+          className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl sm:max-w-2xl dark:border dark:border-white/10 dark:bg-bg-card"
           initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.97 }}
           animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
           exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
@@ -273,7 +273,12 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                             visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 28 } },
                           }
                     }
-                    className="mt-2 text-base font-semibold text-fg-secondary"
+                    /*
+                      Subtitle — akcent brand (navy w light, gold w dark),
+                      zamiast zimnego slate-400 z fg-secondary. Spójne z
+                      AuthShell / Header / primary CTA appki.
+                    */
+                    className="mt-2 text-base font-semibold text-[#1e293b]/85 dark:text-brand-gold-bright"
                   >
                     {current.subtitle}
                   </motion.p>
@@ -286,7 +291,11 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                             visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 320, damping: 30 } },
                           }
                     }
-                    className="mt-4 text-[15.5px] leading-relaxed text-zinc-600 dark:text-zinc-300"
+                    /*
+                      Body — neutralny biały zamiast zinc-300 (lekko niebieskawy
+                      w dark). Trzyma się ciepłej palety navy/gold appki.
+                    */
+                    className="mt-4 text-[15.5px] leading-relaxed text-zinc-600 dark:text-zinc-200"
                   >
                     {current.body}
                   </motion.p>

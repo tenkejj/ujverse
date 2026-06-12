@@ -19,6 +19,7 @@
 import { supabase } from '../supabaseClient'
 import type { PostgrestError } from '@supabase/supabase-js'
 import type {
+  ActiveCheckinWithProfile,
   StudySpot,
   StudySpotCheckin,
   StudySpotCreateInput,
@@ -26,6 +27,11 @@ import type {
   StudySpotRating,
   StudySpotWithUserState,
 } from '../types/studySpots'
+import {
+  removeStudySpotPhoto,
+  uploadStudySpotPhoto,
+  MAX_PHOTOS_PER_SPOT,
+} from '../lib/studySpotUpload'
 
 const SPOT_SELECT_FIELDS =
   'id, name, address, lat, lng, kind, building_id, description, hours_text, photo_urls, wifi_quality, silence_level, sockets_count_estimate, tags, website_url, google_maps_url, is_free, price_hint, rating_avg, rating_count, active_checkins_count, created_by, created_at, updated_at'
@@ -209,6 +215,93 @@ class StudySpotsServiceImpl {
       data: (data as unknown as StudySpotRating[]) ?? [],
       error: error as PostgrestError | null,
     }
+  }
+
+  // -------------------------------------------------------------------
+  // ACTIVE CHECK-INS WITH PROFILES
+  // -------------------------------------------------------------------
+
+  /**
+   * RPC `get_active_checkins_with_profiles` — kto teraz jest na spocie
+   * + avatary/nazwiska, w jednym query (no N+1 dla profiles).
+   */
+  async getActiveCheckinsWithProfiles(
+    spotId: string,
+  ): Promise<{ data: ActiveCheckinWithProfile[]; error: PostgrestError | null }> {
+    const { data, error } = await supabase.rpc('get_active_checkins_with_profiles', {
+      p_spot_id: spotId,
+    })
+    return {
+      data: (data ?? []) as ActiveCheckinWithProfile[],
+      error: error as PostgrestError | null,
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // PHOTOS (Supabase Storage)
+  // -------------------------------------------------------------------
+
+  /**
+   * Upload zdjęcia do bucketu `study-spots-photos` + append `publicUrl`
+   * do `study_spots.photo_urls`. Sanity-check `MAX_PHOTOS_PER_SPOT`
+   * po stronie klienta (RLS i tak chroni przed bucketem-spamem).
+   */
+  async uploadPhoto(
+    spotId: string,
+    userId: string,
+    file: File,
+  ): Promise<{ publicUrl: string | null; error: string | null }> {
+    const current = await this.getById(spotId)
+    if (current.error) return { publicUrl: null, error: current.error.message }
+    if (!current.data) return { publicUrl: null, error: 'Spot nie istnieje' }
+    if (current.data.photo_urls.length >= MAX_PHOTOS_PER_SPOT) {
+      return { publicUrl: null, error: `Maks. ${MAX_PHOTOS_PER_SPOT} zdjęć na miejsce` }
+    }
+
+    let uploaded
+    try {
+      uploaded = await uploadStudySpotPhoto(file, spotId, userId)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Upload nie powiódł się'
+      return { publicUrl: null, error: msg }
+    }
+
+    const next = [...current.data.photo_urls, uploaded.publicUrl]
+    const { error: updErr } = await supabase
+      .from('study_spots')
+      .update({ photo_urls: next })
+      .eq('id', spotId)
+    if (updErr) {
+      // Wyczyść osierocony plik
+      void removeStudySpotPhoto(uploaded.publicUrl).catch(() => null)
+      return { publicUrl: null, error: updErr.message }
+    }
+    return { publicUrl: uploaded.publicUrl, error: null }
+  }
+
+  async removePhoto(
+    spotId: string,
+    photoUrl: string,
+  ): Promise<{ error: string | null }> {
+    const current = await this.getById(spotId)
+    if (current.error) return { error: current.error.message }
+    if (!current.data) return { error: 'Spot nie istnieje' }
+
+    const next = current.data.photo_urls.filter((u) => u !== photoUrl)
+    const { error: updErr } = await supabase
+      .from('study_spots')
+      .update({ photo_urls: next })
+      .eq('id', spotId)
+    if (updErr) return { error: updErr.message }
+
+    // Storage delete jest best-effort — jeśli RLS nie pozwoli, foto zostanie
+    // sierotą w bucketcie. To akceptowalne (audit log + cleanup cron).
+    try {
+      await removeStudySpotPhoto(photoUrl)
+    } catch {
+      // ignore — array już bez tej referencji
+    }
+    return { error: null }
   }
 }
 
