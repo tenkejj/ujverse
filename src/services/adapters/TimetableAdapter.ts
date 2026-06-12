@@ -37,6 +37,27 @@ export type ImportIcsResult = {
   skippedCount: number
   parserErrors: string[]
   dbError: PostgrestError | null
+  /** Ustawiane gdy fetch z URL-a USOSweb się wywalił przed parsowaniem. */
+  fetchError?: string | null
+}
+
+/**
+ * USOSweb po „Eksport do iCalendar" daje URL postaci
+ * `https://apps.usos.uj.edu.pl/services/tt/upcoming_ical?lang=pl&user_id=…&key=…`.
+ * Validujemy tutaj klient-side, żeby pokazać sensowny komunikat zanim
+ * pójdziemy w roundtrip do `/api/fetch-usos-ics`.
+ */
+export function isLikelyUsosIcsUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim())
+    if (u.protocol !== 'https:') return false
+    if (u.hostname.toLowerCase() !== 'apps.usos.uj.edu.pl') return false
+    if (!u.pathname.startsWith('/services/tt/')) return false
+    const key = u.searchParams.get('key')
+    return Boolean(key && key.trim().length >= 8)
+  } catch {
+    return false
+  }
 }
 
 type InsertRow = {
@@ -99,6 +120,76 @@ class TimetableAdapterImpl {
     }
     result.skippedCount = result.parsedCount - result.insertedCount
     return result
+  }
+
+  /**
+   * Pobiera surowy ICS z USOSweb przez nasz proxy endpoint
+   * (`/api/fetch-usos-ics`) i deleguje do `importIcs`. Robimy to przez
+   * proxy bo apps.usos.uj.edu.pl nie wystawia CORS-ów dla naszej domeny.
+   *
+   * Dorzuca `Authorization: Bearer <jwt>` jeśli jest sesja — endpoint go
+   * używa tylko do rate-limitu (per user zamiast per IP), nie do auth.
+   */
+  async importIcsFromUrl(userId: string, url: string): Promise<ImportIcsResult> {
+    const empty: ImportIcsResult = {
+      parsedCount: 0,
+      insertedCount: 0,
+      skippedCount: 0,
+      parserErrors: [],
+      dbError: null,
+      fetchError: null,
+    }
+    if (!isLikelyUsosIcsUrl(url)) {
+      return {
+        ...empty,
+        fetchError:
+          'URL musi być z apps.usos.uj.edu.pl i zawierać parametr "key" (skopiuj z USOSweb → Eksport do iCalendar).',
+      }
+    }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (token) headers['Authorization'] = `Bearer ${token}`
+    } catch {
+      // Anonimowy fallback — endpoint działa też bez sesji.
+    }
+
+    let res: Response
+    try {
+      res = await fetch('/api/fetch-usos-ics', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ url: url.trim() }),
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error'
+      return { ...empty, fetchError: `Nie udało się połączyć z proxy: ${msg}` }
+    }
+
+    if (!res.ok) {
+      let message = `Proxy zwróciło ${res.status}`
+      try {
+        const body = (await res.json()) as { error?: string } | null
+        if (body?.error) message = body.error
+      } catch {
+        // Body nie było JSON-em, zostawiamy generyczny komunikat.
+      }
+      return { ...empty, fetchError: message }
+    }
+
+    let payload: { ics?: unknown } | null = null
+    try {
+      payload = (await res.json()) as { ics?: unknown }
+    } catch {
+      return { ...empty, fetchError: 'Proxy zwróciło niepoprawne JSON.' }
+    }
+    const ics = payload && typeof payload.ics === 'string' ? payload.ics : null
+    if (!ics) {
+      return { ...empty, fetchError: 'Proxy nie zwróciło treści iCalendar.' }
+    }
+
+    return this.importIcs(userId, ics)
   }
 
   async clear(userId: string): Promise<{ error: PostgrestError | null; deleted: number }> {

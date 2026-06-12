@@ -167,6 +167,15 @@ class DataServiceImpl {
     return TimetableAdapter.importIcs(userId, rawIcs)
   }
 
+  /**
+   * Import bezpośrednio z URL-a „Eksport do iCalendar" z USOSweb —
+   * delegujemy fetch do proxy endpointu (`/api/fetch-usos-ics`) który
+   * obchodzi brak CORS na apps.usos.uj.edu.pl.
+   */
+  async importTimetableFromUrl(userId: string, url: string): Promise<ImportIcsResult> {
+    return TimetableAdapter.importIcsFromUrl(userId, url)
+  }
+
   async clearTimetable(userId: string) {
     return TimetableAdapter.clear(userId)
   }

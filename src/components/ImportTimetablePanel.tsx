@@ -2,6 +2,9 @@
  * UJverse — panel importu planu zajęć (.ics z USOSweb).
  *
  * Tryby:
+ *   - „Wklej link" — URL z dialogu USOSweb „Eksport do iCalendar".
+ *     Najmniej tarcia: user wkleja gotowy link, my pobieramy ICS przez
+ *     proxy `/api/fetch-usos-ics` (apps.usos.uj.edu.pl nie wystawia CORS).
  *   - drag-drop pliku `.ics`
  *   - paste surowego tekstu (dla userów którzy mają plik na drugim urządzeniu)
  *
@@ -9,12 +12,15 @@
  * pierwszych 3 zajęć żeby user widział że parsing zadziałał.
  */
 import { useRef, useState } from 'react'
-import { ClipboardPaste, FileUp, Loader2, Trash2 } from 'lucide-react'
+import { ClipboardPaste, FileUp, Link2, Loader2, Trash2 } from 'lucide-react'
 import BaseCard from './ui/BaseCard'
 import { DataService } from '../services/DataService'
 import { theme } from '../styles/theme'
 import { toast } from '../lib/appToast'
-import type { ImportIcsResult } from '../services/adapters/TimetableAdapter'
+import {
+  isLikelyUsosIcsUrl,
+  type ImportIcsResult,
+} from '../services/adapters/TimetableAdapter'
 
 type Props = {
   userId: string
@@ -40,13 +46,37 @@ export default function ImportTimetablePanel({
   onImported,
   onCleared,
 }: Props) {
-  const [mode, setMode] = useState<'idle' | 'paste'>('idle')
+  const [mode, setMode] = useState<'idle' | 'paste' | 'url'>('idle')
   const [rawText, setRawText] = useState('')
+  const [urlValue, setUrlValue] = useState('')
   const [isImporting, setIsImporting] = useState(false)
   const [lastResult, setLastResult] = useState<ImportIcsResult | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const handleResult = (result: ImportIcsResult): boolean => {
+    setLastResult(result)
+    if (result.fetchError) {
+      toast.error(result.fetchError)
+      return false
+    }
+    if (result.dbError) {
+      const msg = result.dbError.message?.toLowerCase() ?? ''
+      if (msg.includes('user_timetable_entries') && msg.includes('does not exist')) {
+        toast.error('Brak tabeli planu w bazie. Wklej migrację 20260616120000_user_timetable.sql.')
+      } else {
+        toast.error('Import nieudany: ' + (result.dbError.message ?? 'nieznany błąd'))
+      }
+      return false
+    }
+    if (result.insertedCount === 0 && result.parsedCount === 0) {
+      toast.error('Plik nie zawierał żadnych poprawnych zajęć (VEVENT z DTSTART/DTEND).')
+      return false
+    }
+    toast.success(summarizeResult(result))
+    return true
+  }
 
   const doImport = async (raw: string) => {
     if (!raw.trim()) {
@@ -56,24 +86,31 @@ export default function ImportTimetablePanel({
     setIsImporting(true)
     const result = await DataService.importTimetableIcs(userId, raw)
     setIsImporting(false)
-    setLastResult(result)
-    if (result.dbError) {
-      const msg = result.dbError.message?.toLowerCase() ?? ''
-      if (msg.includes('user_timetable_entries') && msg.includes('does not exist')) {
-        toast.error('Brak tabeli planu w bazie. Wklej migrację 20260616120000_user_timetable.sql.')
-      } else {
-        toast.error('Import nieudany: ' + (result.dbError.message ?? 'nieznany błąd'))
-      }
+    if (handleResult(result)) {
+      setRawText('')
+      setMode('idle')
+      onImported()
+    }
+  }
+
+  const doImportFromUrl = async (url: string) => {
+    const trimmed = url.trim()
+    if (!trimmed) {
+      toast.error('Wklej URL z USOSweb.')
       return
     }
-    if (result.insertedCount === 0 && result.parsedCount === 0) {
-      toast.error('Plik nie zawierał żadnych poprawnych zajęć (VEVENT z DTSTART/DTEND).')
+    if (!isLikelyUsosIcsUrl(trimmed)) {
+      toast.error('URL musi pochodzić z apps.usos.uj.edu.pl i zawierać parametr "key".')
       return
     }
-    toast.success(summarizeResult(result))
-    setRawText('')
-    setMode('idle')
-    onImported()
+    setIsImporting(true)
+    const result = await DataService.importTimetableFromUrl(userId, trimmed)
+    setIsImporting(false)
+    if (handleResult(result)) {
+      setUrlValue('')
+      setMode('idle')
+      onImported()
+    }
   }
 
   const handleFile = async (file: File) => {
@@ -113,7 +150,7 @@ export default function ImportTimetablePanel({
         <div className="min-w-0 flex-1">
           <p className={`text-[15px] font-bold ${theme.text.primary}`}>Plan z USOSweb</p>
           <p className={`mt-0.5 text-[13px] leading-relaxed ${theme.text.muted}`}>
-            Wejdź w <strong>USOSweb → Mój USOSweb → Mój plan zajęć</strong>, kliknij <em>„Eksport do iCalendar"</em>, pobierz plik <code className="rounded bg-zinc-100 px-1 text-[12px] dark:bg-white/[0.06]">.ics</code> i wrzuć tu poniżej.
+            Wejdź w <strong>USOSweb → Mój USOSweb → Mój plan zajęć</strong>, kliknij <em>„Eksport do iCalendar"</em>. Możesz albo wkleić podany tam <strong>link</strong>, albo pobrać plik <code className="rounded bg-zinc-100 px-1 text-[12px] dark:bg-white/[0.06]">.ics</code> i wrzucić go niżej.
           </p>
         </div>
         {existingCount > 0 && (
@@ -157,6 +194,14 @@ export default function ImportTimetablePanel({
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
+            onClick={() => setMode((m) => (m === 'url' ? 'idle' : 'url'))}
+            disabled={isImporting}
+            className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold/40 bg-brand-gold/10 px-4 py-1.5 text-[12px] font-semibold text-brand-gold transition-colors hover:bg-brand-gold/15 disabled:opacity-50 dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/15"
+          >
+            <Link2 size={12} /> Wklej link z USOSweb
+          </button>
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
             className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[12px] font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200 dark:hover:bg-white/[0.09]"
@@ -184,6 +229,40 @@ export default function ImportTimetablePanel({
           className="hidden"
         />
       </div>
+
+      {mode === 'url' && (
+        <div className="mt-3 space-y-2">
+          <p className={`text-[11.5px] ${theme.text.muted}`}>
+            Wklej cały URL z dialogu „Eksport planu zajęć" (zaczyna się od <code className="rounded bg-zinc-100 px-1 dark:bg-white/[0.06]">https://apps.usos.uj.edu.pl/services/tt/…</code>). Klucz służy tylko do pobrania planu — nie zapisujemy go.
+          </p>
+          <input
+            type="url"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !isImporting && urlValue.trim()) {
+                e.preventDefault()
+                void doImportFromUrl(urlValue)
+              }
+            }}
+            placeholder="https://apps.usos.uj.edu.pl/services/tt/upcoming_ical?lang=pl&user_id=…&key=…"
+            spellCheck={false}
+            autoComplete="off"
+            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 font-mono text-[12px] text-zinc-900 placeholder-zinc-400 outline-none focus:border-brand-gold/45 focus:ring-2 focus:ring-brand-gold/15 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-brand-gold-bright/40 dark:focus:ring-brand-gold-bright/15"
+          />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => void doImportFromUrl(urlValue)}
+              disabled={isImporting || !urlValue.trim()}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] px-4 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#1e293b]/90 disabled:opacity-50 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+            >
+              {isImporting && <Loader2 size={12} className="animate-spin" />}
+              Pobierz i zaimportuj
+            </button>
+          </div>
+        </div>
+      )}
 
       {mode === 'paste' && (
         <div className="mt-3 space-y-2">
