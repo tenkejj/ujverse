@@ -1274,7 +1274,9 @@ function App() {
   // SideNav i Header dostają ten sam `navActiveView`. `aula` zostaje (SideNav
   // ma pozycję „Aula" — chcemy ją podświetlać). Tylko widoki techniczne
   // (post/userProfile/search/group/chat/sale) mapujemy na 'feed', a
-  // 'settings' na 'profile' (avatar w headerze podświetlony).
+  // 'settings' i 'adminDiag' na 'profile' (avatar w headerze podświetlony —
+  // admin-diag dashboard nie ma reprezentacji w nawigacji, więc pada pod
+  // tę samą bramkę co settings).
   const navActiveView =
     effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
       ? 'feed'
@@ -1283,7 +1285,7 @@ function App() {
           effectiveActiveView === 'chat' ||
           effectiveActiveView === 'sale'
         ? 'feed'
-      : effectiveActiveView === 'settings'
+      : effectiveActiveView === 'settings' || effectiveActiveView === 'adminDiag'
         ? 'profile'
         : effectiveActiveView
 

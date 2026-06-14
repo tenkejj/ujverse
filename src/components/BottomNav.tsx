@@ -17,6 +17,8 @@ type Props = {
    * asymetryczny: 1 tab po lewej + FAB + 2 po prawej.
    */
   onNavigateToMojPlan: () => void
+  /** Ilość nieprzeczytanych powiadomień — kropka/badge przy „Alerty". */
+  unreadCount: number
 }
 
 function ComposePlusIcon() {

@@ -34,7 +34,6 @@ import {
   XCircle,
 } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
-import { theme } from '../../styles/theme'
 import { toast } from '../../lib/appToast'
 
 const TOKEN_STORAGE_KEY = 'ujverse:diag_token'
@@ -188,7 +187,7 @@ export default function AdminDiagView() {
           <h1 className="text-2xl font-semibold text-fg-primary">
             Diagnostyka /api/diag
           </h1>
-          <p className={`mt-1 text-sm ${theme.colors.text.secondary}`}>
+          <p className="mt-1 text-sm text-fg-secondary">
             Cache hit-rates, latency, health checks, circuit breaker.
           </p>
         </div>
