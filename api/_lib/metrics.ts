@@ -14,7 +14,7 @@
  *   await incrCounter('response_cache:hit')
  *   await pushLatency('chat:total', elapsedMs)
  *
- * Dump (`/api/_diag/cache-stats`) odpalamy `getAllCounters` + `getLatencyStats`,
+ * Dump (`/api/diag/cache-stats`) odpalamy `getAllCounters` + `getLatencyStats`,
  * łączymy w jeden JSON, gardujemy tokenem.
  *
  * Uwaga: nie cache'ujemy żadnych odczytów — diag endpoint robi 2-3 round-tripy

@@ -173,7 +173,7 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   // Admin diag dashboard — token-gated po stronie serwera, sam URL nie
   // wymaga roli `admin` (każdy zalogowany może otworzyć, ale bez tokena
-  // nie pobierze danych z `/api/_diag/*`).
+  // nie pobierze danych z `/api/diag/*`).
   if (
     normalizedPath === '/admin/cache' ||
     normalizedPath === '/admin/diag'

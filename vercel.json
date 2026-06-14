@@ -20,10 +20,10 @@
     "api/prewarm-chat.ts": {
       "maxDuration": 30
     },
-    "api/_diag/cache-stats.ts": {
+    "api/diag/cache-stats.ts": {
       "maxDuration": 10
     },
-    "api/_diag/health.ts": {
+    "api/diag/health.ts": {
       "maxDuration": 10
     }
   },

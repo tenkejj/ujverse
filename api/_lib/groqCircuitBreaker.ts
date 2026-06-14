@@ -183,7 +183,7 @@ export async function recordError(opts: {
 
 /**
  * Zwraca aktualny stan + metryki (do diag endpointu i debugowania).
- * Tani odczyt, używać w `/api/_diag/cache-stats`.
+ * Tani odczyt, używać w `/api/diag/cache-stats`.
  */
 export type CircuitStatus = {
   state: CircuitState

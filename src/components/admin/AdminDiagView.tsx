@@ -1,5 +1,5 @@
 /**
- * Admin Diagnostics — token-gated dashboard nad `/api/_diag/*`.
+ * Admin Diagnostics — token-gated dashboard nad `/api/diag/*`.
  *
  * Wyświetla:
  *  - Health: status Supabase / KV / Groq + circuit breaker
@@ -8,15 +8,19 @@
  *  - Latency: p50/p95 dla `chat:*_ms` i `tool:*_ms`
  *
  * Token: jest **input field** pamiętany w `localStorage` (`ujverse:diag_token`).
- * Endpointy `/api/_diag/cache-stats` i `/api/_diag/health` są token-gated
+ * Endpointy `/api/diag/cache-stats` i `/api/diag/health` są token-gated
  * po stronie serwera — więc nawet jeśli widget pokażemy, dane nie wyciekną
  * bez znajomości tokena.
  *
  * Refresh: auto co 10s, można wyłączyć togglem (przy debug'u czasem chcesz
  * zamrozić moment). Plus przycisk „Odśwież teraz".
  *
- * Reset: `DELETE /api/_diag/cache-stats` z body `{confirm:true}` zeruje
+ * Reset: `DELETE /api/diag/cache-stats` z body `{confirm:true}` zeruje
  * wszystkie liczniki + ring buffery latency.
+ *
+ * Uwaga: folder `api/diag/` (bez podkreślenia) — Vercel pomija pliki/foldery
+ * zaczynające się od `_` przy budowie serverless functions, więc endpoint
+ * MUSI siedzieć w folderze bez prefiksu `_`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
@@ -132,8 +136,8 @@ export default function AdminDiagView() {
     setError(null)
     try {
       const [statsResult, healthResult] = await Promise.all([
-        fetchJson<CacheStatsResponse>('/api/_diag/cache-stats', token),
-        fetchJson<HealthResponse>('/api/_diag/health', token),
+        fetchJson<CacheStatsResponse>('/api/diag/cache-stats', token),
+        fetchJson<HealthResponse>('/api/diag/health', token),
       ])
       setStats(statsResult)
       setHealth(healthResult)
@@ -161,7 +165,7 @@ export default function AdminDiagView() {
     }
     try {
       await fetchJson<{ ok: boolean; cleared: number }>(
-        '/api/_diag/cache-stats',
+        '/api/diag/cache-stats',
         token,
         {
           method: 'DELETE',
@@ -182,7 +186,7 @@ export default function AdminDiagView() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-fg-primary">
-            Diagnostyka /api/_diag
+            Diagnostyka /api/diag
           </h1>
           <p className={`mt-1 text-sm ${theme.colors.text.secondary}`}>
             Cache hit-rates, latency, health checks, circuit breaker.

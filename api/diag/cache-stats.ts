@@ -1,5 +1,5 @@
 /**
- * `/api/_diag/cache-stats` — diag endpoint pokazujący metryki cache + latency.
+ * `/api/diag/cache-stats` — diag endpoint pokazujący metryki cache + latency.
  *
  * Token-gated: wymaga nagłówka `Authorization: Bearer <DIAG_TOKEN>` ALBO
  * query `?token=<DIAG_TOKEN>`. `DIAG_TOKEN` siedzi w env (tylko prod);
@@ -65,7 +65,7 @@ function isAuthorized(req: Request): boolean {
   if (!expected) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn(
-        '[/api/_diag/cache-stats] DIAG_TOKEN not configured — allowing request (dev only).',
+        '[/api/diag/cache-stats] DIAG_TOKEN not configured — allowing request (dev only).',
       )
       return true
     }
@@ -129,7 +129,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
     const cleared = await resetAllMetrics()
     console.warn(
-      '[/api/_diag/cache-stats] metrics reset — cleared keys:',
+      '[/api/diag/cache-stats] metrics reset — cleared keys:',
       cleared,
     )
     return new Response(JSON.stringify({ ok: true, cleared }), {

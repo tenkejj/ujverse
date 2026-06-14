@@ -1,5 +1,5 @@
 /**
- * `/api/_diag/health` — endpoint do monitoringu (UptimeRobot, Better Stack,
+ * `/api/diag/health` — endpoint do monitoringu (UptimeRobot, Better Stack,
  * własny dashboard). Sprawdza że trzy upstream zależności żyją:
  *
  *   1. Supabase     — szybki SELECT 1 z `profiles` (RLS-safe via service role).
@@ -7,7 +7,7 @@
  *   3. Groq         — `OPTIONS /v1/chat/completions` (zero kosztu, zero LLM
  *                     calli, sprawdza tylko czy DNS+TLS+credentials żyją).
  *
- * Token-gated tak samo jak `/api/_diag/cache-stats` — `Authorization: Bearer
+ * Token-gated tak samo jak `/api/diag/cache-stats` — `Authorization: Bearer
  * $DIAG_TOKEN` lub `?token=...`. W dev (`NODE_ENV !== 'production'`)
  * endpoint jest otwarty, z warn'em do logu.
  *
@@ -69,7 +69,7 @@ function isAuthorized(req: Request): boolean {
   if (!expected) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn(
-        '[/api/_diag/health] DIAG_TOKEN not configured — allowing request (dev only).',
+        '[/api/diag/health] DIAG_TOKEN not configured — allowing request (dev only).',
       )
       return true
     }
