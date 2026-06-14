@@ -261,61 +261,64 @@ async function execute(
       }
     })
 
-  // ── Renderowanie markdown ──────────────────────────────────────────────
-  const lines: string[] = []
+  // ── Renderowanie konwersacyjne (bez nagłówków, w prozie) ────────────────
+  const paragraphs: string[] = []
 
-  // Header rocznika.
   const cohortLabel =
     cohort.study_program && cohort.year_started
       ? `**${cohort.study_program}** (rocznik ${cohort.year_started})`
       : `**${cohort.name}**`
-  const membersTail = membersCount != null ? ` — ${membersCount} ${membersCount === 1 ? 'osoba' : 'osób'}` : ''
-  lines.push(`### Twój rocznik\n${cohortLabel}${membersTail}`)
+  const membersPart =
+    membersCount != null
+      ? `, ${membersCount} ${membersCount === 1 ? 'osoba' : 'osób'}`
+      : ''
+  paragraphs.push(`Twój rocznik to ${cohortLabel}${membersPart}.`)
 
-  // Zadania.
   if (openTasksForMe.length === 0) {
     if (openTasksAll.length > 0) {
-      lines.push(
-        '',
-        `### Zadania\nWszystkie ${openTasksAll.length} otwartych zadań masz oznaczone jako zrobione 🎉`,
+      paragraphs.push(
+        `Wszystkie ${openTasksAll.length} otwartych zadań masz odhaczone — ekstra robota.`,
       )
     } else {
-      lines.push('', `### Zadania\nBrak otwartych zadań w tym roczniku.`)
+      paragraphs.push('Zadań w tym roczniku aktualnie zero.')
     }
   } else {
-    lines.push('', `### Zadania do zrobienia (${openTasksForMe.length})`)
-    for (const t of openTasksForMe) {
+    const items = openTasksForMe.map((t) => {
       const due = formatDueLabel(t.due_at)
-      const priorityIcon = t.priority === 'high' ? '🔥 ' : t.priority === 'low' ? '🟢 ' : ''
       const channelTag = formatChannelTag(t.channel_id, channelNames)
-      lines.push(`- ${priorityIcon}**${t.title}** — ${due} · ${channelTag}`)
-    }
+      return `**${t.title}** (${due}, ${channelTag})`
+    })
+    const lead =
+      openTasksForMe.length === 1
+        ? `Masz jedno otwarte zadanie:`
+        : `Masz ${openTasksForMe.length} otwartych zadań:`
+    const body =
+      openTasksForMe.length <= 2 ? items.join('; ') : items.join('\n')
+    paragraphs.push(`${lead}\n${body}`)
   }
 
-  // Polle.
-  if (openPolls.length === 0) {
-    lines.push('', `### Głosowania\nNie ma aktywnych ankiet czekających na Twój głos.`)
-  } else {
-    lines.push('', `### Głosowania oczekują na Twój głos (${openPolls.length})`)
-    for (const p of openPolls.slice(0, 5)) {
+  if (openPolls.length > 0) {
+    const top = openPolls.slice(0, 4)
+    const items = top.map((p) => {
       const channelTag = formatChannelTag(p.channelId, channelNames)
-      lines.push(`- *${p.question}* — ${channelTag}`)
-    }
+      return `*${p.question}* (${channelTag})`
+    })
+    const lead =
+      top.length === 1
+        ? 'Czeka na Twój głos jedna ankieta:'
+        : `Czeka na Ciebie ${top.length} ankiet:`
+    const body = top.length <= 2 ? items.join('; ') : items.join('\n')
+    paragraphs.push(`${lead}\n${body}`)
   }
 
-  return lines.join('\n')
+  return paragraphs.join('\n\n')
 }
 
 registerTool<Record<string, never>, string>({
   tool: {
     name: 'get_my_aula_overview',
     description:
-      'Personalny dashboard usera w module Aula (rocznik akademicki + zadania ' +
-      '+ ankiety). Zwraca: nazwę i liczebność Twojego rocznika, listę 5 ' +
-      'najbliższych otwartych zadań/deadlinów, oraz aktywne głosowania ' +
-      'w których jeszcze nie zagłosowałeś. Używaj, gdy user pyta: ' +
-      '"co mam do zrobienia", "jakie mam deadliney", "co dziś w Auli", ' +
-      '"czy są jakieś głosowania", "ile mam zadań", "co nowego w mojej grupie".',
+      'Dashboard Auli usera: rocznik, 5 najbliższych zadań, aktywne ankiety. Dla „co mam do zrobienia", „deadliney", „głosowania".',
     parameters: {
       type: 'object',
       properties: {},

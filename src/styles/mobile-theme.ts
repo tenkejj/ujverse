@@ -691,15 +691,19 @@ export const BOTTOM_NAV_MOBILE = {
   navDefaultClass: 'bg-bg-app border-border-app',
   safeAreaBottomInset: 'env(safe-area-inset-bottom)',
   rowClass: 'flex items-center justify-center gap-1 px-2 py-1.5 max-w-lg mx-auto min-h-16',
-  iconButtonBaseClass: 'flex flex-1 items-center justify-center min-h-[52px] py-3 px-2 transition-colors rounded-xl',
+  iconButtonBaseClass:
+    'flex flex-col flex-1 items-center justify-center gap-1 min-h-[56px] py-2 px-1 transition-colors rounded-xl',
   iconButtonActiveClass: 'text-[#1e293b] dark:text-accent-interactive',
-  iconButtonInactiveClass: 'text-[#1e293b] dark:text-gray-300 dark:hover:text-white/90',
-  composeWrapperClass: 'flex items-center justify-center shrink-0 px-0.5 min-h-[52px]',
+  iconButtonInactiveClass: 'text-[#1e293b]/75 dark:text-gray-400 dark:hover:text-white/90',
+  iconButtonLabelClass: 'text-[10px] font-semibold leading-none tracking-tight truncate max-w-full',
+  iconButtonLabelInactiveClass: 'text-[#1e293b]/70 dark:text-gray-400',
+  iconButtonLabelActiveClass: 'text-[#1e293b] dark:text-accent-interactive',
+  composeWrapperClass: 'flex items-center justify-center shrink-0 px-0.5 min-h-[56px]',
   composeButtonClass:
     'h-14 w-14 rounded-full flex items-center justify-center border-0 outline-none shadow-lg bg-zinc-900 text-white dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-zinc-900 dark:shadow-lg dark:shadow-brand-gold/40 transition-transform duration-200 hover:brightness-[1.03] active:brightness-[0.97] dark:hover:brightness-105 dark:active:brightness-95',
   bellIconClass: 'h-7 w-7 shrink-0 transition-colors',
   bellActiveClass: 'text-[#1e293b] dark:text-accent-interactive',
-  bellInactiveClass: 'text-[#1e293b] dark:text-white dark:hover:text-white/80',
+  bellInactiveClass: 'text-[#1e293b]/75 dark:text-gray-400 dark:hover:text-white/80',
   unreadBadgeClass:
     'absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-[#1e293b] text-white text-[9px] font-bold flex items-center justify-center px-0.5 dark:bg-accent-gold dark:text-[#060e1f]',
   motion: {
@@ -707,5 +711,110 @@ export const BOTTOM_NAV_MOBILE = {
     composeHover: { scale: 1.04 },
     composeTap: { scale: 1.08 },
     composeTransition: { type: 'spring' as const, stiffness: 400, damping: 24 },
+  },
+} as const
+
+/**
+ * Tokeny dla lewego sidebara desktopowego (>=lg) — wariant **Unified
+ * Glass**. Cały sidebar to jeden glass-kontener; sekcje wewnątrz są
+ * oznaczone tylko nagłówkiem + delikatną hairline'ową kreską między
+ * grupami (zamiast osobnych kart-wysp). Czytelne, jednolite, wciąż
+ * minimalne. Aktywny stan: spokojny `border + tinted bg`, bez glow.
+ */
+export const SIDE_NAV_DESKTOP = {
+  containerClass:
+    'hidden lg:flex lg:flex-col lg:shrink-0 lg:w-72 lg:sticky lg:top-0 lg:self-start lg:h-dvh lg:p-3',
+  innerClass:
+    'flex flex-1 min-h-0 flex-col rounded-2xl border border-white/45 bg-white/45 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.65)] dark:border-white/8 dark:bg-zinc-900/30 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] overflow-hidden',
+  scrollAreaClass:
+    'flex-1 min-h-0 overflow-y-auto px-2.5 py-3 flex flex-col gap-1.5',
+  groupClass: 'flex flex-col gap-1.5',
+  groupDividerClass:
+    'mt-1 mx-3 border-t border-zinc-200/70 dark:border-white/8',
+  sectionLabelClass:
+    'px-3 pt-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#1e293b]/60 dark:text-zinc-500',
+  itemBaseClass:
+    'group relative flex w-full items-center gap-3 rounded-full border pl-4 pr-4 py-3 text-[15px] font-medium transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/25 dark:focus-visible:ring-brand-gold/40',
+  itemInactiveClass:
+    'border-transparent text-[#1e293b]/90 hover:border-white/60 hover:bg-white/65 hover:text-[#1e293b] dark:text-zinc-200 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-brand-gold-bright',
+  itemActiveClass:
+    'border-brand-gold/45 bg-brand-gold/10 text-[#1e293b] font-semibold dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright',
+  iconBaseClass: 'shrink-0 transition-colors',
+  iconInactiveClass:
+    'text-[#1e293b]/65 group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright',
+  iconActiveClass: 'text-[#1e293b] dark:text-brand-gold-bright',
+  unreadDotClass:
+    'h-2 w-2 rounded-full bg-brand-gold dark:bg-brand-gold-bright',
+  badgePillClass:
+    'ml-auto inline-flex min-w-[22px] h-5 items-center justify-center rounded-full bg-[#1e293b] px-1.5 text-[10px] font-bold text-white dark:bg-brand-gold-bright dark:text-zinc-900',
+  moreToggleClass:
+    'group flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#1e293b]/60 hover:text-[#1e293b] transition-colors dark:text-zinc-500 dark:hover:text-brand-gold-bright',
+  moreChevronClass: 'ml-auto shrink-0 transition-transform duration-200',
+  iconSize: 22,
+  iconStrokeWidth: 1.9,
+  iconActiveStrokeWidth: 2.2,
+} as const
+
+/**
+ * Tokeny dla mobile drawera (<lg). Slide-in z lewej, blur backdrop, full
+ * height. Layout: avatar/header → search input → grupy sekcji → bottom
+ * row (theme + wyloguj).
+ */
+export const MOBILE_DRAWER = {
+  rootClass: 'fixed inset-0 z-[300] lg:hidden flex',
+  backdropClass:
+    'absolute inset-0 bg-black/45 backdrop-blur-[2px] dark:bg-black/65',
+  panelClass:
+    'relative flex h-dvh w-[86%] max-w-[340px] flex-col bg-bg-app border-r border-zinc-200 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-bg-app dark:shadow-[0_30px_80px_-24px_rgba(0,0,0,0.85)]',
+  headerClass:
+    'flex items-center gap-3 px-4 py-4 border-b border-zinc-200 dark:border-white/10',
+  headerNameClass:
+    'flex min-w-0 flex-1 flex-col text-[#1e293b] dark:text-zinc-100',
+  headerNamePrimaryClass: 'truncate text-sm font-semibold',
+  headerNameSecondaryClass:
+    'truncate text-[11px] font-medium text-[#1e293b]/60 dark:text-zinc-500',
+  closeButtonClass:
+    'shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-[#1e293b]/75 hover:bg-black/5 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:bg-white/8 dark:hover:text-zinc-100',
+  searchWrapperClass: 'px-4 pt-3 pb-2',
+  searchInputClass:
+    'w-full h-11 rounded-xl border border-zinc-200 bg-white/90 pl-10 pr-3 text-[14px] text-[#1e293b] placeholder:text-[#1e293b]/45 outline-none focus:border-[#1e293b]/30 focus:ring-2 focus:ring-[#1e293b]/15 dark:border-white/10 dark:bg-black/35 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-brand-gold-bright/40 dark:focus:ring-brand-gold/20',
+  searchIconClass:
+    'pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#1e293b]/55 dark:text-zinc-400',
+  scrollAreaClass: 'flex-1 min-h-0 overflow-y-auto px-2 py-3',
+  sectionClass: 'flex flex-col gap-1.5',
+  sectionDividerClass:
+    'mt-2 mb-2 mx-3 border-t border-zinc-200/70 dark:border-white/8',
+  sectionLabelClass:
+    'px-3 pt-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#1e293b]/60 dark:text-zinc-500',
+  itemBaseClass:
+    'group relative flex w-full items-center gap-3 rounded-full border pl-4 pr-4 py-3 text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/25 dark:focus-visible:ring-brand-gold/40',
+  itemInactiveClass:
+    'border-transparent text-[#1e293b]/85 hover:border-white/60 hover:bg-white/65 hover:text-[#1e293b] dark:text-zinc-300 dark:hover:border-white/10 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright',
+  itemActiveClass:
+    'border-brand-gold/45 bg-brand-gold/10 text-[#1e293b] font-semibold dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright',
+  iconBaseClass: 'shrink-0 transition-colors',
+  iconInactiveClass:
+    'text-[#1e293b]/60 group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright',
+  iconActiveClass: 'text-[#1e293b] dark:text-brand-gold-bright',
+  unreadDotClass:
+    'h-2 w-2 rounded-full bg-brand-gold dark:bg-brand-gold-bright',
+  badgePillClass:
+    'ml-auto inline-flex min-w-[22px] h-5 items-center justify-center rounded-full bg-[#1e293b] px-1.5 text-[10px] font-bold text-white dark:bg-brand-gold-bright dark:text-zinc-900',
+  bottomRowClass:
+    'shrink-0 flex flex-col gap-1 border-t border-zinc-200 px-2 py-3 dark:border-white/10',
+  logoutItemClass:
+    'group flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-3 text-[14px] font-semibold text-rose-500/90 hover:bg-rose-500/8 hover:text-rose-600 transition-colors dark:text-rose-400/90 dark:hover:bg-rose-500/10 dark:hover:text-rose-300',
+  iconSize: 20,
+  iconStrokeWidth: 1.9,
+  iconActiveStrokeWidth: 2.2,
+  motion: {
+    panelInitial: { x: '-100%' },
+    panelAnimate: { x: 0 },
+    panelExit: { x: '-100%' },
+    panelTransition: { type: 'spring' as const, stiffness: 320, damping: 32 },
+    backdropInitial: { opacity: 0 },
+    backdropAnimate: { opacity: 1 },
+    backdropExit: { opacity: 0 },
+    backdropTransition: { duration: 0.2 },
   },
 } as const

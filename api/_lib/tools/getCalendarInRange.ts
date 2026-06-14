@@ -173,26 +173,12 @@ registerTool<
   tool: {
     name: 'get_calendar_in_range',
     description:
-      'Pobiera wpisy kalendarza akademickiego (nieobecności wykładowców, ' +
-      'odwołane zajęcia, zajęcia zdalne, przeniesienia terminów, dyżury ' +
-      'oraz oficjalne wydarzenia UJ) z podanego zakresu dat. Każdy wpis ma ' +
-      'kind, tytuł, daty, lokalizację, wykładowcę. ZAWSZE używaj tego ' +
-      'narzędzia gdy użytkownik pyta: „co jest w przyszłym tygodniu", „czy ' +
-      'dr X będzie w piątek", „kiedy odwołane zajęcia", „pokaż dni wolne". ' +
-      'Range podawaj w pełnym ISO 8601 (np. „2026-06-12T00:00:00Z").',
+      'Wpisy kalendarza UJ w zakresie (odwołane, zdalne, przeniesione, dyżury, dni wolne, wydarzenia). Dla „co w przyszłym tygodniu", „czy X będzie w piątek".',
     parameters: {
       type: 'object',
       properties: {
-        range_start: {
-          type: 'string',
-          description:
-            'Początek zakresu (ISO 8601 z czasem, np. „2026-06-15T00:00:00Z").',
-        },
-        range_end: {
-          type: 'string',
-          description:
-            'Koniec zakresu (ISO 8601 z czasem, np. „2026-06-22T23:59:59Z"). Max ~18 miesięcy od range_start.',
-        },
+        range_start: { type: 'string', description: 'ISO 8601, np. 2026-06-15T00:00:00Z.' },
+        range_end: { type: 'string', description: 'ISO 8601. Max 18 miesięcy.' },
       },
       required: ['range_start', 'range_end'],
       additionalProperties: false,

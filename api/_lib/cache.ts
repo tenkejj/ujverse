@@ -46,6 +46,33 @@ export const TOOL_TTL_MS: Record<string, number> = {
   get_my_user_context: 300_000,
   get_my_aula_overview: 30_000,
   find_user: 60_000,
+  // Calendar — wpisy w `calendar_entries` aktualizowane przez scrapery
+  // (~co kilka minut). 60s = sweet spot między świeżością a kosztem.
+  get_calendar_in_range: 60_000,
+  // Discounts:
+  // - search_discounts: katalog rzadko się zmienia, ale `use_count` rośnie
+  //   przez trigger po każdym `mark_discount_use`. 120s daje czytelny ranking.
+  // - trending: agregat 7-dniowy, świeżość niekrytyczna.
+  search_discounts: 120_000,
+  get_trending_discounts: 300_000,
+  // Personal — plan zajęć user'a + flaga odwołania per-lecturer.
+  // Plan jest statyczny (import z USOSweb), ogłoszenia odświeżane scraperem.
+  // 60s = lekka pamięć podręczna w obrębie pojedynczej rozmowy.
+  get_my_classes_in_range: 60_000,
+  // Personal — briefing tygodniowy (heavy compute z RPC compute_weekly_briefing).
+  get_my_weekly_briefing: 300_000,
+  // Public — rejestracje USOS (rzadkie zmiany, scraper raz dziennie).
+  get_upcoming_usos_registrations: 600_000,
+  // Public — oficjalne wydarzenia UJ (scrapowane raz dziennie).
+  get_upcoming_official_events: 600_000,
+  // Lecturers — `search_lecturers` operuje na deduplikowanym zbiorze nazwisk
+  // z `announcements`. Nowe nazwiska wpadają sporadycznie (z scrapem ISI UJ),
+  // 5min jest komfortowe. Per-lecturer announcements mają krótszy TTL
+  // (60s) bo to często pierwsze źródło info o nieobecnościach.
+  find_lecturer: 300_000,
+  get_lecturer_announcements_by_name: 60_000,
+  // Personal — lista subskrybowanych: dynamika podobna do aula_overview.
+  get_my_followed_lecturers: 60_000,
 }
 
 export function ttlForTool(name: string): number {

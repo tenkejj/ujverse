@@ -68,8 +68,16 @@ export function useChatSend(): UseChatSendResult {
         const stream = await LLMService.sendMessage(historyForApi, {
           signal: controller.signal,
         })
-        for await (const chunk of LLMService.parseSSEStream(stream)) {
-          useChatStore.getState().appendAssistantMessage(chunk)
+        for await (const event of LLMService.parseSSEStream(stream)) {
+          if (event.type === 'meta') {
+            // Server zna tool name → pokaż konkretną etykietę („Sprawdzam
+            // zniżki…") zamiast losowych thinking-phrases. Zostanie do
+            // momentu gdy `appendAssistantMessage` dostanie pierwszy chunk
+            // i `isTyping` zostanie zresetowany w `finally`.
+            useChatStore.getState().setActionLabel(event.label)
+            continue
+          }
+          useChatStore.getState().appendAssistantMessage(event.content)
         }
       } catch (err) {
         if (controller.signal.aborted) return
@@ -98,6 +106,9 @@ export function useChatSend(): UseChatSendResult {
       } finally {
         if (abortRef.current === controller) abortRef.current = null
         useChatStore.getState().setTyping(false)
+        // Etykieta ma sens tylko podczas „myślenia" — gdy stream kończy się,
+        // typewriter już animuje pełną odpowiedź; trzymanie label'u rozprasza.
+        useChatStore.getState().setActionLabel(null)
       }
     },
     [cancel],

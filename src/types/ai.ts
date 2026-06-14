@@ -33,6 +33,17 @@ export type ChatConfig = {
  * (np. `ContextInjectedBielikAdapter`) mogą delegować parsowanie do bazowego
  * adaptera bez wycieku typu konkretnej implementacji do konsumenta.
  */
+/**
+ * Zdarzenia wyciągane z SSE — `delta` to kawałek odpowiedzi assistant'a
+ * (do dopisania do bieżącej wiadomości), `meta` to kontekstowy hint typu
+ * „aktualnie wykonuję narzędzie X" (do pokazania w typing-indicator zamiast
+ * losowych „Myślę…"). Server może wysłać `meta` w każdym momencie strumienia,
+ * ale w praktyce robi to PRZED pierwszym `delta`.
+ */
+export type ParsedSSEEvent =
+  | { type: 'delta'; content: string }
+  | { type: 'meta'; tool: string; label: string }
+
 export interface LLMProvider {
   sendMessage(
     messages: ChatMessage[],
@@ -40,7 +51,7 @@ export interface LLMProvider {
   ): Promise<ReadableStream<Uint8Array>>
   parseSSEStream(
     stream: ReadableStream<Uint8Array>,
-  ): AsyncGenerator<string, void, void>
+  ): AsyncGenerator<ParsedSSEEvent, void, void>
 }
 
 /**

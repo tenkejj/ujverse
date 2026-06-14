@@ -1,16 +1,22 @@
-import { Bell, CalendarDays, Home, User } from 'lucide-react'
+import { Bell, ClipboardList, Home, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useScrollY } from '../hooks/useScrollY'
 import { BOTTOM_NAV_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'mojPlan' | 'dzis'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'mojPlan'
 
 type Props = {
   activeView: ActiveView
   setActiveView: (view: ActiveView) => void
   onOpenCompose: () => void
   onOpenNotifications: () => void
-  unreadCount: number
+  /**
+   * Skrót do `Mój Plan` (dawniej /dzis + /briefing). Trzymamy go w
+   * bottom navie, bo to NAJCZĘŚCIEJ otwierany ekran w trakcie dnia
+   * (alarmy, najbliższe zajęcia, briefingi). Bez niego pasek był
+   * asymetryczny: 1 tab po lewej + FAB + 2 po prawej.
+   */
+  onNavigateToMojPlan: () => void
 }
 
 function ComposePlusIcon() {
@@ -47,14 +53,33 @@ function ComposePlusIcon() {
   )
 }
 
-export default function BottomNav({ activeView, setActiveView, onOpenCompose, onOpenNotifications, unreadCount }: Props) {
+/**
+ * Dolny pasek nawigacji (`<md`). 5 slotów (układ 2 + FAB + 2):
+ *  `Strona` · `Plan` · `+` · `Alerty` · `Profil`.
+ * Pozostałe sekcje (Wydarzenia, Aula, Zniżki, USOS, Miejsca) trafiają
+ * do `MobileDrawer` otwieranego burgerem w `Header.tsx`. Każdy tab ma
+ * podpis tekstowy pod ikoną dla czytelności.
+ */
+export default function BottomNav({
+  activeView,
+  setActiveView,
+  onOpenCompose,
+  onOpenNotifications,
+  onNavigateToMojPlan,
+  unreadCount,
+}: Props) {
   const scrollY = useScrollY()
   const isScrolled = scrollY > BOTTOM_NAV_MOBILE.scrollThreshold
-  const iconBtn = (isActive: boolean) =>
+
+  const tabClass = (isActive: boolean) =>
     `${BOTTOM_NAV_MOBILE.iconButtonBaseClass} ${
+      isActive ? BOTTOM_NAV_MOBILE.iconButtonActiveClass : BOTTOM_NAV_MOBILE.iconButtonInactiveClass
+    }`
+  const labelClass = (isActive: boolean) =>
+    `${BOTTOM_NAV_MOBILE.iconButtonLabelClass} ${
       isActive
-        ? BOTTOM_NAV_MOBILE.iconButtonActiveClass
-        : BOTTOM_NAV_MOBILE.iconButtonInactiveClass
+        ? BOTTOM_NAV_MOBILE.iconButtonLabelActiveClass
+        : BOTTOM_NAV_MOBILE.iconButtonLabelInactiveClass
     }`
 
   return (
@@ -65,40 +90,45 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, on
           : BOTTOM_NAV_MOBILE.navDefaultClass
       }`}
       style={{ paddingBottom: BOTTOM_NAV_MOBILE.safeAreaBottomInset }}
+      aria-label="Pasek nawigacji"
     >
       <div className={BOTTOM_NAV_MOBILE.rowClass}>
         <motion.button
           type="button"
           onClick={() => setActiveView('feed')}
           whileTap={BOTTOM_NAV_MOBILE.motion.tabTap}
-          className={iconBtn(activeView === 'feed')}
+          className={tabClass(activeView === 'feed')}
           aria-label="Strona główna"
         >
           <Home
             size={ICONS_MOBILE.bottomNavIconSize}
             strokeWidth={
-              activeView === 'feed' ? ICONS_MOBILE.bottomNavActiveStrokeWidth : ICONS_MOBILE.bottomNavInactiveStrokeWidth
-            }
-            className="shrink-0"
-          />
-        </motion.button>
-
-        <motion.button
-          type="button"
-          onClick={() => setActiveView('events')}
-          whileTap={BOTTOM_NAV_MOBILE.motion.tabTap}
-          className={iconBtn(activeView === 'events')}
-          aria-label="Wydarzenia"
-        >
-          <CalendarDays
-            size={ICONS_MOBILE.bottomNavIconSize}
-            strokeWidth={
-              activeView === 'events'
+              activeView === 'feed'
                 ? ICONS_MOBILE.bottomNavActiveStrokeWidth
                 : ICONS_MOBILE.bottomNavInactiveStrokeWidth
             }
             className="shrink-0"
           />
+          <span className={labelClass(activeView === 'feed')}>Strona</span>
+        </motion.button>
+
+        <motion.button
+          type="button"
+          onClick={onNavigateToMojPlan}
+          whileTap={BOTTOM_NAV_MOBILE.motion.tabTap}
+          className={tabClass(activeView === 'mojPlan')}
+          aria-label="Mój Plan"
+        >
+          <ClipboardList
+            size={ICONS_MOBILE.bottomNavIconSize}
+            strokeWidth={
+              activeView === 'mojPlan'
+                ? ICONS_MOBILE.bottomNavActiveStrokeWidth
+                : ICONS_MOBILE.bottomNavInactiveStrokeWidth
+            }
+            className="shrink-0"
+          />
+          <span className={labelClass(activeView === 'mojPlan')}>Plan</span>
         </motion.button>
 
         <div className={BOTTOM_NAV_MOBILE.composeWrapperClass}>
@@ -119,7 +149,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, on
           type="button"
           onClick={onOpenNotifications}
           whileTap={BOTTOM_NAV_MOBILE.motion.tabTap}
-          className={iconBtn(activeView === 'notifications')}
+          className={tabClass(activeView === 'notifications')}
           aria-label="Powiadomienia"
         >
           <div className="relative shrink-0">
@@ -142,13 +172,14 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, on
               </span>
             )}
           </div>
+          <span className={labelClass(activeView === 'notifications')}>Alerty</span>
         </motion.button>
 
         <motion.button
           type="button"
           onClick={() => setActiveView('profile')}
           whileTap={BOTTOM_NAV_MOBILE.motion.tabTap}
-          className={iconBtn(activeView === 'profile')}
+          className={tabClass(activeView === 'profile')}
           aria-label="Profil"
         >
           <User
@@ -160,6 +191,7 @@ export default function BottomNav({ activeView, setActiveView, onOpenCompose, on
             }
             className="shrink-0"
           />
+          <span className={labelClass(activeView === 'profile')}>Profil</span>
         </motion.button>
       </div>
     </nav>

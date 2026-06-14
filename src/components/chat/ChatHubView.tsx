@@ -55,7 +55,7 @@ const QUICK_PROMPTS = [
   'Co nowego na feedzie?',
   'Najnowsze ogłoszenia',
   'Co w przyszłym tygodniu?',
-  'Wydarzenia naukowe',
+  'Pokaż zniżki studenckie',
 ] as const
 
 type Props = {
@@ -73,6 +73,7 @@ function firstNameFrom(displayName: string): string {
 export default function ChatHubView({ displayName, myProfile }: Props) {
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
+  const actionLabel = useChatStore((s) => s.actionLabel)
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
@@ -120,6 +121,24 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
     },
     [isTyping, sendMessage],
   )
+
+  const handleEditLastUser = useCallback(
+    (text: string) => {
+      if (isTyping) return
+      useChatStore.getState().removeLastTurn()
+      setDraft(text)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    },
+    [isTyping],
+  )
+
+  const handleRetryLastAssistant = useCallback(() => {
+    if (isTyping) return
+    const { lastUserText } = useChatStore.getState().removeLastTurn()
+    if (lastUserText && lastUserText.length > 0) {
+      void sendMessage(lastUserText)
+    }
+  }, [isTyping, sendMessage])
 
   const handleNewConversation = useCallback(
     (e?: MouseEvent<HTMLButtonElement>) => {
@@ -286,10 +305,13 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
             <MessageList
               messages={messages}
               isTyping={isTyping}
+              actionLabel={actionLabel}
               variant="roomy"
               myProfile={myProfile}
               displayName={displayName}
               scrollable={false}
+              onEditLastUser={handleEditLastUser}
+              onRetryLastAssistant={handleRetryLastAssistant}
             />
           </div>
         </div>

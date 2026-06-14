@@ -75,6 +75,42 @@ const NEAR_BOTTOM_PX = 80
 const DEEP_LINK_CLEAR_MS = 2500
 const MAX_LOAD_OLDER_FOR_DEEP_LINK = 5
 
+/**
+ * Per-user flag w `localStorage` — czy onboarding modal Auli został już raz
+ * pokazany. Dzięki temu nie spamujemy auto-popupem przy każdym wejściu na
+ * `/aula`, gdy user wcześniej go zamknął bez wypełnienia. Po faktycznym
+ * zapisie pól studiów flaga jest sprzątana (kolejne konto na tym urządzeniu
+ * dostanie świeże doświadczenie).
+ */
+const AULA_ONBOARDING_SEEN_KEY = (userId: string) => `aula:onboarding_seen:${userId}`
+
+function hasSeenAulaOnboarding(userId: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(AULA_ONBOARDING_SEEN_KEY(userId)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markAulaOnboardingSeen(userId: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(AULA_ONBOARDING_SEEN_KEY(userId), '1')
+  } catch {
+    // ignore — quota / private mode
+  }
+}
+
+function clearAulaOnboardingSeen(userId: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(AULA_ONBOARDING_SEEN_KEY(userId))
+  } catch {
+    // ignore
+  }
+}
+
 function MessageSkeletonRow({ widthPct }: { widthPct: number }) {
   return (
     <div className="flex gap-2.5 px-2 py-1.5">
@@ -307,6 +343,14 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   const [searchOpen, setSearchOpen] = useState(false)
   const [createChannelOpen, setCreateChannelOpen] = useState(false)
   const [editingChannel, setEditingChannel] = useState<CohortChannel | null>(null)
+  /**
+   * Auto-popup onboardingu Auli — tylko za pierwszym razem (per user, lazy
+   * init z `localStorage`). Po świadomym X-ie modal zostaje zamknięty
+   * i user może go ponownie otworzyć z gate-page CTA.
+   */
+  const [onboardingModalOpen, setOnboardingModalOpen] = useState(
+    () => !hasSeenAulaOnboarding(currentUserId),
+  )
   /**
    * AI modal config — `null` = closed. `start` to fabryka generatora dla
    * `AiInsightModal` (factory zamiast generatora, żeby retry mogło wywołać
@@ -740,6 +784,8 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   }, [highlightId, loading, messages, hasMore, loadingOlder, loadOlder, clearMessageParam])
 
   const handleOnboardingSaved = (patch: ProfilePatch) => {
+    clearAulaOnboardingSeen(currentUserId)
+    setOnboardingModalOpen(false)
     onProfilePatch(patch)
     void refetch()
   }
@@ -754,13 +800,25 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           <p className="mt-2 max-w-md text-sm text-fg-secondary">
             Uzupełnij kierunek, rok i tryb studiów, a wpadniesz prosto do czatu swojej grupy.
           </p>
+          <button
+            type="button"
+            onClick={() => setOnboardingModalOpen(true)}
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+          >
+            Uzupełnij dane studiów
+          </button>
         </div>
-        <AulaOnboardingModal
-          userId={currentUserId}
-          myProfile={myProfile}
-          onClose={() => navigate('/')}
-          onSaved={handleOnboardingSaved}
-        />
+        {onboardingModalOpen && (
+          <AulaOnboardingModal
+            userId={currentUserId}
+            myProfile={myProfile}
+            onClose={() => {
+              markAulaOnboardingSeen(currentUserId)
+              setOnboardingModalOpen(false)
+            }}
+            onSaved={handleOnboardingSaved}
+          />
+        )}
       </>
     )
   }

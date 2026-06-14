@@ -24,11 +24,29 @@ type ChatState = {
   error: string | null
   /** Stan otwarcia mobilnego bottom-sheetu (FAB). Desktop wyspa nie używa. */
   isOpen: boolean
+  /**
+   * Krótka etykieta tego, co serwer aktualnie robi (np. „Sprawdzam zniżki…").
+   * Ustawiana z meta-eventu w SSE PRZED pierwszym contentem; resetowana gdy
+   * zaczyna napływać delta (typing-indicator znika i pojawia się typewriter).
+   * `null` = pokaż domyślne thinking-phrases.
+   */
+  actionLabel: string | null
   addMessage: (msg: NewMessage) => string
   appendAssistantMessage: (chunk: string) => void
   setTyping: (value: boolean) => void
   setError: (value: string | null) => void
   setOpen: (value: boolean) => void
+  setActionLabel: (value: string | null) => void
+  /**
+   * Usuwa ostatnią parę user→assistant z historii. Używane przez „Edytuj"
+   * (user wraca do composera, assistant do kosza) i „Spróbuj ponownie"
+   * (przed re-send'em żeby nie mieć duplikatów). No-op gdy nic do usunięcia.
+   *
+   * Implementacja: znajdź index ostatniej assistant message, jeśli
+   * bezpośrednio przed nią jest user message — wytnij obie. Inaczej tnij
+   * tylko assistant (defensywnie). Nie chcemy partial-state tropików.
+   */
+  removeLastTurn: () => { lastUserText: string | null }
   clearHistory: () => void
 }
 
@@ -44,6 +62,7 @@ export const useChatStore = create<ChatState>((set) => ({
   isTyping: false,
   error: null,
   isOpen: false,
+  actionLabel: null,
 
   addMessage: (msg) => {
     const id = generateId()
@@ -80,6 +99,46 @@ export const useChatStore = create<ChatState>((set) => ({
   setTyping: (value) => set({ isTyping: value }),
   setError: (value) => set({ error: value }),
   setOpen: (value) => set({ isOpen: value }),
+  setActionLabel: (value) => set({ actionLabel: value }),
 
-  clearHistory: () => set({ messages: [], error: null, isTyping: false }),
+  removeLastTurn: () => {
+    let lastUserText: string | null = null
+    set((state) => {
+      const msgs = state.messages
+      if (msgs.length === 0) return state
+      // Index ostatniej assistant message (jeśli jest).
+      let lastAssistantIdx = -1
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'assistant') {
+          lastAssistantIdx = i
+          break
+        }
+      }
+      // Index ostatniej user message PRZED assistant (lub w ogóle, gdy
+      // assistant brak — np. fail przed pierwszą odpowiedzią).
+      const userSearchEnd =
+        lastAssistantIdx === -1 ? msgs.length - 1 : lastAssistantIdx - 1
+      let lastUserIdx = -1
+      for (let i = userSearchEnd; i >= 0; i--) {
+        if (msgs[i].role === 'user') {
+          lastUserIdx = i
+          break
+        }
+      }
+      if (lastUserIdx !== -1) {
+        lastUserText = msgs[lastUserIdx].content
+      }
+      // Wytnij obie (lub jedną jeśli druga brak).
+      const drop = new Set<number>()
+      if (lastAssistantIdx !== -1) drop.add(lastAssistantIdx)
+      if (lastUserIdx !== -1) drop.add(lastUserIdx)
+      if (drop.size === 0) return state
+      const next = msgs.filter((_, i) => !drop.has(i))
+      return { messages: next }
+    })
+    return { lastUserText }
+  },
+
+  clearHistory: () =>
+    set({ messages: [], error: null, isTyping: false, actionLabel: null }),
 }))

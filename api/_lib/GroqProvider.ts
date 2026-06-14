@@ -37,6 +37,24 @@ const FALLBACK_MODEL = 'llama-3.1-8b-instant'
 const DEFAULT_TEMPERATURE = 0.7
 
 /**
+ * Sufity dla `max_tokens` — pilnują żeby model nie generował romansów
+ * po naszych krótkich tool-flow odpowiedziach.
+ *
+ * - `MAX_TOKENS_TOOL_DECISION` — round-trip "zdecyduj jakie tool wywołać".
+ *   Model w naszej architekturze albo wybiera tool_call (krótki JSON), albo
+ *   pisze odpowiedź na small-talk (~30-100 tok). 300 to bezpieczny sufit.
+ *
+ * - `MAX_TOKENS_TEXT_REPLY` — fallback dla zwykłej rozmowy (bez tooli).
+ *   Trochę większy budżet, gdy model musi coś własnymi słowami napisać.
+ *
+ * Cap NIE wpływa na finalną odpowiedź dla narzędzi — formatujemy je
+ * server-side w `formatToolResultAsFinalAnswer`, więc model nigdy nie
+ * "syntetyzuje" wyniku. Płynnie redukuje to output tokeny.
+ */
+const MAX_TOKENS_TOOL_DECISION = 320
+const MAX_TOKENS_TEXT_REPLY = 480
+
+/**
  * Modele "reasoning" — w trakcie generacji emitują chain-of-thought
  * w blokach `<think>...</think>` PRZED finalną odpowiedzią. Domyślnie
  * Groq zwraca te bloki inline w `choices[0].message.content`, co dla
@@ -133,6 +151,19 @@ export type GroqCompleteWithToolsOptions = {
   temperature?: number
   /** OpenAI-compat: 'auto' (default) | 'none' | { type:'function', function:{name} }. */
   toolChoice?: 'auto' | 'none'
+  /**
+   * Override modelu per call — przydatne gdy chcemy lekką ścieżkę
+   * (`llama-3.1-8b-instant`) dla small-talku, a domyślny `qwen3-32b`
+   * tylko gdy faktycznie tools są w grze.
+   * Default: model z konstruktora.
+   */
+  model?: string
+  /**
+   * Override `max_tokens` per call. Domyślnie `MAX_TOKENS_TOOL_DECISION`,
+   * dla small-talk można wziąć mniejszy budżet (200) — model i tak nie
+   * potrzebuje więcej dla „cześć / dzięki".
+   */
+  maxTokens?: number
 }
 
 export class GroqProvider implements LLMProvider {
@@ -155,6 +186,7 @@ export class GroqProvider implements LLMProvider {
       messages,
       stream: true,
       temperature: DEFAULT_TEMPERATURE,
+      max_tokens: MAX_TOKENS_TEXT_REPLY,
     }
     if (supportsReasoningFormat(this.model)) {
       body.reasoning_format = 'hidden'
@@ -202,6 +234,7 @@ export class GroqProvider implements LLMProvider {
       messages,
       stream: false,
       temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
+      max_tokens: MAX_TOKENS_TEXT_REPLY,
     }
     if (supportsReasoningFormat(this.model)) {
       body.reasoning_format = 'hidden'
@@ -237,17 +270,22 @@ export class GroqProvider implements LLMProvider {
     tools: GroqToolDescriptor[],
     opts: GroqCompleteWithToolsOptions = {},
   ): Promise<GroqCompleteWithToolsResult> {
+    const effectiveModel = opts.model ?? this.model
     const body: Record<string, unknown> = {
-      model: this.model,
+      model: effectiveModel,
       messages,
       stream: false,
       temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
+      max_tokens: opts.maxTokens ?? MAX_TOKENS_TOOL_DECISION,
     }
     if (tools.length > 0) {
       body.tools = tools
       body.tool_choice = opts.toolChoice ?? 'auto'
     }
-    if (supportsReasoningFormat(this.model)) {
+    // `reasoning_format` zależy od MODELU faktycznie wysyłanego, nie od
+    // domyślnego z konstruktora — gdy override'em zjeżdżamy z qwen3 na
+    // llamę 8b, nie chcemy wysłać parametru, którego mała llama nie zna.
+    if (supportsReasoningFormat(effectiveModel)) {
       body.reasoning_format = 'hidden'
     }
 
@@ -262,7 +300,7 @@ export class GroqProvider implements LLMProvider {
     return {
       message,
       usage: data?.usage ?? null,
-      model: data?.model ?? this.model,
+      model: data?.model ?? effectiveModel,
     }
   }
 

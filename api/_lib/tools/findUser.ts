@@ -91,7 +91,7 @@ function renderRow(row: ProfileSearchRow): string {
   if (row.department) meta.push(row.department)
 
   const metaStr = meta.length > 0 ? ` — ${meta.join(', ')}` : ''
-  return `- ${link}${metaStr}`
+  return `${link}${metaStr}`
 }
 
 async function execute(
@@ -122,53 +122,47 @@ async function execute(
 
   if (error) {
     console.error('[find_user] db error:', error.message)
-    return `Nie udało mi się wyszukać użytkowników (${error.message}).`
+    return `Nie wyszło — ${error.message}.`
   }
   if (!Array.isArray(data) || data.length === 0) {
-    return `Nie znalazłem nikogo dla zapytania "${queryRaw}". Spróbuj inaczej — np. samego nazwiska albo username (np. @franek).`
+    return `Nikogo dla „${queryRaw}" nie znalazłem. Spróbuj samego nazwiska albo username (np. @franek).`
   }
 
   const rows = (data as ProfileSearchRow[]).filter(
     (r) =>
       r.is_banned !== true &&
       r.is_searchable !== false &&
-      // Filtr na siebie samego — user pytający „o siebie" powinien dostać
-      // `get_my_user_context`, nie znaleźć siebie tu.
       r.id !== ctx.userId,
   )
   if (rows.length === 0) {
-    return `Nie znalazłem nikogo dla zapytania "${queryRaw}" (po odfiltrowaniu kont prywatnych / zablokowanych).`
+    return `Nikogo dla „${queryRaw}" — pewnie konta prywatne. Spróbuj inaczej.`
   }
 
   rows.sort((a, b) => scoreRow(a, query) - scoreRow(b, query))
   const top = rows.slice(0, MAX_RESULTS)
 
   const header =
-    rows.length > MAX_RESULTS
-      ? `Pierwszych ${MAX_RESULTS} z ${rows.length} trafień dla "${queryRaw}":`
-      : `${rows.length} ${rows.length === 1 ? 'trafienie' : 'trafień'} dla "${queryRaw}":`
+    top.length === 1
+      ? `Mam jednego: `
+      : `${top.length} ${top.length === 1 ? 'osobę' : 'osób'} dla „${queryRaw}":`
 
-  return [header, '', ...top.map(renderRow)].join('\n')
+  if (top.length === 1) {
+    return `${header}${renderRow(top[0])}.`
+  }
+  const moreNote =
+    rows.length > top.length ? `\n\nJest jeszcze ${rows.length - top.length}.` : ''
+  return `${header}\n${top.map(renderRow).join('\n')}${moreNote}`
 }
 
 registerTool<FindUserArgs, string>({
   tool: {
     name: 'find_user',
     description:
-      'Wyszukaj użytkownika UJverse po imieniu, nazwisku lub username. ' +
-      'Zwraca top 5 trafień z linkami do profili (deep-link /u/username). ' +
-      'Używaj, gdy user pyta "znajdź mi <imię>", "kto to jest <imię>", ' +
-      '"szukam X z mojego roku", "pokaż profil X". NIE używaj, gdy user ' +
-      'pyta sam o siebie ("kim ja jestem") — do tego jest get_my_user_context.',
+      'Szuka usera po imieniu/nazwisku/username (top 5 z linkami). Dla „znajdź X". NIE używaj dla „kim ja jestem".',
     parameters: {
       type: 'object',
       properties: {
-        query: {
-          type: 'string',
-          description:
-            'Fragment imienia, nazwiska, username lub nazwy kierunku ' +
-            '(np. "Kowalski", "franek", "informatyka"). Min 2 znaki.',
-        },
+        query: { type: 'string', description: 'Min. 2 znaki.' },
       },
       required: ['query'],
       additionalProperties: false,

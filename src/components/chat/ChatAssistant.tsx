@@ -9,9 +9,8 @@
  * - Renderowanie wiadomości przez wspólny `MessageList` (wariant `compact`).
  *
  * Header parity z innymi wyspami: zero akcji ikonowych po prawej stronie
- * (wszystkie sąsiednie widgety — Komunikaty, Niezbędnik, Koła — mają „czysty"
- * nagłówek). Czyszczenie historii dostępne jako tekstowy link „Nowa rozmowa"
- * w stopce, analogicznie do „Zobacz wszystkie" w `StudentClubsWidget`.
+ * (sąsiednie widgety — Komunikaty, Niezbędnik — mają „czysty" nagłówek).
+ * Czyszczenie historii dostępne jako tekstowy link „Nowa rozmowa" w stopce.
  *
  * Quick prompts: 3 perystentne chipsy nad MessageList → klik wysyła
  * od razu (pattern ChatGPT/Claude). Trzymane lokalnie, świadomie nie
@@ -65,7 +64,7 @@ const QUICK_PROMPTS = [
   'Co nowego na feedzie?',
   'Najnowsze ogłoszenia',
   'Co w przyszłym tygodniu?',
-  'Wydarzenia naukowe',
+  'Pokaż zniżki studenckie',
 ] as const
 
 type Props = {
@@ -90,7 +89,9 @@ export default function ChatAssistant({
   const navigate = useNavigate()
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
+  const actionLabel = useChatStore((s) => s.actionLabel)
   const clearHistory = useChatStore((s) => s.clearHistory)
+  const removeLastTurn = useChatStore((s) => s.removeLastTurn)
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
@@ -117,6 +118,26 @@ export default function ChatAssistant({
     },
     [isTyping, sendMessage],
   )
+
+  const handleEditLastUser = useCallback(
+    (text: string) => {
+      if (isTyping) return
+      // Wytnij ostatnią parę (user + assistant), tekst usera ląduje w composerze.
+      removeLastTurn()
+      setDraft(text)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    },
+    [isTyping, removeLastTurn],
+  )
+
+  const handleRetryLastAssistant = useCallback(() => {
+    if (isTyping) return
+    // Capture user text (przed mutacją), wytnij parę, re-send tej samej treści.
+    const { lastUserText } = removeLastTurn()
+    if (lastUserText && lastUserText.length > 0) {
+      void sendMessage(lastUserText)
+    }
+  }, [isTyping, removeLastTurn, sendMessage])
 
   const onSubmitForm = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
@@ -182,10 +203,13 @@ export default function ChatAssistant({
         ref={scrollRef}
         messages={messages}
         isTyping={isTyping}
+        actionLabel={actionLabel}
         variant="compact"
         className="scrollbar-thin scrollbar-thumb-zinc-800"
         myProfile={myProfile}
         displayName={displayName}
+        onEditLastUser={handleEditLastUser}
+        onRetryLastAssistant={handleRetryLastAssistant}
       />
 
       {canClear && (

@@ -4,7 +4,7 @@
  * Copyright © 2026 Franciszek Dranka. All rights reserved.
  * License: Proprietary — see LICENSE in repo root.
  *
- * Compact card pattern dopasowany do `TodayClassesWidget` / `DzisView` —
+ * Compact card pattern dopasowany do reszty wyspowych kart (`MojPlanView`) —
  * BaseCard + theme tokens + brand-gold akcent dla CTA "Wziąłem!".
  *
  * Stany wizualne:

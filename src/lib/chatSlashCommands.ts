@@ -21,11 +21,14 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Bell,
   CalendarDays,
+  ClipboardList,
   GraduationCap,
   HelpCircle,
   Megaphone,
   Newspaper,
   Sparkles,
+  Tag,
+  TrendingUp,
 } from 'lucide-react'
 
 export type SlashCommand = {
@@ -44,11 +47,24 @@ export type SlashCommand = {
 }
 
 /**
- * Stały zestaw komend — 7 sztuk (sweet spot dla UX: na ekran wchodzi cała
- * lista bez scrolla, jednocześnie dość wyboru żeby uniknąć "tylko 3 opcje").
+ * Stały zestaw komend — 11 sztuk po dorzuceniu zniżek, planu, briefingu,
+ * rejestracji USOS. Pierwsze 4 są **dokładnie** te same queries co w
+ * `QUICK_PROMPTS` w `ChatAssistant.tsx` / `ChatHubView.tsx` /
+ * `ChatAssistantFab.tsx` (cache współdzielony przez `buildResponseCacheKey`).
  *
- * KEEP IN SYNC z `QUICK_PROMPTS` w `ChatAssistant.tsx` / `ChatHubView.tsx` —
- * pierwsze 4 są **dokładnie** te same queries (cache współdzielony).
+ * Mapping na narzędzia (1:1):
+ *   /feed         → get_latest_posts
+ *   /oglosznia    → get_latest_announcements
+ *   /tydzien      → get_upcoming_official_events (default 14d)
+ *   /naukowe      → search_events("nauk")
+ *   /wziks        → get_latest_announcements (filter w toolu)
+ *   /juwenalia    → search_events("juwenalia")
+ *   /zniski       → search_discounts (top 10 verified)
+ *   /trending     → get_trending_discounts
+ *   /plan         → get_my_classes_in_range (today)
+ *   /brief        → get_my_weekly_briefing
+ *   /rejestracje  → get_upcoming_usos_registrations
+ *   /pomoc        → meta-info bez tooli
  */
 export const SLASH_COMMANDS: readonly SlashCommand[] = [
   {
@@ -82,6 +98,46 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     query: 'Wydarzenia naukowe',
     icon: GraduationCap,
     iconBg: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+  },
+  {
+    slug: 'zniski',
+    label: 'Zniżki studenckie',
+    description: 'Couponek UJ — top zniżki w Krakowie',
+    query: 'Pokaż zniżki studenckie',
+    icon: Tag,
+    iconBg: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
+  },
+  {
+    slug: 'trending',
+    label: 'Trendujące zniżki',
+    description: 'Co studenci ostatnio biorą',
+    query: 'Jakie zniżki są teraz najpopularniejsze?',
+    icon: TrendingUp,
+    iconBg: 'bg-pink-500/15 text-pink-700 dark:text-pink-300',
+  },
+  {
+    slug: 'plan',
+    label: 'Mój plan na dziś',
+    description: 'Dzisiejsze zajęcia z odwołanymi',
+    query: 'Co mam dziś w planie?',
+    icon: CalendarDays,
+    iconBg: 'bg-teal-500/15 text-teal-700 dark:text-teal-300',
+  },
+  {
+    slug: 'brief',
+    label: 'Briefing tygodniowy',
+    description: 'Podsumowanie tego tygodnia',
+    query: 'Pokaż mój briefing tygodniowy',
+    icon: ClipboardList,
+    iconBg: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300',
+  },
+  {
+    slug: 'rejestracje',
+    label: 'Rejestracje USOS',
+    description: 'Nadchodzące rejestracje na przedmioty',
+    query: 'Jakie są nadchodzące rejestracje USOS?',
+    icon: Bell,
+    iconBg: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
   },
   {
     slug: 'wziks',

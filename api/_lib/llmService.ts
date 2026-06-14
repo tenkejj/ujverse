@@ -40,6 +40,24 @@ export const DEFAULT_GROQ_MODEL: string =
   process.env.GROQ_MODEL ?? 'qwen/qwen3-32b'
 
 /**
+ * Lekki model dla ścieżki SMALL-TALK (gdy `routeIntent`/`shouldUseTools`
+ * uznał że tools nie są potrzebne — „cześć", „dzięki", „jak się masz").
+ *
+ * Po co osobny model:
+ *  - qwen3-32b reasoning-aware (drogo + wolno) — dla 4-słownej grzeczności
+ *    to zabicie muchy granatem;
+ *  - llama-3.1-8b-instant: ~5× tańszy, ~3× szybszy w TTFB, kontekst 128k
+ *    jak qwen — dla małej rozmowy w PL daje porównywalną jakość;
+ *  - reasoning_format niewysyłany (llama go nie wspiera, ale nie potrzebuje
+ *    — `supportsReasoningFormat` w `GroqProvider` rozróżnia per call).
+ *
+ * Override przez env `GROQ_SMALLTALK_MODEL` — zostawia furtkę żeby
+ * przerzucić się na inny tani model bez deploya kodu.
+ */
+export const GROQ_SMALLTALK_MODEL: string =
+  process.env.GROQ_SMALLTALK_MODEL ?? 'llama-3.1-8b-instant'
+
+/**
  * Polityka retry dla wywołań Groq API.
  *
  * - `GROQ_RETRY_ATTEMPTS` = 3: łącznie do trzech prób (1 oryginalna + 2 retry).
@@ -203,7 +221,10 @@ export async function withGroqRetry<T>(
  * tokeny przy każdym round-tripie pętli.
  */
 export const UJVERSE_SYSTEM_PROMPT =
-  'Jesteś asystentem UJverse. Używaj narzędzi do danych. Odpowiadaj zwięźle, akademicko.'
+  'Jesteś asystentem UJverse dla studentów UJ. Mów po polsku, na ty, krótko i ' +
+  'po ludzku — jak kumpel. Bez bulletów i nagłówków. Nigdy nie zmyślaj danych — ' +
+  'jak pytanie dotyczy bazy (zajęcia, ogłoszenia, wydarzenia, zniżki, posty, ' +
+  'rejestracje, kalendarz, profile), użyj narzędzia.'
 
 /**
  * Helper dla tool-aware orchestratora (`api/chat.ts`): wkłada personę jako

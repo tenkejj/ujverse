@@ -1,278 +1,68 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { AlarmClock, BookOpen, ChevronLeft, ChevronRight, GraduationCap, MapPin, Sparkles, Tag } from 'lucide-react'
-import { NIEZBEDNIK_LINKS } from '../Niezbednik'
-import {
-  OFFICIAL_TAG_META,
-  ZoneIcon,
-  getZones,
-  type OfficialTagSlug,
-} from '../../services/TagService'
-import { groupPathForSlug } from '../../lib/groupPaths'
 import type { AnnouncementMeta, UnifiedContent } from '../../types/content'
 import AnnouncementPills from '../AnnouncementPills'
-import {
-  ABSOLUTE_ARROW_BTN_CLS,
-  OVERLAY_LEFT_CLS,
-  OVERLAY_RIGHT_CLS,
-  SCROLL_STEP_PX,
-} from '../ui/HorizontalPillScroller'
+import HorizontalPillScroller from '../ui/HorizontalPillScroller'
 
 /**
- * MobileDashboard — pojedynczy poziomy "rail" szybkiego dostępu (mobile).
+ * MobileDashboard — cienki sticky-paskowy slot pod headerem (`<md`).
  *
- * Konsoliduje trzy poprzednie sekcje (Niezbednik · Strefy · AnnouncementPills)
- * w jednej zwartej "wyspie" nawigacyjnej pod headerem:
- *   USOS · PEGAZ · POCZTA │ Ankiety · Ogłoszenia · Pomoc │ [pigułki komunikatów]
+ * Po refakcie nawigacji ten rząd ma JEDEN cel: pokazać poziomą listę
+ * **pigułek komunikatów wykładowców** (`AnnouncementPills`). Wcześniej
+ * mieszkały tu też quick-taby (Mój Plan / Zniżki / USOS / Miejsca / Aula),
+ * Niezbędnik (PEGAZ / POCZTA / USOS-web) i Strefy — ale wszystko to żyje
+ * teraz w `BottomNav` (Mój Plan) lub `MobileDrawer` (sekcje „Strefa
+ * studenta", „Linki UJ", „Strefy"). Komunikaty wykładowców są jedyną
+ * rzeczą, która NIE ma drugiego punktu wejścia na mobile, dlatego
+ * zostają tutaj, na wiodącej pozycji nad filtrem wydziałów.
  *
- * Struktura JSX 1:1 z `FeedFilters` → `HorizontalPillScroller`:
- *   - `BLEED_WRAPPER_CLS` (`-mx-4 px-4 py-2`) — bleed do krawędzi viewportu
- *      + 16px wewnętrzny inset (analog `STICKY_MOBILE_CLS` w `FeedFilters`).
- *   - `relative w-full min-w-0` — kontekst pozycjonowania dla overlay/arrow
- *      (analog outer wrappera w `HorizontalPillScroller`).
- *   - `<nav>` z `TRAY_CLS` — scrollowalny track ikon (`overflow-x-auto`),
- *      `pr-12` zostawia 48px clearance pod absolutną strzałkę.
- *   - `OVERLAY_RIGHT_CLS` + `ABSOLUTE_ARROW_BTN_CLS` (importowane z
- *      `HorizontalPillScroller`) — gradient maskujący + strzałka identyczna
- *      jak w `DepartmentFilter`. `right-1` w obu miejscach → arrow ląduje
- *      ~20px od prawej krawędzi viewportu, jak w `FeedFilters`.
+ * Render używa tego samego scroll-trackera co `DepartmentFilter`
+ * (`HorizontalPillScroller`) — single-line poziomy scroll + chevrony
+ * po lewej/prawej gdy jest co przewinąć. `AnnouncementPills` w trybie
+ * `inline` zwraca tylko same `<button>`-pigułki (i portalowy drawer),
+ * więc mogą żyć jako bezpośrednie dzieci scroll-tracka.
  *
- * AnnouncementPills jest renderowany w trybie `inline` (fragment: pigułki +
- * portalowy drawer), aby uniknąć zagnieżdżonego scroll-trackera.
+ * Gdy nie ma żadnego komunikatu i nic się nie ładuje, komponent NICZEGO
+ * nie renderuje (zero pustego paska zajmującego miejsce).
  */
 
-const BLEED_WRAPPER_CLS = '-mx-4 px-4 py-2'
+const WRAPPER_CLS = '-mx-4 px-4 py-1.5'
 
-const TRAY_CLS =
-  'flex flex-row items-center gap-4 overflow-x-auto scrollbar-hide ' +
-  'pr-12 overscroll-x-contain [-webkit-overflow-scrolling:touch]'
-
-const ITEM_CLS =
-  'shrink-0 flex h-12 w-12 md:w-16 md:h-auto flex-col items-center justify-center gap-1 ' +
-  'rounded-xl px-1 py-1.5 text-center ' +
-  'text-zinc-600 transition-colors hover:text-[#1e293b] active:text-[#1e293b] ' +
-  'dark:text-zinc-300 dark:hover:text-brand-gold-bright dark:active:text-brand-gold-bright ' +
-  '[-webkit-tap-highlight-color:transparent] focus-visible:outline-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:focus-visible:ring-brand-gold/35'
-
-const LABEL_CLS =
-  'hidden md:block w-full truncate text-[10px] font-medium leading-none tracking-wide'
-
-const SEPARATOR_CLS = 'shrink-0 w-px h-6 bg-zinc-300 dark:bg-white/15'
+const SCROLL_TRACK_CLS =
+  'm-0 flex w-full min-w-0 max-w-full flex-nowrap justify-start gap-1.5 ' +
+  'overflow-x-auto overscroll-x-contain [touch-action:pan-x] ' +
+  'scrollbar-hide scroll-smooth [-webkit-overflow-scrolling:touch] ' +
+  '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ' +
+  'py-1 pl-0 pr-1'
 
 type Props = {
   className?: string
-  /** Ile stref pokazać. Default: 3 (Ankiety / Ogłoszenia / Pomoc). */
-  zoneLimit?: number
   /** Komunikaty już przefiltrowane po wydziale (z `useAnnouncements`). */
   announcements: UnifiedContent<AnnouncementMeta>[]
   announcementsLoading: boolean
-  /** Kropka unread na kafelku Aula. */
-  aulaHasUnread?: boolean
 }
 
 export default function MobileDashboard({
   className = '',
-  zoneLimit = 3,
   announcements,
   announcementsLoading,
-  aulaHasUnread = false,
 }: Props) {
-  const navigate = useNavigate()
-  const zones = getZones(zoneLimit)
-
-  const pickZone = (slug: OfficialTagSlug) => {
-    navigate(groupPathForSlug(slug))
-  }
-
-  // Trzecia grupa (pills) ma sens wizualnie tylko jeśli mamy co pokazać
-  // albo trwa load — inaczej trailing separator wisiałby bez kontentu.
-  const showPillsGroup = announcementsLoading || announcements.length > 0
-
-  // Scroll state — wzorzec 1:1 z `HorizontalPillScroller` (oba kierunki).
-  // Trzymamy własną instancję ref + listenerów (nie wrappera), bo rail
-  // używa semantycznego `<nav>` i ma własną strukturę dzieci (ikony +
-  // separatory + inline `AnnouncementPills`).
-  const trayRef = useRef<HTMLElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-
-  const updateScrollState = useCallback(() => {
-    const el = trayRef.current
-    if (!el) return
-    setCanScrollLeft(el.scrollLeft > 4)
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
-  }, [])
-
-  useEffect(() => {
-    const el = trayRef.current
-    if (!el) return
-    updateScrollState()
-    el.addEventListener('scroll', updateScrollState, { passive: true })
-    const ro = new ResizeObserver(updateScrollState)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', updateScrollState)
-      ro.disconnect()
-    }
-  }, [updateScrollState, announcements.length, announcementsLoading])
-
-  const scrollLeft = () => {
-    trayRef.current?.scrollBy({ left: -SCROLL_STEP_PX, behavior: 'smooth' })
-  }
-
-  const scrollRight = () => {
-    trayRef.current?.scrollBy({ left: SCROLL_STEP_PX, behavior: 'smooth' })
-  }
+  const hasContent = announcementsLoading || announcements.length > 0
+  if (!hasContent) return null
 
   return (
-    <div className={`${BLEED_WRAPPER_CLS} ${className}`.trim()}>
-      <div className="relative w-full min-w-0">
-        <nav ref={trayRef} aria-label="Szybki dostęp" className={TRAY_CLS}>
-          <button
-            type="button"
-            onClick={() => navigate('/dzis')}
-            aria-label="Dziś — Twój brief poranny"
-            title="Dziś — przegląd dnia"
-            className={`relative ${ITEM_CLS} text-brand-gold dark:text-brand-gold-bright`}
-          >
-            <Sparkles size={22} strokeWidth={1.95} className="shrink-0" aria-hidden />
-            <span className={LABEL_CLS}>Dziś</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/znizki')}
-            aria-label="Couponek UJ — zniżki studenckie"
-            title="Couponek UJ"
-            className={`relative ${ITEM_CLS}`}
-          >
-            <Tag size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
-            <span className={LABEL_CLS}>Zniżki</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/usos')}
-            aria-label="Rejestracje USOS — alarmy"
-            title="Rejestracje USOS — nie przegap"
-            className={`relative ${ITEM_CLS}`}
-          >
-            <AlarmClock size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
-            <span className={LABEL_CLS}>USOS</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/miejsca')}
-            aria-label="Miejsca do nauki w Krakowie"
-            title="Miejsca do nauki — biblioteki, kawiarnie, dziedzińce"
-            className={`relative ${ITEM_CLS}`}
-          >
-            <BookOpen size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
-            <span className={LABEL_CLS}>Miejsca</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/aula')}
-            aria-label={aulaHasUnread ? 'Aula — nowe wiadomości' : 'Aula — czat rocznika'}
-            title="Aula — czat rocznika"
-            className={`relative ${ITEM_CLS}`}
-          >
-            <span className="relative">
-              <GraduationCap size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
-              {aulaHasUnread && (
-                <span
-                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(232,200,74,0.55)] dark:bg-brand-gold-bright"
-                  aria-hidden
-                />
-              )}
-            </span>
-            <span className={LABEL_CLS}>Aula</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/sale')}
-            aria-label="Sale UJ — wyszukiwarka sal"
-            title="Sale UJ — wyszukiwarka sal"
-            className={ITEM_CLS}
-          >
-            <MapPin size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
-            <span className={LABEL_CLS}>Sale</span>
-          </button>
-
-          <div className={SEPARATOR_CLS} aria-hidden />
-
-          {NIEZBEDNIK_LINKS.map(({ label, shortLabel, href, Icon }) => (
-            <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={label}
-              title={label}
-              className={ITEM_CLS}
-            >
-              <Icon size={22} strokeWidth={1.85} className="shrink-0" aria-hidden />
-              <span className={LABEL_CLS}>{shortLabel}</span>
-            </a>
-          ))}
-
-          <div className={SEPARATOR_CLS} aria-hidden />
-
-          {zones.map((slug) => {
-            const meta = OFFICIAL_TAG_META[slug]
-            return (
-              <button
-                key={slug}
-                type="button"
-                onClick={() => pickZone(slug)}
-                aria-label={meta.name}
-                title={meta.name}
-                className={ITEM_CLS}
-              >
-                <ZoneIcon slug={slug} className="size-[22px] shrink-0" />
-                <span className={LABEL_CLS}>{meta.name}</span>
-              </button>
-            )
-          })}
-
-          {showPillsGroup && (
-            <>
-              <div className={SEPARATOR_CLS} aria-hidden />
-              <AnnouncementPills
-                inline
-                announcements={announcements}
-                loading={announcementsLoading}
-              />
-            </>
-          )}
-        </nav>
-
-        {canScrollLeft && (
-          <div className={OVERLAY_LEFT_CLS}>
-            <button
-              type="button"
-              onClick={scrollLeft}
-              aria-label="Przewiń w lewo"
-              className={`${ABSOLUTE_ARROW_BTN_CLS} left-1`}
-            >
-              <ChevronLeft size={14} />
-            </button>
-          </div>
-        )}
-
-        {canScrollRight && (
-          <div className={OVERLAY_RIGHT_CLS}>
-            <button
-              type="button"
-              onClick={scrollRight}
-              aria-label="Przewiń w prawo"
-              className={`${ABSOLUTE_ARROW_BTN_CLS} right-1`}
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        )}
-      </div>
+    <div className={`${WRAPPER_CLS} ${className}`.trim()}>
+      <HorizontalPillScroller
+        scrollClassName={SCROLL_TRACK_CLS}
+        watchDeps={[announcements.length, announcementsLoading]}
+        scrollLeftLabel="Przewiń komunikaty w lewo"
+        scrollRightLabel="Przewiń komunikaty w prawo"
+        withMobileEdgeSpacer={false}
+      >
+        <AnnouncementPills
+          inline
+          announcements={announcements}
+          loading={announcementsLoading}
+        />
+      </HorizontalPillScroller>
     </div>
   )
 }

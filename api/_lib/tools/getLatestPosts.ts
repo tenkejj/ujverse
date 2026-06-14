@@ -146,9 +146,7 @@ registerTool<Record<string, never>, GetLatestPostsResult | GetLatestPostsError>(
   tool: {
     name: 'get_latest_posts',
     description:
-      'Pobiera 10 najnowszych postów społeczności UJverse (treść + autor + ' +
-      'tagi). Używaj, gdy użytkownik pyta o nastroje, dyskusje, „co się dzieje", ' +
-      'pytania innych studentów lub konkretne tematy społeczności.',
+      '10 najnowszych postów społeczności UJverse. Dla pytań „co na feedzie", „dyskusje", „nastroje".',
     parameters: {
       type: 'object',
       properties: {},

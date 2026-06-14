@@ -16,9 +16,7 @@ import CompactEventRow from './CompactEventRow'
 import EmptyState from './EmptyState'
 import FeedSkeleton from './FeedSkeleton'
 import Niezbednik from './Niezbednik'
-import TodayClassesWidget from './TodayClassesWidget'
 import CalendarMiniWidget from './calendar/CalendarMiniWidget'
-import BriefingWidget from './briefing/BriefingWidget'
 import MobileDashboard from './mobile/MobileDashboard'
 import BaseCard from './ui/BaseCard'
 import {
@@ -92,8 +90,6 @@ type Props = {
   onNavigateToEvents: () => void
   /** Otwiera profil po `username` (np. z modala uczestników wydarzenia). */
   onNavigateToProfileHandle?: (handle: string) => void
-  /** Kropka unread na kafelku Aula w mobilnym dashboardzie. */
-  aulaHasUnread?: boolean
 }
 
 const unifiedCardGapCls = 'gap-4'
@@ -145,7 +141,6 @@ export default function FeedView({
   onNavigateToUser,
   onNavigateToEvents,
   onNavigateToProfileHandle,
-  aulaHasUnread = false,
 }: Props) {
   const { events, toggleRsvp, updateEvent } = useEvents()
   const {
@@ -397,7 +392,6 @@ export default function FeedView({
             <MobileDashboard
               announcements={academicAnnouncements}
               announcementsLoading={academicAnnouncementsLoading}
-              aulaHasUnread={aulaHasUnread}
             />
             <FeedFilters
               sticky
@@ -421,12 +415,6 @@ export default function FeedView({
         className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pt-0`}
       >
         <Niezbednik />
-
-        <BriefingWidget userId={currentUserId} />
-
-        <div className="shrink-0">
-          <TodayClassesWidget userId={currentUserId} variant="compact" />
-        </div>
 
         <CalendarMiniWidget className="shrink-0" />
 

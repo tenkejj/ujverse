@@ -32,6 +32,7 @@ import {
   ttlForTool,
 } from '../cache.js'
 import { kvGetSafe, kvSetSafe } from '../kvCache.js'
+import { incrCounter, pushLatency } from '../metrics.js'
 
 /**
  * Minimalne JSON Schema akceptowane przez Groq w polu `tools[*].function.parameters`.
@@ -167,10 +168,16 @@ function withCache<TArgs, TResult>(
     const cached = await kvGetSafe<TResult>(cacheKey)
     if (cached !== undefined) {
       console.log('[Tool Cache] HIT', toolName, 'key:', cacheKey)
+      void incrCounter(`tool_cache:hit:${toolName}`)
+      void incrCounter('tool_cache:hit')
       return cached
     }
 
+    void incrCounter(`tool_cache:miss:${toolName}`)
+    void incrCounter('tool_cache:miss')
+    const startedAt = Date.now()
     const result = await execute(args, ctx)
+    void pushLatency(`tool:${toolName}_ms`, Date.now() - startedAt)
     if (isCacheable(result)) {
       await kvSetSafe(cacheKey, result, ttlSeconds)
       console.log(
@@ -183,6 +190,7 @@ function withCache<TArgs, TResult>(
       )
     } else {
       console.log('[Tool Cache] MISS -> skip (error result)', toolName)
+      void incrCounter(`tool:error:${toolName}`)
     }
     return result
   }

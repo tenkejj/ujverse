@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardList, GraduationCap, Link2 as LinkIcon, Mail, MapPin, type LucideIcon } from 'lucide-react'
+import { BookOpen, ClipboardList, GraduationCap, Link2 as LinkIcon, Mail, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import BaseCard from './ui/BaseCard'
 import { sectionTitleCls, sidePanelHoverFocus, widgetGoldCls } from '../lib/sidePanelStyles'
@@ -112,12 +112,8 @@ export default function Niezbednik({ className = '' }: Props) {
           tag="UJverse"
           onClick={() => navigate('/moj-plan')}
         />
-        <InternalRow
-          label="Sale UJ"
-          Icon={MapPin}
-          tag="Mapa + nawigacja"
-          onClick={() => navigate('/sale')}
-        />
+        {/* Sale UJ — ukryte z UI (route /sale dalej działa po direct linku);
+            wyszukiwarka sal czeka na decyzję czy refactor sensowny. */}
         {NIEZBEDNIK_LINKS.map(({ label, href, Icon, tag }) => (
           <ExternalRow key={label} label={label} href={href} Icon={Icon} tag={tag} />
         ))}

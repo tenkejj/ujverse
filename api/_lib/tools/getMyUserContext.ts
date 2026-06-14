@@ -93,44 +93,37 @@ async function execute(
     (profile.username ? `@${profile.username}` : null) ||
     'Studentka/Student'
 
-  // Linia 1: kim jesteś (imię/handle)
-  const lines: string[] = []
-  lines.push(`Pamiętam o Tobie: **${displayName}**.`)
-
-  // Linia 2: status studiów — kierunek + rok + tryb
   const studyParts: string[] = []
-  if (profile.study_program) {
-    studyParts.push(profile.study_program)
-  }
+  if (profile.study_program) studyParts.push(profile.study_program)
   const studyYear = computeStudyYear(profile.year_started)
-  if (studyYear != null) {
-    studyParts.push(`${studyYear}. rok`)
-  }
+  if (studyYear != null) studyParts.push(`${studyYear}. rok`)
   const modeLabel = studyModeLabel(profile.study_mode)
-  if (modeLabel) {
-    studyParts.push(modeLabel)
-  }
-  if (studyParts.length > 0) {
-    lines.push(`- Studia: ${studyParts.join(' • ')}`)
+  if (modeLabel) studyParts.push(modeLabel)
+
+  const sentences: string[] = []
+  sentences.push(`Pamiętam — jesteś **${displayName}**.`)
+
+  if (studyParts.length > 0 && profile.department) {
+    sentences.push(
+      `Studiujesz ${studyParts.join(', ')} na ${profile.department}.`,
+    )
+  } else if (studyParts.length > 0) {
+    sentences.push(`Studiujesz ${studyParts.join(', ')}.`)
+  } else if (profile.department) {
+    sentences.push(`Wydział: ${profile.department}.`)
   }
 
-  // Linia 3: wydział
-  if (profile.department) {
-    lines.push(`- Wydział: ${profile.department}`)
-  }
-
-  // Linia 4: krótkie bio (jeśli krótkie)
   if (profile.bio && profile.bio.trim().length > 0 && profile.bio.length <= 160) {
-    lines.push(`- O sobie: ${profile.bio.trim()}`)
+    sentences.push(profile.bio.trim())
   }
 
-  // Brak jakichkolwiek danych poza imieniem → namawiamy do uzupełnienia profilu.
   if (studyParts.length === 0 && !profile.department) {
-    lines.push(
-      '',
-      'Twój profil jest jeszcze niekompletny. Uzupełnij kierunek i wydział w ustawieniach, żebym mógł dawać Ci trafniejsze podpowiedzi.',
+    sentences.push(
+      'Profil masz jeszcze pusty — uzupełnij kierunek i wydział, to dam Ci trafniejsze podpowiedzi.',
     )
   }
+
+  const lines = [sentences.join(' ')]
 
   return lines.join('\n')
 }
@@ -139,12 +132,7 @@ registerTool<Record<string, never>, string>({
   tool: {
     name: 'get_my_user_context',
     description:
-      'Zwraca dane zalogowanego użytkownika: imię, kierunek studiów, ' +
-      'aktualny rok studiów, tryb (stacjonarne/niestacjonarne/doktoranckie) ' +
-      'i wydział. Używaj, gdy użytkownik pyta "co o mnie wiesz", "kim ' +
-      'jestem dla Ciebie", "jakie mam studia", "na którym roku jestem" — ' +
-      'oraz JAKO PIERWSZY tool, gdy user prosi o spersonalizowane ' +
-      'rekomendacje (np. "co ważne dla mnie", "polecaj mi rzeczy").',
+      'Imię/kierunek/rok/wydział zalogowanego usera. Pytania „kim jestem", „co o mnie wiesz" — i ZAWSZE pierwszy przy pytaniach o personalizację.',
     parameters: {
       type: 'object',
       properties: {},

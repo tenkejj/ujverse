@@ -18,13 +18,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Send, X } from 'lucide-react'
+import { Send, Square, X } from 'lucide-react'
 import type { Profile } from '../../types'
 import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import AnimatedBot from './AnimatedBot'
+import ChatVoiceButton from './ChatVoiceButton'
 import MessageList from './MessageList'
 
 type Props = {
@@ -65,8 +66,8 @@ const SHEET_GLASS_CLS = [
 const QUICK_PROMPTS = [
   'Co nowego na feedzie?',
   'Najnowsze ogłoszenia',
-  'Pokaż konferencje',
-  'Wydarzenia naukowe',
+  'Co w przyszłym tygodniu?',
+  'Pokaż zniżki studenckie',
 ] as const
 
 export default function ChatAssistantFab({
@@ -76,9 +77,10 @@ export default function ChatAssistantFab({
 }: Props) {
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
+  const actionLabel = useChatStore((s) => s.actionLabel)
   const isOpen = useChatStore((s) => s.isOpen)
   const setOpen = useChatStore((s) => s.setOpen)
-  const { sendMessage } = useChatSend()
+  const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -108,6 +110,24 @@ export default function ChatAssistantFab({
   const handleClose = useCallback(() => {
     setOpen(false)
   }, [setOpen])
+
+  const handleEditLastUser = useCallback(
+    (text: string) => {
+      if (isTyping) return
+      useChatStore.getState().removeLastTurn()
+      setDraft(text)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
+    },
+    [isTyping],
+  )
+
+  const handleRetryLastAssistant = useCallback(() => {
+    if (isTyping) return
+    const { lastUserText } = useChatStore.getState().removeLastTurn()
+    if (lastUserText && lastUserText.length > 0) {
+      void sendMessage(lastUserText)
+    }
+  }, [isTyping, sendMessage])
 
   const handleSend = useCallback(
     async (content: string) => {
@@ -211,9 +231,12 @@ export default function ChatAssistantFab({
           ref={scrollRef}
           messages={messages}
           isTyping={isTyping}
+          actionLabel={actionLabel}
           variant="roomy"
           className="px-4 py-3"
           myProfile={myProfile}
+          onEditLastUser={handleEditLastUser}
+          onRetryLastAssistant={handleRetryLastAssistant}
           displayName={displayName}
         />
 
@@ -241,6 +264,14 @@ export default function ChatAssistantFab({
           onSubmit={onSubmitForm}
           className={`flex items-end gap-2 border-t px-3 py-3 ${theme.colors.border.base}`}
         >
+          <ChatVoiceButton
+            size="compact"
+            disabled={isTyping}
+            onTranscript={(text) => {
+              setDraft((prev) => (prev ? prev + ' ' + text : text))
+              window.setTimeout(() => inputRef.current?.focus(), 0)
+            }}
+          />
           <textarea
             ref={inputRef}
             value={draft}
@@ -251,14 +282,26 @@ export default function ChatAssistantFab({
             disabled={isTyping}
             className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-[#1e293b] focus:ring-2 focus:ring-[#1e293b]/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
           />
-          <button
-            type="submit"
-            aria-label="Wyślij wiadomość"
-            disabled={isTyping || draft.trim().length === 0}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e293b] text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
-          >
-            <Send size={17} strokeWidth={2} />
-          </button>
+          {isTyping ? (
+            <button
+              type="button"
+              onClick={cancel}
+              aria-label="Zatrzymaj odpowiedź"
+              title="Zatrzymaj odpowiedź"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
+            >
+              <Square size={14} strokeWidth={2.5} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              aria-label="Wyślij wiadomość"
+              disabled={draft.trim().length === 0}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e293b] text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+            >
+              <Send size={17} strokeWidth={2} />
+            </button>
+          )}
         </form>
       </motion.section>
     </motion.div>

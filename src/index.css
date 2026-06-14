@@ -17,6 +17,13 @@ html {
   width: 100%;
   max-width: 100vw;
   touch-action: pan-y;
+  /*
+   * Rezerwujemy miejsce na pionowy scrollbar zawsze, nawet gdy treść mieści
+   * się w viewporcie. Bez tego krótkie widoki (notyfikacje, ustawienia) nie
+   * mają scrollbara, długie (feed/wydarzenia) mają — content przeskakuje
+   * w bok o ~15 px przy każdej zmianie widoku/animacji AnimatePresence.
+   */
+  scrollbar-gutter: stable;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -290,6 +297,68 @@ input[type="search"].ujverse-search-input::-moz-search-clear-button {
     .animate-sparkle-breathe {
       animation: none;
     }
+  }
+}
+
+/*
+ * `TypewriterMarkdown` — animacje:
+ *
+ * 1) Migający kursor `▍` po końcu wpisanego tekstu. Cykl 1.0s, ~50% on/off,
+ *    pierwsza klatka delikatnie wjeżdża z dołu (subtelny efekt „blinkingu
+ *    z energy" zamiast hard ON/OFF).
+ *
+ * 2) Fade-in dla każdego nowego paragrafu / listy. Dorzucany via
+ *    `markdownComponents.tsx` (klasa `chat-line-fade-in` na `<p>`/`<li>`).
+ *    Animacja: opacity 0 → 1 + translateY 6px → 0 w 320ms ease-out.
+ *    To daje wrażenie, że każde zdanie „dosadowuje się" od dołu, jak na
+ *    nowoczesnych portfolio-stronach (a nie pop-in instant).
+ *
+ * Wszystko respektuje `prefers-reduced-motion` przez ogólny override
+ * `data-reduced-motion="true"` (patrz wyżej).
+ */
+@keyframes chat-cursor-blink {
+  0%, 49% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  50%, 100% {
+    opacity: 0;
+    transform: scaleY(0.92);
+  }
+}
+
+@keyframes chat-line-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .chat-typewriter-cursor {
+    display: inline-block;
+    margin-left: 1px;
+    color: var(--brand-gold-bright, #e8c84a);
+    animation: chat-cursor-blink 1s ease-in-out infinite;
+    transform-origin: center bottom;
+    line-height: 1;
+    user-select: none;
+    will-change: opacity, transform;
+  }
+
+  .chat-line-fade-in {
+    animation: chat-line-fade-in 320ms ease-out backwards;
+    will-change: opacity, transform;
+  }
+
+  .chat-typewriter > * + * {
+    /* Mała przerwa między blokami — daje wrażenie, że asystent
+     * „kładzie nową myśl" zamiast strzela ścianą tekstu. */
+    margin-top: 0.35rem;
   }
 }
 

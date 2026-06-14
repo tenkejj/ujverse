@@ -21,6 +21,8 @@ import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
+import SideNav from './components/SideNav'
+import MobileDrawer from './components/MobileDrawer'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
 import EventsHub from './components/EventsHub'
@@ -48,6 +50,7 @@ import SearchPageView from './components/SearchPageView'
 import GroupView from './components/GroupView'
 import GroupsIndexView from './components/GroupsIndexView'
 import MojPlanView from './components/MojPlanView'
+import AdminDiagView from './components/admin/AdminDiagView'
 import { LecturerSubscriptionsProvider } from './lib/lecturerSubscriptionsContext'
 import { useOnboarding } from './hooks/useOnboarding'
 import {
@@ -58,9 +61,7 @@ import {
 const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 const AulaView = lazy(() => import('./components/aula/AulaView'))
-const Campus3DView = lazy(() => import('./components/campus-3d/Campus3DView'))
-const WeeklyBriefingView = lazy(() => import('./components/briefing/WeeklyBriefingView'))
-const DzisView = lazy(() => import('./components/DzisView'))
+const SaleFinderView = lazy(() => import('./components/sale-finder/SaleFinderView'))
 const ZniskiView = lazy(() => import('./components/discounts/ZniskiView'))
 const UsosRegistrationsView = lazy(() => import('./components/usos/UsosRegistrationsView'))
 const UsosAlarmBanner = lazy(() => import('./components/usos/UsosAlarmBanner'))
@@ -81,11 +82,10 @@ type AppShellView =
   | 'aula'
   | 'sale'
   | 'mojPlan'
-  | 'briefing'
-  | 'dzis'
   | 'znizki'
   | 'usos'
   | 'miejsca'
+  | 'adminDiag'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -149,17 +149,18 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   if (normalizedPath === '/aula') {
     return { kind: 'ok', view: 'aula', profileHandle: null, postId: null }
   }
-  if (normalizedPath === '/moj-plan') {
+  // `/moj-plan` jest jedyną stroną akademicką — `/dzis` i `/briefing` zostały
+  // skonsolidowane do jednego widoku (Dziś + Tydzień + Zmiany + Komunikaty
+  // + Eventy + Next exam w jednym miejscu).
+  if (
+    normalizedPath === '/moj-plan' ||
+    normalizedPath === '/dzis' ||
+    normalizedPath === '/briefing'
+  ) {
     return { kind: 'ok', view: 'mojPlan', profileHandle: null, postId: null }
   }
   if (normalizedPath === '/sale') {
     return { kind: 'ok', view: 'sale', profileHandle: null, postId: null }
-  }
-  if (normalizedPath === '/briefing') {
-    return { kind: 'ok', view: 'briefing', profileHandle: null, postId: null }
-  }
-  if (normalizedPath === '/dzis') {
-    return { kind: 'ok', view: 'dzis', profileHandle: null, postId: null }
   }
   if (normalizedPath === '/znizki') {
     return { kind: 'ok', view: 'znizki', profileHandle: null, postId: null }
@@ -169,6 +170,15 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   }
   if (normalizedPath === '/miejsca' || normalizedPath === '/sale-nauki') {
     return { kind: 'ok', view: 'miejsca', profileHandle: null, postId: null }
+  }
+  // Admin diag dashboard — token-gated po stronie serwera, sam URL nie
+  // wymaga roli `admin` (każdy zalogowany może otworzyć, ale bez tokena
+  // nie pobierze danych z `/api/_diag/*`).
+  if (
+    normalizedPath === '/admin/cache' ||
+    normalizedPath === '/admin/diag'
+  ) {
+    return { kind: 'ok', view: 'adminDiag', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -190,6 +200,7 @@ function App() {
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(null)
@@ -397,7 +408,7 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned, is_searchable, show_department, study_program, year_started, study_mode')
+      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned, is_searchable, show_department, study_program, year_started, study_mode, onboarding_completed_at, onboarding_skipped_at')
       .eq('id', userId)
       .single()
     if (data) {
@@ -693,14 +704,6 @@ function App() {
     }
     if (view === 'sale') {
       if (p !== '/sale') navigate('/sale')
-      return
-    }
-    if (view === 'briefing') {
-      if (p !== '/briefing') navigate('/briefing')
-      return
-    }
-    if (view === 'dzis') {
-      if (p !== '/dzis') navigate('/dzis')
       return
     }
     if (view === 'znizki') {
@@ -1268,31 +1271,32 @@ function App() {
   const displayName = myProfile?.full_name || session.user.email?.split('@')[0] || 'Użytkownik'
   const viewedHandle = routeProfileHandle ?? activeProfileHandle
 
+  // SideNav i Header dostają ten sam `navActiveView`. `aula` zostaje (SideNav
+  // ma pozycję „Aula" — chcemy ją podświetlać). Tylko widoki techniczne
+  // (post/userProfile/search/group/chat/sale) mapujemy na 'feed', a
+  // 'settings' na 'profile' (avatar w headerze podświetlony).
   const navActiveView =
     effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
       ? 'feed'
       : effectiveActiveView === 'search' ||
           effectiveActiveView === 'group' ||
           effectiveActiveView === 'chat' ||
-          effectiveActiveView === 'aula' ||
           effectiveActiveView === 'sale'
         ? 'feed'
       : effectiveActiveView === 'settings'
         ? 'profile'
         : effectiveActiveView
 
-  // BottomNav nie ma pigułki dla „Mój Plan", „Sal UJ", „Briefingu", „Dziś",
-  // „Zniżek" ani „USOS" — mapujemy na 'feed', żeby żadna ikona nie była
-  // błędnie podświetlona. Uwaga: 'sale' i 'aula' są już wyeliminowane
-  // wcześniej w navActiveView, więc tutaj filtrujemy tylko 'mojPlan' /
-  // 'briefing' / 'dzis' / 'znizki' / 'usos'.
+  // BottomNav (mobile) ma 5 slotów: Strona, Plan, +, Alerty, Profil.
+  // Sekcje, dla których nie ma dedykowanego taba (Wydarzenia, Aula,
+  // Zniżki, USOS, Miejsca), żyją w MobileDrawer i podświetlają „Strona".
+  // `mojPlan` ma własny tab — NIE mapujemy go na `feed`.
   const bottomNavActiveView =
-    navActiveView === 'mojPlan' ||
-    navActiveView === 'briefing' ||
-    navActiveView === 'dzis' ||
     navActiveView === 'znizki' ||
     navActiveView === 'usos' ||
-    navActiveView === 'miejsca'
+    navActiveView === 'miejsca' ||
+    navActiveView === 'aula' ||
+    navActiveView === 'events'
       ? 'feed'
       : navActiveView
 
@@ -1360,7 +1364,6 @@ function App() {
             onNavigateToUser={navigateToUser}
             onNavigateToEvents={() => navigateToMainView('events')}
             onNavigateToProfileHandle={navigateToProfileByHandle}
-            aulaHasUnread={aulaHasUnread}
           />
         )
       case 'events':
@@ -1486,34 +1489,18 @@ function App() {
       case 'mojPlan':
         return (
           <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <MojPlanView />
+            <MojPlanView
+              userId={session.user.id}
+              myProfile={myProfile}
+              cohort={myCohort}
+            />
           </ViewErrorBoundary>
         )
       case 'sale':
         return (
           <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
             <Suspense fallback={null}>
-              <Campus3DView onBack={goBackInHistory} />
-            </Suspense>
-          </ViewErrorBoundary>
-        )
-      case 'briefing':
-        return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <WeeklyBriefingView userId={session.user.id} />
-            </Suspense>
-          </ViewErrorBoundary>
-        )
-      case 'dzis':
-        return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <DzisView
-                userId={session.user.id}
-                cohort={myCohort}
-                myProfile={myProfile}
-              />
+              <SaleFinderView onBack={goBackInHistory} />
             </Suspense>
           </ViewErrorBoundary>
         )
@@ -1546,6 +1533,12 @@ function App() {
                 onNavigateToProfile={navigateToProfileByHandle}
               />
             </Suspense>
+          </ViewErrorBoundary>
+        )
+      case 'adminDiag':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <AdminDiagView />
           </ViewErrorBoundary>
         )
       default:
@@ -1621,79 +1614,92 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
-        <Header
-          myProfile={myProfile}
-          displayName={displayName}
-          menuOpen={menuOpen}
-          setMenuOpen={setMenuOpen}
+      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app lg:flex lg:items-start">
+        <SideNav
           activeView={navActiveView}
           unreadCount={unreadCount}
-          bellRingTick={bellRingTick}
-          notificationsPanelOpen={notificationsPanelOpen}
-          notificationsAnchorRef={notificationsAnchorRef}
-          onToggleNotificationsPanel={toggleNotificationsPanel}
-          onCloseNotificationsPanel={closeNotificationsPanel}
-          onNavigateToFeed={() => navigateToMainView('feed')}
-          onNavigateToProfile={() => navigateToMainView('profile')}
-          onNavigateToEvents={(openEventId) => {
-            if (openEventId) {
-              navigate('/events', { state: { openEventId } })
-              return
-            }
-            navigateToMainView('events')
-          }}
-          onNavigateToAula={() => navigateToMainView('aula')}
           aulaHasUnread={aulaHasUnread}
+          onNavigateToFeed={() => navigateToMainView('feed')}
+          onNavigateToEvents={() => navigateToMainView('events')}
+          onNavigateToAula={() => navigateToMainView('aula')}
+          onNavigateToNotifications={() => navigateToMainView('notifications')}
+          onNavigateToProfile={() => navigateToMainView('profile')}
           onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
-          onNavigateToDzis={() => navigateToMainView('dzis')}
           onNavigateToZnizki={() => navigateToMainView('znizki')}
           onNavigateToUsos={() => navigateToMainView('usos')}
           onNavigateToMiejsca={() => navigateToMainView('miejsca')}
-          onNavigateToSearch={(query) => {
-            const normalized = (query ?? '').trim()
-            if (!normalized) {
-              navigate('/search')
-              return
-            }
-            navigate(`/search?q=${encodeURIComponent(normalized)}`)
-          }}
-          onNavigateToUser={navigateToUser}
-          onNavigateToPost={navigateToPost}
-          onNavigateToAulaMessage={navigateToAulaMessage}
-          cohortId={myCohortId}
-          onOpenProfileModal={() => setProfileModalOpen(true)}
           onNavigateToSettings={openSettings}
-          onRefreshPosts={() => feedMutations.invalidateFeed()}
         />
 
-        <Suspense fallback={null}>
-          <UsosAlarmBanner
-            userId={session.user.id}
-            onNavigateToUsos={() => navigateToMainView('usos' as AppShellView)}
+        <div className="flex-1 min-w-0 w-full">
+          <Header
+            myProfile={myProfile}
+            displayName={displayName}
+            menuOpen={menuOpen}
+            setMenuOpen={setMenuOpen}
+            activeView={navActiveView}
+            unreadCount={unreadCount}
+            bellRingTick={bellRingTick}
+            notificationsPanelOpen={notificationsPanelOpen}
+            notificationsAnchorRef={notificationsAnchorRef}
+            onToggleNotificationsPanel={toggleNotificationsPanel}
+            onCloseNotificationsPanel={closeNotificationsPanel}
+            onNavigateToFeed={() => navigateToMainView('feed')}
+            onNavigateToProfile={() => navigateToMainView('profile')}
+            onNavigateToEvents={(openEventId) => {
+              if (openEventId) {
+                navigate('/events', { state: { openEventId } })
+                return
+              }
+              navigateToMainView('events')
+            }}
+            onNavigateToSearch={(query) => {
+              const normalized = (query ?? '').trim()
+              if (!normalized) {
+                navigate('/search')
+                return
+              }
+              navigate(`/search?q=${encodeURIComponent(normalized)}`)
+            }}
+            onNavigateToUser={navigateToUser}
+            onNavigateToPost={navigateToPost}
+            onNavigateToAulaMessage={navigateToAulaMessage}
+            cohortId={myCohortId}
+            onOpenProfileModal={() => setProfileModalOpen(true)}
+            onNavigateToSettings={openSettings}
+            onRefreshPosts={() => feedMutations.invalidateFeed()}
+            onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
           />
-        </Suspense>
 
-        <main
+          <Suspense fallback={null}>
+            <UsosAlarmBanner
+              userId={session.user.id}
+              onNavigateToUsos={() => navigateToMainView('usos' as AppShellView)}
+            />
+          </Suspense>
+
+          <main
           className={
             effectiveActiveView === 'chat' || effectiveActiveView === 'aula'
               ? 'w-full'
               : `mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
-                  effectiveActiveView === 'events' || effectiveActiveView === 'miejsca'
+                  effectiveActiveView === 'events' || effectiveActiveView === 'miejsca' || effectiveActiveView === 'notifications'
                     // Hub-layout (main + side rail) potrzebuje szerokiego pola
                     // gry na PC; standardowe `max-w-7xl` ścina rail i wymusza
                     // wąską siatkę kart. `max-w-[1800px]` daje pełen widescreen
                     // experience bez rozwleczenia na 4K.
                     ? 'max-w-[1800px] px-4 lg:px-6 xl:px-8'
-                    : effectiveActiveView === 'feed' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
+                    : effectiveActiveView === 'mojPlan'
+                      // Unified Mój Plan ma być full-bleed eye-candy: szkło
+                      // + duże typo żyją na widescreen, gold akcent karmi się
+                      // dużą powierzchnią.
+                      ? 'max-w-[1600px] px-4 lg:px-8 xl:px-12'
+                      : effectiveActiveView === 'feed' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
                       || effectiveActiveView === 'search' ||
                         effectiveActiveView === 'group' ||
                         effectiveActiveView === 'sale' ||
-                        effectiveActiveView === 'mojPlan' ||
                         effectiveActiveView === 'znizki' ||
-                        effectiveActiveView === 'usos' ||
-                        effectiveActiveView === 'dzis' ||
-                        effectiveActiveView === 'briefing'
+                        effectiveActiveView === 'usos'
                       ? 'max-w-7xl px-4 lg:px-6'
                       : effectiveActiveView === 'settings'
                         ? 'max-w-2xl px-4 space-y-0'
@@ -1714,19 +1720,49 @@ function App() {
           </AnimatePresence>
         </main>
 
-        <BottomNav
-          activeView={bottomNavActiveView}
-          setActiveView={(v) => navigateToMainView(v)}
-          unreadCount={unreadCount}
-          onOpenNotifications={openNotificationsPanel}
-          onOpenCompose={() => {
-            setCreateError(null)
-            setCreateBody('')
-            setCreateImageFile(null)
-            setIsMobileComposeOpen(true)
-          }}
-        />
+          <BottomNav
+            activeView={bottomNavActiveView}
+            setActiveView={(v) => navigateToMainView(v)}
+            unreadCount={unreadCount}
+            onOpenNotifications={openNotificationsPanel}
+            onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
+            onOpenCompose={() => {
+              setCreateError(null)
+              setCreateBody('')
+              setCreateImageFile(null)
+              setIsMobileComposeOpen(true)
+            }}
+          />
+        </div>
       </div>
+
+      <MobileDrawer
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+        myProfile={myProfile}
+        displayName={displayName}
+        activeView={navActiveView}
+        unreadCount={unreadCount}
+        aulaHasUnread={aulaHasUnread}
+        onNavigateToFeed={() => navigateToMainView('feed')}
+        onNavigateToEvents={() => navigateToMainView('events')}
+        onNavigateToAula={() => navigateToMainView('aula')}
+        onNavigateToNotifications={() => navigateToMainView('notifications')}
+        onNavigateToProfile={() => navigateToMainView('profile')}
+        onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
+        onNavigateToZnizki={() => navigateToMainView('znizki')}
+        onNavigateToUsos={() => navigateToMainView('usos')}
+        onNavigateToMiejsca={() => navigateToMainView('miejsca')}
+        onNavigateToSettings={openSettings}
+        onNavigateToSearch={(query) => {
+          const normalized = (query ?? '').trim()
+          if (!normalized) {
+            navigate('/search')
+            return
+          }
+          navigate(`/search?q=${encodeURIComponent(normalized)}`)
+        }}
+      />
 
       <NotificationPopup
         open={notificationsPanelOpen}

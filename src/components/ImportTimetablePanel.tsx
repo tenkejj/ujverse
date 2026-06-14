@@ -1,19 +1,31 @@
 /**
- * UJverse — panel importu planu zajęć (.ics z USOSweb).
+ * UJverse — panel importu planu zajęć z USOSweb.
  *
  * UI: tabbed wybór metody importu. Default = „Link" (preferowana ścieżka,
- * najmniej tarcia — user wkleja URL z dialogu „Eksport do iCalendar"
- * w USOSweb i my pobieramy ICS przez proxy `/api/fetch-usos-ics`).
+ * najmniej tarcia — user wkleja URL z USOSweb-owego dialogu eksportu
+ * planu i my pobieramy treść przez proxy `/api/fetch-usos-ics`).
  *
  * Trzy taby:
  *   - **Link** — URL z USOSweb → proxy fetch → import
- *   - **Plik** — drag-drop / file picker (.ics)
+ *   - **Plik** — drag-drop / file picker (USOS-owy export pliku)
  *   - **Tekst** — surowy paste (np. user ma plik na drugim urządzeniu)
+ *
+ * Po imporcie panel jest collapse'd by default (sam przycisk „Aktualizuj
+ * plan" + opcjonalnie „Wyczyść") — UI w „Moim Planie" jest skupione na
+ * danych, kontrolki schodzą na drugi plan.
  *
  * Po imporcie pokazuje skrót: ile entries dodano, ile pominięto, ostrzeżenia.
  */
-import { useRef, useState } from 'react'
-import { ClipboardPaste, FileUp, Link2, Loader2, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  ChevronDown,
+  ClipboardPaste,
+  FileUp,
+  Link2,
+  Loader2,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react'
 import BaseCard from './ui/BaseCard'
 import { DataService } from '../services/DataService'
 import { theme } from '../styles/theme'
@@ -33,7 +45,7 @@ type TabDescriptor = {
 
 const TABS: TabDescriptor[] = [
   { id: 'url', label: 'Link', icon: Link2 },
-  { id: 'file', label: 'Plik .ics', icon: FileUp },
+  { id: 'file', label: 'Plik', icon: FileUp },
   { id: 'text', label: 'Wklej tekst', icon: ClipboardPaste },
 ]
 
@@ -68,6 +80,29 @@ export default function ImportTimetablePanel({
   const [lastResult, setLastResult] = useState<ImportIcsResult | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  /**
+   * Collapse / expand panelu importu. Po pierwszym imporcie panel zwija
+   * się automatycznie — user widzi mały przycisk „Aktualizuj", a tabbed
+   * import wraca tylko gdy świadomie go rozwinie. Świeży user
+   * (existingCount === 0) widzi rozwinięty panel od razu, żeby nie musiał
+   * szukać CTA.
+   */
+  const [isExpanded, setIsExpanded] = useState<boolean>(existingCount === 0)
+  /**
+   * Pierwsze przejście `existingCount` 0 → N (po async loadzie counta
+   * w parencie ALBO świeżym imporcie). Wtedy zwijamy panel, ale potem
+   * NIE walczymy z manualnym toggle usera.
+   */
+  const hasAutoCollapsedRef = useRef(false)
+  useEffect(() => {
+    if (existingCount > 0 && !hasAutoCollapsedRef.current) {
+      hasAutoCollapsedRef.current = true
+      setIsExpanded(false)
+    }
+    if (existingCount === 0) {
+      hasAutoCollapsedRef.current = false
+    }
+  }, [existingCount])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleResult = (result: ImportIcsResult): boolean => {
@@ -86,16 +121,17 @@ export default function ImportTimetablePanel({
       return false
     }
     if (result.insertedCount === 0 && result.parsedCount === 0) {
-      toast.error('Plik nie zawierał żadnych poprawnych zajęć (VEVENT z DTSTART/DTEND).')
+      toast.error('Plik nie zawiera poprawnych zajęć — sprawdź czy to eksport planu z USOSweb.')
       return false
     }
     toast.success(summarizeResult(result))
+    setIsExpanded(false)
     return true
   }
 
   const doImportText = async (raw: string) => {
     if (!raw.trim()) {
-      toast.error('Wklej tekst pliku .ics.')
+      toast.error('Wklej tekst eksportu planu.')
       return
     }
     setIsImporting(true)
@@ -128,7 +164,7 @@ export default function ImportTimetablePanel({
 
   const handleFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.ics') && file.type !== 'text/calendar') {
-      toast.error('Wybierz plik .ics z USOSweb (eksport iCalendar).')
+      toast.error('Wybierz plik z eksportu planu USOSweb.')
       return
     }
     const text = await file.text()
@@ -157,31 +193,73 @@ export default function ImportTimetablePanel({
     onCleared()
   }
 
+  // Collapsed (post-import): chudy nagłówek + dwa małe przyciski („Aktualizuj plan",
+  // „Wyczyść"). Bez tabbed UI, bez instrukcji dla USOSweb. To zmniejsza
+  // crowding w aside, bo user po imporcie najczęściej tylko sprawdza plan,
+  // a re-import dotyka raz na semestr.
+  if (existingCount > 0 && !isExpanded) {
+    return (
+      <BaseCard variant="default" className="p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className={`text-[13px] font-semibold ${theme.text.primary}`}>Plan z USOSweb</p>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200 dark:hover:bg-white/[0.08]"
+            >
+              <RefreshCw size={11} />
+              Aktualizuj
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={isClearing}
+              aria-label="Wyczyść plan"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-300 bg-red-50/70 text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+            >
+              {isClearing ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+            </button>
+          </div>
+        </div>
+      </BaseCard>
+    )
+  }
+
   return (
-    <BaseCard variant="default" className="p-4 sm:p-5">
+    <BaseCard variant="default" className="p-3 sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className={`text-[15px] font-bold ${theme.text.primary}`}>Plan z USOSweb</p>
-          <p className={`mt-0.5 text-[13px] leading-relaxed ${theme.text.muted}`}>
-            <strong>USOSweb → Mój USOSweb → Mój plan zajęć → „Eksport do iCalendar"</strong>. Skopiuj tam podany link i wklej poniżej (najszybsze).
+          <p className={`text-[13px] font-semibold ${theme.text.primary}`}>
+            Wklej link z USOSweb
           </p>
-          {existingCount > 0 && !lastResult && (
-            <p className={`mt-1.5 text-[12px] ${theme.text.muted}`}>
-              Masz {existingCount} {existingCount === 1 ? 'zajęcie' : existingCount < 5 ? 'zajęcia' : 'zajęć'} w bazie. Re-import nadpisuje istniejące wpisy (po UID).
-            </p>
+          <p className={`mt-0.5 text-[11.5px] ${theme.text.muted}`}>
+            Mój USOSweb → Mój plan zajęć → eksport planu.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {existingCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              aria-label="Zwiń panel importu"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white/80 text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:bg-white/[0.08]"
+            >
+              <ChevronDown size={12} />
+            </button>
+          )}
+          {existingCount > 0 && (
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={isClearing}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50/70 px-3 py-1 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+            >
+              {isClearing ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+              Wyczyść
+            </button>
           )}
         </div>
-        {existingCount > 0 && (
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={isClearing}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50/70 px-3 py-1 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-          >
-            {isClearing ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-            Wyczyść
-          </button>
-        )}
       </div>
 
       <div
@@ -221,8 +299,8 @@ export default function ImportTimetablePanel({
               htmlFor="usos-ics-url"
             >
               <Link2 size={12} className="text-brand-gold dark:text-brand-gold-bright" />
-              Link z dialogu „Eksport planu zajęć" (przyklejony do schowka po
-              kliknięciu ikony kopiowania w USOSweb)
+              Link z USOSweb-owego dialogu eksportu planu (przyklejony do
+              schowka po kliknięciu ikony kopiowania)
             </label>
             <input
               id="usos-ics-url"
@@ -274,7 +352,7 @@ export default function ImportTimetablePanel({
           >
             <FileUp size={26} className="text-brand-gold dark:text-brand-gold-bright" strokeWidth={1.75} />
             <p className={`text-[13px] font-semibold ${theme.text.primary}`}>
-              Upuść plik <code className="font-mono text-[12px]">.ics</code> tutaj
+              Upuść plik z eksportu planu tutaj
             </p>
             <p className={`text-[11.5px] ${theme.text.muted}`}>albo</p>
             <button
@@ -303,8 +381,8 @@ export default function ImportTimetablePanel({
         {tab === 'text' && (
           <div className="space-y-2">
             <p className={`text-[11.5px] ${theme.text.muted}`}>
-              Otwórz plik <code className="font-mono">.ics</code> w notatniku,
-              skopiuj całą zawartość i wklej tutaj.
+              Otwórz wyeksportowany plik w notatniku, skopiuj całą zawartość
+              i wklej tutaj.
             </p>
             <textarea
               value={rawText}

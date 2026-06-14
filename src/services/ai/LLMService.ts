@@ -20,6 +20,7 @@ import type {
   ChatMessage,
   ChatRequestMessage,
   LLMProvider,
+  ParsedSSEEvent,
 } from '../../types/ai'
 import { supabase } from '../../supabaseClient'
 // Function Calling po stronie serwera (`api/chat.ts`) zastępuje dekorator
@@ -44,6 +45,10 @@ type OpenRouterDeltaChunk = {
   choices: Array<{ delta?: { content?: string | null } }>
 }
 
+type MetaChunk = {
+  meta: { tool: string; label: string }
+}
+
 function isOpenRouterDeltaChunk(value: unknown): value is OpenRouterDeltaChunk {
   if (!value || typeof value !== 'object') return false
   const choices = (value as { choices?: unknown }).choices
@@ -53,6 +58,14 @@ function isOpenRouterDeltaChunk(value: unknown): value is OpenRouterDeltaChunk {
     return false
   }
   return true
+}
+
+function isMetaChunk(value: unknown): value is MetaChunk {
+  if (!value || typeof value !== 'object') return false
+  const meta = (value as { meta?: unknown }).meta
+  if (!meta || typeof meta !== 'object') return false
+  const m = meta as { tool?: unknown; label?: unknown }
+  return typeof m.tool === 'string' && typeof m.label === 'string'
 }
 
 function extractDelta(chunk: OpenRouterDeltaChunk): string {
@@ -134,10 +147,13 @@ export class BielikAdapter implements LLMProvider {
    * AsyncIterable dekodujący SSE OpenRouter (`data: {...}\n\n` + `data: [DONE]`).
    * Buforuje fragmenty linii pomiędzy chunkami i ignoruje wiersze niezgodne
    * z formatem `data: ` (np. komentarze `: ping` od serwera).
+   *
+   * Yielduje typowane zdarzenia: `delta` (kawałek tekstu) lub `meta`
+   * (etykieta aktualnej akcji typu „Sprawdzam zniżki").
    */
   async *parseSSEStream(
     stream: ReadableStream<Uint8Array>,
-  ): AsyncGenerator<string, void, void> {
+  ): AsyncGenerator<ParsedSSEEvent, void, void> {
     const reader = stream.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
@@ -153,9 +169,9 @@ export class BielikAdapter implements LLMProvider {
           const event = buffer.slice(0, sepIndex)
           buffer = buffer.slice(sepIndex + 2)
 
-          const delta = this.consumeEvent(event)
-          if (delta === '__DONE__') return
-          if (delta) yield delta
+          const parsed = this.consumeEvent(event)
+          if (parsed === '__DONE__') return
+          if (parsed) yield parsed
 
           sepIndex = buffer.indexOf('\n\n')
         }
@@ -163,15 +179,15 @@ export class BielikAdapter implements LLMProvider {
 
       const tail = buffer.trim()
       if (tail) {
-        const delta = this.consumeEvent(tail)
-        if (delta && delta !== '__DONE__') yield delta
+        const parsed = this.consumeEvent(tail)
+        if (parsed && parsed !== '__DONE__') yield parsed
       }
     } finally {
       reader.releaseLock()
     }
   }
 
-  private consumeEvent(event: string): string {
+  private consumeEvent(event: string): ParsedSSEEvent | '__DONE__' | null {
     const lines = event.split('\n')
     let dataAcc = ''
     for (const line of lines) {
@@ -180,16 +196,23 @@ export class BielikAdapter implements LLMProvider {
       if (payload === '[DONE]') return '__DONE__'
       dataAcc += payload
     }
-    if (!dataAcc) return ''
+    if (!dataAcc) return null
 
     let parsed: unknown
     try {
       parsed = JSON.parse(dataAcc)
     } catch {
-      return ''
+      return null
     }
-    if (!isOpenRouterDeltaChunk(parsed)) return ''
-    return extractDelta(parsed)
+
+    if (isMetaChunk(parsed)) {
+      return { type: 'meta', tool: parsed.meta.tool, label: parsed.meta.label }
+    }
+    if (isOpenRouterDeltaChunk(parsed)) {
+      const content = extractDelta(parsed)
+      if (content) return { type: 'delta', content }
+    }
+    return null
   }
 }
 

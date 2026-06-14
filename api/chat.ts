@@ -43,12 +43,25 @@
 import { buildToolCacheKey } from './_lib/cache.js'
 import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
 import { extractRequestUser } from './_lib/auth.js'
+import { getActionLabel } from './_lib/actionLabels.js'
+import { tryFastPath } from './_lib/fastPath.js'
+import {
+  gate as cbGate,
+  recordError as cbRecordError,
+  recordSuccess as cbRecordSuccess,
+} from './_lib/groqCircuitBreaker.js'
+import { routeIntent } from './_lib/intentRouter.js'
+import { incrCounter, pushLatency } from './_lib/metrics.js'
 import {
   checkAndConsumeRateLimit,
   extractClientIp,
 } from './_lib/ipRateLimit.js'
 import { kvGetSafe, kvSetSafe } from './_lib/kvCache.js'
-import { DEFAULT_GROQ_MODEL, withPersona } from './_lib/llmService.js'
+import {
+  DEFAULT_GROQ_MODEL,
+  GROQ_SMALLTALK_MODEL,
+  withPersona,
+} from './_lib/llmService.js'
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
 import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools/index.js'
 import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage.js'
@@ -68,7 +81,7 @@ export const config = {
 }
 
 const MAX_MESSAGES = 20
-const MAX_CONTENT_CHARS = 4000
+const MAX_CONTENT_CHARS = 2500
 /**
  * Token Budgeting: twardy limit historii rozmowy wysyłanej do Groqa.
  * Gdy klient prześle > `MAX_HISTORY_MESSAGES` wiadomości, przycinamy do
@@ -76,29 +89,37 @@ const MAX_CONTENT_CHARS = 4000
  * doklejany przez `withPersona`, więc nie liczy się do tego budżetu).
  * Cel: ograniczyć koszt tokenów na żądanie i ryzyko 429 z Groqa.
  */
-const MAX_HISTORY_MESSAGES = 10
+const MAX_HISTORY_MESSAGES = 8
 /** Komunikat zwracany użytkownikowi gdy Groq odpowie 429 (rate limit / quota). */
 const RATE_LIMIT_USER_MESSAGE = 'System przeciążony (Rate Limit). Spróbuj za minutę.'
+/**
+ * Komunikat dla circuit-breaker'a — gdy ostatnie N requestów się posypało,
+ * przyznajemy się otwarcie (lepsze niż timeout). Dynamiczny `retryAfterSec`
+ * dolatuje w runtime, dlatego template z placeholderem.
+ */
+const CIRCUIT_OPEN_MESSAGE_TEMPLATE = (retryAfterSec: number): string =>
+  `Asystent musi złapać oddech (${Math.max(1, retryAfterSec)}s). Spróbuj za chwilę.`
 const ALLOWED_ROLES = new Set<ChatRole>(['system', 'user', 'assistant'])
 
 /**
  * Response cache TTL (sekundy) — finalna odpowiedź dla danej pary
- * (lastUserText, useTools) jest cache'owana w Vercel KV (Upstash Redis)
- * na 300 sekund (5 minut).
+ * (lastUserText, useTools) jest cache'owana w Vercel KV (Upstash Redis).
  *
- * Skutek przy trafieniu: NIE wołamy Groqa ANI Supabase — od razu strumień
- * SSE z odpowiedzią sprzed maks. 5 minut. To trzecia warstwa redukcji
- * 429-ek (po small-talk throttle i per-tool cache), działająca CROSS-instance
- * (KV jest globalny w przeciwieństwie do starego in-memory cache, który
- * tracił hity przy każdym cold-startcie Edge function).
+ * Świadoma decyzja produktowa: trzymamy tylko **60s** (zamiast typowych
+ * 300s), żeby asystent NIE odpowiadał z cache zbyt często — chcemy aby
+ * Groq był faktycznie używany, a userzy widzieli świeże/zmieniające się
+ * odpowiedzi. 60s wystarcza tylko jako bufor anty-spam (gdy ten sam user
+ * dwa razy wciśnie quick prompt w 5s) i defence przed kaskadą 429.
  *
- * Trade-off przy 300s: świeżość odpowiedzi vs koszt LLM. Dla typowych
- * zapytań UJverse ("kiedy juwenalia", "ogłoszenia") 5 min jest akceptowalne;
- * dla dyskusji bardzo dynamicznych (świeże posty z `get_latest_posts`)
- * niedoskonałe — ale tool cache TTL dla postów to 30s, więc PER-TOOL cache
- * w `registry.ts` mimo wszystko zapewnia świeżość gdy response cache pęknie.
+ * Per-tool cache (TTL_FOR_TOOL w `registry.ts`) zostaje — to jest cache
+ * danych ze Supabase, nie odpowiedzi LLM, i ten OK zostać agresywny
+ * (60-300s zależnie od narzędzia).
+ *
+ * Fast-path też pisze do response-cache (też przez tę stałą), więc po 60s
+ * nawet `/dzis` znów wykona narzędzie + format'er — dane są świeższe,
+ * koszt minimalny (fast-path pomija Groqa i tak).
  */
-const RESPONSE_CACHE_TTL_SECONDS = 300
+const RESPONSE_CACHE_TTL_SECONDS = 60
 
 /**
  * Strip Qwen3 / DeepSeek-R1 style chain-of-thought ze stringa.
@@ -159,8 +180,13 @@ function jsonError(status: number, message: string): Response {
 }
 
 /**
- * Tworzy strumień SSE z pojedynczym deltą + `[DONE]`. Klient parsuje to
- * tym samym kodem, którego używa do prawdziwego streamingu z Groqa.
+ * Tworzy strumień SSE z pojedynczym deltą + `[DONE]`. Najszybsza ścieżka,
+ * używana dla cache hits gdy klient i tak ma typewriter do animowania.
+ *
+ * Dla fast-path / rate-limit komunikatów wolimy `synthesizeChunkedSSEStream`
+ * (poniżej) — fragmentuje treść, dzięki czemu serwer nie wysyła „bęc
+ * całość", a klient widzi delty napływające w tempie zbliżonym do
+ * prawdziwego streamingu z LLM.
  */
 function synthesizeSSEStream(content: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
@@ -177,17 +203,101 @@ function synthesizeSSEStream(content: string): ReadableStream<Uint8Array> {
 }
 
 /**
- * Token Budgeting helper — przycina historię konwersacji do ostatnich
- * `MAX_HISTORY_MESSAGES` wiadomości. Wyodrębnione jako osobna funkcja
- * (z explicit return) żeby było łatwe do testowania w izolacji oraz
- * żeby orchestrator pozostał czytelny w hot path.
+ * Fragmentowany strumień SSE — wycina `content` na chunki ~80 znaków
+ * (mniej więcej linia tekstu) i wysyła je co `CHUNK_DELAY_MS` (~50ms).
+ * Klient widzi sekwencję delt, zupełnie jak ze streaming-aware Groqa.
+ *
+ * Po co: typewriter na kliencie i tak animuje znak-po-znaku, ale gdy
+ * serwer wypluwa całość w jednym chunku, animacja STARTUJE od pełnego
+ * `content.length` z `isStreaming=true→false` zaraz potem. Fragmentacja
+ * pozwala typewriter'owi „dogonić" w tempie naturalnym, bez uderzeń
+ * `catch-up`-u (długie odpowiedzi się nie zacinają na adaptive backlog).
+ *
+ * Wartości dobrane tak:
+ *  - 80 znaków/chunk = ~1 zdanie / linia
+ *  - 50 ms/chunk = ~1600 cps strumienia (klient nie nadąży tylko gdy
+ *    typewriter ma <60 cps; wtedy klient buforuje, ale UX jest „streaming")
+ */
+function synthesizeChunkedSSEStream(
+  content: string,
+  meta?: { tool: string; label: string } | null,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder()
+  const CHUNK_SIZE = 80
+  const CHUNK_DELAY_MS = 50
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        // Opcjonalny meta-event PRZED contentem — klient pokaże etykietę
+        // typu „Sprawdzam zniżki…" zamiast generycznych „Myślę…".
+        if (meta) {
+          const metaPayload = JSON.stringify({ meta })
+          controller.enqueue(encoder.encode(`data: ${metaPayload}\n\n`))
+        }
+        for (let i = 0; i < content.length; i += CHUNK_SIZE) {
+          const slice = content.slice(i, i + CHUNK_SIZE)
+          const payload = JSON.stringify({
+            choices: [{ delta: { content: slice } }],
+          })
+          controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
+          if (i + CHUNK_SIZE < content.length) {
+            await new Promise((r) => setTimeout(r, CHUNK_DELAY_MS))
+          }
+        }
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      } finally {
+        controller.close()
+      }
+    },
+  })
+}
+
+/**
+ * Maks rozmiar (znaki) starej wiadomości assistant trzymanej w historii.
+ * Krzywa kosztów tokenów rośnie liniowo z ilością tekstu — typowa odpowiedź
+ * narzędzia to 400-1200 znaków. Po N turach historia robi się tłusta
+ * (~3-4k znaków = ~1k tokenów). Dla starszych odpowiedzi (NIE tej tuż przed
+ * nowym pytaniem) trzymamy tylko `STALE_ASSISTANT_KEEP` znaków + `…`.
+ *
+ * Najnowsza assistant message ZAWSZE leci pełna — to ona jest kontekstem
+ * dla follow-upu typu "powiedz więcej o tym", "a co z piątkiem".
+ */
+const STALE_ASSISTANT_KEEP = 240
+
+/**
+ * Token Budgeting helper:
+ *   1. Przycina historię konwersacji do ostatnich `MAX_HISTORY_MESSAGES`.
+ *   2. Kompresuje stare assistant messages (każdą poza najświeższą) do
+ *      `STALE_ASSISTANT_KEEP` znaków.
  *
  * System prompt nie liczy się do tego budżetu — `withPersona` dokleja
  * personę po przycięciu, więc tnie się czysta historia user/assistant.
  */
 export function pruneHistory(messages: GroqMessage[]): GroqMessage[] {
-  if (messages.length <= MAX_HISTORY_MESSAGES) return messages
-  return messages.slice(-MAX_HISTORY_MESSAGES)
+  const trimmed =
+    messages.length <= MAX_HISTORY_MESSAGES
+      ? messages
+      : messages.slice(-MAX_HISTORY_MESSAGES)
+
+  // Index ostatniej assistant message — tylko ona leci pełna.
+  let lastAssistantIdx = -1
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    if (trimmed[i].role === 'assistant') {
+      lastAssistantIdx = i
+      break
+    }
+  }
+
+  return trimmed.map((m, i) => {
+    if (m.role !== 'assistant') return m
+    if (i === lastAssistantIdx) return m
+    if (m.content.length <= STALE_ASSISTANT_KEEP) return m
+    return {
+      ...m,
+      content: `${m.content.slice(0, STALE_ASSISTANT_KEEP - 1)}…`,
+    }
+  })
 }
 
 /**
@@ -357,6 +467,30 @@ function buildResponseCacheKey(
  */
 function streamFinalContent(finalContent: string): Response {
   const stream = synthesizeSSEStream(finalContent)
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...CORS_HEADERS,
+    },
+  })
+}
+
+/**
+ * Wariant `streamFinalContent` z chunkowanym strumieniem — używaj dla
+ * fast-path, gdy chcesz żeby klient widział napływające delty zamiast
+ * dostać całą odpowiedź w 1 chunku. Dla cache-hit'ów zostawiamy
+ * non-chunked wariant — tam zwykle wystarczy szybkość przed
+ * pobieraniem przez typewriter.
+ */
+function streamFinalContentChunked(
+  finalContent: string,
+  meta?: { tool: string; label: string } | null,
+): Response {
+  const stream = synthesizeChunkedSSEStream(finalContent, meta)
   return new Response(stream, {
     status: 200,
     headers: {
@@ -552,83 +686,57 @@ function eventDateContext(iso: string | null | undefined): string {
   return ''
 }
 
-/** Maks liczba wydarzeń pokazywanych userowi. */
-const MAX_EVENTS_TO_SHOW = 6
+const MAX_EVENTS_TO_SHOW = 5
 
 /**
- * Formatuje wynik `search_events` na konwersacyjny markdown.
- *
- * Vs. poprzednia wersja:
- * - lead w jednym zdaniu (uwzględnia liczbę),
- * - cap `MAX_EVENTS_TO_SHOW=6` z licznikiem reszty,
- * - daty z kontekstem czasowym („jutro", „za 3 dni", „już minęło")
- *   doklejanym do absolutnej daty,
- * - badge `oficjalne UJ` / `studenckie` zamiast tylko `oficjalne UJ`,
- * - opis tylko gdy NIE powtarza title (proste dedup case-insensitive).
+ * Style: konwersacyjna proza, bez bulletów. Każdy item to jedno krótkie
+ * zdanie typu "X dziś o 18:00 w Audytorium Maximum" zlewane przecinkami.
+ * Dla 4+ items rozdzielamy newlinem (czytelnie, ale bez `- ` markerów).
  */
 function formatSearchEventsResult(result: unknown): string {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
-    return 'Nie znalazłem wydarzeń pasujących do zapytania. Spróbuj innego hasła albo zerknij na zakładkę Wydarzenia.'
+    return 'Nic mi się nie znalazło. Spróbuj innego hasła albo zajrzyj na zakładkę Wydarzenia.'
   }
   const items = rawItems.slice(0, MAX_EVENTS_TO_SHOW)
   const remaining = rawItems.length - items.length
 
-  const lead =
-    items.length === 1
-      ? 'Znalazłem jedno wydarzenie:'
-      : `Znalazłem ${items.length} wydarzeń:`
-  const lines: string[] = [lead, '']
-
-  items.forEach((item) => {
-    const title = pickString(item, 'title') || '(bez tytułu)'
-    const location = pickString(item, 'location')
+  const sentences = items.map((item) => {
+    const title = pickString(item, 'title') || 'wydarzenie bez tytułu'
+    const location = pickStringOrNull(item, 'location')
     const date = pickStringOrNull(item, 'date')
-    const description = pickString(item, 'description')
     const isOfficial = pickBool(item, 'is_official')
-    const badge = isOfficial ? ' _(oficjalne UJ)_' : ' _(studenckie)_'
 
     const ctx = eventDateContext(date)
-    const dateLine = date
+    const datePart = date
       ? ctx
-        ? `${formatDateShort(date)} (${ctx})`
+        ? `${ctx} (${formatDateShort(date)})`
         : formatDateShort(date)
-      : 'data nieustalona'
-
-    lines.push(`- **${title}**${badge} — ${dateLine}`)
-    if (location) lines.push(`  Miejsce: ${location}`)
-    if (description && description.trim().toLowerCase() !== title.toLowerCase()) {
-      lines.push(`  ${clip(description, 220)}`)
-    }
+      : 'bez daty'
+    const tag = isOfficial ? '' : ' (studenckie)'
+    const where = location ? ` w ${location}` : ''
+    return `**${title}**${tag} — ${datePart}${where}`
   })
 
-  if (remaining > 0) {
-    lines.push('')
-    lines.push(
-      `_(jest jeszcze ${remaining} ${remaining === 1 ? 'wydarzenie' : 'wydarzeń'} — sprawdź zakładkę Wydarzenia)_`,
-    )
-  }
-
-  return lines.join('\n').trimEnd()
+  const lead =
+    items.length === 1
+      ? 'Znalazłem coś:'
+      : `Mam dla Ciebie ${items.length}:`
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nW bazie jest jeszcze ${remaining} — zerknij na zakładkę Wydarzenia.`
+      : ''
+  return `${lead}\n${body}${tail}`
 }
 
-/** Maks liczba ogłoszeń pokazywanych userowi. */
-const MAX_ANNOUNCEMENTS_TO_SHOW = 6
+const MAX_ANNOUNCEMENTS_TO_SHOW = 5
 
-/**
- * Formatuje wynik `get_latest_announcements` na konwersacyjny markdown.
- *
- * Vs. poprzednia wersja:
- * - lead z liczbą i wydziałem w jednym zdaniu zamiast „Najnowsze ogłoszenia (10):",
- * - cap `MAX_ANNOUNCEMENTS_TO_SHOW=6` z licznikiem reszty,
- * - daty względne,
- * - dedup wydziału (gdy wszystkie z jednego — pokazujemy w leadzie),
- * - status z emoji-free badge stylem ("[odwołane]") zamiast „— odwołane".
- */
 function formatAnnouncementsResult(result: unknown): string {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
-    return 'Brak świeżych ogłoszeń z ISI UJ.'
+    return 'Cisza, ostatnio nic nowego z ISI UJ nie wpadło.'
   }
   const items = rawItems.slice(0, MAX_ANNOUNCEMENTS_TO_SHOW)
   const remaining = rawItems.length - items.length
@@ -642,67 +750,41 @@ function formatAnnouncementsResult(result: unknown): string {
     departments.every((d) => d === departments[0])
   const sharedDept = allSameDept ? departments[0] : null
 
-  const leadSuffix = sharedDept ? ` z wydziału ${sharedDept}` : ''
-  const lead =
-    items.length === 1
-      ? `Najświeższe ogłoszenie${leadSuffix} z ISI UJ:`
-      : `Najświeższe ogłoszenia${leadSuffix} z ISI UJ (${items.length}):`
-  const lines: string[] = [lead, '']
-
-  items.forEach((item) => {
+  const sentences = items.map((item) => {
     const lecturer =
-      pickString(item, 'lecturer_name_nominative') || '(nieznany wykładowca)'
+      pickString(item, 'lecturer_name_nominative') || 'ktoś z kadry'
     const statusKey = pickString(item, 'status')
     const statusPl = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey
     const body = pickString(item, 'body')
-    const department = pickStringOrNull(item, 'department')
+    const dept = pickStringOrNull(item, 'department')
     const createdAt = pickStringOrNull(item, 'created_at')
 
-    const showDept = department && !sharedDept
-    const headerParts: string[] = [`**${lecturer}**`]
-    if (statusPl) headerParts.push(`— ${statusPl}`)
-    if (createdAt) headerParts.push(`· ${formatRelativeDate(createdAt)}`)
-    lines.push(`- ${headerParts.join(' ')}`)
-    if (body) lines.push(`  ${clip(body, 220)}`)
-    if (showDept) lines.push(`  _Wydział: ${department}_`)
+    const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
+    const tail = body ? ` — ${clip(body, 160)}` : ''
+    const deptTag = !sharedDept && dept ? ` [${dept}]` : ''
+    return `**${lecturer}** ${statusPl}${when}${deptTag}${tail}`
   })
 
-  if (remaining > 0) {
-    lines.push('')
-    lines.push(
-      `_(jest jeszcze ${remaining} ${remaining === 1 ? 'komunikat' : 'komunikatów'} — wejdź na pełną listę)_`,
-    )
-  }
-
-  return lines.join('\n').trimEnd()
+  const leadDept = sharedDept ? ` z ${sharedDept}` : ''
+  const lead =
+    items.length === 1
+      ? `Najświeższy komunikat${leadDept}:`
+      : `Najświeższe komunikaty${leadDept}:`
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nJest jeszcze ${remaining} — wejdź na pełną listę.`
+      : ''
+  return `${lead}\n${body}${tail}`
 }
 
-/** Maks liczba postów pokazywanych userowi w jednej odpowiedzi.
- *  Tool zwraca 10, ale w UI czatu lista 10 jest nieczytelna — wybieramy
- *  najświeższe `MAX_POSTS_TO_SHOW` po odfiltrowaniu spamu. */
-const MAX_POSTS_TO_SHOW = 5
+const MAX_POSTS_TO_SHOW = 4
 
-/**
- * Formatuje wynik `get_latest_posts` na konwersacyjny markdown.
- *
- * Vs. poprzednia wersja (mechaniczna lista 10×):
- * - filtr `isSpamPost` (eliminuje test-posty z bazy typu `#pomoc` solo),
- * - cap `MAX_POSTS_TO_SHOW=5` (czytelność > kompletność),
- * - lead konwersacyjny zamiast nagłówka „Najnowsze posty społeczności (10):",
- * - daty względne (`formatRelativeDate`) zamiast ISO,
- * - dedup wydziału: jeśli wszyscy są z tego samego, pokazujemy w leadzie
- *   raz, a per-item pomijamy (mniej szumu),
- * - inline tagi tylko gdy NIE są już w treści posta (deduplikacja —
- *   `Hejka… #studia #pomoc` nie potrzebuje osobnej linii `Tagi: #studia #pomoc`).
- *
- * Świadomie zachowujemy markdown — `react-markdown` w UI renderuje
- * bullet pointy, pogrubienia i kursywę. Brak emoji (zgodnie ze stylem
- * całego UJverse — patrz BaseCard).
- */
 function formatPostsResult(result: unknown): string {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
-    return 'Cisza na feedzie — nikt nic dziś nie pisał.'
+    return 'Cisza na feedzie — nikt nic ostatnio nie napisał.'
   }
 
   const filtered = rawItems.filter((item) => {
@@ -711,71 +793,301 @@ function formatPostsResult(result: unknown): string {
     return !isSpamPost(body, tags)
   })
   if (filtered.length === 0) {
-    return 'Na feedzie są wpisy, ale wszystkie są na tyle krótkie, że nie ma co cytować. Zerknij sam na zakładkę Feed.'
+    return 'Coś tam jest, ale same krótkie wpisy, nic ciekawego do cytowania. Zerknij na zakładkę Feed.'
   }
 
   const items = filtered.slice(0, MAX_POSTS_TO_SHOW)
   const remaining = filtered.length - items.length
 
-  const departments = items
-    .map((item) => {
-      const author = (typeof item === 'object' && item !== null
-        ? (item as Record<string, unknown>).author
-        : null) as Record<string, unknown> | null
-      return (author && typeof author.department === 'string' && author.department) || null
-    })
-    .filter((d): d is string => !!d)
-  const allSameDept =
-    departments.length === items.length &&
-    departments.length > 1 &&
-    departments.every((d) => d === departments[0])
-  const sharedDept = allSameDept ? departments[0] : null
-
-  const leadSuffix = sharedDept
-    ? ` (głównie z wydziału ${sharedDept})`
-    : ''
-  const lines: string[] = [
-    `Oto co ostatnio krąży na feedzie${leadSuffix}:`,
-    '',
-  ]
-
-  items.forEach((item) => {
+  const sentences = items.map((item) => {
     const author = (typeof item === 'object' && item !== null
       ? (item as Record<string, unknown>).author
       : null) as Record<string, unknown> | null
     const username =
-      (author && typeof author.username === 'string' && author.username) || 'anon'
-    const department =
-      (author && typeof author.department === 'string' && author.department) ||
-      null
+      (author && typeof author.username === 'string' && author.username) ||
+      'anon'
     const body = pickString(item, 'body')
-    const tags = pickStringArray(item, 'tags')
     const createdAt = pickStringOrNull(item, 'created_at')
-
-    const showDept = department && !sharedDept
-    const headerParts: string[] = [`**@${username}**`]
-    if (showDept) headerParts.push(`_(${department})_`)
-    if (createdAt) headerParts.push(`· ${formatRelativeDate(createdAt)}`)
-    lines.push(`- ${headerParts.join(' ')}`)
-    if (body) {
-      lines.push(`  „${clip(body, 200)}"`)
-    }
-
-    const bodyLower = body.toLowerCase()
-    const tagsNotInBody = tags.filter((t) => !bodyLower.includes(`#${t.toLowerCase()}`))
-    if (tagsNotInBody.length > 0) {
-      lines.push(`  ${tagsNotInBody.map((t) => `#${t}`).join(' ')}`)
-    }
+    const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
+    const quote = body ? ` „${clip(body, 140)}"` : ''
+    return `**@${username}**${when} —${quote}`
   })
 
-  if (remaining > 0) {
-    lines.push('')
-    lines.push(
-      `_(jest jeszcze ${remaining} ${remaining === 1 ? 'wpis' : 'wpisów'} — zerknij na zakładkę Feed)_`,
-    )
-  }
+  const lead =
+    items.length === 1
+      ? 'Z feedu wyłapałem jedno:'
+      : 'Co ostatnio krąży na feedzie:'
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nJest jeszcze parę wpisów — zerknij na zakładkę Feed.`
+      : ''
+  return `${lead}\n${body}${tail}`
+}
 
-  return lines.join('\n').trimEnd()
+/** Mapowanie `calendar_entries.kind` enum (9 wartości) → polskie etykiety. */
+const CALENDAR_KIND_PL: Record<string, string> = {
+  lecturer_absence: 'nieobecność wykładowcy',
+  class_cancelled: 'odwołane zajęcia',
+  class_remote: 'zdalne zajęcia',
+  class_rescheduled: 'przeniesione zajęcia',
+  duty_change: 'zmiana dyżuru',
+  free_day: 'dzień wolny',
+  official_event: 'wydarzenie UJ',
+  community_event: 'wydarzenie społeczności',
+  deadline: 'deadline',
+}
+
+const MAX_CALENDAR_TO_SHOW = 6
+
+function formatCalendarResult(result: unknown): string {
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'W tym zakresie nic nie ma w kalendarzu.'
+  }
+  const items = rawItems.slice(0, MAX_CALENDAR_TO_SHOW)
+  const remaining = rawItems.length - items.length
+
+  const sentences = items.map((item) => {
+    const kind = pickString(item, 'kind')
+    const kindLabel = CALENDAR_KIND_PL[kind] ?? 'wpis'
+    const title = pickString(item, 'title') || 'wpis'
+    const startsAt = pickStringOrNull(item, 'starts_at')
+    const lecturer = pickStringOrNull(item, 'lecturer_name')
+    const location = pickStringOrNull(item, 'location')
+
+    const ctx = eventDateContext(startsAt)
+    const datePart = startsAt
+      ? ctx
+        ? `${ctx} (${formatDateShort(startsAt)})`
+        : formatDateShort(startsAt)
+      : 'bez daty'
+    const lecturerPart = lecturer ? ` — ${lecturer}` : ''
+    const locPart = location ? ` w ${location}` : ''
+    return `**${title}** [${kindLabel}] ${datePart}${lecturerPart}${locPart}`
+  })
+
+  const lead =
+    items.length === 1
+      ? 'Mam jeden wpis:'
+      : `W tym zakresie ${items.length} rzeczy:`
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nJest jeszcze ${remaining} — zawęź zakres albo zerknij na Kalendarz.`
+      : ''
+  return `${lead}\n${body}${tail}`
+}
+
+/** Mapowanie `student_discounts.category` enum (10 wartości) na PL etykiety. */
+const DISCOUNT_CATEGORY_PL: Record<string, string> = {
+  jedzenie: 'jedzenie',
+  kawa: 'kawa',
+  kultura: 'kultura',
+  kino: 'kino',
+  sport: 'sport',
+  ksiazki: 'książki',
+  uslugi: 'usługi',
+  transport: 'transport',
+  odziez: 'odzież',
+  inne: 'inne',
+}
+
+const MAX_DISCOUNTS_TO_SHOW = 5
+
+function pickNumber(obj: unknown, key: string): number | null {
+  if (typeof obj !== 'object' || obj === null) return null
+  const v = (obj as Record<string, unknown>)[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+
+function formatDiscountsResult(result: unknown): string {
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Nic mi nie pasuje — spróbuj inną kategorią albo hasłem.'
+  }
+  const items = rawItems.slice(0, MAX_DISCOUNTS_TO_SHOW)
+  const remaining = rawItems.length - items.length
+
+  const sentences = items.map((item) => {
+    const business = pickString(item, 'business_name') || 'lokal'
+    const headline = pickString(item, 'discount_headline')
+    const address = pickStringOrNull(item, 'address')
+
+    const where = address ? ` (${address.replace(', Kraków', '')})` : ''
+    return `**${business}**${where} — ${headline}`
+  })
+
+  const lead =
+    items.length === 1 ? 'Mam coś:' : `Spoko, ${items.length} rzeczy:`
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nWięcej jest w zakładce Zniżki.`
+      : ''
+  return `${lead}\n${body}${tail}`
+}
+
+function formatTrendingDiscountsResult(result: unknown): string {
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Cisza, w tym tygodniu nikt jeszcze niczego nie aktywował. Zerknij na zakładkę Zniżki — coś musi być świeże.'
+  }
+  const items = rawItems.slice(0, 4)
+
+  const sentences = items.map((item) => {
+    const business = pickString(item, 'business_name') || 'lokal'
+    const headline = pickString(item, 'discount_headline')
+    const recentUses = pickNumber(item, 'recent_uses') ?? 0
+    const usesPart = recentUses > 0 ? ` (${recentUses}× w tym tygodniu)` : ''
+    return `**${business}** — ${headline}${usesPart}`
+  })
+
+  const lead = 'Najgorętsze zniżki w tym tygodniu:'
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  return `${lead}\n${body}`
+}
+
+const MAX_CLASSES_TO_SHOW = 8
+
+function formatMyClassesResult(result: unknown): string {
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Wolne, nic nie masz w planie. Jeśli to błąd — wpadnij na „Mój Plan" i odśwież import z USOSweb.'
+  }
+  const items = rawItems.slice(0, MAX_CLASSES_TO_SHOW)
+  const remaining = rawItems.length - items.length
+  const cancelledCount = items.filter(
+    (i) => pickStringOrNull(i, 'cancelled_announcement_body') !== null,
+  ).length
+
+  const sentences = items.map((item) => {
+    const summary = pickString(item, 'summary') || 'zajęcia'
+    const start = pickStringOrNull(item, 'start_time')
+    const lecturer = pickStringOrNull(item, 'lecturer_name')
+    const location = pickStringOrNull(item, 'location')
+    const cancelledBody = pickStringOrNull(item, 'cancelled_announcement_body')
+
+    const ctx = eventDateContext(start)
+    const datePart = start
+      ? ctx
+        ? `${ctx} (${formatDateShort(start)})`
+        : formatDateShort(start)
+      : 'bez daty'
+    const lec = lecturer ? `, ${lecturer}` : ''
+    const sala = location ? ` — sala ${location}` : ''
+    const cancelTag = cancelledBody ? ' [ODWOŁANE]' : ''
+    return `**${summary}**${cancelTag} ${datePart}${lec}${sala}`
+  })
+
+  const cancelNote =
+    cancelledCount > 0
+      ? cancelledCount === 1
+        ? ' Uwaga, jedne odwołane.'
+        : ` Uwaga, ${cancelledCount} odwołane.`
+      : ''
+  const lead =
+    items.length === 1
+      ? `Masz jedne zajęcia.${cancelNote}`
+      : `Masz ${items.length} zajęć w tym zakresie.${cancelNote}`
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nJest jeszcze ${remaining} dalej — zawęź zakres jeśli chcesz.`
+      : ''
+  return `${lead}\n${body}${tail}`
+}
+
+/** Briefing tool zwraca już-renderowany string. Pass-through. */
+function formatWeeklyBriefingResult(result: unknown): string {
+  if (typeof result === 'string') return result
+  if (typeof result !== 'object' || result === null) {
+    return 'Briefingu na ten tydzień jeszcze nie ma — wejdź na zakładkę Briefing, system go policzy.'
+  }
+  const r = result as Record<string, unknown>
+  if (typeof r.markdown === 'string' && r.markdown.length > 0) {
+    return r.markdown
+  }
+  return 'Briefingu na ten tydzień jeszcze nie ma — wejdź na zakładkę Briefing, system go policzy.'
+}
+
+const MAX_USOS_TO_SHOW = 5
+
+function formatUpcomingUsosResult(result: unknown): string {
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'W tym okresie nic nadchodzącego nie ma w bazie. Zerknij na zakładkę Rejestracje — może akurat ktoś dorzuca.'
+  }
+  const items = rawItems.slice(0, MAX_USOS_TO_SHOW)
+  const remaining = rawItems.length - items.length
+
+  const sentences = items.map((item) => {
+    const title = pickString(item, 'title') || 'rejestracja'
+    const opensAt = pickStringOrNull(item, 'opens_at')
+    const audience = pickStringOrNull(item, 'audience_label')
+
+    const ctx = eventDateContext(opensAt)
+    const datePart = opensAt
+      ? ctx
+        ? `${ctx} (${formatDateShort(opensAt)})`
+        : formatDateShort(opensAt)
+      : 'bez daty'
+    const audPart = audience ? `, ${audience}` : ''
+    return `**${title}** — start ${datePart}${audPart}`
+  })
+
+  const lead =
+    items.length === 1
+      ? 'Nadchodzi jedna rejestracja:'
+      : `${items.length} rejestracji w drodze:`
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nWięcej w zakładce Rejestracje.`
+      : ''
+  return `${lead}\n${body}${tail}`
+}
+
+const MAX_OFFICIAL_EVENTS_TO_SHOW = 5
+
+function formatUpcomingOfficialEventsResult(result: unknown): string {
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Cisza, nic nadchodzącego nie ma w bazie. Sprawdź zakładkę Wydarzenia — coś musi wkrótce wpaść.'
+  }
+  const items = rawItems.slice(0, MAX_OFFICIAL_EVENTS_TO_SHOW)
+  const remaining = rawItems.length - items.length
+
+  const sentences = items.map((item) => {
+    const title = pickString(item, 'title') || 'wydarzenie'
+    const date = pickStringOrNull(item, 'date')
+    const location = pickStringOrNull(item, 'location')
+
+    const ctx = eventDateContext(date)
+    const datePart = date
+      ? ctx
+        ? `${ctx} (${formatDateShort(date)})`
+        : formatDateShort(date)
+      : 'bez daty'
+    const locPart = location ? ` w ${location}` : ''
+    return `**${title}** — ${datePart}${locPart}`
+  })
+
+  const lead =
+    items.length === 1
+      ? 'Nadchodzi jedno wydarzenie:'
+      : `${items.length} wydarzeń przed Tobą:`
+  const body =
+    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  const tail =
+    remaining > 0 ? `\n\nWięcej w zakładce Wydarzenia.` : ''
+  return `${lead}\n${body}${tail}`
 }
 
 /**
@@ -809,7 +1121,7 @@ function formatToolResultAsFinalAnswer(
       'error:',
       errMsg,
     )
-    return `Nie udało mi się pobrać danych (${errMsg}).`
+    return `Nie wyszło — ${errMsg}.`
   }
   switch (toolName) {
     case 'search_events':
@@ -818,10 +1130,115 @@ function formatToolResultAsFinalAnswer(
       return formatAnnouncementsResult(result)
     case 'get_latest_posts':
       return formatPostsResult(result)
+    case 'get_calendar_in_range':
+      return formatCalendarResult(result)
+    case 'search_discounts':
+      return formatDiscountsResult(result)
+    case 'get_trending_discounts':
+      return formatTrendingDiscountsResult(result)
+    case 'get_my_classes_in_range':
+      return formatMyClassesResult(result)
+    case 'get_my_weekly_briefing':
+      return formatWeeklyBriefingResult(result)
+    case 'get_upcoming_usos_registrations':
+      return formatUpcomingUsosResult(result)
+    case 'get_upcoming_official_events':
+      return formatUpcomingOfficialEventsResult(result)
+    case 'find_lecturer':
+      return formatFindLecturerResult(result)
+    case 'get_lecturer_announcements_by_name':
+      return formatLecturerAnnouncementsResult(result)
+    case 'get_my_followed_lecturers':
+      return formatMyFollowedLecturersResult(result)
     default:
       console.warn('[Tool Format] no formatter for tool:', toolName)
-      return 'Otrzymałem dane, ale nie umiem ich przedstawić.'
+      return 'Mam dane, ale nie wiem jak je przedstawić.'
   }
+}
+
+function formatFindLecturerResult(result: unknown): string {
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Nikogo takiego nie mam w bazie. Może literówka?'
+  }
+  const items = rawItems.slice(0, 5)
+  const sentences = items.map((item) => {
+    const name = pickString(item, 'lecturer_name') || 'wykładowca'
+    const count = pickNumber(item, 'announcement_count') ?? 0
+    const latest = pickStringOrNull(item, 'latest_at')
+    const countPart =
+      count > 0 ? ` — ${count} ${count === 1 ? 'ogłoszenie' : 'ogłoszeń'}` : ''
+    const latestPart = latest ? ` (ostatnio ${formatRelativeDate(latest)})` : ''
+    return `**${name}**${countPart}${latestPart}`
+  })
+  if (items.length === 1) {
+    return `Mam jednego: ${sentences[0]}.`
+  }
+  return `${items.length} pasuje:\n${sentences.join('\n')}`
+}
+
+function formatLecturerAnnouncementsResult(result: unknown): string {
+  if (typeof result === 'string') return result
+  if (typeof result !== 'object' || result === null) {
+    return 'Coś poszło nie tak — spróbuj ponownie.'
+  }
+  const r = result as Record<string, unknown>
+  const lecturer = typeof r.lecturer_name === 'string' ? r.lecturer_name : null
+  const items = Array.isArray(r.items) ? r.items : []
+  if (items.length === 0) {
+    return lecturer
+      ? `**${lecturer}** — w bazie znaleziony, ale brak ogłoszeń. Spokojny wykładowca.`
+      : 'Brak ogłoszeń.'
+  }
+  const top = items.slice(0, 5)
+  const sentences = top.map((it) => {
+    const status = pickString(it, 'status')
+    const statusPl = ANNOUNCEMENT_STATUS_PL[status] ?? status
+    const body = pickString(it, 'body')
+    const created = pickStringOrNull(it, 'created_at')
+    const when = created ? ` (${formatRelativeDate(created)})` : ''
+    const tail = body ? ` — ${clip(body, 160)}` : ''
+    return `${statusPl}${when}${tail}`
+  })
+  const lead = `**${lecturer ?? 'Wykładowca'}** — co ostatnio:`
+  const body = top.length <= 2 ? sentences.join(' ') : sentences.join('\n')
+  return `${lead}\n${body}`
+}
+
+function formatMyFollowedLecturersResult(result: unknown): string {
+  if (typeof result === 'string') return result
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return 'Jeszcze nikogo nie subskrybujesz. Wpadnij w „Mój Plan" i dodaj swoich wykładowców.'
+  }
+  const items = rawItems.slice(0, 8)
+  const totalRecent = items.reduce(
+    (sum, it) => sum + (pickNumber(it, 'recent_announcement_count') ?? 0),
+    0,
+  )
+
+  const sentences = items.map((it) => {
+    const name = pickString(it, 'display_name') || 'wykładowca'
+    const recent = pickNumber(it, 'recent_announcement_count') ?? 0
+    const latest = pickStringOrNull(it, 'latest_announcement_at')
+    const status = pickStringOrNull(it, 'latest_status')
+    const statusPl = status ? ANNOUNCEMENT_STATUS_PL[status] ?? status : null
+    const recentPart =
+      recent > 0
+        ? ` — ${recent} ${recent === 1 ? 'ogłoszenie' : 'ogłoszeń'}`
+        : ' — cisza'
+    const latestPart =
+      latest && statusPl
+        ? ` (ostatnio: ${statusPl}, ${formatRelativeDate(latest)})`
+        : ''
+    return `**${name}**${recentPart}${latestPart}`
+  })
+
+  const lead =
+    totalRecent === 0
+      ? `Subskrybujesz ${items.length} ${items.length === 1 ? 'wykładowcę' : 'wykładowców'}, ale ostatnio cisza:`
+      : `Subskrybujesz ${items.length} ${items.length === 1 ? 'wykładowcę' : 'wykładowców'}, ostatnio ${totalRecent} ${totalRecent === 1 ? 'komunikat' : 'komunikatów'}:`
+  return `${lead}\n${sentences.join('\n')}`
 }
 
 /**
@@ -833,12 +1250,16 @@ function formatToolResultAsFinalAnswer(
 function joinToolSections(sections: string[]): string {
   const nonEmpty = sections.map((s) => s.trim()).filter((s) => s.length > 0)
   if (nonEmpty.length === 0) {
-    return 'Przepraszam, nie udało mi się dokończyć odpowiedzi. Spróbuj ponownie.'
+    return 'Coś poszło nie tak — spróbuj jeszcze raz.'
   }
-  return nonEmpty.join('\n\n---\n\n')
+  return nonEmpty.join('\n\n')
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  // Pełny end-to-end timer — używany do bucket'a `chat:total_ms` w metrics
+  // (KV ring buffer 200 pomiarów). Jeden punkt zerowania per request, każda
+  // ścieżka exitu (cache hit / fast-path / Groq) loguje latency tym samym.
+  const requestStartedAt = Date.now()
   console.log('Request received at /api/chat')
   console.log(
     'NODE_ENV:',
@@ -977,21 +1398,47 @@ export default async function handler(req: Request): Promise<Response> {
 
   const conversation: GroqMessage[] = withPersona(pruned)
 
-  // Tool-call throttling: czy ostatnia wiadomość użytkownika WYMAGA dostępu
-  // do bazy? Dla małej rozmowy ("cześć", "dzięki", "ok") puszczamy zapytanie
-  // BEZ schematów `tools`, oszczędzając tokeny wejściowe i eliminując jedną
-  // iterację pętli (model nie ma co odpalić). To bezpośredni hit w częstotliwość
-  // wywołań Groqa, więc obniża szansę na 429.
+  // Tool-call throttling + Intent Routing.
+  //
+  // Krok 1: czy użytkownik w ogóle WYMAGA narzędzi? Small-talk ("cześć",
+  // "dzięki") leci BEZ tools[] (-1 round-trip do Groqa, -700 tok input).
+  //
+  // Krok 2: gdy tools są potrzebne, klasyfikujemy intencję po keywordach
+  // i wysyłamy TYLKO podzbiór narzędzi (1-4) zamiast całych 13.
+  // Typowy zysk: ~600 tokenów input per request. Fallback `null` = full
+  // zestaw (rzadkie, gdy keyword nie matchuje — np. "powiedz mi coś").
   const lastUserText = lastUserMessageContent(inboundMessages)
   const useTools = shouldUseTools(lastUserText)
-  const effectiveTools = useTools ? tools : []
+  let effectiveTools: typeof tools = []
+  let routedIntent: string[] | 'all' | 'none' = 'none'
+  if (useTools) {
+    const subset = routeIntent(lastUserText)
+    // Stabilna alfabetyczna kolejność dla prefix-stable promptu (Groq
+    // implicit prompt cache premiuje identyczne prefiksy między requestami).
+    if (subset === null) {
+      effectiveTools = [...tools].sort((a, b) =>
+        a.function.name.localeCompare(b.function.name),
+      )
+      routedIntent = 'all'
+    } else {
+      const allowed = new Set<string>(subset)
+      effectiveTools = tools
+        .filter((t) => allowed.has(t.function.name))
+        .sort((a, b) => a.function.name.localeCompare(b.function.name))
+      routedIntent = subset
+    }
+  }
   console.log(
-    '[Tool Throttle] last user (first 60ch):',
+    '[Tool Routing] last user (first 60ch):',
     JSON.stringify(lastUserText.slice(0, 60)),
     '| useTools:',
     useTools,
+    '| intent:',
+    routedIntent,
     '| toolsSent:',
     effectiveTools.length,
+    '/',
+    tools.length,
   )
 
   // Response cache lookup (Vercel KV) — short-circuit Groqa I Supabase'a,
@@ -1014,9 +1461,70 @@ export default async function handler(req: Request): Promise<Response> {
       cleanedCached.length,
       '— skipping Groq AND Supabase',
     )
+    void incrCounter('response_cache:hit')
+    void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
     return streamFinalContent(cleanedCached)
   }
   console.log('[Response Cache] MISS key:', responseCacheKey)
+  void incrCounter('response_cache:miss')
+
+  // Fast-Path bypass: dla zapytań o WYSOKIEJ pewności (slash commands,
+  // exact-match popularnych pytań) wołamy narzędzie BEZPOŚREDNIO, BEZ Groqa.
+  // Zysk: ~1100 tok input + ~200 tok output + ~1500ms latency per query.
+  // Per-tool cache w `runWithCache` dalej działa — args są deterministyczne.
+  const fastMatch = tryFastPath(lastUserText)
+  if (fastMatch) {
+    console.log(
+      '[Fast Path] match — reason:',
+      fastMatch.reason,
+      '| tool:',
+      fastMatch.toolName,
+      '— SKIPPING Groq entirely',
+    )
+    const entry = getToolEntry(fastMatch.toolName)
+    if (entry) {
+      try {
+        const result = await entry.execute(fastMatch.args, ctx)
+        const formatted = formatToolResultAsFinalAnswer(
+          fastMatch.toolName,
+          result,
+        )
+        // Zapisz do response cache — kolejne identyczne zapytania pójdą
+        // przez `responseCache HIT` (jeszcze szybciej, bez nawet Supabase).
+        // Zostawiamy ten sam `RESPONSE_CACHE_TTL_SECONDS` (60s) co Groq path
+        // — spójność i mała ekspozycja na stale data.
+        await kvSetSafe(responseCacheKey, formatted, RESPONSE_CACHE_TTL_SECONDS)
+        // Fragmentowany strumień + meta — klient pokaże „Sprawdzam zniżki…"
+        // zamiast losowych thinking-phrases, bo ZNAMY tool name z wyprzedzeniem.
+        const fastPathLabel = getActionLabel(fastMatch.toolName)
+        void incrCounter('fast_path:hit')
+        void incrCounter(`fast_path:tool:${fastMatch.toolName}`)
+        void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+        void pushLatency('chat:fast_path_ms', Date.now() - requestStartedAt)
+        return streamFinalContentChunked(
+          formatted,
+          fastPathLabel
+            ? { tool: fastMatch.toolName, label: fastPathLabel }
+            : null,
+        )
+      } catch (err) {
+        console.warn(
+          '[Fast Path] tool execution threw — falling back to Groq path:',
+          err instanceof Error ? err.message : err,
+        )
+        void incrCounter('fast_path:execute_error')
+      }
+    } else {
+      console.warn(
+        '[Fast Path] tool not found in registry:',
+        fastMatch.toolName,
+        '— falling back to Groq',
+      )
+      void incrCounter('fast_path:registry_miss')
+    }
+  } else {
+    void incrCounter('fast_path:miss')
+  }
 
   let finalContent = ''
   /**
@@ -1026,6 +1534,14 @@ export default async function handler(req: Request): Promise<Response> {
    * tak jakby model sam to powiedział.
    */
   let rateLimited = false
+  /**
+   * Najnowsza nazwa narzędzia, której orchestrator używa przy budowie
+   * odpowiedzi. Wysyłamy ją jako meta event w SSE, żeby klient mógł pokazać
+   * np. „Sprawdzam zniżki…" zamiast generycznego „Myślę…".
+   * `null` = brak narzędzia (Groq odpowiedział sam) — klient użyje rotujących
+   * thinking-phrases.
+   */
+  let executedToolName: string | null = null
   /**
    * Akumulator tokenów — sumuje `usage` z odpowiedzi Groqa. Single-shot więc
    * dokładnie 1 wpis (vs poprzednie pętle), ale interfejs zostaje dla spójności
@@ -1037,12 +1553,60 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     type Completion = Awaited<ReturnType<GroqProvider['completeWithTools']>>
     let completion: Completion | null = null
+    // Mały model dla ścieżki SMALL-TALK (brak tools, „cześć/dzięki/spoko").
+    // qwen3-32b kosztowałby ~5× więcej i odpowiadał ~3× wolniej dla
+    // 4-słownej grzeczności. Cap też niżej (200 tok) — small-talk reply
+    // nigdy nie potrzebuje więcej.
+    const isSmallTalkPath = !useTools
+    const completeOpts = isSmallTalkPath
+      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 200 }
+      : undefined
+    if (isSmallTalkPath) {
+      void incrCounter('groq:small_talk_path')
+      console.log(
+        '[Groq] small-talk path — model:',
+        GROQ_SMALLTALK_MODEL,
+        '| maxTokens: 200',
+      )
+    }
+    // Circuit breaker — gdy ostatnie N requestów do Groqa padło 429/5xx,
+    // odmawiamy NATYCHMIAST z friendly message zamiast czekać 3-5s na
+    // timeout. Stan trzymany w KV (cross-instance), fail-open przy
+    // niedostępnym KV. Patrz `groqCircuitBreaker.ts`.
+    const cbDecision = await cbGate()
+    if (!cbDecision.allow) {
+      console.warn(
+        '[Groq CB] OPEN — refusing request, retryAfter:',
+        cbDecision.retryAfterSec,
+        's',
+      )
+      void incrCounter('groq:cb:short_circuit')
+      const message = CIRCUIT_OPEN_MESSAGE_TEMPLATE(cbDecision.retryAfterSec)
+      void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+      return streamFinalContentChunked(message, null)
+    }
+    if (cbDecision.state === 'HALF_OPEN') {
+      console.log('[Groq CB] HALF_OPEN — letting probe request through')
+      void incrCounter('groq:cb:probe')
+    }
     try {
-      completion = await provider.completeWithTools(conversation, effectiveTools)
+      completion = await provider.completeWithTools(
+        conversation,
+        effectiveTools,
+        completeOpts,
+      )
+      // Sukces probe'a → CB wraca do CLOSED. Sukces zwykłego requestu też
+      // czyści `open_until` (no-op gdy klucza i tak nie było). Tani write.
+      void cbRecordSuccess()
     } catch (err) {
       if (err instanceof GroqProviderError && err.status === 429) {
         console.warn('[api/chat] Groq 429 (rate limit) — graceful degrade for user')
         rateLimited = true
+        void cbRecordError({ status: 429, reason: 'rate_limit' })
+      } else if (err instanceof GroqProviderError && err.status && err.status >= 500) {
+        // 5xx z Groqa = problem po ich stronie, też karmimy CB
+        void cbRecordError({ status: err.status, reason: 'server_error' })
+        throw err
       } else {
         throw err
       }
@@ -1084,12 +1648,27 @@ export default async function handler(req: Request): Promise<Response> {
           toolCalls.length,
           'tool_call(s) — executing and formatting server-side (no LLM synthesis)',
         )
-        const sections: string[] = []
-        for (const call of toolCalls) {
-          const result = await runToolCall(call, ctx)
-          sections.push(formatToolResultAsFinalAnswer(call.function.name, result))
-        }
+        // Parallel execution — gdy Groq zwraca 2+ tool calls (np. „co dziś
+        // i jakie zniżki"), wołamy je RÓWNOLEGLE zamiast sekwencyjnie.
+        // Tools są niezależne (każde czyta inną tabelę Supabase), więc nic
+        // nie blokuje. `Promise.all` zachowuje kolejność, więc `sections[i]`
+        // odpowiada `toolCalls[i]` — semantyka taka sama jak przy
+        // sekwencyjnym for.
+        const sections = await Promise.all(
+          toolCalls.map(async (call) => {
+            const result = await runToolCall(call, ctx)
+            return formatToolResultAsFinalAnswer(call.function.name, result)
+          }),
+        )
         finalContent = joinToolSections(sections)
+        // Pierwszy tool — najwierniejszy obraz aktywności (przy multi-call
+        // wybieramy ten pierwszy zgodnie z kolejnością modelu). Klient
+        // pokazuje tę etykietę w typing-indicatorze tylko do pierwszego
+        // delta-content; potem już animowany typewriter pisze odpowiedź.
+        const firstCall = toolCalls[0]
+        if (firstCall?.function?.name) {
+          executedToolName = firstCall.function.name
+        }
       }
     }
 
@@ -1164,5 +1743,25 @@ export default async function handler(req: Request): Promise<Response> {
     })
   }
 
-  return streamFinalContent(guardedContent)
+  // Chunkowany strumień — klient widzi napływające delty zamiast „bęc całość".
+  // Spójność z fast-path'em (oba zwracają fragmentowane SSE), typewriter ma
+  // naturalny feed. Dorzucamy meta event z `tool` + `label` jeśli wiemy,
+  // którego narzędzia model użył — UI pokaże „Sprawdzam zniżki…" zamiast
+  // losowych „Myślę…".
+  const finalLabel = executedToolName ? getActionLabel(executedToolName) : null
+  void incrCounter('groq:served')
+  if (executedToolName) {
+    void incrCounter(`groq:tool:${executedToolName}`)
+  }
+  if (rateLimited) {
+    void incrCounter('groq:rate_limited')
+  }
+  void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+  void pushLatency('chat:groq_path_ms', Date.now() - requestStartedAt)
+  return streamFinalContentChunked(
+    guardedContent,
+    executedToolName && finalLabel
+      ? { tool: executedToolName, label: finalLabel }
+      : null,
+  )
 }

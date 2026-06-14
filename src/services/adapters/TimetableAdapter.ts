@@ -143,7 +143,7 @@ class TimetableAdapterImpl {
       return {
         ...empty,
         fetchError:
-          'URL musi być z apps.usos.uj.edu.pl i zawierać parametr "key" (skopiuj z USOSweb → Eksport do iCalendar).',
+          'URL musi być z apps.usos.uj.edu.pl i zawierać parametr "key" (skopiuj z USOSweb → eksport planu).',
       }
     }
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -186,7 +186,7 @@ class TimetableAdapterImpl {
     }
     const ics = payload && typeof payload.ics === 'string' ? payload.ics : null
     if (!ics) {
-      return { ...empty, fetchError: 'Proxy nie zwróciło treści iCalendar.' }
+      return { ...empty, fetchError: 'Proxy nie zwróciło treści planu.' }
     }
 
     return this.importIcs(userId, ics)

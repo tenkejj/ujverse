@@ -17,10 +17,20 @@
  * sam przewinął w górę — wtedy auto-scroll się wycofuje, aż wróci do dołu.
  */
 
-import { forwardRef, useCallback, useEffect, useRef, type ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Check, Copy, Pencil, RefreshCcw } from 'lucide-react'
 import type { ChatMessage } from '../../types/ai'
 import type { Profile } from '../../types'
+import { toast } from '../../lib/appToast'
 import UserAvatar from '../UserAvatar'
 import AnimatedBot from './AnimatedBot'
 import TypewriterMarkdown from './TypewriterMarkdown'
@@ -39,6 +49,24 @@ type Props = {
   myProfile?: Profile | null
   /** Fallback display name (np. z `session.user.email`), gdy `myProfile` brak. */
   displayName?: string
+  /**
+   * Konkretna etykieta akcji asystenta z meta-eventu SSE (np. „Sprawdzam
+   * zniżki…"). Gdy ustawione, `TypingIndicator` pokaże ją zamiast losowych
+   * thinking-phrases. `null` lub `undefined` = fallback do rotujących fraz.
+   */
+  actionLabel?: string | null
+  /**
+   * Wstawia tekst ostatniej user message do composera (parent kontroluje
+   * gdzie pole input żyje). Klik na ikonę „Edytuj" przy ostatniej wiadomości
+   * usera. `undefined` = nie pokazuj akcji edit.
+   */
+  onEditLastUser?: (text: string) => void
+  /**
+   * Wysyła ostatnią user message ponownie (parent zna `sendMessage`
+   * i historię). Klik „Spróbuj ponownie" przy ostatniej assistant
+   * message. `undefined` = nie pokazuj retry.
+   */
+  onRetryLastAssistant?: () => void
   /**
    * Czy lista ma sama trzymać scroll (`overflow-y-auto` + stick-to-bottom
    * observer). Domyślnie `true` — pasuje do wyspy (`ChatAssistant`) i FAB-a
@@ -131,18 +159,51 @@ function BotBadge({ size, sizeClass }: { size: number; sizeClass: string }) {
   )
 }
 
+/**
+ * Wspólne presety ruchu dla bąbelków — slide+fade. User idzie z prawej,
+ * asystent z lewej (kierunek odwrotny do source-row), żeby wizualnie
+ * podkreślić skąd pochodzi wiadomość.
+ *
+ * Distance 8px daje subtelny efekt — większy (16-24px) wyglądałby jak
+ * carousel i odciągał uwagę. easeOut + 280ms = moment, w którym oko
+ * zarejestruje pojawienie się bez „glitch-flash".
+ */
+const BUBBLE_MOTION_USER = {
+  initial: { opacity: 0, x: 12, y: 4 },
+  animate: { opacity: 1, x: 0, y: 0 },
+  transition: { duration: 0.28, ease: 'easeOut' as const },
+}
+
+const BUBBLE_MOTION_ASSISTANT = {
+  initial: { opacity: 0, x: -8, y: 4 },
+  animate: { opacity: 1, x: 0, y: 0 },
+  transition: { duration: 0.32, ease: 'easeOut' as const },
+}
+
 function MessageBubble({
   message,
   variant,
   isStreaming,
+  isLastUser,
+  isLastAssistant,
   myProfile,
   displayName,
+  onEditUser,
+  onRetryAssistant,
 }: {
   message: ChatMessage
   variant: MessageListVariant
   isStreaming: boolean
+  /** Czy to OSTATNIA user message — tylko wtedy pokazujemy „Edytuj". */
+  isLastUser: boolean
+  /** Czy to OSTATNIA assistant message — tylko wtedy „Spróbuj ponownie". */
+  isLastAssistant: boolean
   myProfile?: Profile | null
   displayName?: string
+  /** Callback do edycji ostatniej user message (parent wkłada tekst do composera). */
+  onEditUser?: (text: string) => void
+  /** Callback do retry — parent wysyła ostatnią user message ponownie. */
+  onRetryAssistant?: () => void
 }) {
   const isUser = message.role === 'user'
   const isEmptyAssistant =
@@ -154,7 +215,18 @@ function MessageBubble({
   if (isUser) {
     const userName = myProfile?.full_name ?? displayName ?? 'Ty'
     return (
-      <div className={`flex items-center justify-end ${tokens.rowGap}`}>
+      <motion.div
+        className={`group/bubble flex items-center justify-end ${tokens.rowGap}`}
+        {...BUBBLE_MOTION_USER}
+      >
+        {/* Akcje user message: tylko dla OSTATNIEJ — edit. Po lewej bańki, hover-only. */}
+        {isLastUser && !isStreaming && onEditUser ? (
+          <MessageActionButton
+            icon={<Pencil size={12} />}
+            label="Edytuj"
+            onClick={() => onEditUser(message.content)}
+          />
+        ) : null}
         <div
           className={`${tokens.userMax} ${USER_BUBBLE_CLS} ${tokens.userPad} ${tokens.text}`}
         >
@@ -166,12 +238,15 @@ function MessageBubble({
           className={`${tokens.avatar} self-center`}
           textSize={tokens.avatarText}
         />
-      </div>
+      </motion.div>
     )
   }
 
   return (
-    <div className={`flex items-start ${tokens.rowGap}`}>
+    <motion.div
+      className={`group/bubble flex items-start ${tokens.rowGap}`}
+      {...BUBBLE_MOTION_ASSISTANT}
+    >
       <span className="mt-0.5">
         <BotBadge size={tokens.botIcon} sizeClass={tokens.avatar} />
       </span>
@@ -183,8 +258,108 @@ function MessageBubble({
             content={message.content}
             isStreaming={isStreaming}
           />
+          {/* Akcje na assistant message — pojawiają się na hover, ZAWSZE dla
+              non-streaming bubble'a, dla streaming pokazujemy dopiero po końcu
+              (mniej noise podczas pisania). */}
+          {!isStreaming ? (
+            <AssistantMessageActions
+              content={message.content}
+              showRetry={isLastAssistant}
+              onRetry={onRetryAssistant}
+            />
+          ) : null}
         </div>
       </div>
+    </motion.div>
+  )
+}
+
+/**
+ * Pojedynczy mały button akcji obok bubble'a — używany przez user-message edit.
+ * Ukryty domyślnie, pojawia się na hover'ze parent'a (`group/bubble`).
+ */
+function MessageActionButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/80 text-fg-secondary opacity-0 shadow-sm transition-all hover:bg-zinc-50 hover:text-logo-navy group-hover/bubble:flex group-hover/bubble:opacity-100 dark:border-white/10 dark:bg-zinc-900/70 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+    >
+      {icon}
+    </button>
+  )
+}
+
+/**
+ * Pasek akcji pod assistant message: copy (zawsze), retry (tylko ostatnia).
+ *
+ * Hover-only — w state spoczynku UI jest minimalistyczne. Na touch device'ach
+ * `group-hover` nie działa, więc także reagujemy na `group-focus-within`,
+ * a tap na bubble (focus) ujawnia akcje.
+ *
+ * `aria-live=polite` na potwierdzeniu „Skopiowano" — screen reader informuje,
+ * że akcja się udała, bez zabierania fokusu.
+ */
+function AssistantMessageActions({
+  content,
+  showRetry,
+  onRetry,
+}: {
+  content: string
+  showRetry: boolean
+  onRetry?: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopied(true)
+      toast('Skopiowano')
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch (err) {
+      console.warn('[MessageList] copy failed:', err)
+      toast.error('Nie udało się skopiować')
+    }
+  }, [content])
+
+  return (
+    <div
+      className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover/bubble:opacity-100 group-focus-within/bubble:opacity-100"
+      aria-live="polite"
+    >
+      <button
+        type="button"
+        onClick={() => void handleCopy()}
+        title={copied ? 'Skopiowano' : 'Skopiuj'}
+        aria-label={copied ? 'Skopiowano' : 'Skopiuj odpowiedź'}
+        className="inline-flex h-6 items-center gap-1 rounded-md border border-zinc-200 bg-white/80 px-1.5 text-xs text-fg-secondary transition-colors hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+      >
+        {copied ? <Check size={12} /> : <Copy size={12} />}
+        <span>{copied ? 'Skopiowano' : 'Kopiuj'}</span>
+      </button>
+      {showRetry && onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          title="Spróbuj ponownie"
+          aria-label="Wygeneruj odpowiedź ponownie"
+          className="inline-flex h-6 items-center gap-1 rounded-md border border-zinc-200 bg-white/80 px-1.5 text-xs text-fg-secondary transition-colors hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+        >
+          <RefreshCcw size={12} />
+          <span>Ponów</span>
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -208,8 +383,59 @@ function MessageBubble({
  */
 const TYPING_DOT_DELAYS = [0, 0.2, 0.4] as const
 
-function TypingIndicator({ variant }: { variant: MessageListVariant }) {
+/**
+ * Frazy „myślenia" — rotują co ~1.4s podczas streamingu, dając wrażenie
+ * że asystent faktycznie wykonuje konkretną pracę zamiast „stoi i myśli".
+ * Świadomie LUŹNE i konwersacyjne (zgodnie z tonem UJverse), nie
+ * korporacyjne („Performing query...").
+ *
+ * Krótkie (bez kropek na końcu — kropki dorzucamy jako oddzielną animację
+ * kropek). Każda fraza ma 2-4 słowa, max ~24 znaki, żeby zmieściła się
+ * w obu wariantach (compact 14px, roomy 16px).
+ */
+const THINKING_PHRASES: readonly string[] = [
+  'Już patrzę',
+  'Sprawdzam bazę',
+  'Łapię świeże dane',
+  'Składam odpowiedź',
+  'Jeszcze chwila',
+  'Czytam to dla Ciebie',
+  'Już prawie',
+] as const
+
+function TypingIndicator({
+  variant,
+  actionLabel,
+}: {
+  variant: MessageListVariant
+  actionLabel: string | null
+}) {
   const tokens = VARIANT_TOKENS[variant]
+
+  // Rotacja fraz co ~1.6s. Pierwszą frazę losujemy raz na mount, żeby
+  // dwa kolejne loading-state'y nie zaczynały od „Już patrzę" (wrażenie
+  // świeżości).
+  const initialIdx = useMemo(
+    () => Math.floor(Math.random() * THINKING_PHRASES.length),
+    [],
+  )
+  const [phraseIdx, setPhraseIdx] = useState(initialIdx)
+  useEffect(() => {
+    // Jeśli serwer dał konkretną etykietę („Sprawdzam zniżki…"), nie
+    // rotujemy — pokazujemy ją 1:1, bo niesie informację, a nie tylko
+    // wypełnia ciszę.
+    if (actionLabel) return
+    const id = window.setInterval(() => {
+      setPhraseIdx((prev) => (prev + 1) % THINKING_PHRASES.length)
+    }, 1600)
+    return () => window.clearInterval(id)
+  }, [actionLabel])
+  // `actionLabel` ma priorytet — gdy serwer wie którego narzędzia używa,
+  // user dostaje konkret, a nie generyczne „Już patrzę".
+  const phrase = actionLabel ?? THINKING_PHRASES[phraseIdx]
+
+  const phraseSizeCls = variant === 'compact' ? 'text-xs' : 'text-sm'
+
   return (
     <div
       className={`flex items-center ${tokens.rowGap}`}
@@ -219,21 +445,35 @@ function TypingIndicator({ variant }: { variant: MessageListVariant }) {
       <BotBadge size={tokens.botIcon} sizeClass={tokens.avatar} />
       <span
         aria-hidden
-        className="flex items-center gap-1 text-logo-navy dark:text-brand-gold-bright"
+        className={`flex items-center gap-1.5 ${phraseSizeCls} text-fg-secondary`}
       >
-        {TYPING_DOT_DELAYS.map((delay) => (
+        <AnimatePresence mode="wait">
           <motion.span
-            key={delay}
-            className="h-1.5 w-1.5 rounded-full bg-current"
-            animate={{ opacity: [0.25, 1, 0.25] }}
-            transition={{
-              duration: 1.2,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay,
-            }}
-          />
-        ))}
+            key={phrase}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="italic"
+          >
+            {phrase}
+          </motion.span>
+        </AnimatePresence>
+        <span className="flex items-center gap-1 text-logo-navy dark:text-brand-gold-bright">
+          {TYPING_DOT_DELAYS.map((delay) => (
+            <motion.span
+              key={delay}
+              className="h-1 w-1 rounded-full bg-current"
+              animate={{ opacity: [0.25, 1, 0.25], scale: [0.85, 1.05, 0.85] }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay,
+              }}
+            />
+          ))}
+        </span>
       </span>
     </div>
   )
@@ -289,6 +529,9 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     myProfile,
     displayName,
     scrollable = true,
+    actionLabel = null,
+    onEditLastUser,
+    onRetryLastAssistant,
   },
   forwardedRef,
 ) {
@@ -359,22 +602,38 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
             {emptyState ?? <DefaultEmptyState variant={variant} />}
           </div>
         ) : (
-          visible.map((m, idx) => {
-            const isLastAssistant =
-              m.role === 'assistant' && idx === visible.length - 1
-            return (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                variant={variant}
-                isStreaming={isLastAssistant && isTyping}
-                myProfile={myProfile}
-                displayName={displayName}
-              />
-            )
-          })
+          (() => {
+            // Index ostatniej user message — używany do pokazania „Edytuj"
+            // tylko przy NIEJ. Liczymy raz, używamy w mapie poniżej.
+            let lastUserIdx = -1
+            for (let i = visible.length - 1; i >= 0; i--) {
+              if (visible[i].role === 'user') {
+                lastUserIdx = i
+                break
+              }
+            }
+            return visible.map((m, idx) => {
+              const isLastAssistant =
+                m.role === 'assistant' && idx === visible.length - 1
+              const isLastUser = m.role === 'user' && idx === lastUserIdx
+              return (
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  variant={variant}
+                  isStreaming={isLastAssistant && isTyping}
+                  isLastUser={isLastUser}
+                  isLastAssistant={isLastAssistant}
+                  myProfile={myProfile}
+                  displayName={displayName}
+                  onEditUser={onEditLastUser}
+                  onRetryAssistant={onRetryLastAssistant}
+                />
+              )
+            })
+          })()
         )}
-        {isTyping && <TypingIndicator variant={variant} />}
+        {isTyping && <TypingIndicator variant={variant} actionLabel={actionLabel} />}
       </div>
     </div>
   )

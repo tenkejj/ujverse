@@ -19,6 +19,15 @@ import './getCalendarInRange.js'
 import './getMyUserContext.js'
 import './getMyAulaOverview.js'
 import './findUser.js'
+import './searchDiscounts.js'
+import './getTrendingDiscounts.js'
+import './getMyClassesInRange.js'
+import './getMyWeeklyBriefing.js'
+import './getUpcomingUsosRegistrations.js'
+import './getUpcomingOfficialEvents.js'
+import './findLecturer.js'
+import './getLecturerAnnouncements.js'
+import './getMyFollowedLecturers.js'
 
 export {
   type Tool,

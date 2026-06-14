@@ -147,10 +147,7 @@ registerTool<
   tool: {
     name: 'get_latest_announcements',
     description:
-      'Pobiera 10 najnowszych ogłoszeń akademickich (komunikaty wydziałowe ' +
-      'z ISI UJ — odwołane zajęcia, dyżury, tryb zdalny). Używaj, gdy ' +
-      'użytkownik pyta o ogłoszenia, komunikaty, odwołane zajęcia, dyżury ' +
-      'wykładowców lub aktualności wydziałowe.',
+      '10 najnowszych komunikatów ISI UJ (odwołane zajęcia, dyżury, zdalne). Pytania o ogłoszenia/komunikaty/odwołane.',
     parameters: {
       type: 'object',
       properties: {},

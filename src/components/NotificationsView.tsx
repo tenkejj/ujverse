@@ -1,5 +1,20 @@
-import type { ReactNode } from 'react'
-import { AtSign, Bell, Check, CheckSquare, GraduationCap, Heart, MessageCircle, Megaphone, Sparkles } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
+import {
+  Activity,
+  AtSign,
+  BarChart3,
+  Bell,
+  Check,
+  CheckSquare,
+  Clock3,
+  Filter as FilterIcon,
+  GraduationCap,
+  Heart,
+  Inbox,
+  Megaphone,
+  MessageCircle,
+  Sparkles,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AppNotification } from '../types'
@@ -8,7 +23,7 @@ import UserAvatar from './UserAvatar'
 import EmptyState from './EmptyState'
 import BaseCard from './ui/BaseCard'
 import { theme } from '../styles/theme'
-import { PROFILE_MOBILE } from '../styles/mobile-theme'
+import { EVENTS_HUB, PROFILE_MOBILE } from '../styles/mobile-theme'
 import {
   ANNOUNCEMENT_STATUS_BADGE,
   ANNOUNCEMENT_STATUS_DOT,
@@ -375,7 +390,8 @@ function WeeklyBriefingRow({
   cleanOverlay,
 }: LecturerRowProps) {
   // Soft contract z embedem `notif.briefing` — w MVP nie zaciągamy payloadu,
-  // tylko CTA „otwórz briefing". Cała wartość liczbowa jest w widoku /briefing.
+  // tylko CTA „otwórz briefing". Cała wartość liczbowa jest w widoku /moj-plan
+  // (briefing został tam wchłonięty po konsolidacji /dzis + /briefing).
   const headline = 'Tygodniowy briefing jest gotowy'
   const subline = 'Plan tygodnia, odwołania, najbliższy egzamin i komunikaty od Twoich wykładowców.'
 
@@ -485,7 +501,7 @@ function NotificationRow({
       return
     }
     if (notif.type === 'weekly_briefing') {
-      navigate('/briefing')
+      navigate('/moj-plan')
       return
     }
     if (notif.type === 'aula_task_new') {
@@ -626,6 +642,47 @@ function NotificationRow({
   )
 }
 
+/* ──────────────────────────────────────────────────────────────────────
+ * HUB LAYOUT (standalone /notifications) — wspólny język z /events.
+ *
+ * Filtruje po szerokich kubełkach typu, których oczekuje user, nie po
+ * surowych enumach. Dwa wejścia (rail + ewentualnie url state w przyszłości)
+ * powinny widzieć tę samą prawdę, dlatego matcher żyje obok komponentu,
+ * nie w side railu.
+ * ────────────────────────────────────────────────────────────────────── */
+type NotifFilterKey = 'all' | 'social' | 'aula' | 'lecturers' | 'briefing'
+
+const NOTIF_FILTERS: { key: NotifFilterKey; label: string; icon: typeof Bell }[] = [
+  { key: 'all', label: 'Wszystkie', icon: Inbox },
+  { key: 'social', label: 'Społeczność', icon: Heart },
+  { key: 'aula', label: 'Aula', icon: GraduationCap },
+  { key: 'lecturers', label: 'Wykładowcy', icon: Megaphone },
+  { key: 'briefing', label: 'Briefingi', icon: Sparkles },
+]
+
+function matchesNotifFilter(t: AppNotification['type'], f: NotifFilterKey): boolean {
+  if (f === 'all') return true
+  if (f === 'social') return t === 'like' || t === 'comment'
+  if (f === 'aula') return t === 'reply_aula' || t === 'mention_aula' || t === 'aula_task_new'
+  if (f === 'lecturers') return t === 'lecturer_announcement'
+  if (f === 'briefing') return t === 'weekly_briefing'
+  return true
+}
+
+/** Stałe etykiety do nagłówków sekcji w trybie hub. */
+const HUB_SECTION = {
+  unread: {
+    icon: Sparkles,
+    title: 'Nowe',
+    subtitle: 'Świeże aktywności od ostatniej wizyty',
+  },
+  earlier: {
+    icon: Clock3,
+    title: 'Wcześniejsze',
+    subtitle: 'Historyczne zdarzenia, już przeczytane',
+  },
+} as const
+
 const staggerStep = 0.042
 const staggerStepFullscreen = 0.05
 
@@ -667,9 +724,68 @@ export default function NotificationsView({
   fullScreenModal = false,
   cleanOverlay = false,
 }: Props) {
-  const hasUnread = notifications.some((n) => !n.is_read)
-  const unreadList = notifications.filter((n) => !n.is_read)
-  const readList = notifications.filter((n) => n.is_read)
+  // Hub-layout (route /notifications) używa tych samych tokenów co /events:
+  // hero + sekcje z count-badge + boczny rail. Embedded / glass / clean
+  // pozostają nietknięte — to miejsca, gdzie powiadomienia są tylko
+  // "wstawką" (popup, fullscreen modal aulowy, profile drawer).
+  const hubLayout = !embedded && !glassPanel && !cleanOverlay
+
+  // Filter state żyje TYLKO w trybie hub. W innych wariantach komponent
+  // pokazuje wszystko co dostał propsem — filtry to feature widoku
+  // standalone, nie popupów. Hooks i tak musimy declare zawsze (ESLint),
+  // więc trzymamy je tu, ale konsumujemy tylko w hub branchy.
+  const [filterKey, setFilterKey] = useState<NotifFilterKey>('all')
+
+  const filteredHubNotifications = useMemo(() => {
+    if (!hubLayout || filterKey === 'all') return notifications
+    return notifications.filter((n) => matchesNotifFilter(n.type, filterKey))
+  }, [hubLayout, filterKey, notifications])
+
+  const visibleNotifications = hubLayout ? filteredHubNotifications : notifications
+
+  const hasUnread = visibleNotifications.some((n) => !n.is_read)
+  const unreadList = visibleNotifications.filter((n) => !n.is_read)
+  const readList = visibleNotifications.filter((n) => n.is_read)
+
+  // Statystyki liczone z PEŁNEJ listy (nie z `filtered`) — żeby rail
+  // pokazywał stałe liczniki kategorii niezależnie od aktywnego filtra,
+  // analogicznie do EventsSideRail.
+  const hubStats = useMemo(() => {
+    if (!hubLayout) {
+      return { unread: 0, total: 0, recent24h: 0 }
+    }
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000
+    let unread = 0
+    let recent24h = 0
+    for (const n of notifications) {
+      if (!n.is_read) unread += 1
+      const t = Date.parse(n.created_at)
+      if (Number.isFinite(t) && t >= cutoff) recent24h += 1
+    }
+    return {
+      unread,
+      total: notifications.length,
+      recent24h,
+    }
+  }, [hubLayout, notifications])
+
+  const hubFilterCounts = useMemo<Record<NotifFilterKey, number>>(() => {
+    const acc: Record<NotifFilterKey, number> = {
+      all: notifications.length,
+      social: 0,
+      aula: 0,
+      lecturers: 0,
+      briefing: 0,
+    }
+    if (!hubLayout) return acc
+    for (const n of notifications) {
+      if (matchesNotifFilter(n.type, 'social')) acc.social += 1
+      if (matchesNotifFilter(n.type, 'aula')) acc.aula += 1
+      if (matchesNotifFilter(n.type, 'lecturers')) acc.lecturers += 1
+      if (matchesNotifFilter(n.type, 'briefing')) acc.briefing += 1
+    }
+    return acc
+  }, [hubLayout, notifications])
 
   const SectionLabelCmp = cleanOverlay
     ? SectionLabelClean
@@ -682,7 +798,7 @@ export default function NotificationsView({
   if (loading) {
     const loadingInner = (
       <div className={useFloatingCards ? 'space-y-4' : 'space-y-0'}>
-        {!embedded && (
+        {!embedded && !hubLayout && (
           <div className="flex items-center justify-between px-1 pb-3">
             <h2 className={`text-[15px] font-bold ${theme.text.primary}`}>Powiadomienia</h2>
           </div>
@@ -698,10 +814,24 @@ export default function NotificationsView({
       </div>
     )
     if (embedded) return loadingInner
+    if (hubLayout) {
+      return (
+        <NotificationsHubShell
+          stats={hubStats}
+          filterKey={filterKey}
+          filterCounts={hubFilterCounts}
+          onFilterChange={setFilterKey}
+          onMarkAllRead={onMarkAllRead}
+          hasUnread={false}
+        >
+          {loadingInner}
+        </NotificationsHubShell>
+      )
+    }
     return <div className={standaloneShell}>{loadingInner}</div>
   }
 
-  if (notifications.length === 0) {
+  if (visibleNotifications.length === 0) {
     if (cleanOverlay) {
       return (
         <motion.div
@@ -746,6 +876,52 @@ export default function NotificationsView({
       />
     )
     if (embedded) return empty
+    if (hubLayout) {
+      const isFiltering = filterKey !== 'all'
+      const hubEmpty = (
+        <motion.div
+          variants={EVENTS_HUB.motion.fadeUp}
+          initial="hidden"
+          animate="show"
+          className={EVENTS_HUB.empty.wrapClass}
+        >
+          <div className={EVENTS_HUB.empty.iconBubbleClass}>
+            <Bell size={26} strokeWidth={1.85} aria-hidden />
+          </div>
+          <h3 className={EVENTS_HUB.empty.titleClass}>
+            {isFiltering ? 'Nic w tej kategorii' : 'Brak powiadomień'}
+          </h3>
+          <p className={EVENTS_HUB.empty.subtitleClass}>
+            {isFiltering
+              ? 'Spróbuj innego filtra albo wróć później — coś tu na pewno wpadnie.'
+              : 'Gdy ktoś polubi lub skomentuje Twój wpis, zobaczysz to tutaj.'}
+          </p>
+          {isFiltering && (
+            <div className={EVENTS_HUB.empty.hintsWrapClass}>
+              <button
+                type="button"
+                className={EVENTS_HUB.empty.hintChipClass}
+                onClick={() => setFilterKey('all')}
+              >
+                Pokaż wszystkie
+              </button>
+            </div>
+          )}
+        </motion.div>
+      )
+      return (
+        <NotificationsHubShell
+          stats={hubStats}
+          filterKey={filterKey}
+          filterCounts={hubFilterCounts}
+          onFilterChange={setFilterKey}
+          onMarkAllRead={onMarkAllRead}
+          hasUnread={hubStats.unread > 0}
+        >
+          {hubEmpty}
+        </NotificationsHubShell>
+      )
+    }
     return <div className={standaloneShell}>{empty}</div>
   }
 
@@ -782,11 +958,38 @@ export default function NotificationsView({
 
   const cardStackClass = useFloatingCards ? 'space-y-4' : ''
 
+  // W trybie hub sekcje używają tych samych nagłówków co /events
+  // (`EVENTS_HUB.section`), w pozostałych wariantach zostaje legacy
+  // `SectionLabelCmp` (tytuły bez count-badge'a, lżejszy typograficznie).
+  const renderSectionHeader = (
+    kind: 'unread' | 'earlier',
+    count: number,
+  ): ReactNode => {
+    if (hubLayout) {
+      const meta = HUB_SECTION[kind]
+      const Icon = meta.icon
+      return (
+        <header className={EVENTS_HUB.section.headerClass}>
+          <h2 className={EVENTS_HUB.section.titleClass}>
+            <Icon size={12} strokeWidth={2.25} className={EVENTS_HUB.section.titleIconClass} aria-hidden />
+            {meta.title}
+            <span className={EVENTS_HUB.section.countBadgeClass}>{count}</span>
+          </h2>
+          <span className={EVENTS_HUB.section.subtitleClass}>{meta.subtitle}</span>
+        </header>
+      )
+    }
+    if (kind === 'earlier') {
+      return <SectionLabelCmp variant="earlier">{glassPanel ? 'Wcześniejsze' : 'Starsze'}</SectionLabelCmp>
+    }
+    return <SectionLabelCmp>Nowe</SectionLabelCmp>
+  }
+
   const listBlock = (
     <div className={listOuterCls}>
       {unreadList.length > 0 && (
-        <>
-          <SectionLabelCmp>Nowe</SectionLabelCmp>
+        <section className={hubLayout ? EVENTS_HUB.section.wrapClass : undefined}>
+          {renderSectionHeader('unread', unreadList.length)}
           <div className={`${sectionShell} ${cardStackClass}`.trim()}>
             <AnimatePresence mode="popLayout" initial={false}>
               {unreadList.map((notif, idx) => {
@@ -816,12 +1019,12 @@ export default function NotificationsView({
               })}
             </AnimatePresence>
           </div>
-        </>
+        </section>
       )}
 
       {readList.length > 0 && (
-        <>
-          <SectionLabelCmp variant="earlier">{glassPanel ? 'Wcześniejsze' : 'Starsze'}</SectionLabelCmp>
+        <section className={hubLayout ? EVENTS_HUB.section.wrapClass : undefined}>
+          {renderSectionHeader('earlier', readList.length)}
           <div className={`${sectionShell} ${cardStackClass}`.trim()}>
             <AnimatePresence mode="popLayout" initial={false}>
               {readList.map((notif, idx) => {
@@ -851,13 +1054,28 @@ export default function NotificationsView({
               })}
             </AnimatePresence>
           </div>
-        </>
+        </section>
       )}
     </div>
   )
 
   if (embedded) {
     return listBlock
+  }
+
+  if (hubLayout) {
+    return (
+      <NotificationsHubShell
+        stats={hubStats}
+        filterKey={filterKey}
+        filterCounts={hubFilterCounts}
+        onFilterChange={setFilterKey}
+        onMarkAllRead={onMarkAllRead}
+        hasUnread={hasUnread}
+      >
+        {listBlock}
+      </NotificationsHubShell>
+    )
   }
 
   return (
@@ -877,6 +1095,222 @@ export default function NotificationsView({
         </div>
         {listBlock}
       </div>
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * NotificationsHubShell — kontener layoutu hub-mode (route /notifications).
+ *
+ * Trzyma:
+ *  - hero card z tytułem, podtytułem, statystykami i akcją „Oznacz wszystkie",
+ *  - boczny rail (lg+) z licznikami i listą filtrów kategorii,
+ *  - slot `children` na właściwą listę (sekcje Nowe / Wcześniejsze).
+ *
+ * Komponent jest *czysto prezentacyjny* — state filtra żyje w
+ * `NotificationsView`, tu tylko callback `onFilterChange`.
+ * ────────────────────────────────────────────────────────────────────── */
+type HubStats = {
+  unread: number
+  total: number
+  recent24h: number
+}
+
+type NotificationsHubShellProps = {
+  children: ReactNode
+  stats: HubStats
+  filterKey: NotifFilterKey
+  filterCounts: Record<NotifFilterKey, number>
+  onFilterChange: (key: NotifFilterKey) => void
+  onMarkAllRead: () => void
+  hasUnread: boolean
+}
+
+function NotificationsHubShell({
+  children,
+  stats,
+  filterKey,
+  filterCounts,
+  onFilterChange,
+  onMarkAllRead,
+  hasUnread,
+}: NotificationsHubShellProps) {
+  const R = EVENTS_HUB.rail
+  const H = EVENTS_HUB.hero
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
+      <motion.div
+        variants={EVENTS_HUB.motion.page}
+        initial="hidden"
+        animate="show"
+        className="min-w-0 space-y-6"
+      >
+        <motion.section
+          variants={EVENTS_HUB.motion.fadeUp}
+          className={H.cardClass}
+          aria-label="Powiadomienia — podsumowanie"
+        >
+          <div className="flex flex-col gap-5 p-5 sm:p-6 md:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#1e293b]/25 bg-[#1e293b]/[0.05] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#1e293b] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright">
+                  <Bell size={12} strokeWidth={2.5} aria-hidden />
+                  Centrum powiadomień
+                </span>
+                <h1 className="text-2xl font-extrabold leading-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                  Powiadomienia
+                </h1>
+                <p className="max-w-xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                  Wszystko, co dzieje się wokół Twoich wpisów, dyskusji w Auli i komunikatów wykładowców — w jednym miejscu.
+                </p>
+              </div>
+              {hasUnread && (
+                <button
+                  type="button"
+                  onClick={onMarkAllRead}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#1e293b]/25 bg-[#1e293b] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all hover:bg-[#0f172a] active:scale-[0.98] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright dark:text-[#1e293b] dark:hover:bg-brand-gold"
+                >
+                  <Check size={14} strokeWidth={2.5} aria-hidden />
+                  Oznacz wszystkie
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <HubStatCell value={stats.unread} label="Nieprzeczytane" emphasized />
+              <HubStatCell value={stats.total} label="Łącznie" />
+              <HubStatCell value={stats.recent24h} label="Ostatnie 24h" />
+            </div>
+          </div>
+        </motion.section>
+
+        {children}
+      </motion.div>
+
+      <motion.aside
+        variants={EVENTS_HUB.motion.page}
+        initial="hidden"
+        animate="show"
+        className={`hidden lg:block ${R.wrapClass}`}
+        aria-label="Panel boczny powiadomień"
+      >
+        <motion.div variants={EVENTS_HUB.motion.fadeUp} className={R.panelClass}>
+          <h3 className={R.panelTitleClass}>
+            <Activity size={12} strokeWidth={2.25} className={R.panelTitleIconClass} aria-hidden />
+            Status
+          </h3>
+          <div className={R.liveRowClass} role="status">
+            {stats.unread > 0 ? (
+              <>
+                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-50" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                </span>
+                <Bell size={14} strokeWidth={2} className="shrink-0 text-amber-600 dark:text-brand-gold-bright" aria-hidden />
+                <span>
+                  <span className="font-semibold tabular-nums">{stats.unread}</span>{' '}
+                  {stats.unread === 1 ? 'nieprzeczytane' : 'nieprzeczytanych'}
+                </span>
+              </>
+            ) : (
+              <>
+                <Check size={14} strokeWidth={2} className="shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                <span>Wszystko nadrobione</span>
+              </>
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div variants={EVENTS_HUB.motion.fadeUp} className={R.panelClass}>
+          <h3 className={R.panelTitleClass}>
+            <BarChart3 size={12} strokeWidth={2.25} className={R.panelTitleIconClass} aria-hidden />
+            Statystyki
+          </h3>
+          <div className={R.statsGridClass}>
+            <div className={R.statCellClass}>
+              <span className={R.statValueClass}>{stats.unread}</span>
+              <span className={R.statLabelClass}>Nowe</span>
+            </div>
+            <div className={R.statCellClass}>
+              <span className={R.statValueClass}>{stats.total}</span>
+              <span className={R.statLabelClass}>Łącznie</span>
+            </div>
+            <div className={R.statCellClass}>
+              <span className={R.statValueClass}>{stats.recent24h}</span>
+              <span className={R.statLabelClass}>24h</span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div variants={EVENTS_HUB.motion.fadeUp} className={R.panelClass}>
+          <h3 className={R.panelTitleClass}>
+            <FilterIcon size={12} strokeWidth={2.25} className={R.panelTitleIconClass} aria-hidden />
+            Filtruj
+          </h3>
+          <div className={R.filterListClass}>
+            {NOTIF_FILTERS.map(({ key, label, icon: Icon }) => {
+              const active = filterKey === key
+              const count = filterCounts[key] ?? 0
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onFilterChange(key)}
+                  aria-pressed={active}
+                  className={`${R.filterButtonBase} ${active ? R.filterButtonActive : R.filterButtonInactive}`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Icon
+                      size={14}
+                      strokeWidth={2}
+                      className="shrink-0 opacity-90"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 truncate">{label}</span>
+                  </span>
+                  <span className={active ? R.filterCountActiveClass : R.filterCountClass}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </motion.div>
+      </motion.aside>
+    </div>
+  )
+}
+
+function HubStatCell({
+  value,
+  label,
+  emphasized,
+}: {
+  value: number
+  label: string
+  emphasized?: boolean
+}) {
+  return (
+    <div
+      className={`flex flex-col items-start gap-1 rounded-2xl border px-3 py-3 sm:px-4 ${
+        emphasized
+          ? 'border-[#1e293b]/25 bg-[#1e293b]/[0.05] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08]'
+          : 'border-zinc-200/70 bg-zinc-50/60 dark:border-white/[0.06] dark:bg-white/[0.02]'
+      }`}
+    >
+      <span
+        className={`text-2xl font-extrabold leading-none tabular-nums sm:text-3xl ${
+          emphasized
+            ? 'text-[#1e293b] dark:text-brand-gold-bright'
+            : 'text-zinc-900 dark:text-zinc-100'
+        }`}
+      >
+        {value}
+      </span>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+        {label}
+      </span>
     </div>
   )
 }

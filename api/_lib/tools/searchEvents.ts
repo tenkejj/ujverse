@@ -201,18 +201,13 @@ registerTool<SearchEventsArgs, SearchEventsResult | SearchEventsError | string>(
   tool: {
     name: 'search_events',
     description:
-      'Wyszukuje wydarzenia uniwersyteckie (oficjalne UJ + studenckie) po ' +
-      'fragmencie tekstu w tytule, opisie lub lokalizacji. Używaj, gdy ' +
-      'użytkownik pyta o konkretne wydarzenie, koło naukowe, koncert, ' +
-      'konferencję lub aktywność (np. „kiedy juwenalia", „spotkania ELSA").',
+      'Szuka wydarzeń (UJ + studenckie) po fragmencie nazwy/opisu/miejsca. Dla konkretnego hasła („juwenalia", „ELSA").',
     parameters: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description:
-            'Fragment tekstu do wyszukania (min. 2 znaki). Przykład: ' +
-            '„juwenalia", „ELSA", „Auditorium Maximum".',
+          description: 'Fragment, min. 2 znaki.',
         },
       },
       required: ['query'],

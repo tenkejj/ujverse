@@ -13,6 +13,18 @@
     },
     "api/scrape-wziks.ts": {
       "maxDuration": 60
+    },
+    "api/scrape-discounts.ts": {
+      "maxDuration": 60
+    },
+    "api/prewarm-chat.ts": {
+      "maxDuration": 30
+    },
+    "api/_diag/cache-stats.ts": {
+      "maxDuration": 10
+    },
+    "api/_diag/health.ts": {
+      "maxDuration": 10
     }
   },
   "crons": [
@@ -21,6 +33,8 @@
     { "path": "/api/scrape-usos-registrations", "schedule": "15 6 * * *" },
     { "path": "/api/scrape-usos-registrations", "schedule": "0 19 * * *" },
     { "path": "/api/extract-usos-registrations", "schedule": "30 6 * * *" },
-    { "path": "/api/generate-briefings", "schedule": "0 6 * * 1" }
+    { "path": "/api/generate-briefings", "schedule": "0 6 * * 1" },
+    { "path": "/api/scrape-discounts?op=expire", "schedule": "0 3 * * *" },
+    { "path": "/api/scrape-discounts?op=scrape", "schedule": "0 4 * * *" }
   ]
 }

@@ -1,20 +1,18 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { AlarmClock, Bell, BookOpen, CalendarDays, ChevronDown, ClipboardList, GraduationCap, LogOut, Moon, Pencil, Search, Settings, Sparkles, Sun, Tag, User, Users } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Menu, Moon, Pencil, Settings, Sun, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
-import ClubsModal from './ClubsModal'
 import OmniSearchHub from './OmniSearchHub'
 import { useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
-import { useClubs } from '../hooks/useContent'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'briefing' | 'dzis' | 'znizki' | 'usos' | 'miejsca'
+type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'znizki' | 'usos' | 'miejsca'
 
 type Props = {
   myProfile: Profile | null
@@ -31,13 +29,6 @@ type Props = {
   onNavigateToFeed: () => void
   onNavigateToProfile: () => void
   onNavigateToEvents: (openEventId?: string) => void
-  onNavigateToAula: () => void
-  aulaHasUnread?: boolean
-  onNavigateToMojPlan: () => void
-  onNavigateToDzis: () => void
-  onNavigateToZnizki: () => void
-  onNavigateToUsos: () => void
-  onNavigateToMiejsca: () => void
   onNavigateToSearch: (query?: string) => void
   onNavigateToUser: (userId: string) => void
   onNavigateToPost: (postId: string) => void
@@ -48,6 +39,8 @@ type Props = {
   onOpenProfileModal: () => void
   onNavigateToSettings: () => void
   onRefreshPosts: () => void
+  /** Otwiera mobilny drawer z pełną listą sekcji (`<lg`). */
+  onOpenMobileDrawer: () => void
 }
 
 export default function Header({
@@ -65,13 +58,6 @@ export default function Header({
   onNavigateToFeed,
   onNavigateToProfile,
   onNavigateToEvents,
-  onNavigateToAula,
-  aulaHasUnread = false,
-  onNavigateToMojPlan,
-  onNavigateToDzis,
-  onNavigateToZnizki,
-  onNavigateToUsos,
-  onNavigateToMiejsca,
   onNavigateToSearch,
   onNavigateToUser,
   onNavigateToPost,
@@ -80,14 +66,13 @@ export default function Header({
   onOpenProfileModal,
   onNavigateToSettings,
   onRefreshPosts,
+  onOpenMobileDrawer,
 }: Props) {
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
   const { theme: colorMode, toggleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
-  const [clubsModalOpen, setClubsModalOpen] = useState(false)
-  const { clubs, loading: clubsLoading, error: clubsError, reload: reloadClubs } = useClubs()
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
 
   useEffect(() => {
@@ -132,22 +117,20 @@ export default function Header({
       }`}
     >
       <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
-        {/* Ikona-lupa nawiguje od razu do `/search` (SearchDashboard) — bez
-         *  pośredniego overlaya, żeby uniknąć podwójnego UI i utrzymać spójne
-         *  kolory motywu (light/dark/uj). Pokazywana na `<xl`; od `xl:flex`
-         *  pojawia się pełna kapsuła `OmniSearchHub` w prawej sekcji. */}
-        <div className="block xl:hidden">
+        {/* Burger otwiera `MobileDrawer` z pełną listą sekcji + szukajką. Widoczny
+         *  na `<lg`, bo od `lg` lewy `SideNav` przejmuje rolę nawigacji. */}
+        <div className="block lg:hidden">
           <button
             type="button"
             onClick={() => {
               setMenuOpen(false)
               onCloseNotificationsPanel()
-              onNavigateToSearch()
+              onOpenMobileDrawer()
             }}
-            aria-label="Szukaj"
+            aria-label="Otwórz menu"
             className="w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
           >
-            <Search
+            <Menu
               size={ICONS_MOBILE.bottomNavIconSize}
               strokeWidth={ICONS_MOBILE.bottomNavInactiveStrokeWidth}
               className="shrink-0"
@@ -195,124 +178,6 @@ export default function Header({
             onNavigateToSearch={onNavigateToSearch}
             onNavigateToAulaMessage={onNavigateToAulaMessage}
           />
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false)
-              onCloseNotificationsPanel()
-              setClubsModalOpen(true)
-            }}
-            className="hidden"
-            aria-haspopup="dialog"
-            aria-expanded={clubsModalOpen}
-            aria-label="Koła naukowe"
-          >
-            <Users size={15} strokeWidth={1.95} />
-            <span>Koła Naukowe</span>
-          </button>
-          <button
-            type="button"
-            onClick={onNavigateToDzis}
-            className={`relative inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-[12.5px] font-semibold transition-colors duration-150 ease-in-out ${
-              activeView === 'dzis'
-                ? 'bg-brand-gold text-white shadow-sm dark:bg-brand-gold-bright dark:text-zinc-900'
-                : 'bg-brand-gold/12 text-[#1e293b] hover:bg-brand-gold/20 dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/25'
-            }`}
-            aria-label="Dziś — Twój brief poranny"
-            title="Dziś — przegląd dnia"
-          >
-            <Sparkles size={14} strokeWidth={2.4} />
-            <span>Dziś</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onNavigateToEvents()}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
-              activeView === 'events'
-                ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
-            }`}
-            aria-label="Wydarzenia"
-          >
-            <CalendarDays size={20} strokeWidth={2} />
-          </button>
-
-          <button
-            type="button"
-            onClick={onNavigateToAula}
-            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
-              activeView === 'aula'
-                ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
-            }`}
-            aria-label={aulaHasUnread ? 'Aula — nowe wiadomości' : 'Aula — czat rocznika'}
-          >
-            <GraduationCap size={20} strokeWidth={2} />
-            {aulaHasUnread && (
-              <span
-                className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(232,200,74,0.55)] dark:bg-brand-gold-bright"
-                aria-hidden
-              />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={onNavigateToMojPlan}
-            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
-              activeView === 'mojPlan'
-                ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
-            }`}
-            aria-label="Mój Plan — subskrypcje wykładowców"
-            title="Mój Plan"
-          >
-            <ClipboardList size={20} strokeWidth={2} />
-          </button>
-
-          <button
-            type="button"
-            onClick={onNavigateToZnizki}
-            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
-              activeView === 'znizki'
-                ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
-            }`}
-            aria-label="Couponek UJ — zniżki studenckie"
-            title="Couponek UJ — zniżki"
-          >
-            <Tag size={20} strokeWidth={2} />
-          </button>
-
-          <button
-            type="button"
-            onClick={onNavigateToUsos}
-            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
-              activeView === 'usos'
-                ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
-            }`}
-            aria-label="Rejestracje USOS — alarmy"
-            title="Rejestracje USOS"
-          >
-            <AlarmClock size={20} strokeWidth={2} />
-          </button>
-
-          <button
-            type="button"
-            onClick={onNavigateToMiejsca}
-            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-white/10 ${
-              activeView === 'miejsca'
-                ? 'text-[#1e293b] dark:text-accent-interactive'
-                : 'text-[#1e293b] dark:text-gray-400'
-            }`}
-            aria-label="Miejsca do nauki w Krakowie"
-            title="Miejsca do nauki — live presence"
-          >
-            <BookOpen size={20} strokeWidth={2} />
-          </button>
-
           <button
             type="button"
             onClick={toggleTheme}
@@ -443,14 +308,6 @@ export default function Header({
                   </button>
                   <button
                     role="menuitem"
-                    onClick={() => { setMenuOpen(false); onNavigateToAula() }}
-                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
-                  >
-                    <GraduationCap size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
-                    Aula (czat rocznika)
-                  </button>
-                  <button
-                    role="menuitem"
                     onClick={() => { setMenuOpen(false); onOpenProfileModal() }}
                     className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
@@ -483,16 +340,6 @@ export default function Header({
         </div>
       </div>
     </header>
-
-    <ClubsModal
-      isOpen={clubsModalOpen}
-      onClose={() => setClubsModalOpen(false)}
-      clubs={clubs}
-      loading={clubsLoading}
-      error={clubsError}
-      onRetry={() => void reloadClubs()}
-    />
-
     </>
   )
 }

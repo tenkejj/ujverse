@@ -25,10 +25,9 @@ type SelectedTarget =
 /**
  * useSaleFinder — stan widoku Sale Finder (search + selection + geo).
  *
- * Po przejściu na Campus3DView (mapa 3D + exploded floors) wyrzuciliśmy
- * obsługę floor plans (PNG ImageOverlay) — tabela `uj_building_floor_plans`
- * pozostaje w DB ale UI z niej nie korzysta. Hook jest dalej re-używany
- * przez Campus3D dla search/buildings/geo (via `useCampus3D` adapter).
+ * Bezpośrednio konsumowany przez `SaleFinderView` (route `/sale`). Wcześniej
+ * istniał adapter `useCampus3D` dodający URL-state sync dla 3D exploded view —
+ * po wycięciu fake-3D adapter jest niepotrzebny, selekcja jest efemeryczna.
  *
  * Zachowanie:
  *  - `query` jest debounced 180 ms; podczas debounce'u trzymamy poprzednie

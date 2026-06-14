@@ -78,7 +78,7 @@ export class ContextInjectedBielikAdapter implements LLMProvider {
 
   parseSSEStream(
     stream: ReadableStream<Uint8Array>,
-  ): AsyncGenerator<string, void, void> {
+  ): ReturnType<LLMProvider['parseSSEStream']> {
     return this.delegate.parseSSEStream(stream)
   }
 
