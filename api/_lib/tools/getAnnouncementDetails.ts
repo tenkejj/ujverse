@@ -22,8 +22,7 @@ import { registerTool, type ToolContext } from './registry.js'
 
 const MAX_RESULTS = 3
 const EXCERPT_LENGTH = 200
-const EMPTY_RESULT_MESSAGE =
-  'Nie znalazłem w bazie ogłoszeń pasujących do tego zapytania.'
+const EMPTY_RESULT_MESSAGE = 'Nie znalazłem w bazie ogłoszeń pasujących do tego zapytania.'
 
 const ArgsSchema = z.object({
   query: z
@@ -195,8 +194,8 @@ registerTool<
       properties: {
         query: {
           type: 'string',
-          minLength: 2,
-          maxLength: 200,
+          minimum: 2,
+          maximum: 200,
           description:
             'Zwięzłe zapytanie wyszukiwania (np. "ankieta", "rozliczenia BWA", "stypendium socjalne"). Im konkretniej tym lepsze wyniki.',
         },
