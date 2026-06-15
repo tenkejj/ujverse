@@ -75,6 +75,12 @@ export function useChatSend(): UseChatSendResult {
             // momentu gdy `appendAssistantMessage` dostanie pierwszy chunk
             // i `isTyping` zostanie zresetowany w `finally`.
             useChatStore.getState().setActionLabel(event.label)
+            // Chipy follow-up („Tylko jedzenie", „Co jutro?") przyklejamy
+            // do ostatniej assistant message — wyrenderują się pod nią
+            // jak skończy się streaming.
+            if (event.chips && event.chips.length > 0) {
+              useChatStore.getState().setLastAssistantChips(event.chips)
+            }
             continue
           }
           useChatStore.getState().appendAssistantMessage(event.content)

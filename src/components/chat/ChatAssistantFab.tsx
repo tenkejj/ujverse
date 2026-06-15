@@ -237,6 +237,7 @@ export default function ChatAssistantFab({
           myProfile={myProfile}
           onEditLastUser={handleEditLastUser}
           onRetryLastAssistant={handleRetryLastAssistant}
+          onChipClick={handleSend}
           displayName={displayName}
         />
 

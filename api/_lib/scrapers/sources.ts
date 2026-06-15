@@ -65,7 +65,7 @@ export const FACULTY_SOURCES: FacultySource[] = [
   },
   {
     id: 'polonistyka',
-    url: 'https://polonistyka.uj.edu.pl/komunikaty',
+    url: 'https://polonistyka.uj.edu.pl/dla-studentow',
     parser: 'liferay',
     faculty_departments: ['Wydział Polonistyki'],
     source_label: 'Portal Polonistyki UJ',

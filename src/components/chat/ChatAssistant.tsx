@@ -210,6 +210,7 @@ export default function ChatAssistant({
         displayName={displayName}
         onEditLastUser={handleEditLastUser}
         onRetryLastAssistant={handleRetryLastAssistant}
+        onChipClick={handleSend}
       />
 
       {canClear && (

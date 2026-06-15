@@ -44,7 +44,10 @@ import { buildToolCacheKey } from './_lib/cache.js'
 import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
 import { extractRequestUser } from './_lib/auth.js'
 import { getActionLabel } from './_lib/actionLabels.js'
+import { getFollowUpChips } from './_lib/followUpChips.js'
 import { tryFastPath } from './_lib/fastPath.js'
+import { buildAutoContext } from './_lib/autoContext.js'
+import { detectTroll } from './_lib/trollHandler.js'
 import {
   gate as cbGate,
   recordError as cbRecordError,
@@ -60,6 +63,7 @@ import { kvGetSafe, kvSetSafe } from './_lib/kvCache.js'
 import {
   DEFAULT_GROQ_MODEL,
   GROQ_SMALLTALK_MODEL,
+  withGroqRetry,
   withPersona,
 } from './_lib/llmService.js'
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
@@ -229,7 +233,7 @@ function synthesizeSSEStream(content: string): ReadableStream<Uint8Array> {
  */
 function synthesizeChunkedSSEStream(
   content: string,
-  meta?: { tool: string; label: string } | null,
+  meta?: { tool: string; label: string; chips?: readonly string[] } | null,
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   const CHUNK_SIZE = 80
@@ -497,7 +501,7 @@ function streamFinalContent(finalContent: string): Response {
  */
 function streamFinalContentChunked(
   finalContent: string,
-  meta?: { tool: string; label: string } | null,
+  meta?: { tool: string; label: string; chips?: readonly string[] } | null,
 ): Response {
   const stream = synthesizeChunkedSSEStream(finalContent, meta)
   return new Response(stream, {
@@ -748,7 +752,18 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError(500, 'Internal token-budget invariant violated')
   }
 
-  const conversation: GroqMessage[] = withPersona(pruned)
+  // Auto-context: niewidoczny `system` message z datą/godziną/profilem usera.
+  // Wstrzykiwany jako DRUGI system po personie (`UJVERSE_SYSTEM_PROMPT`)
+  // — Groq łączy multiple `system`-y w spójną tożsamość, a my zyskujemy
+  // sterowanie sytuacyjne („wieczór wtorku" → bot wie czego nie proponować).
+  // Profil cache'owany 5 min w KV, więc DB hit max raz per usera per okno.
+  const autoContext = await buildAutoContext(user.userId, ctx.supabaseAdmin)
+  const personaConversation = withPersona(pruned)
+  const conversation: GroqMessage[] = [
+    personaConversation[0]!,
+    { role: 'system', content: autoContext },
+    ...personaConversation.slice(1),
+  ]
 
   // Tool-call throttling + Intent Routing.
   //
@@ -792,6 +807,23 @@ export default async function handler(req: Request): Promise<Response> {
     '/',
     tools.length,
   )
+
+  // Troll Handler — przed wszystkim co wymaga Groqa. „spierdalaj" / „kurwa"
+  // / „debil" → losowy witty come-back z `trollHandler.ts`, zero LLM calls.
+  // Wcześniej takie wiadomości szły przez tool-decision (waste tokenów),
+  // po czym lądowały w 429 albo „Wolniej, pytasz szybciej…". Teraz: 5ms,
+  // luźna odpowiedź, żaden pieniądz nie spalony.
+  const trollMatch = detectTroll(lastUserText)
+  if (trollMatch.detected) {
+    console.log(
+      '[Troll Handler] match — pattern:',
+      JSON.stringify(trollMatch.matched),
+      '— SKIPPING Groq entirely',
+    )
+    void incrCounter('troll:caught')
+    void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+    return streamFinalContent(trollMatch.comeback)
+  }
 
   // Response cache lookup (Vercel KV) — short-circuit Groqa I Supabase'a,
   // jeśli ten sam tekst poszedł przez nas <300s temu. Pozycjonowane PO
@@ -851,7 +883,10 @@ export default async function handler(req: Request): Promise<Response> {
         await kvSetSafe(responseCacheKey, formatted, RESPONSE_CACHE_TTL_SECONDS)
         // Fragmentowany strumień + meta — klient pokaże „Sprawdzam zniżki…"
         // zamiast losowych thinking-phrases, bo ZNAMY tool name z wyprzedzeniem.
+        // Chipy follow-up („Tylko jedzenie", „Co jutro?") deterministyczne
+        // per tool — klikalne pod wiadomością, zero LLM calls.
         const fastPathLabel = getActionLabel(fastMatch.toolName)
+        const fastPathChips = getFollowUpChips(fastMatch.toolName)
         void incrCounter('fast_path:hit')
         void incrCounter(`fast_path:tool:${fastMatch.toolName}`)
         void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
@@ -859,7 +894,11 @@ export default async function handler(req: Request): Promise<Response> {
         return streamFinalContentChunked(
           formatted,
           fastPathLabel
-            ? { tool: fastMatch.toolName, label: fastPathLabel }
+            ? {
+                tool: fastMatch.toolName,
+                label: fastPathLabel,
+                chips: fastPathChips,
+              }
             : null,
         )
       } catch (err) {
@@ -904,20 +943,21 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     type Completion = Awaited<ReturnType<GroqProvider['completeWithTools']>>
     let completion: Completion | null = null
-    // Mały model dla ścieżki SMALL-TALK (brak tools, „cześć/dzięki/spoko").
-    // qwen3-32b kosztowałby ~5× więcej i odpowiadał ~3× wolniej dla
-    // 4-słownej grzeczności. Cap też niżej (200 tok) — small-talk reply
-    // nigdy nie potrzebuje więcej.
+    // Mały model dla ścieżki SMALL-TALK (brak tools, „cześć/dzięki/co u Ciebie").
+    // qwen3-32b kosztowałby ~5× więcej i odpowiadał ~3× wolniej dla luźnej
+    // pogawędki. Cap 400 tok — z nową luźną personą model dorzuca komentarze
+    // / żarty / wyjaśnienia („balić auli to...") i wcześniejsze 200 ucinało
+    // odpowiedzi w pół słowa. 400 tok = ~7-8 zdań PL, max comfort.
     const isSmallTalkPath = !useTools
     const completeOpts = isSmallTalkPath
-      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 200 }
+      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 400 }
       : undefined
     if (isSmallTalkPath) {
       void incrCounter('groq:small_talk_path')
       console.log(
         '[Groq] small-talk path — model:',
         GROQ_SMALLTALK_MODEL,
-        '| maxTokens: 200',
+        '| maxTokens: 400',
       )
     }
     // Circuit breaker — gdy ostatnie N requestów do Groqa padło 429/5xx,
@@ -941,10 +981,12 @@ export default async function handler(req: Request): Promise<Response> {
       void incrCounter('groq:cb:probe')
     }
     try {
-      completion = await provider.completeWithTools(
-        conversation,
-        effectiveTools,
-        completeOpts,
+      // Wrap w `withGroqRetry`: 3 próby z exponential backoff dla 429/5xx +
+      // transport errors. Free tier Groqa ma niskie RPM (Llama 8B = 30/min),
+      // więc szybki burst zapytań od jednego usera potrafi wpaść w 429.
+      // Cichy retry (~500ms / ~1s / ~2s) zwykle ten window oczekuje.
+      completion = await withGroqRetry(() =>
+        provider.completeWithTools(conversation, effectiveTools, completeOpts),
       )
       // Sukces probe'a → CB wraca do CLOSED. Sukces zwykłego requestu też
       // czyści `open_until` (no-op gdy klucza i tak nie było). Tani write.
@@ -1007,7 +1049,7 @@ export default async function handler(req: Request): Promise<Response> {
         // sekwencyjnym for.
         const sections = await Promise.all(
           toolCalls.map(async (call) => {
-            const result = await runToolCall(call, ctx)
+          const result = await runToolCall(call, ctx)
             return synthesizeFinalAnswer(
               call.function.name,
               result,
@@ -1102,10 +1144,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Chunkowany strumień — klient widzi napływające delty zamiast „bęc całość".
   // Spójność z fast-path'em (oba zwracają fragmentowane SSE), typewriter ma
-  // naturalny feed. Dorzucamy meta event z `tool` + `label` jeśli wiemy,
-  // którego narzędzia model użył — UI pokaże „Sprawdzam zniżki…" zamiast
-  // losowych „Myślę…".
+  // naturalny feed. Dorzucamy meta event z `tool` + `label` (UI pokaże
+  // „Sprawdzam zniżki…" zamiast losowych „Myślę…") + `chips` (klikalne
+  // sugestie pod wiadomością — szybki next-step bez pisania).
   const finalLabel = executedToolName ? getActionLabel(executedToolName) : null
+  const finalChips = executedToolName ? getFollowUpChips(executedToolName) : []
   void incrCounter('groq:served')
   if (executedToolName) {
     void incrCounter(`groq:tool:${executedToolName}`)
@@ -1118,7 +1161,7 @@ export default async function handler(req: Request): Promise<Response> {
   return streamFinalContentChunked(
     guardedContent,
     executedToolName && finalLabel
-      ? { tool: executedToolName, label: finalLabel }
+      ? { tool: executedToolName, label: finalLabel, chips: finalChips }
       : null,
   )
 }

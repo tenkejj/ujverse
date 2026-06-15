@@ -46,7 +46,7 @@ type OpenRouterDeltaChunk = {
 }
 
 type MetaChunk = {
-  meta: { tool: string; label: string }
+  meta: { tool: string; label: string; chips?: readonly string[] }
 }
 
 function isOpenRouterDeltaChunk(value: unknown): value is OpenRouterDeltaChunk {
@@ -64,8 +64,13 @@ function isMetaChunk(value: unknown): value is MetaChunk {
   if (!value || typeof value !== 'object') return false
   const meta = (value as { meta?: unknown }).meta
   if (!meta || typeof meta !== 'object') return false
-  const m = meta as { tool?: unknown; label?: unknown }
-  return typeof m.tool === 'string' && typeof m.label === 'string'
+  const m = meta as { tool?: unknown; label?: unknown; chips?: unknown }
+  if (typeof m.tool !== 'string' || typeof m.label !== 'string') return false
+  if (m.chips !== undefined) {
+    if (!Array.isArray(m.chips)) return false
+    if (!m.chips.every((c) => typeof c === 'string')) return false
+  }
+  return true
 }
 
 function extractDelta(chunk: OpenRouterDeltaChunk): string {
@@ -206,7 +211,12 @@ export class BielikAdapter implements LLMProvider {
     }
 
     if (isMetaChunk(parsed)) {
-      return { type: 'meta', tool: parsed.meta.tool, label: parsed.meta.label }
+      return {
+        type: 'meta',
+        tool: parsed.meta.tool,
+        label: parsed.meta.label,
+        chips: parsed.meta.chips,
+      }
     }
     if (isOpenRouterDeltaChunk(parsed)) {
       const content = extractDelta(parsed)

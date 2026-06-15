@@ -27,6 +27,7 @@ import { motion } from 'framer-motion'
 import { Plus, Send, Square } from 'lucide-react'
 import type { Profile } from '../../types'
 import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
+import { buildWelcomeOpener } from '../../lib/welcomeOpener'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import {
@@ -64,12 +65,6 @@ type Props = {
   myProfile?: Profile | null
 }
 
-function firstNameFrom(displayName: string): string {
-  const trimmed = displayName.trim()
-  if (!trimmed) return ''
-  return trimmed.split(/\s+/)[0] ?? ''
-}
-
 export default function ChatHubView({ displayName, myProfile }: Props) {
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
@@ -99,7 +94,13 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
     () => messages.some((m) => m.role !== 'system'),
     [messages],
   )
-  const firstName = useMemo(() => firstNameFrom(displayName), [displayName])
+  // Welcome opener — dynamiczne powitanie zależne od pory dnia / dnia tygodnia.
+  // `useMemo` z deps na `displayName` daje JEDEN losowy wybór per render-cykl
+  // (nowe wejście = nowa para headline/subline, ale stabilne podczas używania).
+  const welcome = useMemo(
+    () => buildWelcomeOpener(displayName),
+    [displayName],
+  )
 
   useEffect(() => {
     const el = scrollRef.current
@@ -312,6 +313,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               scrollable={false}
               onEditLastUser={handleEditLastUser}
               onRetryLastAssistant={handleRetryLastAssistant}
+              onChipClick={handleSend}
             />
           </div>
         </div>
@@ -333,7 +335,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               transition={{ duration: 0.45, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
               className="bg-linear-to-br from-logo-navy to-logo-navy/60 bg-clip-text pb-1 text-3xl leading-tight font-semibold tracking-tight text-transparent md:text-4xl dark:from-brand-gold-bright dark:to-brand-gold-bright/55"
             >
-              {firstName ? `Witaj, ${firstName}.` : 'Witaj.'}
+              {welcome.headline}
             </motion.h1>
 
             <motion.p
@@ -342,7 +344,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               transition={{ duration: 0.45, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
               className="mt-2 text-base text-fg-secondary md:text-lg"
             >
-              W czym mogę dziś pomóc?
+              {welcome.subline}
             </motion.p>
 
             <motion.div

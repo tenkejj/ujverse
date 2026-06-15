@@ -68,6 +68,12 @@ type Props = {
    */
   onRetryLastAssistant?: () => void
   /**
+   * Klik w chip follow-up („Tylko jedzenie", „Co jutro?") pod ostatnią
+   * assistant message → parent wysyła tekst chipa jako nowe pytanie.
+   * `undefined` = chipy się nie renderują (np. embedded preview).
+   */
+  onChipClick?: (text: string) => void
+  /**
    * Czy lista ma sama trzymać scroll (`overflow-y-auto` + stick-to-bottom
    * observer). Domyślnie `true` — pasuje do wyspy (`ChatAssistant`) i FAB-a
    * (`ChatAssistantFab`), gdzie rodzic ma zafiksowaną wysokość i to lista
@@ -190,6 +196,7 @@ function MessageBubble({
   displayName,
   onEditUser,
   onRetryAssistant,
+  onChipClick,
 }: {
   message: ChatMessage
   variant: MessageListVariant
@@ -204,6 +211,8 @@ function MessageBubble({
   onEditUser?: (text: string) => void
   /** Callback do retry — parent wysyła ostatnią user message ponownie. */
   onRetryAssistant?: () => void
+  /** Callback do kliku w chip — parent wysyła tekst chipa jako nowe pytanie. */
+  onChipClick?: (text: string) => void
 }) {
   const isUser = message.role === 'user'
   const isEmptyAssistant =
@@ -267,6 +276,17 @@ function MessageBubble({
               showRetry={isLastAssistant}
               onRetry={onRetryAssistant}
             />
+          ) : null}
+          {/* Chipy follow-up — tylko OSTATNIA assistant message po skończeniu
+              streamu. Klik → parent wysyła tekst chipa jako nowe pytanie.
+              Nie pokazujemy podczas pisania (rozprasza) ani dla starszych
+              wiadomości (chipy są kontekstowe do AKTUALNEGO punktu rozmowy). */}
+          {!isStreaming &&
+          isLastAssistant &&
+          message.chips &&
+          message.chips.length > 0 &&
+          onChipClick ? (
+            <FollowUpChips chips={message.chips} onClick={onChipClick} />
           ) : null}
         </div>
       </div>
@@ -365,6 +385,48 @@ function AssistantMessageActions({
 }
 
 /**
+ * Follow-Up Chips — klikalne sugestie wyświetlane pod ostatnią assistant
+ * message. Tekst chipa to faktyczne zapytanie wysyłane jako nowa user
+ * message po kliknięciu (server widzi je jak normalny input).
+ *
+ * Wizualnie: pigułki w paskownicy poniżej action-row, w stylu UJverse
+ * (zinc/gold). Zawijają się (`flex-wrap`) — przy 3 chipach na wąskim
+ * mobile mogą iść w 2 rzędy, ale lepiej to niż horizontal scroll.
+ *
+ * Animacja: lekki fade-in po pojawieniu się (chipy lecą po skończeniu
+ * streamu, więc user zobaczy je „dorzucone" do pełnej odpowiedzi).
+ */
+function FollowUpChips({
+  chips,
+  onClick,
+}: {
+  chips: readonly string[]
+  onClick: (text: string) => void
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="mt-2.5 flex flex-wrap gap-1.5"
+      role="group"
+      aria-label="Sugerowane pytania"
+    >
+      {chips.map((chip) => (
+        <button
+          key={chip}
+          type="button"
+          onClick={() => onClick(chip)}
+          className="rounded-full border border-zinc-200 bg-white/80 px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:border-logo-navy/40 hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+        >
+          {chip}
+        </button>
+      ))}
+    </motion.div>
+  )
+}
+
+/**
  * Typing indicator — ikonka Bota animowana w framer-motion + trzy mini-kropki
  * pulsujące sekwencyjnie. Bez tekstu — sama animacja niesie informację, że
  * asystent myśli (language-agnostic, kompaktowe).
@@ -394,13 +456,16 @@ const TYPING_DOT_DELAYS = [0, 0.2, 0.4] as const
  * w obu wariantach (compact 14px, roomy 16px).
  */
 const THINKING_PHRASES: readonly string[] = [
-  'Już patrzę',
-  'Sprawdzam bazę',
-  'Łapię świeże dane',
-  'Składam odpowiedź',
-  'Jeszcze chwila',
-  'Czytam to dla Ciebie',
+  'Sekundka',
+  'Już lecę',
+  'Patrzę co tam',
+  'Daj chwilę',
+  'Łapię to',
+  'Zaraz coś rzucę',
   'Już prawie',
+  'Już mam',
+  'Robi się',
+  'Moment',
 ] as const
 
 function TypingIndicator({
@@ -532,6 +597,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     actionLabel = null,
     onEditLastUser,
     onRetryLastAssistant,
+    onChipClick,
   },
   forwardedRef,
 ) {
@@ -628,6 +694,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
                   displayName={displayName}
                   onEditUser={onEditLastUser}
                   onRetryAssistant={onRetryLastAssistant}
+                  onChipClick={onChipClick}
                 />
               )
             })

@@ -13,6 +13,13 @@ export type ChatMessage = {
   content: string
   /** `Date.now()` ms — kolejność wiadomości w RAM-ie. */
   createdAt: number
+  /**
+   * Sugerowane follow-up actions (chipy) dla TEJ wiadomości — przyszło z
+   * SSE meta-eventu. Renderowane pod ostatnią assistant message; klik =
+   * wstawienie tekstu chipa do composera + send. Tylko dla `role: 'assistant'`.
+   * `undefined` = brak chipów (np. small-talk, fast-path bez toola).
+   */
+  chips?: readonly string[]
 }
 
 /**
@@ -42,7 +49,13 @@ export type ChatConfig = {
  */
 export type ParsedSSEEvent =
   | { type: 'delta'; content: string }
-  | { type: 'meta'; tool: string; label: string }
+  | {
+      type: 'meta'
+      tool: string
+      label: string
+      /** Klikalne sugestie follow-up („Tylko jedzenie", „Co jutro?"). */
+      chips?: readonly string[]
+    }
 
 export interface LLMProvider {
   sendMessage(

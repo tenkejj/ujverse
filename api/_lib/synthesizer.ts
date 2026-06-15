@@ -23,7 +23,7 @@ import {
   GroqProvider,
   type GroqUsage,
 } from './GroqProvider.js'
-import { GROQ_SMALLTALK_MODEL } from './llmService.js'
+import { GROQ_SMALLTALK_MODEL, withGroqRetry } from './llmService.js'
 import type { GroqMessage } from './types.js'
 
 // =============================================================================
@@ -133,20 +133,26 @@ export async function synthesizeAnswer(
     { role: 'user', content: userParts.join('\n') },
   ]
 
-  const result = await provider.completeWithTools(messages, [], {
-    model: GROQ_SMALLTALK_MODEL,
-    // Większy budżet bo dopuszczamy krótki komentarz/reakcję (np. „całkiem
-    // przyzwoicie", „akurat blisko centrum"). 320 tok = ~6-7 zdań PL z
-    // luzem, więcej niż starczy dla typowych 1-3 wyników i wystarczy
-    // dla 5+ wyników z krótkimi komentarzami.
-    maxTokens: 320,
-    // Wyższa temperatura → mniej powtarzalne formy, więcej naturalnych
-    // wariacji ("Pizzy taniej?" vs "Pod pizzę masz parę miejsc" vs „Tanio
-    // na pizzę: ..."). 0.75 to sweet spot dla Llama 8B w PL — niżej brzmi
-    // robotycznie, wyżej zaczyna kombinować ze słownictwem.
-    temperature: 0.75,
-    toolChoice: 'none',
-  })
+  // `withGroqRetry`: 3 próby z exp. backoff dla 429/5xx. Llama 8B free tier
+  // = 30 RPM — szybki burst zapytań od jednego usera potrafi wpaść w 429,
+  // a tutaj jesteśmy już PO tool call, więc fallback na surowe fakty
+  // wyglądałby topornie. Cichy retry ratuje doświadczenie.
+  const result = await withGroqRetry(() =>
+    provider.completeWithTools(messages, [], {
+      model: GROQ_SMALLTALK_MODEL,
+      // Budżet z zapasem — z luźną personą model dodaje komentarze
+      // („całkiem przyzwoicie", „akurat blisko centrum") i przy 5+ wynikach
+      // potrzebuje miejsca na wszystkie + krótkie reakcje. 400 tok = ~8 zdań
+      // PL z luzem, eliminuje cięcia w pół słowa typu „bez zbędnego kopi[owania]".
+      maxTokens: 400,
+      // Wyższa temperatura → mniej powtarzalne formy, więcej naturalnych
+      // wariacji ("Pizzy taniej?" vs "Pod pizzę masz parę miejsc" vs „Tanio
+      // na pizzę: ..."). 0.75 to sweet spot dla Llama 8B w PL — niżej brzmi
+      // robotycznie, wyżej zaczyna kombinować ze słownictwem.
+      temperature: 0.75,
+      toolChoice: 'none',
+    }),
+  )
 
   const content =
     typeof result.message.content === 'string'

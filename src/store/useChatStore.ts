@@ -33,6 +33,12 @@ type ChatState = {
   actionLabel: string | null
   addMessage: (msg: NewMessage) => string
   appendAssistantMessage: (chunk: string) => void
+  /**
+   * Ustawia chipy follow-up dla OSTATNIEJ assistant message. Wywoływane
+   * z `useChatSend` gdy SSE meta-event zawiera `chips`. No-op gdy brak
+   * assistant message do oznaczenia.
+   */
+  setLastAssistantChips: (chips: readonly string[]) => void
   setTyping: (value: boolean) => void
   setError: (value: string | null) => void
   setOpen: (value: boolean) => void
@@ -90,6 +96,25 @@ export const useChatStore = create<ChatState>((set) => ({
       const target = state.messages[lastIndex]
       if (!target) return state
       const updated: ChatMessage = { ...target, content: target.content + chunk }
+      const nextMessages = state.messages.slice()
+      nextMessages[lastIndex] = updated
+      return { messages: nextMessages }
+    })
+  },
+
+  setLastAssistantChips: (chips) => {
+    set((state) => {
+      let lastIndex = -1
+      for (let i = state.messages.length - 1; i >= 0; i--) {
+        if (state.messages[i]?.role === 'assistant') {
+          lastIndex = i
+          break
+        }
+      }
+      if (lastIndex === -1) return state
+      const target = state.messages[lastIndex]
+      if (!target) return state
+      const updated: ChatMessage = { ...target, chips }
       const nextMessages = state.messages.slice()
       nextMessages[lastIndex] = updated
       return { messages: nextMessages }

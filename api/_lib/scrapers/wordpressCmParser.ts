@@ -34,15 +34,32 @@ import {
 } from './utils.js'
 import type { ParsedAnnouncement } from './types.js'
 
+/**
+ * Selektory artykułów - uporządkowane od najbardziej specyficznych do generycznych.
+ *
+ * 3 portale CM (wl, wnz, farmacja) używają plugina Spectra/UAGB (Ultimate
+ * Addons for Gutenberg), który wystawia listings przez block `uagb-post-grid`
+ * z elementami `<article class="uagb-post__inner-wrap">`. Standardowe WP
+ * theme'y (np. Astra base bez plugina) dają klasyczne `article.post`.
+ * Trzymamy oba żeby parser działał uniwersalnie - jeśli wydział zmieni
+ * plugin, zostanie wykryty drugim setem.
+ */
 const POST_SELECTORS = [
+  // Spectra/UAGB plugin (3 portale CM: wl, wnz, farmacja).
+  'article.uagb-post__inner-wrap',
+  // Klasyczny WordPress (post archive / blog index).
   'article.post',
   'article.type-post',
+  // Inne custom WP card layouts.
   '.post-card',
   '.news-card',
   '.posts-list .post',
 ] as const
 
 const TITLE_SELECTORS = [
+  // Spectra/UAGB - tytuł w h4 z linkiem.
+  '.uagb-post__title a, .uagb-post__title',
+  // Klasyczny WordPress.
   '.entry-title a, .entry-title',
   'h2.post-title a, h2.post-title',
   'h3.post-title a, h3.post-title',
@@ -51,13 +68,26 @@ const TITLE_SELECTORS = [
 ] as const
 
 const BODY_SELECTORS = [
+  // Spectra/UAGB - excerpt dedykowany przez plugin.
+  '.uagb-post__excerpt',
+  '.uagb-post__text.uagb-post__excerpt',
+  // Klasyczny WordPress.
   '.entry-content',
   '.entry-summary',
   '.post-content',
   '.post-excerpt',
 ] as const
 
-const LINK_SELECTORS = ['.entry-title a', 'h2 a', 'h3 a', '.more-link', 'a.read-more'] as const
+const LINK_SELECTORS = [
+  // Spectra/UAGB.
+  '.uagb-post__title a',
+  // Klasyczny WordPress.
+  '.entry-title a',
+  'h2 a',
+  'h3 a',
+  '.more-link',
+  'a.read-more',
+] as const
 
 function pickFirstText($el: Cheerio<Element>, selectors: readonly string[]): string | null {
   for (const sel of selectors) {
