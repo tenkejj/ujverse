@@ -29,6 +29,11 @@ const ACTION_LABEL_VARIANTS: Record<ToolName, readonly string[]> = {
     'Patrzę co nowego z UJ',
     'Sprawdzam komunikaty',
   ],
+  get_announcement_details: [
+    'Szukam tego konkretnego ogłoszenia',
+    'Wertuję komunikaty',
+    'Patrzę w treść',
+  ],
   get_latest_posts: [
     'Zaglądam na feed',
     'Patrzę co tam ludzie piszą',

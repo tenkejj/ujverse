@@ -13,6 +13,7 @@
  */
 
 import './getLatestAnnouncements.js'
+import './getAnnouncementDetails.js'
 import './searchEvents.js'
 import './getLatestPosts.js'
 import './getCalendarInRange.js'

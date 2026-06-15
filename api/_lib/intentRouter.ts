@@ -28,6 +28,7 @@
 export type ToolName =
   | 'search_events'
   | 'get_latest_announcements'
+  | 'get_announcement_details'
   | 'get_latest_posts'
   | 'get_calendar_in_range'
   | 'search_discounts'
@@ -55,6 +56,7 @@ const INTENT_TO_TOOLS: Record<string, ToolName[]> = {
   briefing: ['get_my_weekly_briefing'],
   usos: ['get_upcoming_usos_registrations'],
   announcements: ['get_latest_announcements'],
+  announcement_details: ['get_announcement_details', 'get_latest_announcements'],
   posts: ['get_latest_posts'],
   find_user: ['find_user'],
   me: ['get_my_user_context'],
@@ -176,6 +178,32 @@ const INTENT_KEYWORDS: Record<string, readonly string[]> = {
     'wpia',
     'wfais',
     'wbbib',
+  ],
+  // RAG search nad full-body ogloszen. Trigger gdy user pyta o KONKRET
+  // ("co bylo w mailu o ankiecie", "termin rozliczen z BWA", "ten
+  // komunikat o ..."), nie o liste najnowszych.
+  announcement_details: [
+    'co było w',
+    'co bylo w',
+    'co dokładnie',
+    'co dokladnie',
+    'co napisali o',
+    'co napisali w',
+    'więcej info',
+    'wiecej info',
+    'szczegół',
+    'szczegol',
+    'jaki jest termin',
+    'kiedy jest termin',
+    'co z tym',
+    'ten komunikat',
+    'ten mail',
+    'tamto ogłosz',
+    'tamto oglosz',
+    'pamiętasz to ogłosz',
+    'pamietasz to oglosz',
+    'jakie są warunki',
+    'jakie sa warunki',
   ],
   posts: [
     'feed',

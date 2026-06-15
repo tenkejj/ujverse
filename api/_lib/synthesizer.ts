@@ -300,6 +300,8 @@ export function buildToolFacts(
       return buildSearchEventsFacts(result)
     case 'get_latest_announcements':
       return buildAnnouncementsFacts(result)
+    case 'get_announcement_details':
+      return buildAnnouncementDetailsFacts(result)
     case 'get_latest_posts':
       return buildPostsFacts(result)
     case 'get_calendar_in_range':
@@ -487,6 +489,57 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
     facts,
     hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
     topicHint: 'Komunikaty wykładowców UJ (nieobecności, zmiany sal itd.).',
+  }
+}
+
+// -----------------------------------------------------------------------------
+// get_announcement_details — RAG search nad full-body
+// -----------------------------------------------------------------------------
+
+function buildAnnouncementDetailsFacts(result: unknown): ToolFactsResult {
+  // Tool moze zwrocic surowy string ("Nie znalazlem ...") — direct passthrough.
+  if (typeof result === 'string') {
+    return { kind: 'direct', text: result }
+  }
+  const rawItems = getItemsArray(result)
+  if (!rawItems || rawItems.length === 0) {
+    return {
+      kind: 'direct',
+      text: 'Nic mi się nie pasuje do tego zapytania w bazie ogłoszeń.',
+    }
+  }
+  // Top 3 - synthesizer ma material zeby zlozyc zwiezla odpowiedz na konkret.
+  const items = rawItems.slice(0, 3)
+  const query =
+    typeof result === 'object' && result !== null
+      ? pickString(result, 'query')
+      : ''
+
+  const facts = items
+    .map((item) => {
+      const lecturer = pickString(item, 'lecturer_name') || 'ktoś z kadry'
+      const statusKey = pickString(item, 'status')
+      const statusPl = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey
+      const dept = pickStringOrNull(item, 'department')
+      const createdAt = pickStringOrNull(item, 'created_at')
+      const excerpt = pickString(item, 'body_excerpt')
+      const hasFull = pickBool(item, 'has_full_body')
+
+      const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
+      const deptTag = dept ? ` [${dept}]` : ''
+      // Excerpt juz wycielismy w toolu z markerami "…" - przekazujemy 1:1.
+      // hint dla syntezatora: gdy mamy full_body, mozemy powiedziec "wiecej w mailu".
+      const fullHint = hasFull ? ' [+pełna treść w mailu]' : ''
+      return `${lecturer} ${statusPl}${when}${deptTag}${fullHint} — ${excerpt}`
+    })
+    .join('\n')
+
+  return {
+    kind: 'synthesize',
+    facts,
+    hint: query ? `User pytał o: "${query}"` : null,
+    topicHint:
+      'Konkretne ogłoszenia z bazy ISI UJ — user pyta o detal, nie o liste.',
   }
 }
 

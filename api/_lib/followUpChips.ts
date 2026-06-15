@@ -24,6 +24,7 @@ import type { ToolName } from './intentRouter.js'
 const CHIPS_BY_TOOL: Record<ToolName, readonly string[]> = {
   search_events: ['Jutro też?', 'Tylko za darmo', 'Tylko UJ'],
   get_latest_announcements: ['Tylko mojego kierunku', 'Pokaż starsze'],
+  get_announcement_details: ['Pełna treść', 'Kiedy aktywne?', 'Inne na ten temat'],
   get_latest_posts: ['Pokaż więcej', 'Tylko z dzisiaj'],
   get_calendar_in_range: ['Co po sesji?', 'Tylko egzaminy'],
   search_discounts: ['Tylko jedzenie', 'Bliżej Rynku', 'Pokaż więcej'],
