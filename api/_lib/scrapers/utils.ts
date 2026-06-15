@@ -8,6 +8,7 @@
  * bez ryzyka cross-contamination.
  */
 import crypto from 'node:crypto'
+import type { CheerioAPI } from 'cheerio'
 import type { AnnouncementStatus } from './types.js'
 
 /** Chrome na macOS — wygląda jak zwykła przeglądarka (mniej „bot" w logach WAF). */
@@ -43,6 +44,25 @@ export function cleanupAnnouncementText(text: string): string {
     'Web Accessibility plugin by DJ-Extensions.com',
     '\t\t\t\t            Komunikaty',
     '\t\t\tNawigacja okruszkowa',
+    // DJ-Extensions Web Accessibility plugin (Wydziały CM + niektóre Liferay)
+    // wstawia widget z listą opcji w body, który scraper traktował jako treść.
+    // Zob. https://wnz.cm.uj.edu.pl + https://farmacja.cm.uj.edu.pl markup.
+    'Ułatwienia dostępu',
+    'Odwróć kolory',
+    'Monochromatyczny',
+    'Ciemny kontrast',
+    'Jasny kontrast',
+    'Niskie nasycenie',
+    'Wysokie nasycenie',
+    'Zaznacz linki',
+    'Zaznacz nagłówki',
+    'Czytnik ekranu',
+    'Tryb czytania',
+    'Skalowanie treści',
+    'Wysokość linii',
+    'Odstęp liter',
+    // Typowy footer wydziałowy ("Odwiedź nasze media społecznościowe").
+    'Odwiedź nasze media społecznościowe',
   ]
   for (const phrase of noise) {
     const esc = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -53,6 +73,90 @@ export function cleanupAnnouncementText(text: string): string {
   t = t.replace(/^\s*\n+/, '')
   t = t.replace(/\n{3,}/g, '\n\n')
   return cleanWhitespace(t)
+}
+
+/**
+ * Wykrywa generyczne / nawigacyjne tytuły, które są szumem a nie ogłoszeniem.
+ *
+ * Spotykane przypadki na portalach UJ:
+ *   - "Strona 140" — pochodzi z paginacji Liferaya (`<nav class="pagination">`)
+ *   - "Komunikat wydziałowy" / "Komunikaty" — fallback gdy parser nie złapał
+ *     prawdziwego tytułu (= FALLBACK_LECTURER_NAME)
+ *   - "Aktualności" / "Wiadomości" / "Struktura" — sekcje menu
+ *   - "facebook" / "twitter" / "youtube" — social linki w footerze (anchor text)
+ *   - "Zobacz również" / "Nasze działania" — boxy „related links" w sidebarze
+ *
+ * Tytuły śmieciowe nie powinny tworzyć rekordu w `announcements` — parser
+ * powinien je odrzucić jeszcze przed upsertem.
+ */
+const HEADLINE_JUNK_PATTERNS: RegExp[] = [
+  /^strona\s+\d+$/i,
+  /^komunikat(y)?\s+wydziałow(y|e)$/i,
+  /^aktualności$/i,
+  /^wiadomości$/i,
+  /^komunikaty$/i,
+  /^ogłoszenia$/i,
+  /^struktura$/i,
+  /^pracownicy$/i,
+  /^studia$/i,
+  /^kontakt$/i,
+  /^zobacz\s+również$/i,
+  /^nasze\s+działania$/i,
+  /^przewodnik\s+jakościowy$/i,
+  /^jakość\s+kształcenia(?:\s+na\s+uj)?$/i,
+  /^(facebook|twitter|youtube|instagram|linkedin|tiktok|x)$/i,
+  /^sprawy\s+studentów$/i,
+  /^wydział\s+\S+$/i, // sama nazwa wydziału = sidebar header, nie ogłoszenie
+]
+
+export function isHeadlineJunk(title: string | null | undefined): boolean {
+  if (!title) return false
+  const t = title.trim()
+  if (t.length === 0) return false
+  if (t === FALLBACK_LECTURER_NAME) return true
+  for (const re of HEADLINE_JUNK_PATTERNS) {
+    if (re.test(t)) return true
+  }
+  return false
+}
+
+/**
+ * Wykrywa body składające się z menu / linków nawigacji.
+ *
+ * Heurystyka: body to junk gdy:
+ *   - to lista 3+ krótkich linii (<60 znaków) bez interpunkcji końcowej
+ *     (typowy menu rendering po `text()` na `<ul><li><a>...`)
+ *   - ALBO zawiera 3+ frazy z listy menu klasycznych UJ (np. social, sekcje)
+ *
+ * Nie używać samodzielnie do odrzucenia bez `isHeadlineJunk` lub additional
+ * context — niektóre realne komunikaty są krótkie. Trzymamy konserwatywnie.
+ */
+export function isBodyJunk(body: string): boolean {
+  const trimmed = body.trim()
+  if (trimmed.length === 0) return true
+
+  const lines = trimmed.split(/\n+/).map((l) => l.trim()).filter(Boolean)
+
+  // Menu rendering: >=3 linie, wszystkie krótkie, brak typowych zakończeń zdań
+  if (lines.length >= 3) {
+    const shortNoPunct = lines.every(
+      (l) => l.length <= 60 && !/[.!?]\s*$/.test(l) && !l.includes(','),
+    )
+    if (shortNoPunct) return true
+  }
+
+  // Suma fragmentów social/footer/nav — niezależnie od długości
+  const navTokens = [
+    'facebook', 'twitter', 'youtube', 'instagram', 'linkedin', 'tiktok',
+    'odwiedź nasze media', 'ułatwienia dostępu', 'odwróć kolory',
+    'ciemny kontrast', 'jasny kontrast', 'niskie nasycenie', 'wysokie nasycenie',
+    'czytnik ekranu', 'tryb czytania', 'skalowanie treści',
+  ]
+  const lower = trimmed.toLowerCase()
+  const matched = navTokens.filter((tok) => lower.includes(tok)).length
+  if (matched >= 3) return true
+
+  return false
 }
 
 /** Wzorce typowych fraz przed nazwiskiem w tekście komunikatu (usuwanie szumu). */
@@ -214,6 +318,75 @@ export function junkBlock(block: string, opts: { minLength?: number } = {}): boo
   if (urls && urls.length >= 4 && block.length < 500) return true
   if (/^\s*[-•*]\s+\[/.test(block) && block.includes('rekrutacja')) return true
   return false
+}
+
+/**
+ * Globalna sanitacja DOM-u przed parsowaniem listings. Wycina elementy
+ * nawigacyjne / chrome z całego dokumentu żeby `.find('article')` nie
+ * łapało <article> z paginacji / footer'a / widgetów dostępności.
+ *
+ * Wcześniej parsery przepuszczały:
+ *   - `<nav class="pagination">` z Liferaya → "Strona 140" jako fake komunikat
+ *   - `<nav>` z menu wydziału → "Struktura / Instytut..." jako body
+ *   - `<footer>` z social linkami → "facebook / twitter / youtube" jako body
+ *   - `<div class="djacc">` z DJ Web Accessibility plugin (CM) → "Ułatwienia
+ *     dostępu / Odwróć kolory / ..." jako treść
+ *
+ * Wywoływać RAZ na początku `parse*` po `load(html)`, przed jakimkolwiek
+ * `.find()`. Mutuje `$` in-place (cheerio modyfikuje shared tree).
+ */
+export function stripChromeFromDom($: CheerioAPI): void {
+  const selectors = [
+    // Top-level chrome
+    'nav',
+    'header',
+    'footer',
+    'aside',
+    'script',
+    'style',
+    'noscript',
+
+    // Liferay specifics
+    '.breadcrumbs',
+    '.breadcrumb',
+    '.pagination',
+    '.portlet-title',
+    '.portlet-footer',
+    '.controls',
+
+    // DJ-Extensions Web Accessibility plugin (3 wydziały CM + niektóre inne)
+    '.djacc',
+    '.djacc__list',
+    '.djacc__item',
+    '[class*="djacc"]',
+
+    // Generic WP / Astra theme chrome
+    '.site-header',
+    '.site-footer',
+    '.main-navigation',
+    '.menu-main-menu',
+    '.widget-area',
+    '.sidebar',
+    '#sidebar',
+    '#secondary',
+    '.comments-area',
+
+    // Cookie / accessibility banners
+    '[id*="cookie"]',
+    '[class*="cookie"]',
+    '.dpa-popup',
+
+    // Generic ARIA roles
+    '[role="navigation"]',
+    '[role="contentinfo"]',
+    '[role="banner"]',
+    '[aria-label*="menu" i]',
+    '[aria-label*="paginacja" i]',
+    '[aria-label*="pagination" i]',
+  ]
+  for (const sel of selectors) {
+    $(sel).remove()
+  }
 }
 
 /**

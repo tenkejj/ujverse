@@ -30,7 +30,10 @@ import {
   detectGenericStatus,
   extractLecturer,
   FALLBACK_LECTURER_NAME,
+  isBodyJunk,
+  isHeadlineJunk,
   junkBlock,
+  stripChromeFromDom,
 } from './utils.js'
 import type { ParsedAnnouncement } from './types.js'
 
@@ -144,6 +147,9 @@ function extractFromPosts(
       // Card-style listings często mają sam tytuł + " Czytaj więcej" —
       // odrzucamy jeśli body to praktycznie sam tytuł.
       if (title && body.length < title.length + 20) return
+      // Tytuł lub body to nawigacja / footer / widget dostępności — junk.
+      if (isHeadlineJunk(title)) return
+      if (isBodyJunk(body)) return
 
       rows.push({
         body,
@@ -207,6 +213,9 @@ function extractFromHeadings(
     const body = cleanupAnnouncementText(bodyParts.join('\n\n') || titleText)
     if (junkBlock(body, { minLength: 30 })) return
     if (body === titleText && !url) return
+    // Heading może być nazwą sekcji menu albo widget dostępności.
+    if (isHeadlineJunk(titleText)) return
+    if (isBodyJunk(body)) return
 
     rows.push({
       body,
@@ -228,6 +237,11 @@ export function parseWordpressCm(
   ctx: { baseUrl: string; department: string; source: string },
 ): ParsedAnnouncement[] {
   const $ = load(html)
+  // Wycinamy nawigację / footer / sidebar / widget dostępności PRZED
+  // parsowaniem żeby `<article>` z sidebar'a i widget DJ-Extensions nie
+  // tworzyły fake komunikatów (np. "Przerwa w pracy dziekanatu" z body
+  // składającym się z opcji "Ułatwienia dostępu / Odwróć kolory / ...").
+  stripChromeFromDom($)
   const fromPosts = extractFromPosts($, ctx.baseUrl, ctx)
   if (fromPosts.length > 0) return fromPosts
   return extractFromHeadings($, ctx.baseUrl, ctx)
