@@ -21,6 +21,7 @@
 
 import {
   GroqProvider,
+  type GroqStreamChunk,
   type GroqUsage,
 } from './GroqProvider.js'
 import { GROQ_SMALLTALK_MODEL, withGroqRetry } from './llmService.js'
@@ -187,6 +188,58 @@ export async function synthesizeAnswer(
     text: content,
     usage: result.usage,
   }
+}
+
+/**
+ * Streaming wariant `synthesizeAnswer` — emituje delty Llama 8B w locie,
+ * zamiast czekać na cały tekst. Caller (orchestrator w `api/chat.ts`)
+ * konsumuje delty SSE i przepisuje je w swoim formacie do klienta —
+ * **pierwsze tokeny widoczne u usera ~200-400ms zamiast ~1500ms TTFB**.
+ *
+ * Zwraca AsyncGenerator `GroqStreamChunk` (delta / done / error). Caller
+ * powinien buforować całość do KV cache + markdown guard po `done`.
+ *
+ * NIE używamy `withGroqRetry` w streamie — retry SSE jest skomplikowany
+ * (już mogliśmy wysłać delty do klienta). Caller decyduje o fallbacku:
+ * przy wyjątku z `streamAnswer` wraca do non-streaming `synthesizeAnswer`
+ * i robi normalny chunked fallback.
+ */
+export async function* streamAnswer(
+  opts: SynthesisOptions,
+): AsyncGenerator<GroqStreamChunk, void, void> {
+  const { userQuery, facts, hint, topicHint, provider, recentOpeners } = opts
+
+  const userParts: string[] = [
+    `Pytanie usera: ${userQuery}`,
+    `Kontekst: ${topicHint}`,
+    'Fakty (każda linia = jeden wynik):',
+    facts,
+  ]
+  if (hint) {
+    userParts.push(`Wskazówka na koniec (opcjonalna): ${hint}`)
+  }
+  if (recentOpeners && recentOpeners.length > 0) {
+    const quoted = recentOpeners
+      .slice(0, 3)
+      .map((o) => `"${o}"`)
+      .join(', ')
+    userParts.push(
+      `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
+    )
+  }
+  userParts.push('Odpowiedz po polsku, krótko, naturalnie.')
+
+  const messages: GroqMessage[] = [
+    { role: 'system', content: SYNTHESIS_SYSTEM_PROMPT },
+    { role: 'user', content: userParts.join('\n') },
+  ]
+
+  yield* provider.streamCompletion(messages, [], {
+    model: GROQ_SMALLTALK_MODEL,
+    maxTokens: 400,
+    temperature: 0.75,
+    toolChoice: 'none',
+  })
 }
 
 // =============================================================================

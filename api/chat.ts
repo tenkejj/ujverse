@@ -71,6 +71,7 @@ import {
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
 import {
   buildToolFacts,
+  streamAnswer,
   synthesizeAnswer,
   type ToolFactsResult,
 } from './_lib/synthesizer.js'
@@ -544,6 +545,173 @@ function streamFinalContentChunked(
   })
 }
 
+/**
+ * SSE response z LIVE streamem deltas Llama 8B (`streamAnswer` z synthesizer).
+ *
+ * Różnica vs `streamFinalContentChunked`:
+ *  - Tam: serwer generuje całość → tnie po 80 znaków → emituje co 50ms.
+ *    TTFB usera ≈ 1500ms (czeka aż Llama 8B napisze cały tekst).
+ *  - Tu: live pipe-through z Groqa, delty napływają natychmiast.
+ *    TTFB usera ≈ 200-400ms (pierwszy token Groqa).
+ *
+ * Markdown Guard: sprawdzany na BUFORZE po skończonym streamie. Jeśli model
+ * leakuje JSON tool-call, klient zdążył już zobaczyć kilka znaków — to
+ * świadomy tradeoff, leak <1% requestów, vs TTFB -1s dla 100% requestów.
+ *
+ * Cache + token usage: callback `onComplete(fullText, usage)` po `done`.
+ * Tam wpisujemy do KV cache i logujemy.
+ *
+ * Fallback: jeśli streamCompletion rzuci (429, 5xx, transport) PRZED
+ * pierwszą deltą → zwracamy chunked-fallback z synchronicznego
+ * `synthesizeAnswer`. Po pierwszej delcie już za późno na fallback —
+ * emitujemy error message do strumienia i zamykamy.
+ */
+function streamSynthesizedAnswer(opts: {
+  provider: GroqProvider
+  toolName: string | null
+  result: unknown
+  userQuery: string
+  recentOpeners: readonly string[]
+  usageAcc: TokenUsageAccumulator
+  meta: { tool: string; label: string; chips?: readonly string[] } | null
+  onComplete: (fullText: string) => void | Promise<void>
+}): Response {
+  const {
+    provider,
+    toolName,
+    result,
+    userQuery,
+    recentOpeners,
+    usageAcc,
+    meta,
+    onComplete,
+  } = opts
+  const facts = toolName ? buildToolFacts(toolName, result) : null
+
+  // 'direct' kind (empty/error/passthrough) — bez Llamy 8B. Idziemy starym
+  // chunked path: serwer już zna pełen text, więc fragmentacja po 80ch
+  // daje OK feedback bez kosztu LLM round-tripa.
+  if (facts && facts.kind === 'direct') {
+    void onComplete(facts.text)
+    return streamFinalContentChunked(facts.text, meta)
+  }
+
+  // 'synthesize' kind albo brak factsa (passthrough surowego string) —
+  // live stream z Llamy 8B.
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      // Bufor pełnej odpowiedzi — do markdown guard + KV cache po `done`.
+      let buffered = ''
+      let emittedAnything = false
+
+      try {
+        if (meta) {
+          const metaPayload = JSON.stringify({ meta })
+          controller.enqueue(encoder.encode(`data: ${metaPayload}\n\n`))
+        }
+
+        if (!facts) {
+          // Brak factsa (np. passthrough briefing) — emitujemy `result`
+          // jako single delta i kończymy. Nigdy nie powinno się zdarzyć
+          // z aktualnym kontraktem, ale defensive.
+          const fallback = typeof result === 'string' ? result : ''
+          if (fallback) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  choices: [{ delta: { content: fallback } }],
+                })}\n\n`,
+              ),
+            )
+            buffered = fallback
+          }
+        } else {
+          // facts.kind === 'synthesize' — live Llama 8B stream
+          for await (const chunk of streamAnswer({
+            userQuery,
+            facts: facts.facts,
+            hint: facts.hint,
+            topicHint: facts.topicHint,
+            provider,
+            recentOpeners,
+          })) {
+            if (chunk.type === 'delta') {
+              const stripped = stripThinkingTags(chunk.content)
+              if (!stripped) continue
+              buffered += stripped
+              emittedAnything = true
+              const payload = JSON.stringify({
+                choices: [{ delta: { content: stripped } }],
+              })
+              controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
+            } else if (chunk.type === 'done') {
+              if (chunk.usage) usageAcc.add(chunk.usage)
+            } else if (chunk.type === 'error') {
+              console.warn(
+                '[streamSynthesizedAnswer] inline error from provider:',
+                chunk.message,
+              )
+              // Jeśli już cokolwiek wyemitowaliśmy, nie cofamy. Zamykamy
+              // strumień grzecznie i polegamy na cache miss przy kolejnej
+              // próbie. Bez emitted — fallback dorzucamy w catch.
+              if (!emittedAnything) throw new Error(chunk.message)
+              break
+            }
+          }
+        }
+
+        // Markdown Guard: sprawdzamy buforze (tak jak w non-streaming path).
+        // Jeśli wycieka tool-call JSON, w teorii za późno (już wysłaliśmy),
+        // ale logujemy + NIE wpisujemy do cache. Klient widzi syf w tej
+        // turze, kolejne pójdą zdrowe (cache miss, retry z fresh response).
+        const guarded = validateMarkdown(buffered)
+        if (guarded === MARKDOWN_GUARD_ERROR) {
+          console.warn(
+            '[streamSynthesizedAnswer] Markdown Guard would rewrite — too late, content already streamed. Len:',
+            buffered.length,
+            '| first 120 chars (PII-redacted):',
+            JSON.stringify(redactAndSlice(buffered, 120)),
+          )
+          // Nie cache'ujemy złamanej odpowiedzi.
+        } else if (buffered.length > 0) {
+          void onComplete(buffered)
+        }
+
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      } catch (err) {
+        console.error(
+          '[streamSynthesizedAnswer] stream failed:',
+          err instanceof Error ? err.message : err,
+        )
+        // Jeszcze nic nie poszło → wyślij fallback message jako delta.
+        if (!emittedAnything) {
+          const fallback =
+            'Coś po drodze się wykrzaczyło — spróbuj jeszcze raz za chwilę.'
+          const payload = JSON.stringify({
+            choices: [{ delta: { content: fallback } }],
+          })
+          controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
+        }
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...CORS_HEADERS,
+    },
+  })
+}
+
 // Helpery formattujące daty / picki z surowych tool results żyją teraz
 // w `_lib/toolFormatHelpers.ts` (dzielone z `_lib/synthesizer.ts`). Enumy
 // PL → `_lib/toolEnums.ts`. Tu zostaje tylko orchestracja chatu.
@@ -919,39 +1087,36 @@ export default async function handler(req: Request): Promise<Response> {
     if (entry) {
       try {
         const result = await entry.execute(fastMatch.args, ctx)
-        const formatted = await synthesizeFinalAnswer(
-          fastMatch.toolName,
-          result,
-          lastUserText,
-          provider,
-          usageAcc,
-          recentOpeners,
-        )
-        // Zapisz do response cache — kolejne identyczne zapytania pójdą
-        // przez `responseCache HIT` (jeszcze szybciej, bez nawet Supabase).
-        // Zostawiamy ten sam `RESPONSE_CACHE_TTL_SECONDS` (60s) co Groq path
-        // — spójność i mała ekspozycja na stale data.
-        await kvSetSafe(responseCacheKey, formatted, RESPONSE_CACHE_TTL_SECONDS)
-        // Fragmentowany strumień + meta — klient pokaże „Sprawdzam zniżki…"
-        // zamiast losowych thinking-phrases, bo ZNAMY tool name z wyprzedzeniem.
-        // Chipy follow-up („Tylko jedzenie", „Co jutro?") deterministyczne
-        // per tool — klikalne pod wiadomością, zero LLM calls.
+        // Live stream syntezy Llamy 8B — pierwsze tokeny ~200-400ms zamiast
+        // ~1500ms TTFB. Bufor odpowiedzi po `done` -> KV cache + metrics.
         const fastPathLabel = getActionLabel(fastMatch.toolName)
         const fastPathChips = getFollowUpChips(fastMatch.toolName)
         void incrCounter('fast_path:hit')
         void incrCounter(`fast_path:tool:${fastMatch.toolName}`)
         void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
         void pushLatency('chat:fast_path_ms', Date.now() - requestStartedAt)
-        return streamFinalContentChunked(
-          formatted,
-          fastPathLabel
+        return streamSynthesizedAnswer({
+          provider,
+          toolName: fastMatch.toolName,
+          result,
+          userQuery: lastUserText,
+          recentOpeners,
+          usageAcc,
+          meta: fastPathLabel
             ? {
                 tool: fastMatch.toolName,
                 label: fastPathLabel,
                 chips: fastPathChips,
               }
             : null,
-        )
+          onComplete: async (fullText) => {
+            await kvSetSafe(
+              responseCacheKey,
+              fullText,
+              RESPONSE_CACHE_TTL_SECONDS,
+            )
+          },
+        })
       } catch (err) {
         console.warn(
           '[Fast Path] tool execution threw — falling back to Groq path:',
@@ -1082,22 +1247,66 @@ export default async function handler(req: Request): Promise<Response> {
           '[Tool Flow] no tool_calls — using model content directly | len:',
           finalContent.length,
         )
+      } else if (toolCalls.length === 1) {
+        // Ścieżka B1 (95% przypadków): pojedynczy tool_call → live stream
+        // syntezy. Pierwsze tokeny u usera ~200-400ms zamiast ~1500ms TTFB.
+        // Wykonujemy tool sync, potem oddajemy kontrolę do
+        // `streamSynthesizedAnswer` który pipuje delty Llamy 8B do SSE i
+        // bufforuje pełen content do KV cache.
+        const firstCall = toolCalls[0]!
+        const toolName = firstCall.function.name
+        console.log(
+          '[Tool Flow] single tool_call →',
+          toolName,
+          '— live stream synthesis (TTFB optimized)',
+        )
+        const result = await runToolCall(firstCall, ctx)
+        executedToolName = toolName
+
+        const finalLabel = getActionLabel(toolName)
+        const finalChips = getFollowUpChips(toolName)
+        void incrCounter('groq:served')
+        void incrCounter(`groq:tool:${toolName}`)
+        void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+        void pushLatency('chat:groq_path_ms', Date.now() - requestStartedAt)
+        // `usageAcc` zawiera już tool-decision usage; streamSynth doda
+        // synthesis usage przez akumulator. Logujemy fire-and-forget po
+        // skończonym streamie (callback `onComplete`).
+        return streamSynthesizedAnswer({
+          provider,
+          toolName,
+          result,
+          userQuery: lastUserText,
+          recentOpeners,
+          usageAcc,
+          meta: finalLabel
+            ? { tool: toolName, label: finalLabel, chips: finalChips }
+            : null,
+          onComplete: async (fullText) => {
+            await kvSetSafe(
+              responseCacheKey,
+              fullText,
+              RESPONSE_CACHE_TTL_SECONDS,
+            )
+            if (!usageAcc.isEmpty()) {
+              void logTokenUsage({
+                userId: ctx.userId,
+                inputTokens: usageAcc.inputTokens,
+                outputTokens: usageAcc.outputTokens,
+                model: resolvedModel,
+              })
+            }
+          },
+        })
       } else {
-        // Ścieżka B: model poprosił o narzędzia. Wykonujemy każde i
-        // formatujemy WYNIKI tools jako finalną odpowiedź — BEZ drugiego
-        // round-tripu do Groqa na "syntezę". To eliminuje ~50% calls do
-        // LLM w typowej ścieżce z tools.
+        // Ścieżka B2: 2+ tool_calls (rzadkie, ~5%). Streaming dwóch sekcji
+        // równolegle psuje UX (delty się przeplatają), więc zostajemy przy
+        // non-streaming `synthesizeFinalAnswer` + `joinToolSections`.
         console.log(
           '[Tool Flow] got',
           toolCalls.length,
-          'tool_call(s) — executing and formatting server-side (no LLM synthesis)',
+          'tool_call(s) — parallel synthesis (no live stream)',
         )
-        // Parallel execution — gdy Groq zwraca 2+ tool calls (np. „co dziś
-        // i jakie zniżki"), wołamy je RÓWNOLEGLE zamiast sekwencyjnie.
-        // Tools są niezależne (każde czyta inną tabelę Supabase), więc nic
-        // nie blokuje. `Promise.all` zachowuje kolejność, więc `sections[i]`
-        // odpowiada `toolCalls[i]` — semantyka taka sama jak przy
-        // sekwencyjnym for.
         const sections = await Promise.all(
           toolCalls.map(async (call) => {
             const result = await runToolCall(call, ctx)
@@ -1112,10 +1321,6 @@ export default async function handler(req: Request): Promise<Response> {
           }),
         )
         finalContent = joinToolSections(sections)
-        // Pierwszy tool — najwierniejszy obraz aktywności (przy multi-call
-        // wybieramy ten pierwszy zgodnie z kolejnością modelu). Klient
-        // pokazuje tę etykietę w typing-indicatorze tylko do pierwszego
-        // delta-content; potem już animowany typewriter pisze odpowiedź.
         const firstCall = toolCalls[0]
         if (firstCall?.function?.name) {
           executedToolName = firstCall.function.name

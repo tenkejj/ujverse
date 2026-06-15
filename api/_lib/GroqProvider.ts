@@ -166,6 +166,21 @@ export type GroqCompleteWithToolsOptions = {
   maxTokens?: number
 }
 
+/**
+ * Pojedynczy element strumienia z `streamCompletion`. Trzy warianty:
+ *  - `delta`: kolejny kawałek `content` (token-by-token od Groqa)
+ *  - `done`: koniec strumienia + telemetria (usage / model — Groq emituje
+ *    je w ostatnim chunku PRZED `[DONE]`)
+ *  - `error`: błąd parsingu lub abort. Klient powinien przerwać konsumpcję
+ *    i pokazać fallback.
+ */
+export type GroqStreamChunk =
+  | { type: 'delta'; content: string }
+  | { type: 'done'; usage: GroqUsage | null; model: string | null }
+  | { type: 'error'; message: string }
+
+export type GroqStreamCompletionOptions = GroqCompleteWithToolsOptions
+
 export class GroqProvider implements LLMProvider {
   private readonly apiKey: string
   private readonly model: string
@@ -301,6 +316,149 @@ export class GroqProvider implements LLMProvider {
       message,
       usage: data?.usage ?? null,
       model: data?.model ?? effectiveModel,
+    }
+  }
+
+  /**
+   * Streaming wariant `completeWithTools` — używany gdy chcemy emitować
+   * delty do klienta w locie (synthesis Llama 8B). Zwraca AsyncIterable
+   * `GroqStreamChunk`:
+   *
+   *   for await (const chunk of provider.streamCompletion(...)) {
+   *     if (chunk.type === 'delta') write(chunk.content)
+   *     if (chunk.type === 'done') logUsage(chunk.usage)
+   *   }
+   *
+   * Świadomie zwracamy AsyncIterable (a nie raw `ReadableStream<Uint8Array>`)
+   * — caller (orchestrator) potrzebuje sparsowanych delts żeby (a) bufforować
+   * do KV cache (b) sprawdzić markdown guard. Surowy stream wymagałby
+   * podwójnego parsingu (klient + cache layer).
+   *
+   * Tools są dopuszczalne ale w naszej obecnej ścieżce streamingowej (czyli
+   * syntezator) zawsze idą jako []. Zostawione w API dla spójności z
+   * `completeWithTools` i ewentualnego streamingowego tool-flow w przyszłości.
+   *
+   * NIE używamy `withGroqRetry` tutaj — retry SSE jest skomplikowany (już
+   * wysłaliśmy nagłówki do klienta, nie można cofnąć). Caller decyduje:
+   * można wrap'ować całą sekcję `for await` w try-catch i fallback do
+   * non-streaming `completeWithTools` przy błędzie.
+   */
+  async *streamCompletion(
+    messages: GroqMessage[],
+    tools: GroqToolDescriptor[],
+    opts: GroqStreamCompletionOptions = {},
+  ): AsyncGenerator<GroqStreamChunk, void, void> {
+    const effectiveModel = opts.model ?? this.model
+    const body: Record<string, unknown> = {
+      model: effectiveModel,
+      messages,
+      stream: true,
+      // OpenAI-compat: gdy `stream: true`, Groq emituje usage w ostatnim
+      // chunku tylko gdy poprosimy explicit `stream_options.include_usage`.
+      stream_options: { include_usage: true },
+      temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
+      max_tokens: opts.maxTokens ?? MAX_TOKENS_TOOL_DECISION,
+    }
+    if (tools.length > 0) {
+      body.tools = tools
+      body.tool_choice = opts.toolChoice ?? 'auto'
+    }
+    if (supportsReasoningFormat(effectiveModel)) {
+      body.reasoning_format = 'hidden'
+    }
+
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new GroqProviderError(
+        text
+          ? `Groq API ${response.status}: ${text.slice(0, 500)}`
+          : `Groq API returned ${response.status}`,
+        response.status,
+      )
+    }
+
+    if (!response.body) {
+      throw new GroqProviderError('Groq API returned empty body', response.status)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    // SSE lines mogą przyjść w chunkach niepełnych — buforujemy ogon do
+    // pierwszego `\n\n` (separator OpenAI/Groq SSE).
+    let buffer = ''
+    let usage: GroqUsage | null = null
+    let modelEcho: string | null = null
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        // Każde zdarzenie SSE kończy się pustą linią (`\n\n`). Procesujemy
+        // wszystkie kompletne zdarzenia, ogon zostawiamy w `buffer`.
+        let sep = buffer.indexOf('\n\n')
+        while (sep !== -1) {
+          const event = buffer.slice(0, sep)
+          buffer = buffer.slice(sep + 2)
+          sep = buffer.indexOf('\n\n')
+          // Filtrujemy `data:` linie z eventu. SSE w teorii może mieć też
+          // `event:` / `id:` / `:comment` — Groq ich nie używa, ignorujemy.
+          for (const line of event.split('\n')) {
+            if (!line.startsWith('data:')) continue
+            const payload = line.slice(5).trim()
+            if (payload === '[DONE]') {
+              yield { type: 'done', usage, model: modelEcho ?? effectiveModel }
+              return
+            }
+            try {
+              const parsed = JSON.parse(payload) as {
+                choices?: Array<{ delta?: { content?: string | null } }>
+                usage?: GroqUsage
+                model?: string
+              }
+              if (parsed.model && !modelEcho) {
+                modelEcho = parsed.model
+              }
+              if (parsed.usage) {
+                usage = parsed.usage
+              }
+              const delta = parsed.choices?.[0]?.delta?.content
+              if (typeof delta === 'string' && delta.length > 0) {
+                yield { type: 'delta', content: delta }
+              }
+            } catch (parseErr) {
+              // Pojedyncza linia parseError nie wywraca strumienia — Groq
+              // czasem wysyła pustyhardbeat lub `:` comment. Logujemy
+              // warn i lecimy dalej.
+              console.warn(
+                '[GroqProvider.streamCompletion] failed to parse SSE payload, skipping:',
+                parseErr instanceof Error ? parseErr.message : parseErr,
+              )
+            }
+          }
+        }
+      }
+      // Nigdy nie dostaliśmy `[DONE]` — Groq zerwał połączenie. Emitujemy
+      // done z tym co mamy (caller dostaje sygnał że można zamknąć stream).
+      yield { type: 'done', usage, model: modelEcho ?? effectiveModel }
+    } finally {
+      // Defensive cleanup — anulujemy reader na wypadek wyjątku z caller'a
+      // (np. klient zamknął SSE w pół drogi). Bez tego stream-by-stream
+      // wisiałby w pamięci do GC.
+      try {
+        reader.cancel().catch(() => {})
+      } catch {
+        // ignore
+      }
     }
   }
 
