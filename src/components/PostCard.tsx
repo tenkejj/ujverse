@@ -248,7 +248,7 @@ export default function PostCard({
     toast.error('Nie udało się udostępnić wpisu')
   }
 
-  const handleReportPost = async (reason: string) => {
+  const handleReportPost = async (reason: string, details: string) => {
     if (!content.id) {
       toast.error('Nie udało się zgłosić posta')
       return
@@ -259,9 +259,10 @@ export default function PostCard({
     }
     setIsReportSubmitting(true)
     const { error } = await supabase.from('reports').insert({
-      post_id: content.id,
+      post_id: Number(content.id),
       reporter_id: currentUserId,
       reason,
+      details: details || null,
     })
     setIsReportSubmitting(false)
     if (error) {

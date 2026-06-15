@@ -1,0 +1,10 @@
+---
+name: UJverse — Supabase start (local)
+command: npx supabase start
+tags:
+  - ujverse
+  - supabase
+description: |
+  Podnosi lokalny stack Supabase (Postgres + Studio + Auth + Storage)
+  w Dockerze. Wymaga Docker Desktop.
+  Studio leci na http://127.0.0.1:54323

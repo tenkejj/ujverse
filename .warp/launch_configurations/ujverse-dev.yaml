@@ -1,0 +1,20 @@
+---
+name: UJverse Dev
+windows:
+  - tabs:
+      - layout:
+          cwd: c:\Users\frani\ujverse
+          commands:
+            - exec: npx vercel dev
+        color: blue
+        title: api+web (vercel dev)
+      - layout:
+          cwd: c:\Users\frani\ujverse
+          commands:
+            - exec: npx supabase status
+        color: green
+        title: supabase
+      - layout:
+          cwd: c:\Users\frani\ujverse
+        color: yellow
+        title: scratch

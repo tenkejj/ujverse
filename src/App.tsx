@@ -51,6 +51,7 @@ import GroupView from './components/GroupView'
 import GroupsIndexView from './components/GroupsIndexView'
 import MojPlanView from './components/MojPlanView'
 import AdminDiagView from './components/admin/AdminDiagView'
+import AdminReportsView from './components/admin/AdminReportsView'
 import { LecturerSubscriptionsProvider } from './lib/lecturerSubscriptionsContext'
 import { useOnboarding } from './hooks/useOnboarding'
 import {
@@ -86,6 +87,7 @@ type AppShellView =
   | 'usos'
   | 'miejsca'
   | 'adminDiag'
+  | 'adminReports'
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -179,6 +181,15 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
     normalizedPath === '/admin/diag'
   ) {
     return { kind: 'ok', view: 'adminDiag', profileHandle: null, postId: null }
+  }
+  // Panel zgłoszeń — gate'owany po stronie klienta po
+  // `myProfile.role === 'admin'` ORAZ po stronie DB przez RLS
+  // (`reports_select_own_or_admin` używa `is_profile_admin()`).
+  if (
+    normalizedPath === '/admin/reports' ||
+    normalizedPath === '/admin/zgloszenia'
+  ) {
+    return { kind: 'ok', view: 'adminReports', profileHandle: null, postId: null }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -1285,7 +1296,7 @@ function App() {
           effectiveActiveView === 'chat' ||
           effectiveActiveView === 'sale'
         ? 'feed'
-      : effectiveActiveView === 'settings' || effectiveActiveView === 'adminDiag'
+      : effectiveActiveView === 'settings' || effectiveActiveView === 'adminDiag' || effectiveActiveView === 'adminReports'
         ? 'profile'
         : effectiveActiveView
 
@@ -1543,6 +1554,12 @@ function App() {
             <AdminDiagView />
           </ViewErrorBoundary>
         )
+      case 'adminReports':
+        return (
+          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+            <AdminReportsView myProfile={myProfile} onBack={goBackInHistory} />
+          </ViewErrorBoundary>
+        )
       default:
         return null
     }
@@ -1701,7 +1718,9 @@ function App() {
                         effectiveActiveView === 'group' ||
                         effectiveActiveView === 'sale' ||
                         effectiveActiveView === 'znizki' ||
-                        effectiveActiveView === 'usos'
+                        effectiveActiveView === 'usos' ||
+                        effectiveActiveView === 'adminDiag' ||
+                        effectiveActiveView === 'adminReports'
                       ? 'max-w-7xl px-4 lg:px-6'
                       : effectiveActiveView === 'settings'
                         ? 'max-w-2xl px-4 space-y-0'

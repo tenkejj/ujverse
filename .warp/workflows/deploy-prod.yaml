@@ -1,0 +1,11 @@
+---
+name: UJverse — Deploy prod (prebuilt)
+command: npm run deploy:prod
+tags:
+  - ujverse
+  - deploy
+description: |
+  Lokalny `vercel build --prod` + `vercel deploy --prebuilt --prod --force --yes`.
+  Obchodzi remote auto-detect glitch z `api/scrape-faculty-announcements.ts`
+  (patrz deploy.ps1).
+  Wymaga jednorazowo: `npx vercel link` oraz `npx vercel pull --environment=production`.

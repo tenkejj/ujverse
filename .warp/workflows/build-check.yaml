@@ -1,0 +1,9 @@
+---
+name: UJverse — Build + lint
+command: npm run lint && npm run build
+tags:
+  - ujverse
+  - ci
+description: |
+  Pełny lokalny check przed pushem: ESLint + tsc -b + vite build.
+  Powinno przejść zanim klikniesz deploy:prod.

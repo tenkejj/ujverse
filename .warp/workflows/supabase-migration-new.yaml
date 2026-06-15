@@ -1,0 +1,13 @@
+---
+name: UJverse — Supabase new migration
+command: npx supabase migration new {{name}}
+tags:
+  - ujverse
+  - supabase
+description: |
+  Tworzy nowy pusty plik migracji z timestampem w `supabase/migrations/`.
+  Konwencja w repo: snake_case opisowy, np. `lecturer_subscriptions`.
+arguments:
+  - name: name
+    description: Nazwa migracji w snake_case
+    default_value: my_migration

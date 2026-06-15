@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, LogOut } from 'lucide-react'
 import {
   AcademicCapIcon,
   AtSymbolIcon,
   BellAlertIcon,
+  ChevronRightIcon,
   CheckCircleIcon,
   CircleStackIcon,
   ClipboardDocumentIcon,
   ClockIcon,
   ExclamationTriangleIcon,
+  FlagIcon,
   IdentificationIcon,
   InformationCircleIcon,
   KeyIcon,
@@ -28,11 +31,9 @@ import { supabase } from '../supabaseClient'
 import { useTheme } from '../ThemeContext'
 import {
   applyVisualPreferences,
-  getUserPreferences,
   setUserPreference,
-  subscribePreferences,
-  type UserPreferences,
 } from '../lib/userPreferences'
+import { useUserPrefs } from '../hooks/useUserPrefs'
 import {
   HISTORY_KEY,
   clearAllHistory,
@@ -222,12 +223,8 @@ function readPushPermission(): PushPermission {
 }
 
 // ── Local hooks ───────────────────────────────────────────────────────────
-
-function useUserPrefs(): UserPreferences {
-  const [prefs, setPrefs] = useState<UserPreferences>(() => getUserPreferences())
-  useEffect(() => subscribePreferences(setPrefs), [])
-  return prefs
-}
+// `useUserPrefs` żyje w `src/hooks/useUserPrefs.ts` — jeden snapshot
+// + subscribe na zmiany z `userPreferences`.
 
 function useSearchHistoryCount(): [number, () => void] {
   const [count, setCount] = useState<number>(() => loadSearchHistory().length)
@@ -272,6 +269,8 @@ function clearLocalAppCache(): number {
 export default function SettingsView({ email, myProfile, onProfilePatch, onBack }: Props) {
   const { theme, toggleTheme } = useTheme()
   const prefs = useUserPrefs()
+  const navigate = useNavigate()
+  const isAdmin = myProfile?.role === 'admin'
 
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
@@ -930,6 +929,46 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
             </button>
           </Row>
         </SectionCard>
+
+        {/* Administrator ───────────────────────────────────────────────── */}
+        {isAdmin ? (
+          <SectionCard
+            title="Administrator"
+            icon={ShieldCheckIcon}
+            description="Panele dostępne tylko dla administratorów UJverse."
+          >
+            <Row>
+              <RowLabel
+                icon={FlagIcon}
+                title="Zgłoszenia użytkowników"
+                hint="Posty i komentarze zgłoszone przez społeczność — moderuj i zamykaj zgłoszenia."
+              />
+              <button
+                type="button"
+                onClick={() => navigate('/admin/reports')}
+                className={outlineBtnCls}
+              >
+                Otwórz
+                <ChevronRightIcon className="h-4 w-4" aria-hidden />
+              </button>
+            </Row>
+            <Row>
+              <RowLabel
+                icon={CircleStackIcon}
+                title="Diagnostyka /api/diag"
+                hint="Cache hit-rates, latency, health checks, circuit breaker."
+              />
+              <button
+                type="button"
+                onClick={() => navigate('/admin/diag')}
+                className={outlineBtnCls}
+              >
+                Otwórz
+                <ChevronRightIcon className="h-4 w-4" aria-hidden />
+              </button>
+            </Row>
+          </SectionCard>
+        ) : null}
 
         {/* Informacje ──────────────────────────────────────────────────── */}
         <SectionCard

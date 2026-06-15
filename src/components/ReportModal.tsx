@@ -13,10 +13,16 @@ const REPORT_REASONS = [
 
 type ReportReason = (typeof REPORT_REASONS)[number]
 
+const DETAILS_MAX_LEN = 1000
+
 type Props = {
   open: boolean
   onClose: () => void
-  onConfirm: (reason: string) => void | Promise<void>
+  /**
+   * `details` to opcjonalny opis od zgłaszającego (kontekst dla admina).
+   * Trafia do `public.reports.details` — limit 1000 znaków po stronie DB.
+   */
+  onConfirm: (reason: string, details: string) => void | Promise<void>
   title?: string
   confirmLabel?: string
   isSubmitting?: boolean
@@ -31,10 +37,12 @@ export default function ReportModal({
   isSubmitting = false,
 }: Props) {
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null)
+  const [details, setDetails] = useState('')
 
   useEffect(() => {
     if (!open) {
       setSelectedReason(null)
+      setDetails('')
       return
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -48,12 +56,14 @@ export default function ReportModal({
 
   const handleConfirm = async () => {
     if (!selectedReason || isSubmitting) return
-    await onConfirm(selectedReason)
+    await onConfirm(selectedReason, details.trim())
   }
 
   if (typeof document === 'undefined') return null
 
   const canSubmit = Boolean(selectedReason) && !isSubmitting
+  const detailsCount = details.length
+  const detailsRemaining = DETAILS_MAX_LEN - detailsCount
 
   return createPortal(
     <AnimatePresence>
@@ -102,7 +112,7 @@ export default function ReportModal({
               <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-fg-secondary">
                 Powód
               </span>
-              <div className="mb-5 space-y-1.5">
+              <div className="mb-4 space-y-1.5">
                 {REPORT_REASONS.map((reason) => {
                   const isSelected = selectedReason === reason
                   return (
@@ -121,6 +131,32 @@ export default function ReportModal({
                     </button>
                   )
                 })}
+              </div>
+
+              <div className="mb-5">
+                <label
+                  htmlFor="report-details"
+                  className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-fg-secondary"
+                >
+                  <span>Szczegóły (opcjonalnie)</span>
+                  <span
+                    className={`font-mono normal-case tracking-normal text-[10px] ${
+                      detailsRemaining < 0 ? 'text-rose-500' : 'text-fg-tertiary'
+                    }`}
+                    aria-live="polite"
+                  >
+                    {detailsCount}/{DETAILS_MAX_LEN}
+                  </span>
+                </label>
+                <textarea
+                  id="report-details"
+                  value={details}
+                  onChange={(event) => setDetails(event.target.value.slice(0, DETAILS_MAX_LEN))}
+                  rows={3}
+                  maxLength={DETAILS_MAX_LEN}
+                  placeholder="Opisz, dlaczego zgłaszasz tę treść (np. konkretny fragment, kontekst). Pomoże to administracji szybciej zareagować."
+                  className="w-full resize-none rounded-xl border border-border-app bg-transparent px-4 py-3 text-sm leading-relaxed text-fg-primary placeholder:text-fg-tertiary outline-none transition-colors focus:border-[#1e293b]/45 focus:bg-[#1e293b]/3 dark:focus:border-brand-gold/45 dark:focus:bg-white/4"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2">

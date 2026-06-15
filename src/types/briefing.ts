@@ -47,7 +47,8 @@ export type BriefingAnnouncement = {
   id: string
   lecturer_name: string
   body: string
-  status: 'cancelled' | 'remote' | 'duty'
+  /** Union 1:1 z `AnnouncementStatus` w `types/content.ts` (po migracji 20260715). */
+  status: 'cancelled' | 'remote' | 'duty' | 'info' | 'event'
   department: string | null
   created_at: string
 }

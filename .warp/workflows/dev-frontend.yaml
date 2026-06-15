@@ -1,0 +1,9 @@
+---
+name: UJverse — Dev frontend only (vite)
+command: npm run dev
+tags:
+  - ujverse
+  - dev
+description: |
+  Sam Vite na :5173. Szybsze niż `vercel dev`, ale `/api/*` NIE działa.
+  OK do pracy nad UI gdy API nie jest potrzebne.

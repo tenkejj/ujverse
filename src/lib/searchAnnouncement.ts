@@ -2,8 +2,18 @@ import { UjverseSanitizer } from './sanitizer'
 import type { AnnouncementMeta, AnnouncementStatus, UnifiedContent } from '../types/content'
 import type { SearchHit } from '../types/search'
 
+const VALID_STATUSES: ReadonlySet<AnnouncementStatus> = new Set([
+  'cancelled',
+  'remote',
+  'duty',
+  'info',
+  'event',
+])
+
 function parseAnnouncementStatus(value: unknown): AnnouncementStatus {
-  if (value === 'cancelled' || value === 'remote' || value === 'duty') return value
+  if (typeof value === 'string' && VALID_STATUSES.has(value as AnnouncementStatus)) {
+    return value as AnnouncementStatus
+  }
   return 'duty'
 }
 
@@ -28,12 +38,15 @@ export function searchHitToAnnouncement(hit: SearchHit): UnifiedContent<Announce
     metadata: {
       status: parseAnnouncementStatus(hit.announcementStatus),
       source: hit.announcementSource ?? null,
+      // Pola dodane w migracji 20260715 (title/source_url/source_kind) NIE są
+      // jeszcze indeksowane w Meili — search pipeline trzeba zaktualizować
+      // osobno (TODO: extend `lib/searchSyncMapper.ts`). Do tego czasu wyniki
+      // wyszukiwarki nie pokazują tytułu wydziałowego ani linku do oryginału.
+      sourceKind: null,
+      sourceUrl: null,
+      title: null,
       department: hit.department ?? null,
       bodyFingerprint: null,
-      // Wyniki wyszukiwarki przychodzą z Meili (search index) — TL;DR i
-      // extracted_calendar nie są jeszcze indeksowane (TODO: dodać do
-      // search pipeline). Dla wyników wyszukiwania ukrywamy te elementy
-      // żeby nie pokazywać starych snapshotów.
       summary: null,
       extractedCalendar: null,
     },

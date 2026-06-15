@@ -1,0 +1,9 @@
+---
+name: UJverse — Search resync (Meili)
+command: npm run search:resync
+tags:
+  - ujverse
+  - search
+description: |
+  `tsx scripts/force-resync.ts` — pełny resync Meilisearch z Supabase.
+  Używaj po większych zmianach schematu lub kiedy Meili się rozjedzie.

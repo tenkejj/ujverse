@@ -1,0 +1,10 @@
+---
+name: UJverse — Supabase db push (remote)
+command: npx supabase db push
+tags:
+  - ujverse
+  - supabase
+  - prod
+description: |
+  Wypycha migracje z `supabase/migrations/` na zlinkowany remote projekt.
+  Sprawdź najpierw `npx supabase migration list` żeby nie zapodać duplikatu.

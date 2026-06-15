@@ -29,7 +29,7 @@ UJverse solves this by offering a tailored, chronological ecosystem where the co
 * **RSVP system** — one-click "Idę / Nie idę" with `event_rsvps` table, attendee counters, and an attendees modal.
 * **Event modal with map** — Leaflet-based `LocationPicker` for venues, plus structured location/date display.
 * **Create-event flow** — students can publish their own events with image, date, venue and description.
-* **Lecturer announcements (ISI UJ)** — separate scraper [`api/scrape-wziks.ts`](api/scrape-wziks.ts) feeds `announcements` (cancellations, remote classes, office hours) with status badges and a dedicated drawer view.
+* **Faculty announcements (all 16 UJ faculties + Collegium Medicum)** — universal scraper [`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts) with three parser adapters (`isi_drupal`, `liferay`, `wordpress_cm`) feeds `announcements` (cancellations, remote classes, office hours, general info, events) with status badges and a dedicated drawer view. Sources defined in [`api/_lib/scrapers/sources.ts`](api/_lib/scrapers/sources.ts).
 
 ### AI Assistant ("UJverse Asystent")
 * **Edge-runtime LLM proxy** — [`api/chat.ts`](api/chat.ts) on Vercel Edge, talking to **Groq** (`llama-3.1-8b-instant`) via OpenAI-compatible Function Calling. The client (`ContextInjectedBielikAdapter`) parses the SSE stream identically for cached and live responses.
@@ -103,7 +103,7 @@ UJverse solves this by offering a tailored, chronological ecosystem where the co
 * **Vercel serverless / Edge functions** —
   * [`api/chat.ts`](api/chat.ts) — Edge runtime, AI orchestrator with Function Calling.
   * [`api/scrape-uj-events.ts`](api/scrape-uj-events.ts) — Node serverless cron (daily 05:00 UTC), Cheerio-based HTML scraping.
-  * [`api/scrape-wziks.ts`](api/scrape-wziks.ts) — Node serverless, ISI UJ announcements scraper.
+  * [`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts) — Node serverless cron (hourly), universal faculty announcements scraper (16 sources, 3 parser adapters).
   * [`api/sync-search.ts`](api/sync-search.ts) — Meilisearch sync webhook target.
 * **Vercel KV (Upstash Redis)** — distributed response and per-tool cache for the AI assistant, + per-IP/user rate limiting buckets.
 * **Meilisearch** — typo-tolerant full-text search across users, posts, events, announcements; populated via Supabase database webhooks pointing at `/api/sync-search`.
@@ -139,7 +139,7 @@ Additional one-off scripts in [`scripts/`](scripts/) cover backfilling tags, ins
 
 ## Deployment
 
-Production deploys go to Vercel as **prebuilt artifacts** rather than via Vercel's git auto-detect pipeline. The remote `vercel build` running on Vercel's infrastructure deterministically refuses to register `api/scrape-wziks.ts` as a serverless function (the file passes TypeScript `nodenext` checks and esbuild bundles it cleanly, but Vercel's auto-detect silently drops it from the function list — confirmed by the hard error `"doesn't match any Serverless Functions inside the api directory"` when listed explicitly under `functions` in `vercel.json`). The local `vercel build` does not have this glitch and produces a `.vercel/output/` artifact containing all lambdas plus an isolated `/api/*` routing config.
+Production deploys go to Vercel as **prebuilt artifacts** rather than via Vercel's git auto-detect pipeline. The remote `vercel build` running on Vercel's infrastructure deterministically refuses to register some `api/*.ts` files as serverless functions (historically `api/scrape-wziks.ts`, currently affecting `api/scrape-faculty-announcements.ts` — the files pass TypeScript `nodenext` checks and esbuild bundles them cleanly, but Vercel's auto-detect silently drops them from the function list — confirmed by the hard error `"doesn't match any Serverless Functions inside the api directory"` when listed explicitly under `functions` in `vercel.json`). The local `vercel build` does not have this glitch and produces a `.vercel/output/` artifact containing all lambdas plus an isolated `/api/*` routing config.
 
 Until the remote auto-detect is fixed (Vercel support or repro upstream), production deploys must be run manually:
 
@@ -158,7 +158,7 @@ Both invoke the same sequence:
 1. `npx vercel build --prod` — local Vite build + local `@vercel/node` lambda compilation into `.vercel/output/`.
 2. `npx vercel deploy --prebuilt --prod --force --yes` — upload the prebuilt artifact to production, bypassing remote re-detection.
 
-Vercel's git auto-deploy should be disabled in the project dashboard (Project Settings → Git) to avoid the auto-deploy reverting `/api/scrape-wziks` to a 404/SPA-fallback state after each push.
+Vercel's git auto-deploy should be disabled in the project dashboard (Project Settings → Git) to avoid the auto-deploy reverting `/api/scrape-faculty-announcements` (and similar files) to a 404/SPA-fallback state after each push.
 
 First-time setup on a fresh checkout:
 

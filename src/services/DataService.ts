@@ -34,7 +34,7 @@ import type { WeeklyBriefingRow } from '../types/briefing'
 import { CalendarAdapter } from './adapters/CalendarAdapter'
 import type { Unsubscribe } from './adapters/BaseAdapter'
 import type { CalendarEntry, CalendarSearchParams } from '../types/calendar'
-import { canonicalDepartment } from '../lib/departments'
+import { canonicalDepartment, departmentGroup } from '../lib/departments'
 
 /**
  * DataService — jedyny punkt styku komponentów UI z danymi.
@@ -49,19 +49,27 @@ class DataServiceImpl {
     return ClubsAdapter.list()
   }
 
-  /* Komunikaty — Supabase, opcjonalny filtr po wydziale. */
+  /**
+   * Komunikaty — Supabase, opcjonalny filtr po wydziale.
+   *
+   * Filter używa `departmentGroup(dept)` zamiast pojedynczego canonical,
+   * żeby obsłużyć grupy wydziałów dzielące jedno źródło komunikatów
+   * (np. Wydział Lekarski + Wydział Lekarsko-Stomatologiczny — scraper
+   * zapisuje wszystkie pod „Wydział Lekarski", ale user z dowolnym
+   * z aliasów dostanie ten sam zestaw).
+   */
   async listAnnouncements(
     opts?: { department?: string },
   ): Promise<UnifiedContent<AnnouncementMeta>[]> {
     const items = await AnnouncementsAdapter.list()
     const dept = opts?.department?.trim() ?? ''
-    const canonical = dept ? canonicalDepartment(dept) : null
-    const filtered = !dept || !canonical
+    const group = dept ? new Set(departmentGroup(dept)) : null
+    const filtered = !group || group.size === 0
       ? items
       : items.filter((ann) => {
           const row = canonicalDepartment(ann.metadata.department)
           if (row == null) return true
-          return row === canonical
+          return group.has(row)
         })
 
     // Bezpiecznik: niezależnie od sortowania po stronie Supabase / adaptera,

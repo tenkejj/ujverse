@@ -8,15 +8,15 @@
  * - **Persona**: `UJVERSE_SYSTEM_PROMPT` z `_lib/llmService.ts` injectowany
  *   przez `withPersona(...)` jako pierwszy `system` message. Klient nie może
  *   podmienić tej instrukcji (`withPersona` filtruje zewnętrzne `system`-y).
- * - **Single-shot tool flow (no loop)**: wysyłamy historię + tools +
- *   tool_choice='auto' raz. Dwa wyniki możliwe:
- *   (a) model zwraca `content` (bez `tool_calls`) → to nasza finalna odpowiedź,
- *   (b) model zwraca `tool_calls[]` → wykonujemy każdy egzekutor i
- *       **formatujemy wyniki PO STRONIE SERWERA** (`formatToolResultAsFinalAnswer`)
- *       jako finalną odpowiedź dla użytkownika — **bez** drugiego round-tripu
- *       do Groqa na "podsumowanie". To wprost obcina liczbę zapytań do LLM
- *       o ~50% w typowej ścieżce z tools (była: 1× klasyfikacja + 1× synteza;
- *       jest: 1× klasyfikacja). Bezpośrednie cięcie ekspozycji na 429.
+ * - **Two-step tool flow**: wysyłamy historię + tools + tool_choice='auto'.
+ *   Dwa wyniki możliwe:
+ *   (a) model zwraca `content` (bez `tool_calls`) → finalna odpowiedź,
+ *   (b) model zwraca `tool_calls[]` → wykonujemy każdy egzekutor, ekstrahujemy
+ *       FAKTY (`buildToolFacts`), a finalną odpowiedź układa **mały, tani
+ *       Llama 8B** (`synthesizeAnswer` w `_lib/synthesizer.ts`) — to daje
+ *       naturalną prozę zamiast templatowych „X rzeczy: ..." odpowiedzi.
+ *       Cost: +1 round-trip do Groqa (Llama 8B, ~150ms TTFB, ~$0.0001/req).
+ *       Świadomy tradeoff dla UX nad surowym kosztem.
  * - **Response cache (Vercel KV)**: 300s rozproszony cache zindeksowany po
  *   treści ostatniej wiadomości użytkownika + flagdze `useTools`. HIT →
  *   strumień SSE bez wywołania Groqa **i** bez wywołania Supabase. Persistent
@@ -63,6 +63,11 @@ import {
   withPersona,
 } from './_lib/llmService.js'
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
+import {
+  buildToolFacts,
+  synthesizeAnswer,
+  type ToolFactsResult,
+} from './_lib/synthesizer.js'
 import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools/index.js'
 import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage.js'
 import {
@@ -108,18 +113,22 @@ const ALLOWED_ROLES = new Set<ChatRole>(['system', 'user', 'assistant'])
  * Świadoma decyzja produktowa: trzymamy tylko **60s** (zamiast typowych
  * 300s), żeby asystent NIE odpowiadał z cache zbyt często — chcemy aby
  * Groq był faktycznie używany, a userzy widzieli świeże/zmieniające się
- * odpowiedzi. 60s wystarcza tylko jako bufor anty-spam (gdy ten sam user
- * dwa razy wciśnie quick prompt w 5s) i defence przed kaskadą 429.
+ * odpowiedzi. Z synthesizerem (Llama 8B) generującym wariancje per request,
+ * 15s to bufor TYLKO anty-spam (gdy ten sam user wciśnie quick prompt 2× w
+ * krótkim czasie). Po wygaśnięciu cache, kolejny user dostaje świeżą,
+ * inaczej napisaną odpowiedź — to świadomy wybór, persona ma brzmieć
+ * jak człowiek, nie jak nagrana sekretarka.
  *
  * Per-tool cache (TTL_FOR_TOOL w `registry.ts`) zostaje — to jest cache
  * danych ze Supabase, nie odpowiedzi LLM, i ten OK zostać agresywny
- * (60-300s zależnie od narzędzia).
+ * (60-300s zależnie od narzędzia). Synteza dalej dostanie te same fakty,
+ * ale model je inaczej ułoży.
  *
- * Fast-path też pisze do response-cache (też przez tę stałą), więc po 60s
- * nawet `/dzis` znów wykona narzędzie + format'er — dane są świeższe,
- * koszt minimalny (fast-path pomija Groqa i tak).
+ * Fast-path też pisze do response-cache (też przez tę stałą), więc po 15s
+ * nawet `/dzis` znów wykona narzędzie + syntezę — koszt minimalny (1×
+ * Llama 8B = ~$0.0001), a UX znacznie naturalniejszy.
  */
-const RESPONSE_CACHE_TTL_SECONDS = 60
+const RESPONSE_CACHE_TTL_SECONDS = 15
 
 /**
  * Strip Qwen3 / DeepSeek-R1 style chain-of-thought ze stringa.
@@ -503,743 +512,81 @@ function streamFinalContentChunked(
   })
 }
 
-/**
- * Skraca tekst do `max` znaków, dodając `…`. Dla `body`/`description`
- * z bazy (nieograniczone w schemacie) — nie chcemy zalać użytkownika
- * stronami tekstu.
- */
-function clip(text: string, max: number): string {
-  const t = (text ?? '').toString()
-  if (t.length <= max) return t
-  return `${t.slice(0, Math.max(0, max - 1))}…`
-}
+// Helpery formattujące daty / picki z surowych tool results żyją teraz
+// w `_lib/toolFormatHelpers.ts` (dzielone z `_lib/synthesizer.ts`). Enumy
+// PL → `_lib/toolEnums.ts`. Tu zostaje tylko orchestracja chatu.
+
+
+
+
+
+
+
 
 /**
- * Formatuje wartość ISO daty na krótki, czytelny format `YYYY-MM-DD HH:mm`
- * (lub samo `YYYY-MM-DD` gdy czas to 00:00). Świadomie BEZ
- * `Intl.DateTimeFormat('pl-PL', …)` — Vercel Edge bywa zbudowany bez pełnego
- * ICU i wtedy zwraca en-US zamiast polskich nazw miesięcy. Stabilny ISO-like
- * format jest brzydszy, ale przewidywalny w każdym środowisku.
+ * Tworzy naturalną odpowiedź z wyniku narzędzia. Etap pipelinu:
+ *
+ *   1) `buildToolFacts(toolName, result)` ekstrahuje fakty z surowego
+ *      wyniku (deterministycznie). Empty results / error / passthrough →
+ *      gotowy string, bez wywołania LLM.
+ *   2) Jeśli mamy fakty do przedstawienia (`kind === 'synthesize'`),
+ *      wołamy Llama 8B (`synthesizeAnswer`) z faktami + pytaniem usera +
+ *      stylową personą. LLM układa to po ludzku, krótko, naturalnie.
+ *   3) Failure modes Groqa (network / 5xx / pusty content) → fallback
+ *      do plain bullet list z faktów. Brzydkie, ale lepsze niż "" do usera.
+ *
+ * Wiemy że to dodaje +1 round-trip do Groqa per tool (~150ms TTFB, ~$0.0001).
+ * Świadomy tradeoff: serwerowe templaty były szybsze ale brzmiały robotycznie
+ * i nie pasowały do pytania ("Spoko, 2 rzeczy" przy „gdzie zjem pizzę"). LLM
+ * widzi pytanie + fakty → pisze sensownie, w tym echo'uje temat ("Pizzy
+ * taniej? Pizza Hut...").
  */
-function formatDateShort(iso: string | null | undefined): string {
-  if (!iso || typeof iso !== 'string') return 'brak daty'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return 'brak daty'
-  const yyyy = d.getUTCFullYear()
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  const HH = String(d.getUTCHours()).padStart(2, '0')
-  const MM = String(d.getUTCMinutes()).padStart(2, '0')
-  if (HH === '00' && MM === '00') return `${yyyy}-${mm}-${dd}`
-  return `${yyyy}-${mm}-${dd} ${HH}:${MM}`
-}
-
-/**
- * Formatuje datę jako tekst RELATYWNY do "teraz" — w stylu chatu /
- * mediów społecznościowych ("3 godz. temu", "wczoraj", "2 dni temu").
- * Stosowany w formatterach narzędzi dla feedu/ogłoszeń, gdzie data
- * absolutna `2026-06-08 20:30` brzmi formalnie i zaśmieca odpowiedź.
- *
- * Granice:
- * - < 60s → „przed chwilą"
- * - < 60min → „N min temu"
- * - < 24h → „N godz. temu"
- * - < 48h → „wczoraj"
- * - < 7 dni → „N dni temu"
- * - >= 7 dni → `formatDateShort(iso)` (full ISO-like fallback)
- *
- * Świadomie BEZ `Intl.RelativeTimeFormat('pl', ...)` — Vercel Edge bywa
- * zbudowany bez pełnego ICU, więc polskie formy gramatyczne są niepewne.
- * Ręcznie dobrane formy "godz./dni" są dłuższe, ale stabilne na każdym runtime.
- */
-function formatRelativeDate(iso: string | null | undefined): string {
-  if (!iso || typeof iso !== 'string') return 'brak daty'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return 'brak daty'
-  const diffMs = Date.now() - d.getTime()
-  if (diffMs < 0) return formatDateShort(iso)
-  const sec = Math.floor(diffMs / 1000)
-  if (sec < 60) return 'przed chwilą'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min} min temu`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} godz. temu`
-  const day = Math.floor(hr / 24)
-  if (day === 1) return 'wczoraj'
-  if (day < 7) return `${day} dni temu`
-  return formatDateShort(iso)
-}
-
-/**
- * Heurystyka „post jest spamem / pusty" — używana w `formatPostsResult`
- * żeby nie zaśmiecać odpowiedzi asystenta postami testowymi typu `#pomoc`,
- * `#ankiet`, pojedynczymi linkami bez kontekstu albo postami <20 znaków.
- *
- * Reguły:
- * - brak `body` / sama spacja → spam
- * - body < 20 znaków NIE-tagowych (po wycięciu hashtagów) → spam
- * - body to wyłącznie pojedynczy URL bez własnego tekstu → spam
- *
- * Świadomie NIE filtrujemy po słownikach wulgaryzmów / blacklist — to
- * jest zadanie moderacji, nie formattera odpowiedzi. Tu chodzi tylko
- * o jakość prezentacji w odpowiedzi asystenta.
- */
-function isSpamPost(body: string, tags: string[]): boolean {
-  const trimmed = (body ?? '').trim()
-  if (trimmed.length === 0) return true
-  const withoutTags = trimmed.replace(/#[\p{L}\p{N}_-]+/gu, '').trim()
-  if (withoutTags.length < 20) {
-    if (tags.length > 0 && withoutTags.length === 0) return true
-    if (withoutTags.length === 0) return true
-    if (withoutTags.length < 10) return true
-  }
-  const urlOnly = /^https?:\/\/\S+$/i.test(withoutTags)
-  if (urlOnly) return true
-  return false
-}
-
-/** Mapowanie `announcements.status` enum → polskie nazwy widoczne dla usera. */
-const ANNOUNCEMENT_STATUS_PL: Record<string, string> = {
-  cancelled: 'odwołane',
-  remote: 'zdalnie',
-  duty: 'dyżur',
-}
-
-/**
- * Type guard'y dla wyników tools. Świadomie luźne (`any`-by-shape), bo wynik
- * narzędzia w runtime przychodzi jako `unknown` z `runToolCall` — TS nie wie
- * który tool to wywołał, tylko że to coś co `JSON.stringify`-uje się.
- */
-function isToolErrorObject(value: unknown): value is { ok: false; error?: string } {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'ok' in (value as Record<string, unknown>) &&
-    (value as { ok?: unknown }).ok === false
-  )
-}
-
-function getItemsArray(value: unknown): unknown[] | null {
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'items' in (value as Record<string, unknown>)
-  ) {
-    const items = (value as { items?: unknown }).items
-    if (Array.isArray(items)) return items
-  }
-  return null
-}
-
-function pickString(obj: unknown, key: string): string {
-  if (typeof obj !== 'object' || obj === null) return ''
-  const v = (obj as Record<string, unknown>)[key]
-  return typeof v === 'string' ? v : ''
-}
-
-function pickStringOrNull(obj: unknown, key: string): string | null {
-  if (typeof obj !== 'object' || obj === null) return null
-  const v = (obj as Record<string, unknown>)[key]
-  return typeof v === 'string' && v.length > 0 ? v : null
-}
-
-function pickBool(obj: unknown, key: string): boolean {
-  if (typeof obj !== 'object' || obj === null) return false
-  return Boolean((obj as Record<string, unknown>)[key])
-}
-
-function pickStringArray(obj: unknown, key: string): string[] {
-  if (typeof obj !== 'object' || obj === null) return []
-  const v = (obj as Record<string, unknown>)[key]
-  if (!Array.isArray(v)) return []
-  return v.filter((s): s is string => typeof s === 'string' && s.length > 0)
-}
-
-/**
- * Sufiks kontekstowy dla daty wydarzenia. W przeciwieństwie do
- * `formatRelativeDate` (które patrzy WSTECZ — „2 godz. temu"), tu
- * patrzymy W PRZÓD: „za 3 dni", „jutro", „dziś", „już minęło".
- *
- * Wynik to fragment do doklejenia w nawiasie obok absolutnej daty, np.:
- *   `2026-06-12 18:00 (jutro)`
- *   `2026-06-15 (za 7 dni)`
- *   `2025-12-04 (już minęło)`
- *
- * Bez sufiksu (pusty string) gdy data jest > 30 dni do przodu — wtedy
- * sama absolutna data jest wystarczająca i nie zaśmiecamy listy.
- */
-function eventDateContext(iso: string | null | undefined): string {
-  if (!iso || typeof iso !== 'string') return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const diffMs = d.getTime() - Date.now()
-  if (diffMs < -24 * 3600_000) return 'już minęło'
-  if (diffMs < 0) return 'było dziś'
-  const hr = Math.floor(diffMs / 3600_000)
-  if (hr < 12) return 'dziś'
-  const day = Math.floor(diffMs / (24 * 3600_000))
-  if (day === 0) return 'dziś'
-  if (day === 1) return 'jutro'
-  if (day < 7) return `za ${day} dni`
-  if (day < 14) return 'za tydzień'
-  if (day < 30) return `za ${day} dni`
-  return ''
-}
-
-const MAX_EVENTS_TO_SHOW = 5
-
-/**
- * Style: konwersacyjna proza, bez bulletów. Każdy item to jedno krótkie
- * zdanie typu "X dziś o 18:00 w Audytorium Maximum" zlewane przecinkami.
- * Dla 4+ items rozdzielamy newlinem (czytelnie, ale bez `- ` markerów).
- */
-function formatSearchEventsResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Nic mi się nie znalazło. Spróbuj innego hasła albo zajrzyj na zakładkę Wydarzenia.'
-  }
-  const items = rawItems.slice(0, MAX_EVENTS_TO_SHOW)
-  const remaining = rawItems.length - items.length
-
-  const sentences = items.map((item) => {
-    const title = pickString(item, 'title') || 'wydarzenie bez tytułu'
-    const location = pickStringOrNull(item, 'location')
-    const date = pickStringOrNull(item, 'date')
-    const isOfficial = pickBool(item, 'is_official')
-
-    const ctx = eventDateContext(date)
-    const datePart = date
-      ? ctx
-        ? `${ctx} (${formatDateShort(date)})`
-        : formatDateShort(date)
-      : 'bez daty'
-    const tag = isOfficial ? '' : ' (studenckie)'
-    const where = location ? ` w ${location}` : ''
-    return `**${title}**${tag} — ${datePart}${where}`
-  })
-
-  const lead =
-    items.length === 1
-      ? 'Znalazłem coś:'
-      : `Mam dla Ciebie ${items.length}:`
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0
-      ? `\n\nW bazie jest jeszcze ${remaining} — zerknij na zakładkę Wydarzenia.`
-      : ''
-  return `${lead}\n${body}${tail}`
-}
-
-const MAX_ANNOUNCEMENTS_TO_SHOW = 5
-
-function formatAnnouncementsResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Cisza, ostatnio nic nowego z ISI UJ nie wpadło.'
-  }
-  const items = rawItems.slice(0, MAX_ANNOUNCEMENTS_TO_SHOW)
-  const remaining = rawItems.length - items.length
-
-  const departments = items
-    .map((item) => pickStringOrNull(item, 'department'))
-    .filter((d): d is string => !!d)
-  const allSameDept =
-    departments.length === items.length &&
-    departments.length > 1 &&
-    departments.every((d) => d === departments[0])
-  const sharedDept = allSameDept ? departments[0] : null
-
-  const sentences = items.map((item) => {
-    const lecturer =
-      pickString(item, 'lecturer_name_nominative') || 'ktoś z kadry'
-    const statusKey = pickString(item, 'status')
-    const statusPl = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey
-    const body = pickString(item, 'body')
-    const dept = pickStringOrNull(item, 'department')
-    const createdAt = pickStringOrNull(item, 'created_at')
-
-    const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
-    const tail = body ? ` — ${clip(body, 160)}` : ''
-    const deptTag = !sharedDept && dept ? ` [${dept}]` : ''
-    return `**${lecturer}** ${statusPl}${when}${deptTag}${tail}`
-  })
-
-  const leadDept = sharedDept ? ` z ${sharedDept}` : ''
-  const lead =
-    items.length === 1
-      ? `Najświeższy komunikat${leadDept}:`
-      : `Najświeższe komunikaty${leadDept}:`
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0
-      ? `\n\nJest jeszcze ${remaining} — wejdź na pełną listę.`
-      : ''
-  return `${lead}\n${body}${tail}`
-}
-
-const MAX_POSTS_TO_SHOW = 4
-
-function formatPostsResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Cisza na feedzie — nikt nic ostatnio nie napisał.'
-  }
-
-  const filtered = rawItems.filter((item) => {
-    const body = pickString(item, 'body')
-    const tags = pickStringArray(item, 'tags')
-    return !isSpamPost(body, tags)
-  })
-  if (filtered.length === 0) {
-    return 'Coś tam jest, ale same krótkie wpisy, nic ciekawego do cytowania. Zerknij na zakładkę Feed.'
-  }
-
-  const items = filtered.slice(0, MAX_POSTS_TO_SHOW)
-  const remaining = filtered.length - items.length
-
-  const sentences = items.map((item) => {
-    const author = (typeof item === 'object' && item !== null
-      ? (item as Record<string, unknown>).author
-      : null) as Record<string, unknown> | null
-    const username =
-      (author && typeof author.username === 'string' && author.username) ||
-      'anon'
-    const body = pickString(item, 'body')
-    const createdAt = pickStringOrNull(item, 'created_at')
-    const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
-    const quote = body ? ` „${clip(body, 140)}"` : ''
-    return `**@${username}**${when} —${quote}`
-  })
-
-  const lead =
-    items.length === 1
-      ? 'Z feedu wyłapałem jedno:'
-      : 'Co ostatnio krąży na feedzie:'
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0
-      ? `\n\nJest jeszcze parę wpisów — zerknij na zakładkę Feed.`
-      : ''
-  return `${lead}\n${body}${tail}`
-}
-
-/** Mapowanie `calendar_entries.kind` enum (9 wartości) → polskie etykiety. */
-const CALENDAR_KIND_PL: Record<string, string> = {
-  lecturer_absence: 'nieobecność wykładowcy',
-  class_cancelled: 'odwołane zajęcia',
-  class_remote: 'zdalne zajęcia',
-  class_rescheduled: 'przeniesione zajęcia',
-  duty_change: 'zmiana dyżuru',
-  free_day: 'dzień wolny',
-  official_event: 'wydarzenie UJ',
-  community_event: 'wydarzenie społeczności',
-  deadline: 'deadline',
-}
-
-const MAX_CALENDAR_TO_SHOW = 6
-
-function formatCalendarResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'W tym zakresie nic nie ma w kalendarzu.'
-  }
-  const items = rawItems.slice(0, MAX_CALENDAR_TO_SHOW)
-  const remaining = rawItems.length - items.length
-
-  const sentences = items.map((item) => {
-    const kind = pickString(item, 'kind')
-    const kindLabel = CALENDAR_KIND_PL[kind] ?? 'wpis'
-    const title = pickString(item, 'title') || 'wpis'
-    const startsAt = pickStringOrNull(item, 'starts_at')
-    const lecturer = pickStringOrNull(item, 'lecturer_name')
-    const location = pickStringOrNull(item, 'location')
-
-    const ctx = eventDateContext(startsAt)
-    const datePart = startsAt
-      ? ctx
-        ? `${ctx} (${formatDateShort(startsAt)})`
-        : formatDateShort(startsAt)
-      : 'bez daty'
-    const lecturerPart = lecturer ? ` — ${lecturer}` : ''
-    const locPart = location ? ` w ${location}` : ''
-    return `**${title}** [${kindLabel}] ${datePart}${lecturerPart}${locPart}`
-  })
-
-  const lead =
-    items.length === 1
-      ? 'Mam jeden wpis:'
-      : `W tym zakresie ${items.length} rzeczy:`
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0
-      ? `\n\nJest jeszcze ${remaining} — zawęź zakres albo zerknij na Kalendarz.`
-      : ''
-  return `${lead}\n${body}${tail}`
-}
-
-/** Mapowanie `student_discounts.category` enum (10 wartości) na PL etykiety. */
-const DISCOUNT_CATEGORY_PL: Record<string, string> = {
-  jedzenie: 'jedzenie',
-  kawa: 'kawa',
-  kultura: 'kultura',
-  kino: 'kino',
-  sport: 'sport',
-  ksiazki: 'książki',
-  uslugi: 'usługi',
-  transport: 'transport',
-  odziez: 'odzież',
-  inne: 'inne',
-}
-
-const MAX_DISCOUNTS_TO_SHOW = 5
-
-function pickNumber(obj: unknown, key: string): number | null {
-  if (typeof obj !== 'object' || obj === null) return null
-  const v = (obj as Record<string, unknown>)[key]
-  return typeof v === 'number' && Number.isFinite(v) ? v : null
-}
-
-function formatDiscountsResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Nic mi nie pasuje — spróbuj inną kategorią albo hasłem.'
-  }
-  const items = rawItems.slice(0, MAX_DISCOUNTS_TO_SHOW)
-  const remaining = rawItems.length - items.length
-
-  const sentences = items.map((item) => {
-    const business = pickString(item, 'business_name') || 'lokal'
-    const headline = pickString(item, 'discount_headline')
-    const address = pickStringOrNull(item, 'address')
-
-    const where = address ? ` (${address.replace(', Kraków', '')})` : ''
-    return `**${business}**${where} — ${headline}`
-  })
-
-  const lead =
-    items.length === 1 ? 'Mam coś:' : `Spoko, ${items.length} rzeczy:`
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0
-      ? `\n\nWięcej jest w zakładce Zniżki.`
-      : ''
-  return `${lead}\n${body}${tail}`
-}
-
-function formatTrendingDiscountsResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Cisza, w tym tygodniu nikt jeszcze niczego nie aktywował. Zerknij na zakładkę Zniżki — coś musi być świeże.'
-  }
-  const items = rawItems.slice(0, 4)
-
-  const sentences = items.map((item) => {
-    const business = pickString(item, 'business_name') || 'lokal'
-    const headline = pickString(item, 'discount_headline')
-    const recentUses = pickNumber(item, 'recent_uses') ?? 0
-    const usesPart = recentUses > 0 ? ` (${recentUses}× w tym tygodniu)` : ''
-    return `**${business}** — ${headline}${usesPart}`
-  })
-
-  const lead = 'Najgorętsze zniżki w tym tygodniu:'
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  return `${lead}\n${body}`
-}
-
-const MAX_CLASSES_TO_SHOW = 8
-
-function formatMyClassesResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Wolne, nic nie masz w planie. Jeśli to błąd — wpadnij na „Mój Plan" i odśwież import z USOSweb.'
-  }
-  const items = rawItems.slice(0, MAX_CLASSES_TO_SHOW)
-  const remaining = rawItems.length - items.length
-  const cancelledCount = items.filter(
-    (i) => pickStringOrNull(i, 'cancelled_announcement_body') !== null,
-  ).length
-
-  const sentences = items.map((item) => {
-    const summary = pickString(item, 'summary') || 'zajęcia'
-    const start = pickStringOrNull(item, 'start_time')
-    const lecturer = pickStringOrNull(item, 'lecturer_name')
-    const location = pickStringOrNull(item, 'location')
-    const cancelledBody = pickStringOrNull(item, 'cancelled_announcement_body')
-
-    const ctx = eventDateContext(start)
-    const datePart = start
-      ? ctx
-        ? `${ctx} (${formatDateShort(start)})`
-        : formatDateShort(start)
-      : 'bez daty'
-    const lec = lecturer ? `, ${lecturer}` : ''
-    const sala = location ? ` — sala ${location}` : ''
-    const cancelTag = cancelledBody ? ' [ODWOŁANE]' : ''
-    return `**${summary}**${cancelTag} ${datePart}${lec}${sala}`
-  })
-
-  const cancelNote =
-    cancelledCount > 0
-      ? cancelledCount === 1
-        ? ' Uwaga, jedne odwołane.'
-        : ` Uwaga, ${cancelledCount} odwołane.`
-      : ''
-  const lead =
-    items.length === 1
-      ? `Masz jedne zajęcia.${cancelNote}`
-      : `Masz ${items.length} zajęć w tym zakresie.${cancelNote}`
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0
-      ? `\n\nJest jeszcze ${remaining} dalej — zawęź zakres jeśli chcesz.`
-      : ''
-  return `${lead}\n${body}${tail}`
-}
-
-/** Briefing tool zwraca już-renderowany string. Pass-through. */
-function formatWeeklyBriefingResult(result: unknown): string {
-  if (typeof result === 'string') return result
-  if (typeof result !== 'object' || result === null) {
-    return 'Briefingu na ten tydzień jeszcze nie ma — wejdź na zakładkę Briefing, system go policzy.'
-  }
-  const r = result as Record<string, unknown>
-  if (typeof r.markdown === 'string' && r.markdown.length > 0) {
-    return r.markdown
-  }
-  return 'Briefingu na ten tydzień jeszcze nie ma — wejdź na zakładkę Briefing, system go policzy.'
-}
-
-const MAX_USOS_TO_SHOW = 5
-
-function formatUpcomingUsosResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'W tym okresie nic nadchodzącego nie ma w bazie. Zerknij na zakładkę Rejestracje — może akurat ktoś dorzuca.'
-  }
-  const items = rawItems.slice(0, MAX_USOS_TO_SHOW)
-  const remaining = rawItems.length - items.length
-
-  const sentences = items.map((item) => {
-    const title = pickString(item, 'title') || 'rejestracja'
-    const opensAt = pickStringOrNull(item, 'opens_at')
-    const audience = pickStringOrNull(item, 'audience_label')
-
-    const ctx = eventDateContext(opensAt)
-    const datePart = opensAt
-      ? ctx
-        ? `${ctx} (${formatDateShort(opensAt)})`
-        : formatDateShort(opensAt)
-      : 'bez daty'
-    const audPart = audience ? `, ${audience}` : ''
-    return `**${title}** — start ${datePart}${audPart}`
-  })
-
-  const lead =
-    items.length === 1
-      ? 'Nadchodzi jedna rejestracja:'
-      : `${items.length} rejestracji w drodze:`
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0
-      ? `\n\nWięcej w zakładce Rejestracje.`
-      : ''
-  return `${lead}\n${body}${tail}`
-}
-
-const MAX_OFFICIAL_EVENTS_TO_SHOW = 5
-
-function formatUpcomingOfficialEventsResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Cisza, nic nadchodzącego nie ma w bazie. Sprawdź zakładkę Wydarzenia — coś musi wkrótce wpaść.'
-  }
-  const items = rawItems.slice(0, MAX_OFFICIAL_EVENTS_TO_SHOW)
-  const remaining = rawItems.length - items.length
-
-  const sentences = items.map((item) => {
-    const title = pickString(item, 'title') || 'wydarzenie'
-    const date = pickStringOrNull(item, 'date')
-    const location = pickStringOrNull(item, 'location')
-
-    const ctx = eventDateContext(date)
-    const datePart = date
-      ? ctx
-        ? `${ctx} (${formatDateShort(date)})`
-        : formatDateShort(date)
-      : 'bez daty'
-    const locPart = location ? ` w ${location}` : ''
-    return `**${title}** — ${datePart}${locPart}`
-  })
-
-  const lead =
-    items.length === 1
-      ? 'Nadchodzi jedno wydarzenie:'
-      : `${items.length} wydarzeń przed Tobą:`
-  const body =
-    items.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  const tail =
-    remaining > 0 ? `\n\nWięcej w zakładce Wydarzenia.` : ''
-  return `${lead}\n${body}${tail}`
-}
-
-/**
- * Główny serwerowy formatter wyniku narzędzia → finalna odpowiedź dla
- * użytkownika. Wywoływany w miejsce drugiego round-tripu do Groqa
- * (który wcześniej "syntetyzował" odpowiedź z wyniku narzędzia).
- *
- * Strategia per shape:
- *   - `string` → wynik już jest tekstem (np. `EMPTY_RESULT_MESSAGE`),
- *     zwracamy jak jest;
- *   - `{ ok: false, error }` → krótka, neutralna informacja o błędzie
- *     (bez wyciekania szczegółów Postgres do usera);
- *   - `{ items: [] }` per nazwa tool-a → markdown-lista.
- *
- * Każdy nieznany shape → krótkie `Otrzymałem dane, ale nie umiem ich
- * przedstawić.` (defensive, lepsze niż wyrzucenie surowego JSON-a).
- */
-function formatToolResultAsFinalAnswer(
+async function synthesizeFinalAnswer(
   toolName: string,
   result: unknown,
-): string {
-  if (typeof result === 'string') return result
-  if (isToolErrorObject(result)) {
-    const errMsg =
-      typeof (result as { error?: unknown }).error === 'string'
-        ? (result as { error: string }).error
-        : 'nieznany błąd'
+  userQuery: string,
+  provider: GroqProvider,
+  usageAcc: TokenUsageAccumulator,
+): Promise<string> {
+  const facts = buildToolFacts(toolName, result)
+  if (facts.kind === 'direct') {
+    // Empty / error / passthrough — bez wywołania LLM, gotowy tekst.
+    return facts.text
+  }
+  // facts.kind === 'synthesize' — wołamy Llama 8B
+  try {
+    const synthesis = await synthesizeAnswer({
+      userQuery,
+      facts: facts.facts,
+      hint: facts.hint,
+      topicHint: facts.topicHint,
+      provider,
+    })
+    if (synthesis.usage) {
+      usageAcc.add(synthesis.usage)
+    }
+    if (!synthesis.text) {
+      console.warn('[synthesize] empty response — falling back to facts')
+      return factsToFallback(facts)
+    }
+    return synthesis.text
+  } catch (err) {
     console.warn(
-      '[Tool Format] tool returned error result:',
-      toolName,
-      'error:',
-      errMsg,
+      '[synthesize] failed, falling back to facts:',
+      err instanceof Error ? err.message : err,
     )
-    return `Nie wyszło — ${errMsg}.`
-  }
-  switch (toolName) {
-    case 'search_events':
-      return formatSearchEventsResult(result)
-    case 'get_latest_announcements':
-      return formatAnnouncementsResult(result)
-    case 'get_latest_posts':
-      return formatPostsResult(result)
-    case 'get_calendar_in_range':
-      return formatCalendarResult(result)
-    case 'search_discounts':
-      return formatDiscountsResult(result)
-    case 'get_trending_discounts':
-      return formatTrendingDiscountsResult(result)
-    case 'get_my_classes_in_range':
-      return formatMyClassesResult(result)
-    case 'get_my_weekly_briefing':
-      return formatWeeklyBriefingResult(result)
-    case 'get_upcoming_usos_registrations':
-      return formatUpcomingUsosResult(result)
-    case 'get_upcoming_official_events':
-      return formatUpcomingOfficialEventsResult(result)
-    case 'find_lecturer':
-      return formatFindLecturerResult(result)
-    case 'get_lecturer_announcements_by_name':
-      return formatLecturerAnnouncementsResult(result)
-    case 'get_my_followed_lecturers':
-      return formatMyFollowedLecturersResult(result)
-    default:
-      console.warn('[Tool Format] no formatter for tool:', toolName)
-      return 'Mam dane, ale nie wiem jak je przedstawić.'
+    return factsToFallback(facts)
   }
 }
 
-function formatFindLecturerResult(result: unknown): string {
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Nikogo takiego nie mam w bazie. Może literówka?'
-  }
-  const items = rawItems.slice(0, 5)
-  const sentences = items.map((item) => {
-    const name = pickString(item, 'lecturer_name') || 'wykładowca'
-    const count = pickNumber(item, 'announcement_count') ?? 0
-    const latest = pickStringOrNull(item, 'latest_at')
-    const countPart =
-      count > 0 ? ` — ${count} ${count === 1 ? 'ogłoszenie' : 'ogłoszeń'}` : ''
-    const latestPart = latest ? ` (ostatnio ${formatRelativeDate(latest)})` : ''
-    return `**${name}**${countPart}${latestPart}`
-  })
-  if (items.length === 1) {
-    return `Mam jednego: ${sentences[0]}.`
-  }
-  return `${items.length} pasuje:\n${sentences.join('\n')}`
+/** Fallback gdy Llama 8B się sypnęła — brzydki ale czytelny dump faktów. */
+function factsToFallback(
+  facts: Extract<ToolFactsResult, { kind: 'synthesize' }>,
+): string {
+  const tail = facts.hint ? `\n\n${facts.hint}.` : ''
+  return facts.facts + tail
 }
 
-function formatLecturerAnnouncementsResult(result: unknown): string {
-  if (typeof result === 'string') return result
-  if (typeof result !== 'object' || result === null) {
-    return 'Coś poszło nie tak — spróbuj ponownie.'
-  }
-  const r = result as Record<string, unknown>
-  const lecturer = typeof r.lecturer_name === 'string' ? r.lecturer_name : null
-  const items = Array.isArray(r.items) ? r.items : []
-  if (items.length === 0) {
-    return lecturer
-      ? `**${lecturer}** — w bazie znaleziony, ale brak ogłoszeń. Spokojny wykładowca.`
-      : 'Brak ogłoszeń.'
-  }
-  const top = items.slice(0, 5)
-  const sentences = top.map((it) => {
-    const status = pickString(it, 'status')
-    const statusPl = ANNOUNCEMENT_STATUS_PL[status] ?? status
-    const body = pickString(it, 'body')
-    const created = pickStringOrNull(it, 'created_at')
-    const when = created ? ` (${formatRelativeDate(created)})` : ''
-    const tail = body ? ` — ${clip(body, 160)}` : ''
-    return `${statusPl}${when}${tail}`
-  })
-  const lead = `**${lecturer ?? 'Wykładowca'}** — co ostatnio:`
-  const body = top.length <= 2 ? sentences.join(' ') : sentences.join('\n')
-  return `${lead}\n${body}`
-}
-
-function formatMyFollowedLecturersResult(result: unknown): string {
-  if (typeof result === 'string') return result
-  const rawItems = getItemsArray(result)
-  if (!rawItems || rawItems.length === 0) {
-    return 'Jeszcze nikogo nie subskrybujesz. Wpadnij w „Mój Plan" i dodaj swoich wykładowców.'
-  }
-  const items = rawItems.slice(0, 8)
-  const totalRecent = items.reduce(
-    (sum, it) => sum + (pickNumber(it, 'recent_announcement_count') ?? 0),
-    0,
-  )
-
-  const sentences = items.map((it) => {
-    const name = pickString(it, 'display_name') || 'wykładowca'
-    const recent = pickNumber(it, 'recent_announcement_count') ?? 0
-    const latest = pickStringOrNull(it, 'latest_announcement_at')
-    const status = pickStringOrNull(it, 'latest_status')
-    const statusPl = status ? ANNOUNCEMENT_STATUS_PL[status] ?? status : null
-    const recentPart =
-      recent > 0
-        ? ` — ${recent} ${recent === 1 ? 'ogłoszenie' : 'ogłoszeń'}`
-        : ' — cisza'
-    const latestPart =
-      latest && statusPl
-        ? ` (ostatnio: ${statusPl}, ${formatRelativeDate(latest)})`
-        : ''
-    return `**${name}**${recentPart}${latestPart}`
-  })
-
-  const lead =
-    totalRecent === 0
-      ? `Subskrybujesz ${items.length} ${items.length === 1 ? 'wykładowcę' : 'wykładowców'}, ale ostatnio cisza:`
-      : `Subskrybujesz ${items.length} ${items.length === 1 ? 'wykładowcę' : 'wykładowców'}, ostatnio ${totalRecent} ${totalRecent === 1 ? 'komunikat' : 'komunikatów'}:`
-  return `${lead}\n${sentences.join('\n')}`
-}
 
 /**
  * Łączy wyniki >1 narzędzi w jedną odpowiedź. Format: każda sekcja oddzielona
@@ -1368,6 +715,11 @@ export default async function handler(req: Request): Promise<Response> {
     supabaseAdmin: getSupabaseAdmin(),
   }
 
+  // Akumulator tokenów — sumuje `usage` ze wszystkich wywołań Groqa (zarówno
+  // tool decision jak i synteza finalnej odpowiedzi). Hoistowany przed
+  // fast-path, bo fast-path też woła Groq do syntezy (Llama 8B).
+  const usageAcc = new TokenUsageAccumulator()
+
   // Token Budgeting: przytnij historię do ostatnich `MAX_HISTORY_MESSAGES`
   // wiadomości, zanim trafi do `withPersona` / `GroqProvider`. System prompt
   // jest dosztukowywany potem, więc tnie się czysta historia user/assistant.
@@ -1485,9 +837,12 @@ export default async function handler(req: Request): Promise<Response> {
     if (entry) {
       try {
         const result = await entry.execute(fastMatch.args, ctx)
-        const formatted = formatToolResultAsFinalAnswer(
+        const formatted = await synthesizeFinalAnswer(
           fastMatch.toolName,
           result,
+          lastUserText,
+          provider,
+          usageAcc,
         )
         // Zapisz do response cache — kolejne identyczne zapytania pójdą
         // przez `responseCache HIT` (jeszcze szybciej, bez nawet Supabase).
@@ -1542,12 +897,8 @@ export default async function handler(req: Request): Promise<Response> {
    * thinking-phrases.
    */
   let executedToolName: string | null = null
-  /**
-   * Akumulator tokenów — sumuje `usage` z odpowiedzi Groqa. Single-shot więc
-   * dokładnie 1 wpis (vs poprzednie pętle), ale interfejs zostaje dla spójności
-   * i ewentualnej rozbudowy.
-   */
-  const usageAcc = new TokenUsageAccumulator()
+  // `usageAcc` zadeklarowany powyżej (przed fast-path) — sumuje tokeny ze
+  // wszystkich wywołań Groqa: tool decision (qwen3-32b) + synthesis (Llama 8B).
   let resolvedModel = DEFAULT_GROQ_MODEL
 
   try {
@@ -1657,7 +1008,13 @@ export default async function handler(req: Request): Promise<Response> {
         const sections = await Promise.all(
           toolCalls.map(async (call) => {
             const result = await runToolCall(call, ctx)
-            return formatToolResultAsFinalAnswer(call.function.name, result)
+            return synthesizeFinalAnswer(
+              call.function.name,
+              result,
+              lastUserText,
+              provider,
+              usageAcc,
+            )
           }),
         )
         finalContent = joinToolSections(sections)

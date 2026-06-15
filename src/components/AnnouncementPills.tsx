@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { formatLecturerPillLabel } from '../lib/lecturerDisplayName'
-import type { AnnouncementMeta, AnnouncementStatus, UnifiedContent } from '../types/content'
+import { ANNOUNCEMENT_STATUS_DOT } from '../lib/announcementStatusStyles'
+import type { AnnouncementMeta, UnifiedContent } from '../types/content'
 import AnnouncementDrawer from './AnnouncementDrawer'
 
-const STATUS_DOT: Record<AnnouncementStatus, string> = {
-  cancelled: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]',
-  remote: 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.45)]',
-  duty: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]',
-}
+// Reuse shared style mapy z `announcementStatusStyles` — jeden Record domknięty
+// na pełny union AnnouncementStatus, eliminuje ryzyko rozjazdu z desktop card
+// przy dodawaniu kolejnych statusów (TS by zgłosił błąd w obu miejscach).
+const STATUS_DOT = ANNOUNCEMENT_STATUS_DOT
 
 const MAX_PILLS = 24
 
@@ -37,7 +37,11 @@ function dedupe(items: UnifiedContent<AnnouncementMeta>[]): UnifiedContent<Annou
 }
 
 type Props = {
-  /** Komunikaty już przefiltrowane po wydziale i posortowane (DataService). */
+  /**
+   * Komunikaty z `useAnnouncements(selectedDepartment)` (DataService) —
+   * już przefiltrowane po wybranym wydziale (pillsy `DepartmentFilter` w
+   * `FeedView` sterują `selectedDepartment`).
+   */
   announcements: UnifiedContent<AnnouncementMeta>[]
   loading: boolean
   /**
@@ -61,20 +65,30 @@ export default function AnnouncementPills({ announcements, loading, inline = fal
   ))
 
   const pillNodes = pills.map((ann) => {
-    const pillLabel = formatLecturerPillLabel(ann.author.displayName)
+    // Komunikaty wydziałowe (Liferay/WP) mają `title` ale `lecturer_name`
+    // = generyczny fallback („Komunikat wydziałowy"). Trzymamy pigułkę
+    // krótką: pierwsze ~40 znaków tytułu zamiast bezsensownego nazwiska.
+    const facultyTitle = ann.metadata.title?.trim()
+    const rawLabel =
+      facultyTitle && facultyTitle.length > 0
+        ? facultyTitle.length > 42
+          ? `${facultyTitle.slice(0, 40)}…`
+          : facultyTitle
+        : formatLecturerPillLabel(ann.author.displayName)
+    const tooltip = facultyTitle ?? ann.author.displayName
     return (
       <button
         key={ann.metadata.bodyFingerprint?.trim() ? ann.metadata.bodyFingerprint! : ann.id}
         type="button"
         onClick={() => setOpenAnn(ann)}
         className={pillBtn}
-        title={ann.author.displayName}
+        title={tooltip}
       >
         <span
           className={`inline-block size-2 shrink-0 rounded-full ${STATUS_DOT[ann.metadata.status]}`}
           aria-hidden
         />
-        <span>{pillLabel}</span>
+        <span>{rawLabel}</span>
       </button>
     )
   })

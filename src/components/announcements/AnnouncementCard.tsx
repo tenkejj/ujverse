@@ -1,10 +1,6 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ACADEMIC_ISI_BADGE_LABEL,
-  ACADEMIC_ISI_BADGE_TITLE,
-  showAcademicIsiBadge,
-} from '../../lib/announcementBranding'
+import { getAnnouncementBadge } from '../../lib/announcementBranding'
 import {
   ANNOUNCEMENT_STATUS_BADGE,
   ANNOUNCEMENT_STATUS_DOT,
@@ -123,7 +119,8 @@ export default function AnnouncementCard({
     })
   const navigate = useNavigate()
 
-  const { summary, extractedCalendar } = announcement.metadata
+  const { summary, extractedCalendar, title: facultyTitle, sourceUrl } = announcement.metadata
+  const sourceBadge = getAnnouncementBadge(announcement.metadata.source)
   const calendarDayKey =
     extractedCalendar !== null ? isoStartsToCalendarDayKey(extractedCalendar.starts_at) : null
   const calendarColors =
@@ -139,25 +136,34 @@ export default function AnnouncementCard({
     })
   }
 
+  // Dla komunikatów wydziałowych (Liferay/WP) headline'em jest tytuł
+  // ogłoszenia, a lecturer/fallback name schodzi do podpisu pod tytułem.
+  // Dla ISI (lecturer-blocks) zostaje stary układ — nazwisko jest tym
+  // co user chce zobaczyć najpierw.
+  const hasFacultyTitle = facultyTitle != null && facultyTitle.trim().length > 0
+  const headline = hasFacultyTitle ? facultyTitle!.trim() : announcement.author.displayName
+
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
         <div className="flex min-w-0 flex-1 items-start gap-2">
           <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug min-w-0 break-words whitespace-normal">
-            {announcement.author.displayName}
+            {headline}
           </p>
-          <LecturerSubscribeBell
-            lecturerName={announcement.author.displayName}
-            className="shrink-0 translate-y-[-2px]"
-          />
+          {!hasFacultyTitle && (
+            <LecturerSubscribeBell
+              lecturerName={announcement.author.displayName}
+              className="shrink-0 translate-y-[-2px]"
+            />
+          )}
         </div>
         <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
-          {showAcademicIsiBadge(announcement.metadata.source) && (
+          {sourceBadge && (
             <span
               className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-[#1e293b] dark:text-zinc-400 opacity-70 text-right"
-              title={ACADEMIC_ISI_BADGE_TITLE}
+              title={sourceBadge.title}
             >
-              {ACADEMIC_ISI_BADGE_LABEL}
+              {sourceBadge.label}
             </span>
           )}
           {announcement.timestamp && (
@@ -210,6 +216,20 @@ export default function AnnouncementCard({
         </p>
       )}
       <AnnouncementBodyClamp body={announcement.body} expanded={expanded} onToggle={toggleExpand} />
+      {sourceUrl && (
+        // Deep-link do oryginalnego ogłoszenia na portalu wydziału (Liferay/WP).
+        // `stopPropagation` — jeśli karta jest w trybie `onOpen` (search wynik
+        // klikalny), klik w link nie odpala drawera tylko otwiera URL.
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className={`mt-2 inline-flex items-center gap-1 text-[10px] font-medium ${sideMutedCls} hover:text-logo-navy/80 dark:hover:text-slate-300 transition-colors`}
+        >
+          Otwórz oryginał <span aria-hidden>↗</span>
+        </a>
+      )}
     </>
   )
 

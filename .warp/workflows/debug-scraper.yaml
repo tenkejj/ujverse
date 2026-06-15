@@ -1,0 +1,13 @@
+---
+name: UJverse — Debug scraper (parser test)
+command: npx tsx debug-scraper.ts {{sources}}
+tags:
+  - ujverse
+  - scraper
+description: |
+  Odpala parser komunikatów wydziałowych BEZ zapisu do DB i bez Groqa.
+  Pusty `sources` = domyślne WZiKS. Możesz podać kilka, np. `wpia phils wbbib`.
+arguments:
+  - name: sources
+    description: ID źródeł rozdzielone spacją (puste = WZiKS)
+    default_value: ""

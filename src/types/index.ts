@@ -80,12 +80,18 @@ export type AppNotification = {
   is_read: boolean
   created_at: string
   actor?: Profile | null
-  /** Embed danych komunikatu dla powiadomień typu `lecturer_announcement`. */
+  /**
+   * Embed danych komunikatu dla powiadomień typu `lecturer_announcement`.
+   * Status: union 1:1 z `AnnouncementStatus` w `types/content.ts` —
+   * mimo że powiadomienia po wykładowcy odpalają się tylko dla ISI
+   * lecturer-blocks, trzymamy szerszy union żeby uniknąć cichego castu
+   * gdy embed przyjdzie z DB z `info`/`event` (po migracji 20260715).
+   */
   announcement?: {
     id: string
     lecturer_name: string
     body: string
-    status: 'cancelled' | 'remote' | 'duty'
+    status: 'cancelled' | 'remote' | 'duty' | 'info' | 'event'
     department: string | null
     created_at: string
   } | null

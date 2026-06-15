@@ -1,0 +1,13 @@
+---
+name: UJverse — Health check (diag)
+command: |
+  curl -s "{{base_url}}/api/diag/health" | ConvertFrom-Json | Format-List
+tags:
+  - ujverse
+  - debug
+description: |
+  Szybki smoke test endpointu `/api/diag/health`. Działa z PowerShellem 7+.
+arguments:
+  - name: base_url
+    description: Base URL
+    default_value: http://localhost:3000

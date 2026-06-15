@@ -3,6 +3,7 @@ import { UjverseSanitizer } from '../../lib/sanitizer'
 import { activeAnnouncementCutoff } from '../../lib/announcementRecency'
 import type {
   AnnouncementMeta,
+  AnnouncementSourceKind,
   AnnouncementStatus,
   UnifiedContent,
 } from '../../types/content'
@@ -12,14 +13,41 @@ import {
 } from '../../types/calendar'
 import type { ContentAdapter, Unsubscribe } from './BaseAdapter'
 
-/** Surowy rekord z tabeli `announcements` (shape ze scrapera ISI UJ). */
+/**
+ * Surowy rekord z tabeli `announcements`. Shape pokrywa wszystkie 3 parsery
+ * (ISI Drupal, Liferay UJ, WordPress Collegium Medicum) — pola `title` /
+ * `source_url` są nullable, bo ISI Drupal nie wystawia ich osobno.
+ *
+ * Migracje: 20260412 (base), 20260413 (body_fingerprint), 20260414 (source),
+ * 20260621 (extracted_calendar), 20260624 (summary),
+ * 20260715120000 (title + source_url + source_kind + status 'info'/'event'),
+ * 20260715130000 (full_body — pełna treść z source_url, drugi pass scrapera).
+ */
 export type AnnouncementRow = {
   id: string
   body_fingerprint: string | null
   department: string | null
   source: string | null
+  source_kind: AnnouncementSourceKind | null
+  source_url: string | null
+  title: string | null
   lecturer_name: string
+  /**
+   * Tekst widoczny na listings (excerpt z Liferay/WP CM, pełna treść z ISI Drupal
+   * lub komunikatach manualnych). Stabilne źródło `body_fingerprint`, dlatego
+   * scraper drugiego passu NIE nadpisuje go.
+   */
   body: string
+  /**
+   * Pełna treść artykułu z `source_url` (migracja 20260715130000). `null` dla:
+   * - ISI Drupal i manualnych (mają już pełną treść w `body`)
+   * - rzędów świeżo utworzonych przed pierwszym cyklem drugiego passu
+   * - rzędów gdzie fetch się nie udał (404 / parser nic nie złapał).
+   *
+   * Frontend preferuje `full_body` nad `body` — szczegółowy tekst pokazujemy
+   * w drawer / card body, ale fingerprint i dedup są nieruszone.
+   */
+  full_body: string | null
   status: AnnouncementStatus
   created_at: string
   /** Bielik TL;DR (migracja 20260623100000). `null` przed ekstrakcją. */
@@ -27,6 +55,21 @@ export type AnnouncementRow = {
   /** Bielik kalendarz (migracja 20260621100000). `null` jeśli brak ramki czasowej. */
   extracted_calendar: AnnouncementExtractedCalendar | null
 }
+
+const ALLOWED_STATUSES = new Set<AnnouncementStatus>([
+  'cancelled',
+  'remote',
+  'duty',
+  'info',
+  'event',
+])
+
+const ALLOWED_SOURCE_KINDS = new Set<AnnouncementSourceKind>([
+  'isi_drupal',
+  'liferay',
+  'wordpress_cm',
+  'manual',
+])
 
 function parseRow(row: Record<string, unknown>): AnnouncementRow | null {
   const id = row.id
@@ -38,10 +81,16 @@ function parseRow(row: Record<string, unknown>): AnnouncementRow | null {
     return null
   }
   if (typeof created_at !== 'string') return null
-  if (status !== 'cancelled' && status !== 'remote' && status !== 'duty') return null
+  if (typeof status !== 'string' || !ALLOWED_STATUSES.has(status as AnnouncementStatus)) return null
 
   const pickStringOrNull = (v: unknown): string | null =>
     typeof v === 'string' ? v : v === null || v === undefined ? null : null
+
+  const sourceKindRaw = pickStringOrNull(row.source_kind)
+  const sourceKind: AnnouncementSourceKind | null =
+    sourceKindRaw && ALLOWED_SOURCE_KINDS.has(sourceKindRaw as AnnouncementSourceKind)
+      ? (sourceKindRaw as AnnouncementSourceKind)
+      : null
 
   // `summary` z DB to TEXT z CHECK length<=400; jednak na froncie używamy
   // ≤280, więc capujemy żeby chronić layout karty na wąskich ekranach.
@@ -67,8 +116,12 @@ function parseRow(row: Record<string, unknown>): AnnouncementRow | null {
     body_fingerprint: pickStringOrNull(row.body_fingerprint),
     department: pickStringOrNull(row.department),
     source: pickStringOrNull(row.source),
+    source_kind: sourceKind,
+    source_url: pickStringOrNull(row.source_url),
+    title: pickStringOrNull(row.title),
     lecturer_name,
     body,
+    full_body: pickStringOrNull(row.full_body),
     status: status as AnnouncementStatus,
     created_at,
     summary,
@@ -96,7 +149,7 @@ class AnnouncementsAdapterImpl
     const { data, error } = await supabase
       .from('announcements')
       .select(
-        'id, body_fingerprint, department, source, lecturer_name, body, status, created_at, summary, extracted_calendar',
+        'id, body_fingerprint, department, source, source_kind, source_url, title, lecturer_name, body, full_body, status, created_at, summary, extracted_calendar',
       )
       .gte('created_at', since)
       .order('created_at', { ascending: false })
@@ -112,13 +165,23 @@ class AnnouncementsAdapterImpl
 
   toUnified(raw: AnnouncementRow): UnifiedContent<AnnouncementMeta> | null {
     const author = UjverseSanitizer.cleanAuthor(raw.lecturer_name)
-    const body = UjverseSanitizer.cleanBody(raw.body)
+    // Preferuj pełną treść z drugiego passu scrapera; gdy brak — listings
+    // excerpt jako fallback. `body_fingerprint` zawsze liczony z `raw.body`,
+    // więc deduplikacja jest niezaburzona.
+    const bodyText = raw.full_body ?? raw.body
+    const body = UjverseSanitizer.cleanBody(bodyText)
     if (!author && !body) return null
+
+    // Dla Liferay/WP `title` jest realnym tytułem komunikatu — używamy go
+    // jako głównego headline'a. Dla ISI Drupal `title` to null → fallback
+    // do author (lecturer name) jak dotychczas.
+    const headline = raw.title?.trim() ?? ''
+    const displayTitle = headline.length > 0 ? headline : author
 
     return {
       id: raw.id,
       type: 'announcement',
-      title: author,
+      title: displayTitle,
       author: {
         id: `lecturer:${UjverseSanitizer.slugify(author) || raw.id}`,
         displayName: author || 'Prowadzący',
@@ -131,6 +194,9 @@ class AnnouncementsAdapterImpl
       metadata: {
         status: raw.status,
         source: raw.source,
+        sourceKind: raw.source_kind,
+        sourceUrl: raw.source_url,
+        title: raw.title,
         department: raw.department,
         bodyFingerprint: raw.body_fingerprint,
         summary: raw.summary,
@@ -140,7 +206,18 @@ class AnnouncementsAdapterImpl
     }
   }
 
-  /** Pełna pipelina: fetch -> toUnified -> posortowane (cancelled pierwsze, potem desc by created_at). */
+  /**
+   * Pełna pipelina: fetch -> toUnified -> posortowane.
+   *
+   * Sort priority:
+   *   1. `cancelled` na górze (silny sygnał — nie przegap odwołania zajęć).
+   *   2. Pozostałe (remote/duty/info/event) — chronologicznie desc po
+   *      `created_at`.
+   *
+   * DataService dodaje finalny sort po dacie globalnie, ale ten lokalny
+   * priorytet zachowujemy żeby cancelled lecturer-blocks z ISI nie schodziły
+   * pod informacyjne komunikaty Liferay/WP z tego samego tygodnia.
+   */
   async list(): Promise<UnifiedContent<AnnouncementMeta>[]> {
     const raws = await this.fetch()
     const unified = raws

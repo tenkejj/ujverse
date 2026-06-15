@@ -1,0 +1,9 @@
+---
+name: UJverse — Dev stack (vercel dev)
+command: npx vercel dev
+tags:
+  - ujverse
+  - dev
+description: |
+  Pełny stack lokalnie: Vite SPA + Vercel Functions (api/*) na :3000.
+  Używaj zamiast `npm run dev`, jeżeli musisz wołać `/api/*` (Bruno, chat, scrapery).

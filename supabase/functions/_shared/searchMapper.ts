@@ -54,6 +54,14 @@ export type PostRecord = {
 export type AnnouncementRecord = {
   id: string | number
   body?: string | null
+  /**
+   * Pełna treść artykułu z `source_url` (migracja 20260715130000). Mapper
+   * preferuje `full_body` nad `body` dla searchable content. Patrz
+   * `lib/searchSyncMapper.ts` — Edge function trzymamy w sync.
+   */
+  full_body?: string | null
+  /** Tytuł komunikatu (Liferay/WP) — dodane w migracji 20260715. Null dla ISI. */
+  title?: string | null
   lecturer_name?: string | null
   department?: string | null
   created_at?: string | null
@@ -176,9 +184,17 @@ export function mapCohortMessageToSearchDocument(
 
 export function mapAnnouncementToSearchDocument(record: AnnouncementRecord): SearchContentDocument | null {
   const sourceId = String(record.id ?? '').trim()
-  const content = record.body?.trim() ?? ''
+  // Preferuj `full_body` (drugi pass scrapera, migracja 20260715130000)
+  // — mirror `lib/searchSyncMapper.ts`.
+  const fullBody = record.full_body?.trim() ?? ''
+  const body = fullBody.length > 0 ? fullBody : record.body?.trim() ?? ''
+  const title = record.title?.trim() ?? ''
   const author = record.lecturer_name?.trim() ?? ''
-  if (!sourceId || !content || !author) return null
+  if (!sourceId || !body || !author) return null
+
+  // Title + body w jednym polu `content` — Meili boostuje match po tytule
+  // bez dodawania osobnego pola (mirror logiki w `lib/searchSyncMapper.ts`).
+  const content = title.length > 0 && !body.startsWith(title) ? `${title}\n\n${body}` : body
 
   return {
     id: documentIdFor('announcements', sourceId),

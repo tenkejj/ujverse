@@ -48,7 +48,7 @@ UJverse is a Vite + React SPA using Supabase (Auth + Postgres + Realtime + Stora
 | Styling | Tailwind CSS v4 (`@tailwindcss/vite`), custom `@theme` + CSS variables in [src/index.css](src/index.css) |
 | Routing | `react-router-dom` — [`BrowserRouter`](src/main.tsx) only; **no** `<Routes>` / `<Route>` in [src/App.tsx](src/App.tsx) |
 | Data | `@supabase/supabase-js`; domain facade [src/services/DataService.ts](src/services/DataService.ts) + adapters |
-| Hosting / API | Vercel ([vercel.json](vercel.json)); serverless handler [api/scrape-wziks.ts](api/scrape-wziks.ts) |
+| Hosting / API | Vercel ([vercel.json](vercel.json)); serverless handlers (e.g. [api/scrape-faculty-announcements.ts](api/scrape-faculty-announcements.ts) — 16-source multi-parser scraper) |
 | Analytics | `@vercel/analytics` in App |
 
 ---
@@ -143,7 +143,7 @@ Dense per-file summary (execute order = filename). Tables referenced but **not c
 ### [20260413120000_announcements_realtime_fingerprint.sql](supabase/migrations/20260413120000_announcements_realtime_fingerprint.sql)
 
 - **Columns**: `body_fingerprint` (unique, MD5 of body), backfill + dedupe.
-- **Trigger**: `set_announcement_body_fingerprint` on INSERT/UPDATE OF `body`.
+- **Trigger**: `set_announcement_body_fingerprint` on INSERT/UPDATE OF `body`. **NIE TYKAJ `body` w drugich passach scrapera** — przeliczy fingerprint i pęknie dedup z listings (excerpt vs full article mają różne md5). Pełną treść trzymaj w osobnej kolumnie `full_body` (migracja 20260715130000).
 - **Realtime**: `REPLICA IDENTITY FULL`; `ALTER PUBLICATION supabase_realtime ADD TABLE announcements`.
 
 ### [20260414120000_announcements_source.sql](supabase/migrations/20260414120000_announcements_source.sql)
@@ -405,7 +405,7 @@ Module **Aula** = live chat per study-year cohort. **Independent** from `groups`
   Strefa: heurystyczna DST (marzec-październik +02:00, inaczej +01:00).
   Classifier `kind` na podstawie regex'ów na nazwie rejestracji.
 - [vercel.json](vercel.json) — `maxDuration: 60` (50 jednostek × parallel 5 ≈ 15s)
-  + cron `15 6 * * *` (po `scrape-wziks`) i `0 19 * * *` (wieczór).
+  + cron `15 6 * * *` (po porannym tiku `scrape-faculty-announcements`) i `0 19 * * *` (wieczór).
 
 ### AI source: fallback z ogłoszeń (Vercel Cron) — SECONDARY
 
@@ -482,7 +482,7 @@ Community-driven katalog miejsc do nauki: biblioteki UJ (BJ, czytelnie wydziało
 - **[api/aula-ai.ts](api/aula-ai.ts)** — Edge endpoint (`fra1`) dla Aula AI tasks (`summarize_channel`, `explain_message`, `simplify_message`, `translate_message`). Reuse `GroqProvider` + persona/prompty z [`aulaAiPrompts.ts`](src/lib/aulaAiPrompts.ts). Rate limit 10 req/min per user, klient → [`AulaAiService`](src/services/ai/AulaAiService.ts) → [`AiInsightModal`](src/components/aula/AiInsightModal.tsx). Strip `<think>` chunków (Qwen3 reasoning guard).
 - **[api/transcribe.ts](api/transcribe.ts)** — Edge endpoint dla audio transcription (Groq Whisper Large V3 Turbo). 25MB limit, rate limit 20 req/min per user. Klient: [`TranscribeService`](src/services/ai/TranscribeService.ts), używany przez [`ChatVoiceButton`](src/components/chat/ChatVoiceButton.tsx).
 - **[api/chat.ts](api/chat.ts)** — Edge endpoint Bielik chat z Function Calling (tools w [`api/_lib/tools/`](api/_lib/tools/)). Tools: `getMyUserContext`, `getMyAulaOverview`, `findUser`, `getCalendarInRange`, `getLatestAnnouncements`, `searchEvents`, `getLatestPosts`. Cache via Vercel KV w [`api/_lib/cache.ts`](api/_lib/cache.ts).
-- **[api/scrape-wziks.ts](api/scrape-wziks.ts)** — Vercel Node handler (`export default`); scrapes ISI announcements, Groq optional for nominative names, upserts `announcements` + `lecturer_names_cache` with service-role Supabase client. Requires env vars (e.g. `GROQ_API_KEY`, Supabase URL + **service** key — see file).
+- **[api/scrape-faculty-announcements.ts](api/scrape-faculty-announcements.ts)** — Vercel Node handler (`export default`, hourly cron); iterates [FACULTY_SOURCES](api/_lib/scrapers/sources.ts) (16 sources: 12 Liferay UJ wydziały + 3 WordPress Collegium Medicum + 1 ISI Drupal/WZiKS), dispatches to three parser adapters in [`api/_lib/scrapers/`](api/_lib/scrapers/), Groq optional for nominative names (ISI lecturer-blocks), upserts `announcements` + `lecturer_names_cache` with service-role Supabase client. **Three-pass workflow**: (1) per-source scrape (sequential, per-source try/catch — padnięty wydział nie blokuje pozostałych); (2) `full_body` fetch z `source_url` dla Liferay/WP CM (budżet 20/run, próg `body.length < 600`); (3) Bielik metadata extraction (TL;DR + kalendarz) preferująca `full_body` nad `body`. Migracja [20260715130000_announcements_full_body.sql](supabase/migrations/20260715130000_announcements_full_body.sql) trzyma `full_body` w osobnej kolumnie żeby NIE rozjeżdżać `body_fingerprint` (dedup źródło to excerpt). Requires env vars (e.g. `GROQ_API_KEY`, Supabase URL + **service** key — see file).
 - **[api/sync-search.ts](api/sync-search.ts)** — Vercel Node handler called by Supabase webhook on `posts` / `announcements` / `profiles` / **`cohort_messages` / `cohort_message_attachments`** INSERT/UPDATE/DELETE; uses [lib/searchSyncMapper.ts](lib/searchSyncMapper.ts) to map row → document and pushes to Meilisearch. Lazily ensures index settings via [lib/meilisearchIndexSettings.ts](lib/meilisearchIndexSettings.ts) (`ensureContentIndexSettings`, `ensureUsersIndexSettings`, **`ensureAulaIndexSettings`**) before first upsert. Aula attachments don't get their own document — the handler refetches the parent `cohort_messages` row and re-indexes it. Edge-function duplicate in [supabase/functions/_shared/searchMapper.ts](supabase/functions/_shared/searchMapper.ts) (see [Known drift](#known-drift)).
 - **[vercel.json](vercel.json)** — currently **`{ "version": 2 }`** only. Function routing/rewrites are **defaults** (API routes under `/api` map to `api/`). Document env secrets in deployment, not in repo.
 

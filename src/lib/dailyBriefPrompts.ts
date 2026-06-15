@@ -40,7 +40,13 @@ export type BriefTask = {
 
 export type BriefAnnouncement = {
   lecturerName: string | null
-  status: 'cancelled' | 'remote' | 'duty'
+  /**
+   * Union 1:1 z `AnnouncementStatus` w `types/content.ts`. Po migracji
+   * 20260715 dochodzą `'info'` i `'event'` z komunikatów wydziałowych
+   * (Liferay/WP) — daily brief prompt może je używać do generowania
+   * podsumowań spoza lecturer-blocks (np. „nowe stypendium na WPiA").
+   */
+  status: 'cancelled' | 'remote' | 'duty' | 'info' | 'event'
   body: string
   /** ISO. */
   createdAt: string

@@ -1,11 +1,7 @@
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import {
-  ACADEMIC_ISI_BADGE_LABEL,
-  ACADEMIC_ISI_BADGE_TITLE,
-  showAcademicIsiBadge,
-} from '../lib/announcementBranding'
+import { getAnnouncementBadge } from '../lib/announcementBranding'
 import {
   ANNOUNCEMENT_STATUS_BADGE,
   ANNOUNCEMENT_STATUS_DOT,
@@ -62,6 +58,10 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
 
   const summary = announcement?.metadata.summary ?? null
   const extractedCalendar = announcement?.metadata.extractedCalendar ?? null
+  const facultyTitle = announcement?.metadata.title ?? null
+  const sourceUrl = announcement?.metadata.sourceUrl ?? null
+  const sourceBadge = getAnnouncementBadge(announcement?.metadata.source)
+  const hasFacultyTitle = facultyTitle != null && facultyTitle.trim().length > 0
   const calendarDayKey =
     extractedCalendar !== null ? isoStartsToCalendarDayKey(extractedCalendar.starts_at) : null
   const calendarColors =
@@ -119,17 +119,25 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                     id="announcement-drawer-title"
                     className="text-lg font-bold leading-snug text-fg-primary min-w-0 flex-1"
                   >
-                    {announcement.author.displayName}
+                    {hasFacultyTitle ? facultyTitle!.trim() : announcement.author.displayName}
                   </p>
-                  {showAcademicIsiBadge(announcement.metadata.source) && (
+                  {sourceBadge && (
                     <span
                       className="text-[9px] font-medium leading-none whitespace-nowrap text-fg-secondary opacity-70 shrink-0 text-right"
-                      title={ACADEMIC_ISI_BADGE_TITLE}
+                      title={sourceBadge.title}
                     >
-                      {ACADEMIC_ISI_BADGE_LABEL}
+                      {sourceBadge.label}
                     </span>
                   )}
                 </div>
+                {hasFacultyTitle && announcement.author.displayName && (
+                  // Sub-label z lecturer/fallback name — dla Liferay/WP zwykle
+                  // to „Komunikat wydziałowy", ale gdy parser złapał konkretne
+                  // nazwisko (np. ogłoszenie konkursu od profesora) pokażmy je.
+                  <p className="mt-0.5 text-xs text-fg-secondary">
+                    {announcement.author.displayName}
+                  </p>
+                )}
                 {announcement.timestamp && (
                   <time
                     className="mt-0.5 block text-xs tabular-nums text-fg-secondary"
@@ -177,13 +185,28 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
             <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-fg-primary/90 dark:text-zinc-300">
               {announcement.body}
             </p>
-            <div className="mt-5 flex justify-center">
-              <LecturerSubscribeBell
-                lecturerName={announcement.author.displayName}
-                variant="pill"
-                stopPropagation={false}
-              />
-            </div>
+            {sourceUrl && (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-logo-navy underline-offset-2 hover:underline dark:text-slate-300"
+              >
+                Otwórz oryginalne ogłoszenie <span aria-hidden>↗</span>
+              </a>
+            )}
+            {!hasFacultyTitle && (
+              // Subskrybowanie po wykładowcy ma sens tylko dla ISI lecturer-blocks
+              // (gdzie author = realna osoba). Liferay/WP mają zwykle fallback
+              // „Komunikat wydziałowy" — bell pod nim byłby mylący.
+              <div className="mt-5 flex justify-center">
+                <LecturerSubscribeBell
+                  lecturerName={announcement.author.displayName}
+                  variant="pill"
+                  stopPropagation={false}
+                />
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}

@@ -62,11 +62,48 @@ export interface UnifiedContent<
 /*  Typowane metadane per rodzaj treści                                         */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty'
+/**
+ * Pięć statusów komunikatu — mapuje 1:1 na CHECK constraint w migracji
+ * `20260715120000_announcements_multi_faculty.sql`.
+ *
+ *   - `cancelled` / `remote` / `duty` — lecturer-level (źródło: ISI UJ Drupal)
+ *   - `info` / `event` — komunikaty wydziałowe ogólne (Liferay UJ + WordPress
+ *     Collegium Medicum)
+ *
+ * Jeśli dodasz nowy status, PAMIĘTAJ żeby zaktualizować:
+ *   - `announcementStatusStyles.ts` (LABEL / DOT / BADGE)
+ *   - `AnnouncementPills.tsx::STATUS_DOT` (Record wymusi)
+ *   - `parseRow` w `AnnouncementsAdapter` (whitelisting)
+ *   - Migrację SQL z CHECK constraint
+ */
+export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty' | 'info' | 'event'
+
+/**
+ * Z którego parsera/portalu pochodzi komunikat. Mapuje 1:1 na CHECK na
+ * `announcements.source_kind`.
+ *
+ *   - `isi_drupal`   — WZiKS via ISI UJ (lecturer-level absences)
+ *   - `liferay`      — 12 wydziałów na portalu Liferay UJ (komunikaty wydziałowe)
+ *   - `wordpress_cm` — 3 wydziały Collegium Medicum (WordPress)
+ *   - `manual`       — wpis ręczny (admin), zarezerwowane na przyszłość
+ */
+export type AnnouncementSourceKind = 'isi_drupal' | 'liferay' | 'wordpress_cm' | 'manual'
 
 export type AnnouncementMeta = {
   status: AnnouncementStatus
   source: string | null
+  /** Z którego parsera pochodzi (`announcements.source_kind`). `null` dla legacy wpisów. */
+  sourceKind: AnnouncementSourceKind | null
+  /**
+   * Deep-link do oryginalnego ogłoszenia na stronie wydziału (Liferay / WP).
+   * `null` dla ISI Drupal (lecturer-blocks nie mają osobnego URL).
+   */
+  sourceUrl: string | null
+  /**
+   * Tytuł komunikatu wyciągnięty przez parser (Liferay / WP). `null` dla
+   * ISI Drupal — wtedy UI używa pierwszych ~80 znaków `body`.
+   */
+  title: string | null
   department: string | null
   /** Stabilny fallback dla klucza React (fingerprint treści). */
   bodyFingerprint: string | null

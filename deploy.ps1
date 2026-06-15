@@ -2,9 +2,10 @@
 # UJverse production deploy via Vercel prebuilt artifact.
 #
 # Why prebuilt instead of git auto-deploy: Vercel's remote auto-detect
-# deterministically skips api/scrape-wziks.ts (file passes nodenext TS check,
+# deterministically skips some api/*.ts files (historically api/scrape-wziks.ts,
+# now api/scrape-faculty-announcements.ts — file passes nodenext TS check,
 # esbuild bundles cleanly, no .gitignore/.vercelignore match), while the local
-# `vercel build` detects and builds both api/*.ts lambdas correctly. The
+# `vercel build` detects and builds all api/*.ts lambdas correctly. The
 # generated .vercel/output/config.json also produces correct routing that
 # isolates /api/* from the SPA fallback. Shipping the prebuilt artifact bypasses
 # the remote auto-detect glitch entirely.

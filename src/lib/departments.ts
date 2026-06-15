@@ -70,6 +70,40 @@ export function canonicalDepartment(stored: string | null | undefined): string |
   return t
 }
 
+/**
+ * Grupy wydziałów dzielących to samo źródło komunikatów (jeden portal,
+ * wiele canonical nazw w `UJ_DEPARTMENTS`). Mapuje 1:1 na multi-element
+ * `faculty_departments` w `api/_lib/scrapers/sources.ts`.
+ *
+ * Aktualnie jedyny case to Wydział Lekarski + Wydział Lekarsko-Stomatologiczny:
+ * scraper zapisuje wszystkie komunikaty pod `Wydział Lekarski` (canonical),
+ * ale user który ma `profile.department = 'Wydział Lekarsko-Stomatologiczny'`
+ * też je powinien widzieć (na UJ jest jeden Wydział Lekarski z kierunkiem
+ * lekarskim i lekarsko-dentystycznym — historyczna lista trzyma osobne wpisy).
+ *
+ * Klucz mapy = canonical name (po `canonicalDepartment`), wartość = lista
+ * wszystkich aliasów z tej grupy (włącznie z kluczem).
+ */
+const DEPARTMENT_GROUPS: Record<string, readonly string[]> = {
+  'Wydział Lekarski': ['Wydział Lekarski', 'Wydział Lekarsko-Stomatologiczny'],
+  'Wydział Lekarsko-Stomatologiczny': ['Wydział Lekarski', 'Wydział Lekarsko-Stomatologiczny'],
+}
+
+/**
+ * Zwraca listę nazw wydziałów dzielących jeden zestaw komunikatów z `name`.
+ * Dla wydziałów bez aliasów zwraca tablicę z jednym elementem.
+ *
+ * Używane przez `DataService.listAnnouncements` do dopasowania komunikatów,
+ * gdy scraper zapisuje wszystkie wpisy pod jedną canonical nazwą, ale user
+ * w profilu ma alias historyczny.
+ */
+export function departmentGroup(name: string | null | undefined): string[] {
+  const canon = canonicalDepartment(name)
+  if (!canon) return []
+  const group = DEPARTMENT_GROUPS[canon]
+  return group ? [...group] : [canon]
+}
+
 /** Zwraca oficjalny skrót wydziału lub pełną nazwę jako fallback. */
 export function getDeptAbbreviation(deptName: string): string {
   return DEPT_SHORT[deptName] ?? deptName

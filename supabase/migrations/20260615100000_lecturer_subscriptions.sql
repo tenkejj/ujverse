@@ -7,7 +7,7 @@
 --   * dynamiczny swap CHECK na notifications.type — jak w 20260611200500 / 20260611202000
 --   * trigger fan-out po INSERT — jak w handle_cohort_message_mention_notifications
 --
--- Scraper (api/scrape-wziks.ts) używa upsertu z onConflict='body_fingerprint',
+-- Scraper (api/scrape-faculty-announcements.ts) używa upsertu z onConflict='body_fingerprint',
 -- więc duplikat komunikatu ląduje jako UPDATE i NIE odpala AFTER INSERT triggera —
 -- subskrybent nie dostanie spamu przy każdym uruchomieniu crona.
 

@@ -3,10 +3,6 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ACTIVE_ANNOUNCEMENT_DAYS } from '../lib/announcementRecency'
 import {
-  ACADEMIC_ISI_BADGE_LABEL,
-  ACADEMIC_ISI_BADGE_TITLE,
-} from '../lib/announcementBranding'
-import {
   sectionTitleCls,
   sideMutedCls,
   widgetGoldCls,
@@ -30,7 +26,12 @@ function SkeletonBlock() {
 }
 
 type Props = {
-  /** Komunikaty już przefiltrowane po wydziale (zrobione w `DataService.listAnnouncements`). */
+  /**
+   * Komunikaty z `useAnnouncements(selectedDepartment)` — DepartmentFilter
+   * w `FeedView` przekazuje wybrany wydział do hooka, więc gdy user
+   * przełącza pilla, widget automatycznie dostaje przefiltrowaną listę
+   * (filtrowanie wraz z aliasingiem dzieje się w `DataService.listAnnouncements`).
+   */
   announcements: UnifiedContent<AnnouncementMeta>[]
   loading: boolean
   error: string | null
@@ -51,10 +52,9 @@ export default function AcademicAnnouncementsWidget({
 }: Props) {
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({})
 
-  // Recency cutoff jest teraz wymuszony przez `AnnouncementsAdapter`
-  // (.gte('created_at', activeAnnouncementCutoff())), więc tu nie filtrujemy
-  // ponownie — dane przychodzą już ograniczone do ostatnich
-  // ACTIVE_ANNOUNCEMENT_DAYS dni i identyczne dla desktopu i mobila.
+  // Recency cutoff i filtr wydziału są wymuszone wyżej (AnnouncementsAdapter
+  // + DataService). Tu nie filtrujemy — `announcements` przychodzi już
+  // gotowe do renderu.
   const visible = announcements
 
   return (
@@ -68,9 +68,9 @@ export default function AcademicAnnouncementsWidget({
           <span className={sectionTitleCls}>Komunikaty Akademickie</span>
           <span
             className={`text-[10px] ${sideMutedCls}`}
-            title={ACADEMIC_ISI_BADGE_TITLE}
+            title="Komunikaty z portali wydziałowych UJ + Collegium Medicum (16 źródeł)"
           >
-            {ACADEMIC_ISI_BADGE_LABEL}
+            16 portali UJ
           </span>
         </div>
       </div>

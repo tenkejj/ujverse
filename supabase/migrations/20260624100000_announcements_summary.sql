@@ -19,7 +19,7 @@ ALTER TABLE public.announcements
   ADD COLUMN IF NOT EXISTS summary TEXT;
 
 COMMENT ON COLUMN public.announcements.summary IS
-  'Bielik TL;DR (1 zdanie pl-PL, ≤ ~200 znaków). NULL = ekstrakcja nie wygenerowała streszczenia lub jeszcze nie próbowano (patrz extraction_attempted_at). Aktualizowane w tym samym passie co extracted_calendar w api/scrape-wziks.ts.';
+  'Bielik TL;DR (1 zdanie pl-PL, ≤ ~200 znaków). NULL = ekstrakcja nie wygenerowała streszczenia lub jeszcze nie próbowano (patrz extraction_attempted_at). Aktualizowane w tym samym passie co extracted_calendar w api/scrape-faculty-announcements.ts.';
 
 -- Defensywny limit długości na poziomie DB — chroni przed wpisaniem
 -- całego komunikatu w pole "summary" przez błąd modelu lub złośliwy

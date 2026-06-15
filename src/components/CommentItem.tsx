@@ -170,7 +170,7 @@ export default function CommentItem({
     }
   }, [isMenuOpen])
 
-  const handleReportComment = async (reason: string) => {
+  const handleReportComment = async (reason: string, details: string) => {
     if (!currentUserId) {
       toast.error('Musisz być zalogowany, aby zgłosić komentarz')
       return
@@ -180,6 +180,7 @@ export default function CommentItem({
       comment_id: comment.id,
       reporter_id: currentUserId,
       reason,
+      details: details || null,
     })
     setIsReportSubmitting(false)
     if (error) {

@@ -1,0 +1,23 @@
+---
+name: UJverse — Test cron endpoint (curl)
+command: |
+  curl -i -X POST "{{base_url}}{{path}}" \
+    -H "Authorization: Bearer $env:CRON_SECRET" \
+    -H "Content-Type: application/json"
+tags:
+  - ujverse
+  - cron
+  - debug
+description: |
+  Ręcznie strzela w endpoint chroniony CRON_SECRET (jak robi to Vercel cron).
+  CRON_SECRET musi być w środowisku PowerShella (`$env:CRON_SECRET = "..."`).
+  Dostępne paths: /api/scrape-faculty-announcements, /api/scrape-uj-events,
+  /api/scrape-usos-registrations, /api/scrape-discounts?op=scrape,
+  /api/extract-usos-registrations, /api/generate-briefings, /api/prewarm-chat
+arguments:
+  - name: base_url
+    description: Base URL (http://localhost:3000 albo https://ujverse.pl)
+    default_value: http://localhost:3000
+  - name: path
+    description: Ścieżka endpointu
+    default_value: /api/scrape-faculty-announcements

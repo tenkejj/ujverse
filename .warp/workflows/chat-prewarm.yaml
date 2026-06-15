@@ -1,0 +1,9 @@
+---
+name: UJverse — Chat prewarm cache
+command: npm run chat:prewarm
+tags:
+  - ujverse
+  - chat
+description: |
+  Ręcznie odpala `tsx scripts/prewarm-chat-cache.ts` (na prod normalnie leci cronem
+  z `/api/prewarm-chat`). Przydatne do debugowania KV cache.

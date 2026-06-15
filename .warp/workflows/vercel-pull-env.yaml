@@ -1,0 +1,9 @@
+---
+name: UJverse — Vercel pull prod env
+command: npx vercel pull --environment=production
+tags:
+  - ujverse
+  - vercel
+description: |
+  Odśwież lokalny `.vercel/.env.production.local` + project settings.
+  Robić po każdej zmianie zmiennych w Vercel dashboardzie.

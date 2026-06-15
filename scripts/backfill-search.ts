@@ -102,7 +102,9 @@ async function main() {
   while (true) {
     const { data, error } = await supabase
       .from('announcements')
-      .select('id, body, lecturer_name, department, source, status, created_at')
+      .select(
+        'id, body, full_body, title, lecturer_name, department, source, source_kind, source_url, status, created_at',
+      )
       .order('id', { ascending: true })
       .range(announcementsOffset, announcementsOffset + BATCH_SIZE - 1)
 
@@ -115,9 +117,13 @@ async function main() {
         mapAnnouncementToSearchDocument({
           id: row.id,
           body: row.body,
+          full_body: row.full_body,
+          title: row.title,
           lecturer_name: row.lecturer_name,
           department: row.department,
           source: row.source,
+          source_kind: row.source_kind,
+          source_url: row.source_url,
           status: row.status,
           created_at: row.created_at,
         } as AnnouncementRecord),

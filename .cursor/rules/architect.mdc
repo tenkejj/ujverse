@@ -35,4 +35,4 @@ Anchor detail: [.cursor/ARCHITECT_MAP.md](.cursor/ARCHITECT_MAP.md). Prefer exte
 
 14. **RPC vs reality** — `get_replies_engagement_snapshot` references **`comment_likes`** / **`comment_replies`**; migrations do not define them — fix schema or drop RPC. Same section covers **hardcoded** [`supabaseClient.ts`](src/supabaseClient.ts).
 
-15. **API** — [`api/scrape-wziks.ts`](api/scrape-wziks.ts) is a Vercel serverless default export; [`vercel.json`](vercel.json) is minimal — env vars are deployment-owned. See [API surface](.cursor/ARCHITECT_MAP.md#api-surface).
+15. **API** — [`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts) is a Vercel serverless default export iterating over 16 sources via 3 parser adapters in [`api/_lib/scrapers/`](api/_lib/scrapers/); [`vercel.json`](vercel.json) is minimal — env vars are deployment-owned. See [API surface](.cursor/ARCHITECT_MAP.md#api-surface).

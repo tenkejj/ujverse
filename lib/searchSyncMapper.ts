@@ -7,7 +7,12 @@ export type SearchSyncTable =
   | 'cohort_messages'
   | 'cohort_message_attachments'
 
-export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty'
+/**
+ * Status komunikatu — union 1:1 z `AnnouncementStatus` w `src/types/content.ts`
+ * (po migracji 20260715). `info` / `event` przychodzą z komunikatów
+ * wydziałowych (Liferay/WP), `cancelled` / `remote` / `duty` z ISI Drupal.
+ */
+export type AnnouncementStatus = 'cancelled' | 'remote' | 'duty' | 'info' | 'event'
 
 export type SearchContentDocument = {
   id: string
@@ -79,9 +84,21 @@ export type PostRecord = {
 export type AnnouncementRecord = {
   id: string | number
   body?: string | null
+  /**
+   * Pełna treść artykułu z `source_url` (migracja 20260715130000). Drugi pass
+   * scrapera wypełnia po pobraniu podstrony Liferay/WP CM. Mapper preferuje
+   * `full_body` nad `body` dla searchable content — Meili indeksuje bogatszą
+   * treść, większe pokrycie zapytań użytkowników.
+   */
+  full_body?: string | null
+  /** Tytuł komunikatu (Liferay/WP). Null dla ISI Drupal lecturer-blocks. */
+  title?: string | null
   lecturer_name?: string | null
   department?: string | null
   source?: string | null
+  source_kind?: string | null
+  /** Deep-link do oryginalnego ogłoszenia (Liferay/WP). Null dla ISI. */
+  source_url?: string | null
   status?: string | null
   created_at?: string | null
 }
@@ -163,17 +180,46 @@ function normalizeDate(input: unknown): string {
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
 }
 
+const VALID_ANNOUNCEMENT_STATUSES: ReadonlySet<AnnouncementStatus> = new Set([
+  'cancelled',
+  'remote',
+  'duty',
+  'info',
+  'event',
+])
+
 function parseAnnouncementStatus(value: unknown): AnnouncementStatus | null {
-  if (value === 'cancelled' || value === 'remote' || value === 'duty') return value
+  if (typeof value === 'string' && VALID_ANNOUNCEMENT_STATUSES.has(value as AnnouncementStatus)) {
+    return value as AnnouncementStatus
+  }
   return null
 }
 
+/**
+ * Mapuje rekord `announcements` na dokument Meilisearch.
+ *
+ * Po migracji 20260715 (multi-faculty) komunikaty mają `title` (Liferay/WP)
+ * lub null (ISI Drupal). Tytuł doklejamy do `content` z prefixem żeby Meili
+ * potraktował go jako część searchable text — dzięki temu wyszukiwarka
+ * znajduje komunikat po tytule (np. „stypendium socjalne") nawet jeśli
+ * w body nie ma tego frazy.
+ */
 export function mapAnnouncementToSearchDocument(record: AnnouncementRecord): SearchContentDocument | null {
   const sourceId = String(record.id ?? '').trim()
-  const content = record.body?.trim() ?? ''
+  // Preferuj `full_body` (drugi pass scrapera, migracja 20260715130000).
+  // Listings excerpt (body) zostaje w bazie jako fingerprint source, ale
+  // do indeksu lecimy z bogatszą treścią dla lepszego recall'a.
+  const fullBody = record.full_body?.trim() ?? ''
+  const body = fullBody.length > 0 ? fullBody : record.body?.trim() ?? ''
+  const title = record.title?.trim() ?? ''
   const author = record.lecturer_name?.trim() ?? ''
   const status = parseAnnouncementStatus(record.status)
-  if (!sourceId || !content || !author || !status) return null
+  if (!sourceId || !body || !author || !status) return null
+
+  // Title + body w jednym polu `content` — pozwala Meili match'ować po
+  // tytule bez dodawania osobnego pola (zachowujemy backward-compat
+  // ze schemą indeksu sprzed 2026-07-15).
+  const content = title.length > 0 && !body.startsWith(title) ? `${title}\n\n${body}` : body
 
   return {
     id: documentIdFor('announcements', sourceId),

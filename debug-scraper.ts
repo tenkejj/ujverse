@@ -1,37 +1,76 @@
-import axios from 'axios'
-import { parsePage, WZIK_ISI_KOMUNIKATY_URL } from './api/scrape-wziks'
+/**
+ * UJverse — debug runner do testowania parserów komunikatów wydziałowych.
+ * Copyright © 2026 Franciszek Dranka. All rights reserved.
+ * License: Proprietary — see LICENSE in repo root.
+ *
+ * Uruchomienie:
+ *   tsx debug-scraper.ts                # default: WZiKS (ISI UJ)
+ *   tsx debug-scraper.ts wpia            # wybrane source by id
+ *   tsx debug-scraper.ts wpia phils wbbib  # kilka źródeł na raz
+ *
+ * Drukuje sparsowane wiersze do stdout bez wpisu do DB i bez Groqa
+ * (czysty test parser → ParsedAnnouncement[]).
+ */
+import {
+  FACULTY_SOURCES,
+  parseIsiDrupal,
+  parseLiferay,
+  parseWordpressCm,
+  fetchHtml,
+} from './api/_lib/scrapers/index.js'
+import type { FacultySource, ParsedAnnouncement } from './api/_lib/scrapers/index.js'
+
+function runParser(source: FacultySource, html: string): ParsedAnnouncement[] {
+  const department = source.faculty_departments[0] ?? 'Unknown'
+  const ctx = { department, source: source.source_label }
+  switch (source.parser) {
+    case 'isi_drupal':
+      return parseIsiDrupal(html, ctx)
+    case 'liferay':
+      return parseLiferay(html, { ...ctx, baseUrl: source.url })
+    case 'wordpress_cm':
+      return parseWordpressCm(html, { ...ctx, baseUrl: source.url })
+  }
+}
 
 async function main() {
-  const { data: html, status } = await axios.get<string>(WZIK_ISI_KOMUNIKATY_URL, {
-    headers: {
-      'User-Agent': 'UJverse-debug-scraper/1.0',
-      Accept: 'text/html,application/xhtml+xml',
-    },
-    timeout: 30000,
-    responseType: 'text',
-    transformResponse: [(d) => d],
-  })
+  const wanted = process.argv.slice(2)
+  const sources =
+    wanted.length === 0
+      ? FACULTY_SOURCES.filter((s) => s.id === 'wziks')
+      : FACULTY_SOURCES.filter((s) => wanted.includes(s.id))
 
-  if (status !== 200 || typeof html !== 'string') {
-    console.error('Nie udało się pobrać strony ISI, status:', status)
+  if (sources.length === 0) {
+    console.error('No matching sources. Available:', FACULTY_SOURCES.map((s) => s.id).join(', '))
     process.exitCode = 1
     return
   }
 
-  const rows = parsePage(html)
+  for (const source of sources) {
+    console.log(`\n========= ${source.id} (${source.parser}) =========`)
+    console.log(`URL: ${source.url}`)
 
-  console.log('\n--- Sparsowane ogłoszenia (', rows.length, ') ---\n')
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i]
-    console.log(`#${i + 1}`, {
-      lecturer_name: r.lecturer_name,
-      status: r.status,
-      department: r.department,
-      bodyPreview: r.body.slice(0, 160) + (r.body.length > 160 ? '…' : ''),
+    let html: string
+    try {
+      html = await fetchHtml(source.url)
+    } catch (e) {
+      console.error('  fetch failed:', e instanceof Error ? e.message : e)
+      continue
+    }
+
+    const rows = runParser(source, html)
+    console.log(`  → parsed ${rows.length} announcements`)
+    rows.slice(0, 5).forEach((r, i) => {
+      console.log(`\n  #${i + 1}`, {
+        title: r.title?.slice(0, 80) ?? '(null)',
+        lecturer_name: r.lecturer_name,
+        status: r.status,
+        source_url: r.source_url?.slice(0, 80) ?? '(null)',
+        bodyPreview: r.body.slice(0, 160) + (r.body.length > 160 ? '…' : ''),
+      })
     })
+    if (rows.length > 5) console.log(`\n  … ${rows.length - 5} more`)
   }
-  console.log('\n--- Pełny JSON (pierwsze 2 wpisy) ---\n')
-  console.log(JSON.stringify(rows.slice(0, 2), null, 2))
 }
 
 main().catch((e) => {
