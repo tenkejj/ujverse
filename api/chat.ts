@@ -75,6 +75,7 @@ import {
   synthesizeAnswer,
   type ToolFactsResult,
 } from './_lib/synthesizer.js'
+import { generateSmartChips } from './_lib/smartChips.js'
 import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools/index.js'
 import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage.js'
 import {
@@ -676,6 +677,44 @@ function streamSynthesizedAnswer(opts: {
           // Nie cache'ujemy złamanej odpowiedzi.
         } else if (buffered.length > 0) {
           void onComplete(buffered)
+        }
+
+        // Smart Chips — generujemy LLM-em na bazie pełnej odpowiedzi i
+        // emitujemy DRUGI meta-event z aktualnymi chipami (nadpisuje
+        // statyczne z pierwszego meta-eventu). Timeout 800ms — jak nie
+        // zdąży, klient zostaje przy statycznych. Skip dla pustych
+        // odpowiedzi i guarded-out content (nie ma o czym pisać chipów).
+        if (
+          buffered.length > 0 &&
+          guarded !== MARKDOWN_GUARD_ERROR &&
+          toolName
+        ) {
+          try {
+            const smartResult = await generateSmartChips({
+              userQuery,
+              fullAnswer: buffered,
+              toolName,
+              provider,
+              timeoutMs: 800,
+            })
+            if (smartResult && smartResult.chips.length > 0 && meta) {
+              if (smartResult.usage) usageAcc.add(smartResult.usage)
+              const updatedMeta = {
+                ...meta,
+                chips: smartResult.chips as readonly string[],
+              }
+              const metaPayload = JSON.stringify({ meta: updatedMeta })
+              controller.enqueue(encoder.encode(`data: ${metaPayload}\n\n`))
+              void incrCounter('smart_chips:hit')
+            } else {
+              void incrCounter('smart_chips:miss')
+            }
+          } catch (err) {
+            console.warn(
+              '[streamSynthesizedAnswer] smart chips generation threw:',
+              err instanceof Error ? err.message : err,
+            )
+          }
         }
 
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
