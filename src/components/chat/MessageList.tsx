@@ -27,10 +27,11 @@ import {
   type ReactNode,
 } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Copy, Pencil, RefreshCcw } from 'lucide-react'
+import { Check, Copy, Pencil, RefreshCcw, ThumbsDown, ThumbsUp } from 'lucide-react'
 import type { ChatMessage } from '../../types/ai'
 import type { Profile } from '../../types'
 import { toast } from '../../lib/appToast'
+import { useChatFeedback } from '../../hooks/useChatFeedback'
 import UserAvatar from '../UserAvatar'
 import AnimatedBot from './AnimatedBot'
 import TypewriterMarkdown from './TypewriterMarkdown'
@@ -272,7 +273,7 @@ function MessageBubble({
               (mniej noise podczas pisania). */}
           {!isStreaming ? (
             <AssistantMessageActions
-              content={message.content}
+              message={message}
               showRetry={isLastAssistant}
               onRetry={onRetryAssistant}
             />
@@ -331,19 +332,21 @@ function MessageActionButton({
  * że akcja się udała, bez zabierania fokusu.
  */
 function AssistantMessageActions({
-  content,
+  message,
   showRetry,
   onRetry,
 }: {
-  content: string
+  message: ChatMessage
   showRetry: boolean
   onRetry?: () => void
 }) {
   const [copied, setCopied] = useState(false)
+  const { vote } = useChatFeedback()
+  const feedback = message.feedback ?? null
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(content)
+      await navigator.clipboard.writeText(message.content)
       setCopied(true)
       toast('Skopiowano')
       window.setTimeout(() => setCopied(false), 1600)
@@ -351,7 +354,14 @@ function AssistantMessageActions({
       console.warn('[MessageList] copy failed:', err)
       toast.error('Nie udało się skopiować')
     }
-  }, [content])
+  }, [message.content])
+
+  // Klasy bazowe dla buttonow akcji - reuse zeby trzymac spojny look.
+  // Po `feedback === up/down` dorzucamy aktywny styl (filled gold).
+  const baseBtn =
+    'inline-flex h-6 items-center gap-1 rounded-md border border-zinc-200 bg-white/80 px-1.5 text-xs text-fg-secondary transition-colors hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright'
+  const activeBtn =
+    'border-logo-navy/40 bg-logo-navy/5 text-logo-navy dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright'
 
   return (
     <div
@@ -363,10 +373,34 @@ function AssistantMessageActions({
         onClick={() => void handleCopy()}
         title={copied ? 'Skopiowano' : 'Skopiuj'}
         aria-label={copied ? 'Skopiowano' : 'Skopiuj odpowiedź'}
-        className="inline-flex h-6 items-center gap-1 rounded-md border border-zinc-200 bg-white/80 px-1.5 text-xs text-fg-secondary transition-colors hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+        className={baseBtn}
       >
         {copied ? <Check size={12} /> : <Copy size={12} />}
         <span>{copied ? 'Skopiowano' : 'Kopiuj'}</span>
+      </button>
+      {/* Kciuk góra/dół — quality feedback. Aktywny przycisk dostaje
+          subtle highlight (border + bg gold tint). Klik wysyła POST do
+          `/api/chat-feedback` przez `useChatFeedback` hook; drugi klik
+          tego samego cofa głos (DELETE). Toast tylko przy bledzie. */}
+      <button
+        type="button"
+        onClick={() => void vote(message, 'up')}
+        title={feedback === 'up' ? 'Cofnij ocenę' : 'Dobra odpowiedź'}
+        aria-label={feedback === 'up' ? 'Cofnij pozytywną ocenę' : 'Oceń pozytywnie'}
+        aria-pressed={feedback === 'up'}
+        className={`${baseBtn} ${feedback === 'up' ? activeBtn : ''}`}
+      >
+        <ThumbsUp size={12} />
+      </button>
+      <button
+        type="button"
+        onClick={() => void vote(message, 'down')}
+        title={feedback === 'down' ? 'Cofnij ocenę' : 'Słaba odpowiedź'}
+        aria-label={feedback === 'down' ? 'Cofnij negatywną ocenę' : 'Oceń negatywnie'}
+        aria-pressed={feedback === 'down'}
+        className={`${baseBtn} ${feedback === 'down' ? activeBtn : ''}`}
+      >
+        <ThumbsDown size={12} />
       </button>
       {showRetry && onRetry ? (
         <button
@@ -374,7 +408,7 @@ function AssistantMessageActions({
           onClick={onRetry}
           title="Spróbuj ponownie"
           aria-label="Wygeneruj odpowiedź ponownie"
-          className="inline-flex h-6 items-center gap-1 rounded-md border border-zinc-200 bg-white/80 px-1.5 text-xs text-fg-secondary transition-colors hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+          className={baseBtn}
         >
           <RefreshCcw size={12} />
           <span>Ponów</span>

@@ -75,9 +75,15 @@ export function useChatSend(): UseChatSendResult {
             // momentu gdy `appendAssistantMessage` dostanie pierwszy chunk
             // i `isTyping` zostanie zresetowany w `finally`.
             useChatStore.getState().setActionLabel(event.label)
+            // Tool name idzie do `ChatMessage.tool` — feedback (kciuk
+            // góra/dół) używa go w POST /api/chat-feedback dla per-tool
+            // dashboardu.
+            useChatStore.getState().setLastAssistantTool(event.tool)
             // Chipy follow-up („Tylko jedzenie", „Co jutro?") przyklejamy
             // do ostatniej assistant message — wyrenderują się pod nią
-            // jak skończy się streaming.
+            // jak skończy się streaming. Drugi meta-event (smart chips
+            // z `smartChips.ts`) NADPISUJE statyczne, bo używamy tego
+            // samego settera.
             if (event.chips && event.chips.length > 0) {
               useChatStore.getState().setLastAssistantChips(event.chips)
             }

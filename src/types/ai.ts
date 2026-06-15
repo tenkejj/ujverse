@@ -20,6 +20,19 @@ export type ChatMessage = {
    * `undefined` = brak chipów (np. small-talk, fast-path bez toola).
    */
   chips?: readonly string[]
+  /**
+   * Nazwa toola który serwer wykonał dla TEJ odpowiedzi (z meta-eventu).
+   * Używana przez quality feedback (POST do `/api/chat-feedback` z `tool:`)
+   * żeby dashboard mógł sortować oceny per-tool. `undefined` = small-talk
+   * albo brak meta-eventu.
+   */
+  tool?: string | null
+  /**
+   * Ocena usera dla tej wiadomości (kciuk górno/dół). Optymistyczna —
+   * ustawiana lokalnie zanim POST do `/api/chat-feedback` zwróci. Brak =
+   * brak oceny.
+   */
+  feedback?: 'up' | 'down' | null
 }
 
 /**

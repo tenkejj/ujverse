@@ -39,6 +39,18 @@ type ChatState = {
    * assistant message do oznaczenia.
    */
   setLastAssistantChips: (chips: readonly string[]) => void
+  /**
+   * Ustawia `tool` dla OSTATNIEJ assistant message — wywoływane z
+   * `useChatSend` przy meta-evencie. Pozwala feedbackowi
+   * (`setMessageFeedback`) wysłać POST z `tool: '...'` żeby dashboard
+   * mógł sortować oceny per-tool.
+   */
+  setLastAssistantTool: (tool: string) => void
+  /**
+   * Ustawia ocenę kciuk góra/dół dla wiadomości o danym ID. Optymistyczne —
+   * w tle leci POST do `/api/chat-feedback`. `null` cofa ocenę.
+   */
+  setMessageFeedback: (id: string, value: 'up' | 'down' | null) => void
   setTyping: (value: boolean) => void
   setError: (value: string | null) => void
   setOpen: (value: boolean) => void
@@ -117,6 +129,41 @@ export const useChatStore = create<ChatState>((set) => ({
       const updated: ChatMessage = { ...target, chips }
       const nextMessages = state.messages.slice()
       nextMessages[lastIndex] = updated
+      return { messages: nextMessages }
+    })
+  },
+
+  setLastAssistantTool: (tool) => {
+    set((state) => {
+      let lastIndex = -1
+      for (let i = state.messages.length - 1; i >= 0; i--) {
+        if (state.messages[i]?.role === 'assistant') {
+          lastIndex = i
+          break
+        }
+      }
+      if (lastIndex === -1) return state
+      const target = state.messages[lastIndex]
+      if (!target) return state
+      const updated: ChatMessage = { ...target, tool }
+      const nextMessages = state.messages.slice()
+      nextMessages[lastIndex] = updated
+      return { messages: nextMessages }
+    })
+  },
+
+  setMessageFeedback: (id, value) => {
+    set((state) => {
+      const idx = state.messages.findIndex((m) => m.id === id)
+      if (idx === -1) return state
+      const target = state.messages[idx]
+      if (!target) return state
+      // Setter ustawia EXACT `value` (lub `null` żeby cofnąć). Toggle-logic
+      // (drugi klik tego samego = cofnięcie) robi caller (`useChatFeedback`),
+      // bo musi wcześniej zdecydować jaki POST/DELETE wysłać do API.
+      const updated: ChatMessage = { ...target, feedback: value }
+      const nextMessages = state.messages.slice()
+      nextMessages[idx] = updated
       return { messages: nextMessages }
     })
   },
