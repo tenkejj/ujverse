@@ -23,7 +23,7 @@ import { registerTool, type ToolContext } from './registry.js'
 const MAX_RESULTS = 3
 const EXCERPT_LENGTH = 200
 const EMPTY_RESULT_MESSAGE =
-  'Nie znalazlem w bazie ogloszen pasujacych do tego zapytania'
+  'Nie znalazłem w bazie ogłoszeń pasujących do tego zapytania.'
 
 const ArgsSchema = z.object({
   query: z

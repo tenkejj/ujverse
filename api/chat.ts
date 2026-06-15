@@ -639,12 +639,21 @@ function streamSynthesizedAnswer(opts: {
             recentOpeners,
           })) {
             if (chunk.type === 'delta') {
-              const stripped = stripThinkingTags(chunk.content)
-              if (!stripped) continue
-              buffered += stripped
+              // NIE strippujemy per-delta przez `stripThinkingTags` bo ta
+              // funkcja kończy się `.trim()` — zjada WIODĄCE SPACJE z każdej
+              // delty Groqa. Llama 8B (GROQ_SMALLTALK_MODEL używany przez
+              // `streamAnswer`) emituje tokeny typu " w", " Galerii", " Pizza"
+              // i .trim() zlepia wszystkie słowa razem („Pizza Hut w Galerii"
+              // → „PizzaHutwGalerii"). Llama 8B i tak nie generuje `<think>`,
+              // więc strip jest zbędny w streamie. Defensywne: cały bufor
+              // przechodzi przez `stripThinkingTags` po `done` (jakby kiedyś
+              // syntezator przeszedł na model z reasoning leak).
+              const content = chunk.content
+              if (!content) continue
+              buffered += content
               emittedAnything = true
               const payload = JSON.stringify({
-                choices: [{ delta: { content: stripped } }],
+                choices: [{ delta: { content } }],
               })
               controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
             } else if (chunk.type === 'done') {
@@ -661,6 +670,20 @@ function streamSynthesizedAnswer(opts: {
               break
             }
           }
+        }
+
+        // Defensywny strip `<think>` na CAŁYM buforze (per-delta jest
+        // niemożliwe bez utraty wiodących spacji — patrz komentarz wyżej).
+        // Llama 8B nie generuje `<think>`, więc to no-op w 99.9% — strip
+        // jest na wypadek future-proof gdyby syntezator przeszedł na
+        // qwen3-32b / r1 i wyciekła im surowa reasoning.
+        const stripped = stripThinkingTags(buffered)
+        if (stripped.length !== buffered.length) {
+          console.warn(
+            '[streamSynthesizedAnswer] post-stream <think> detected in buffer, len delta:',
+            buffered.length - stripped.length,
+          )
+          buffered = stripped
         }
 
         // Markdown Guard: sprawdzamy buforze (tak jak w non-streaming path).
