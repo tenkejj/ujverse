@@ -48,3 +48,6 @@ supabase/snippets/
 
 # Seed/dev scripts with secrets (rewrite to env vars before re-tracking)
 seed-search.js
+
+# Scraper debug artifacts (zapis surowego HTML do .tmp-<source>.html)
+.tmp-*.html
