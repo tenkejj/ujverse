@@ -76,6 +76,7 @@ import {
   type ToolFactsResult,
 } from './_lib/synthesizer.js'
 import { generateSmartChips } from './_lib/smartChips.js'
+import { updateUserMemory } from './_lib/userMemory.js'
 import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools/index.js'
 import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage.js'
 import {
@@ -1335,6 +1336,18 @@ export default async function handler(req: Request): Promise<Response> {
                 model: resolvedModel,
               })
             }
+            // Memory update fire-and-forget — co N tur ekstrahujemy
+            // preferencje usera (dieta, mieszkanie, hobby) do KV.
+            // Throttled wewnatrz updateUserMemory (modulo 3 user messages),
+            // wiec to nie kazdy request triggeruje LLM call.
+            void updateUserMemory({
+              userId: ctx.userId,
+              conversation: [
+                ...conversation,
+                { role: 'assistant', content: fullText },
+              ],
+              provider,
+            })
           },
         })
       } else {

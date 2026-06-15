@@ -27,6 +27,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { kvGetSafe, kvSetSafe } from './kvCache.js'
+import { formatMemoryForContext, getUserMemory } from './userMemory.js'
 
 type CachedProfile = {
   displayName: string | null
@@ -149,7 +150,12 @@ export async function buildAutoContext(
   parts.push(`Dziś: ${dayName}, ${dateStr}, ${part} (${hourStr}).`)
 
   if (userId) {
-    const profile = await getProfileCached(userId, admin)
+    // Profil + memory rownolegle - oba czytaja KV, oba nullable.
+    const [profile, memory] = await Promise.all([
+      getProfileCached(userId, admin),
+      getUserMemory(userId),
+    ])
+
     if (profile) {
       const studyBits: string[] = []
       if (profile.studyProgram) studyBits.push(profile.studyProgram)
@@ -163,6 +169,13 @@ export async function buildAutoContext(
       } else if (studyBits.length > 0) {
         parts.push(`User: ${studyBits.join(', ')}.`)
       }
+    }
+
+    // Memory: krotka linia "Pamietasz: X; Y; Z." gdy mamy zebrane preferencje.
+    // Pusty string gdy brak factow - skip bez puchniecia auto-contextu.
+    const memoryLine = formatMemoryForContext(memory)
+    if (memoryLine) {
+      parts.push(memoryLine)
     }
   }
 
