@@ -34,9 +34,11 @@ import {
   detectGenericStatus,
   extractLecturer,
   FALLBACK_LECTURER_NAME,
+  getCurrentAcademicYearStart,
   isBodyJunk,
   isHeadlineJunk,
   junkBlock,
+  parsePolishDate,
   stripChromeFromDom,
 } from './utils.js'
 import type { ParsedAnnouncement } from './types.js'
@@ -275,8 +277,17 @@ function extractFromParagraphLinks(
 
   const rows: ParsedAnnouncement[] = []
   const seenUrls = new Set<string>()
+  // Statyczne strony archiwum (np. wgig) trzymają komunikaty z 5+ lat wstecz.
+  // Pokazujemy tylko bieżący rok akademicki (od 1 października) — starsze
+  // wpisy zaśmiecają feed, a i tak są dostępne na portalu źródłowym.
+  const academicYearStart = getCurrentAcademicYearStart()
+  // Hard cap na wypadek gdyby data nie parsowała się (mojibake, custom format)
+  // — paragrafy są chronologicznie od najnowszych, więc top 25 nigdy nie
+  // zawiera archiwum sprzed 2 lat.
+  const MAX_ROWS = 25
 
   main.find('p').each((_, p) => {
+    if (rows.length >= MAX_ROWS) return false
     const $p = $(p)
     const $a = $p.find('a').first()
     if ($a.length === 0) return
@@ -290,6 +301,13 @@ function extractFromParagraphLinks(
     const body = cleanupAnnouncementText($p.text())
     if (junkBlock(body, { minLength: 50 })) return
     if (isBodyJunk(body)) return
+
+    // Cutoff po dacie: parsujemy "z dnia D miesiąca YYYY" z body i
+    // odrzucamy komunikaty starsze niż początek roku akademickiego.
+    // Brak daty = traktujemy jako świeży (paragraf bez daty zwykle to
+    // bieżąca informacja, nie archiwum).
+    const announcementDate = parsePolishDate(body)
+    if (announcementDate && announcementDate < academicYearStart) return
 
     // Tytuł — tniemy na NATURALNYM brzegu (kropka, " w sprawie:", " z dnia"),
     // bo paragraf jest jednym długim zdaniem ("Komunikat wydziałowy nr X/2026

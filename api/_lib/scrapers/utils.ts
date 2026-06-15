@@ -321,6 +321,59 @@ export function junkBlock(block: string, opts: { minLength?: number } = {}): boo
 }
 
 /**
+ * Polskie nazwy miesięcy → numer (1-12). Używane do parsowania dat z
+ * paragraph-style komunikatów (`<p>...z dnia 24 kwietnia 2026 r...</p>`).
+ *
+ * Obsługujemy WSZYSTKIE warianty z polskimi znakami (września/wrzesnia,
+ * października/pazdziernika) — niektóre portale gubią ogonki przy
+ * encodingu, więc lepiej być tolerancyjnym.
+ */
+const POLISH_MONTHS: Record<string, number> = {
+  stycznia: 1,
+  lutego: 2,
+  marca: 3,
+  kwietnia: 4,
+  maja: 5,
+  czerwca: 6,
+  lipca: 7,
+  sierpnia: 8,
+  września: 9,
+  wrzesnia: 9,
+  października: 10,
+  pazdziernika: 10,
+  listopada: 11,
+  grudnia: 12,
+}
+
+/**
+ * Wyciąga datę z polskiego tekstu komunikatu. Najczęstszy wzorzec:
+ * `z dnia 24 kwietnia 2026 r.` albo `dnia 1 października 2025 r.`.
+ * Zwraca `null` gdy nie znajdzie — caller powinien w takim razie
+ * traktować datę jako "nieznana" (zwykle NIE odrzucać).
+ */
+export function parsePolishDate(text: string): Date | null {
+  const m = text.match(
+    /\b(\d{1,2})\s+(stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|wrzesnia|października|pazdziernika|listopada|grudnia)\s+(\d{4})/i,
+  )
+  if (!m) return null
+  const day = Number.parseInt(m[1], 10)
+  const month = POLISH_MONTHS[m[2].toLowerCase()]
+  const year = Number.parseInt(m[3], 10)
+  if (!month || day < 1 || day > 31 || year < 2000 || year > 2100) return null
+  return new Date(year, month - 1, day)
+}
+
+/**
+ * Zwraca datę rozpoczęcia bieżącego roku akademickiego (1 października).
+ * Przed 1 października danego roku — bieżący rok akademicki zaczął się
+ * 1 października roku poprzedniego.
+ */
+export function getCurrentAcademicYearStart(now: Date = new Date()): Date {
+  const year = now.getMonth() >= 9 ? now.getFullYear() : now.getFullYear() - 1
+  return new Date(year, 9, 1)
+}
+
+/**
  * Globalna sanitacja DOM-u przed parsowaniem listings. Wycina elementy
  * nawigacyjne / chrome z całego dokumentu żeby `.find('article')` nie
  * łapało <article> z paginacji / footer'a / widgetów dostępności.
