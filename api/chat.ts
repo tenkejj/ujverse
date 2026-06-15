@@ -48,6 +48,8 @@ import { getFollowUpChips } from './_lib/followUpChips.js'
 import { tryFastPath } from './_lib/fastPath.js'
 import { buildAutoContext } from './_lib/autoContext.js'
 import { detectTroll } from './_lib/trollHandler.js'
+import { detectInjection } from './_lib/injectionGuard.js'
+import { redactAndSlice } from './_lib/piiRedact.js'
 import {
   gate as cbGate,
   recordError as cbRecordError,
@@ -377,6 +379,32 @@ function lastUserMessageContent(messages: GroqMessage[]): string {
 }
 
 /**
+ * Wyciąga 1-3 ostatnich openerów assistant message'y — pierwsze 32 znaki
+ * każdej, trimowane do końca słowa. Używane przez anti-repetition guard
+ * w syntezatorze („NIE zaczynaj od ...").
+ *
+ * Dlaczego 32: krótko żeby model dostał sygnał wzorca, długo żeby uniknąć
+ * matchowania w trafnych krótkich frazach typu „Spoko" (sama w sobie OK,
+ * ale „Spoko, sprawdziłem..." × 3 turę pod rząd już nie).
+ */
+function recentAssistantOpeners(
+  messages: GroqMessage[],
+  count: number = 3,
+): string[] {
+  const openers: string[] = []
+  for (let i = messages.length - 1; i >= 0 && openers.length < count; i--) {
+    const m = messages[i]
+    if (m.role !== 'assistant') continue
+    const trimmed = (m.content ?? '').trim()
+    if (trimmed.length === 0) continue
+    const opener = trimmed.slice(0, 32).split(/\s+/).slice(0, 4).join(' ')
+    if (opener.length === 0) continue
+    openers.push(opener)
+  }
+  return openers
+}
+
+/**
  * Decyzja "czy wpuszczać tools" dla bieżącego requestu. Zwraca `false` dla
  * czystych przywitań / podziękowań / krótkich potwierdzeń — w tej ścieżce do
  * Groqa idziemy BEZ `tools` (mniej tokenów na wejściu, brak ryzyka że model
@@ -551,6 +579,7 @@ async function synthesizeFinalAnswer(
   userQuery: string,
   provider: GroqProvider,
   usageAcc: TokenUsageAccumulator,
+  recentOpeners?: readonly string[],
 ): Promise<string> {
   const facts = buildToolFacts(toolName, result)
   if (facts.kind === 'direct') {
@@ -565,6 +594,7 @@ async function synthesizeFinalAnswer(
       hint: facts.hint,
       topicHint: facts.topicHint,
       provider,
+      recentOpeners,
     })
     if (synthesis.usage) {
       usageAcc.add(synthesis.usage)
@@ -776,6 +806,9 @@ export default async function handler(req: Request): Promise<Response> {
   // zestaw (rzadkie, gdy keyword nie matchuje — np. "powiedz mi coś").
   const lastUserText = lastUserMessageContent(inboundMessages)
   const useTools = shouldUseTools(lastUserText)
+  // Anti-repetition: top 3 ostatnich openerów assistant. Przekazywane do
+  // `synthesizeFinalAnswer` w fast-path i głównym flow.
+  const recentOpeners = recentAssistantOpeners(inboundMessages, 3)
   let effectiveTools: typeof tools = []
   let routedIntent: string[] | 'all' | 'none' = 'none'
   if (useTools) {
@@ -796,8 +829,8 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
   console.log(
-    '[Tool Routing] last user (first 60ch):',
-    JSON.stringify(lastUserText.slice(0, 60)),
+    '[Tool Routing] last user (first 60ch, PII-redacted):',
+    JSON.stringify(redactAndSlice(lastUserText, 60)),
     '| useTools:',
     useTools,
     '| intent:',
@@ -807,6 +840,23 @@ export default async function handler(req: Request): Promise<Response> {
     '/',
     tools.length,
   )
+
+  // Prompt-Injection Guard — pierwsza linia obrony PRZED Groqiem. Wykrywa
+  // próby przejęcia persony („ignoruj poprzednie instrukcje", „od teraz
+  // jesteś...", „DAN", „[INST]") i odpowiada neutralnym deflectionem
+  // zachowując osobowość Versusia. Robione PRZED troll-handlerem, bo
+  // injection-attack potrafi się nie nakładać z bluzgiem.
+  const injectionMatch = detectInjection(lastUserText)
+  if (injectionMatch.detected) {
+    console.warn(
+      '[Injection Guard] match — pattern:',
+      JSON.stringify(injectionMatch.matched),
+      '— SKIPPING Groq entirely',
+    )
+    void incrCounter('injection:caught')
+    void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+    return streamFinalContent(injectionMatch.reply)
+  }
 
   // Troll Handler — przed wszystkim co wymaga Groqa. „spierdalaj" / „kurwa"
   // / „debil" → losowy witty come-back z `trollHandler.ts`, zero LLM calls.
@@ -875,6 +925,7 @@ export default async function handler(req: Request): Promise<Response> {
           lastUserText,
           provider,
           usageAcc,
+          recentOpeners,
         )
         // Zapisz do response cache — kolejne identyczne zapytania pójdą
         // przez `responseCache HIT` (jeszcze szybciej, bez nawet Supabase).
@@ -1049,13 +1100,14 @@ export default async function handler(req: Request): Promise<Response> {
         // sekwencyjnym for.
         const sections = await Promise.all(
           toolCalls.map(async (call) => {
-          const result = await runToolCall(call, ctx)
+            const result = await runToolCall(call, ctx)
             return synthesizeFinalAnswer(
               call.function.name,
               result,
               lastUserText,
               provider,
               usageAcc,
+              recentOpeners,
             )
           }),
         )
@@ -1100,8 +1152,8 @@ export default async function handler(req: Request): Promise<Response> {
     console.warn(
       '[Markdown Guard] rewriting finalContent to error message. Original len:',
       finalContent.length,
-      '| first 120 chars:',
-      JSON.stringify(finalContent.slice(0, 120)),
+      '| first 120 chars (PII-redacted):',
+      JSON.stringify(redactAndSlice(finalContent, 120)),
     )
   }
 

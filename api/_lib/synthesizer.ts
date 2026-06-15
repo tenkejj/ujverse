@@ -95,6 +95,17 @@ export type SynthesisOptions = {
   hint: string | null
   topicHint: string
   provider: GroqProvider
+  /**
+   * Anti-repetition: lista 1-3 pierwszych słów ostatnich odpowiedzi
+   * Versusia w tej rozmowie. Jeśli przekazana, dorzucamy do prompta
+   * negatywną wskazówkę („NIE zaczynaj od ..."). Llama 8B respektuje takie
+   * constrainty i wybiera inny opener — eliminuje monotonny rytm typu
+   * „Spoko, sprawdziłem..." × 5 turę pod rząd.
+   *
+   * Format: surowe pierwsze słowa (`['Spoko, sprawdziłem', 'No więc']`).
+   * Empty / undefined → bez constraintu.
+   */
+  recentOpeners?: readonly string[]
 }
 
 export type SynthesisResult = {
@@ -113,7 +124,7 @@ export type SynthesisResult = {
 export async function synthesizeAnswer(
   opts: SynthesisOptions,
 ): Promise<SynthesisResult> {
-  const { userQuery, facts, hint, topicHint, provider } = opts
+  const { userQuery, facts, hint, topicHint, provider, recentOpeners } = opts
 
   // Compose user message: kontekst + pytanie + fakty + ewentualna wskazówka.
   // Format zwięzły (LLM-friendly), nie ozdobny — model nie ma tego echo'wać.
@@ -125,6 +136,19 @@ export async function synthesizeAnswer(
   ]
   if (hint) {
     userParts.push(`Wskazówka na koniec (opcjonalna): ${hint}`)
+  }
+  // Anti-repetition guard: jeśli mamy 1-3 ostatnich openerów Versusia,
+  // wstrzykujemy negatywną instrukcję. Model widzi „NIE zaczynaj od X" i
+  // wybiera inny lead. Ważne: trzymamy się 1 zdania, krótko — to czyste
+  // antypowtórzenie, nie wykład.
+  if (recentOpeners && recentOpeners.length > 0) {
+    const quoted = recentOpeners
+      .slice(0, 3)
+      .map((o) => `"${o}"`)
+      .join(', ')
+    userParts.push(
+      `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
+    )
   }
   userParts.push('Odpowiedz po polsku, krótko, naturalnie.')
 

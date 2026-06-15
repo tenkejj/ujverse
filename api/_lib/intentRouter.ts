@@ -286,6 +286,94 @@ const PERSONALIZATION_TRIGGERS: readonly string[] = [
 ]
 
 /**
+ * Typo correction map — typowe literówki PL → forma kanoniczna. Stosowane
+ * PRZED matchowaniem keywordów, więc 1 wpis poprawia hit-rate wszystkich
+ * intencji używających danego słowa.
+ *
+ * Filozofia: ręcznie zebrane top-20 literówek z realnego ruchu (chat
+ * analytics). Nie próbujemy Levenshtein/fuzzy — to overkill dla 20 wzorców
+ * i ryzyko false-positive (np. „zajeb" → „zajęć" byłoby tragiczne).
+ *
+ * Kierunek: typo → canonical. Stosujemy whole-word replacement
+ * (granica `\b`) żeby nie podmienić w środku innego słowa.
+ */
+const TYPO_CORRECTIONS: ReadonlyArray<{ typo: RegExp; canonical: string }> = [
+  { typo: /\bjuwnealia\b/gi, canonical: 'juwenalia' },
+  { typo: /\bjuwnali[ae]\b/gi, canonical: 'juwenalia' },
+  { typo: /\buniwesytet\b/gi, canonical: 'uniwersytet' },
+  { typo: /\buniwersytat\b/gi, canonical: 'uniwersytet' },
+  { typo: /\bplam\b/gi, canonical: 'plan' },
+  { typo: /\bzajec\b/gi, canonical: 'zajęć' },
+  { typo: /\bzajeci[ae]\b/gi, canonical: 'zajęcia' },
+  { typo: /\bdyzur\b/gi, canonical: 'dyżur' },
+  { typo: /\bdzis\b/gi, canonical: 'dziś' },
+  { typo: /\bkiedyy\b/gi, canonical: 'kiedy' },
+  { typo: /\bzniki\b/gi, canonical: 'zniżki' },
+  { typo: /\brejstracje\b/gi, canonical: 'rejestracje' },
+  { typo: /\brejstracja\b/gi, canonical: 'rejestracja' },
+  { typo: /\bogloszneia\b/gi, canonical: 'ogłoszenia' },
+  { typo: /\bwykladow[acy]\b/gi, canonical: 'wykładowcy' },
+  { typo: /\bwykladowca\b/gi, canonical: 'wykładowca' },
+  { typo: /\bwyklady\b/gi, canonical: 'wykłady' },
+  { typo: /\bsemster\b/gi, canonical: 'semestr' },
+  { typo: /\bsemstr\b/gi, canonical: 'semestr' },
+  { typo: /\begzaim\b/gi, canonical: 'egzamin' },
+]
+
+/**
+ * Synonim map — slang / formy nieformalne → forma kanoniczna istniejąca
+ * już w `INTENT_KEYWORDS`. Pozwala matchować naturalny język bez puchnięcia
+ * tablicy keywordów per-intent.
+ *
+ * Przykład: „balanga" / „impreza" → „wydarzenie" → intent `events`.
+ * Wykonujemy podstawienie PRZED `text.includes(kw)`, więc match trafi
+ * w już istniejący keyword.
+ *
+ * Reguły: tylko podstawienia, które nie zmieniają semantyki w innym
+ * kontekście. „taniej" → już jest w discounts, więc nie ma sensu mapować.
+ */
+const SYNONYMS: ReadonlyArray<{ slang: RegExp; canonical: string }> = [
+  // events
+  { slang: /\b(impreza|imprezy|imprezka|imprezki|balanga|balang[ai])\b/gi, canonical: 'wydarzenie' },
+  { slang: /\b(fest|festyn|festiwal[uy]?|festiwal)\b/gi, canonical: 'wydarzenie' },
+  { slang: /\b(party|partis|partis[ay]|prywatka|domówk[ai])\b/gi, canonical: 'wydarzenie' },
+  // discounts
+  { slang: /\b(promo|promka|promki|promy|promosj[ai])\b/gi, canonical: 'promocja' },
+  { slang: /\b(student\s+price|cena\s+studencka|cena\s+student)\b/gi, canonical: 'zniżka' },
+  { slang: /\b(deal|deale|dealy|okazja|okazji|okazje)\b/gi, canonical: 'zniżka' },
+  // food (mapowane do discounts ofen)
+  { slang: /\b(jara|jaranie|przekąsi[ćc]|chrupn[aą][cć]|wpada\s+na\s+jedzenie)\b/gi, canonical: 'jedzenie' },
+  // classes
+  { slang: /\b(rozkład|rozklad|plan\s+lekcji|grafik)\b/gi, canonical: 'plan' },
+  { slang: /\b(zaja|zaje|zajke|zajki)\b/gi, canonical: 'zajęcia' },
+  // announcements
+  { slang: /\b(news|newsy|info|infa)\b/gi, canonical: 'ogłoszenia' },
+  // lecturers
+  { slang: /\b(belfer|belfra|belferzy)\b/gi, canonical: 'wykładowca' },
+  { slang: /\b(profka|profowie|profka|profka)\b/gi, canonical: 'prof' },
+  // usos
+  { slang: /\b(zapisik|zapisikow|zapisikow|zapisuj\s+si[ęe])\b/gi, canonical: 'zapis na' },
+]
+
+/**
+ * Aplikuje typo correction + synonym expansion. Idempotentne (safe to call
+ * multiple times). Zwraca nowy string, oryginał nietknięty.
+ *
+ * Wydajność: ~30 regex.replace na typowym snippet'cie ~60 znaków — to
+ * <10us, niezauważalne w ścieżce ~150ms Groqa.
+ */
+export function normalizeUserText(text: string): string {
+  let normalized = text
+  for (const { typo, canonical } of TYPO_CORRECTIONS) {
+    normalized = normalized.replace(typo, canonical)
+  }
+  for (const { slang, canonical } of SYNONYMS) {
+    normalized = normalized.replace(slang, canonical)
+  }
+  return normalized
+}
+
+/**
  * Główny entry-point routera. Zwraca podzbiór nazw narzędzi do wysłania
  * do Groqa, lub `null` gdy nie ma sensownego zawężenia (orchestrator
  * wyśle wtedy pełną listę — fallback).
@@ -294,7 +382,11 @@ const PERSONALIZATION_TRIGGERS: readonly string[] = [
  * (`shouldUseTools()` zwróciło `true`). Tu już tylko zawężamy.
  */
 export function routeIntent(userMessage: string): ToolName[] | null {
-  const text = userMessage.toLowerCase()
+  // Normalize: typo correction + synonym expansion. Wykonujemy PRZED
+  // lowercase, bo regexy w normalizatorach mają flagę /i — i zwracamy
+  // tekst który dalej idzie do `.toLowerCase()`. Idempotentne, więc
+  // ponowne wywołanie tej samej funkcji nie zmienia outputu.
+  const text = normalizeUserText(userMessage).toLowerCase()
   if (text.length === 0) return null
 
   const matched = new Set<ToolName>()
