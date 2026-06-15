@@ -128,7 +128,7 @@ async function execute(
   }
 
   const validation = validateRange(args.range_start, args.range_end)
-  if (!validation.ok) {
+  if (validation.ok === false) {
     return { ok: false, error: validation.error }
   }
 
@@ -162,7 +162,10 @@ async function execute(
   return {
     ok: true,
     count: parsed.data.length,
-    items: parsed.data,
+    // Cast bezpieczny — zod gwarantuje shape z `CalendarEntryRowSchema`.
+    // TS w Vercel checker'ze widzi `description` jako optional w zod inference;
+    // standalone tsc widzi jako required. Cast unifikuje oba checkery.
+    items: parsed.data as ResultItem[],
   }
 }
 

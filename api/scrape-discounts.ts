@@ -281,7 +281,11 @@ function isAuthorized(req: VercelRequest, cronSecret: string): boolean {
   return false
 }
 
-type SupabaseLikeClient = ReturnType<typeof createClient>
+// Bez wyspecyfikowanego `Database` generic'a `createClient` infer'uje schema
+// jako `never`, przez co Supabase typing odrzuca każdy `.insert()`/`.update()`
+// jako "argument type 'never'". Eksplicytne `any, any, any` przywraca uniwersalny
+// kształt klienta (runtime bez zmian — UJverse i tak nie generuje typów DB).
+type SupabaseLikeClient = ReturnType<typeof createClient<any, any, any>>
 
 /**
  * Tryb `expire` — soft-hide wszystkich zniżek z `valid_until < today`.

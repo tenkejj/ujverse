@@ -16,7 +16,7 @@
  * Klient (`useChatSend`) ustawia `actionLabel` w storze; `MessageList
  * TypingIndicator` woli action label nad rotującymi „thinking phrases".
  */
-import type { ToolName } from './intentRouter'
+import type { ToolName } from './intentRouter.js'
 
 const ACTION_LABEL_VARIANTS: Record<ToolName, readonly string[]> = {
   search_events: [

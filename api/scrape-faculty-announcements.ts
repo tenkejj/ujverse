@@ -307,7 +307,11 @@ function runParser(
   }
   const ctx = { department, source: source.source_label }
 
-  switch (source.parser as ParserKind) {
+  // Aliasujemy do locala żeby TS poprawnie narrowowało w `default`. Bezpośredni
+  // switch na `source.parser as ParserKind` cofa narrowing w default branch
+  // (TS sprawdza wtedy oryginał `source.parser`, nie wyrażenie switch'a).
+  const parser: ParserKind = source.parser
+  switch (parser) {
     case 'isi_drupal':
       return parseIsiDrupal(html, ctx)
     case 'liferay':
@@ -315,7 +319,7 @@ function runParser(
     case 'wordpress_cm':
       return parseWordpressCm(html, { ...ctx, baseUrl: source.url })
     default: {
-      const exhaustive: never = source.parser
+      const exhaustive: never = parser
       throw new Error(`Unknown parser kind: ${exhaustive as string}`)
     }
   }

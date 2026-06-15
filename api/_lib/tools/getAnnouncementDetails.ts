@@ -194,10 +194,8 @@ registerTool<
       properties: {
         query: {
           type: 'string',
-          minimum: 2,
-          maximum: 200,
           description:
-            'Zwięzłe zapytanie wyszukiwania (np. "ankieta", "rozliczenia BWA", "stypendium socjalne"). Im konkretniej tym lepsze wyniki.',
+            'Zwięzłe zapytanie wyszukiwania (2-200 znaków, np. "ankieta", "rozliczenia BWA", "stypendium socjalne"). Im konkretniej tym lepsze wyniki. Walidacja długości w execute().',
         },
       },
       additionalProperties: false,

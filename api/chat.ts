@@ -628,8 +628,10 @@ function streamSynthesizedAnswer(opts: {
             )
             buffered = fallback
           }
-        } else {
-          // facts.kind === 'synthesize' — live Llama 8B stream
+        } else if (facts.kind === 'synthesize') {
+          // Explicit narrow — TS gubi narrowing przez `ReadableStream.start`
+          // callback (zmienna `facts` captured ze scope'u może być teoretycznie
+          // reassignowana przed iteracją). Powtórzony check zwęża typ lokalnie.
           for await (const chunk of streamAnswer({
             userQuery,
             facts: facts.facts,
@@ -1244,14 +1246,19 @@ export default async function handler(req: Request): Promise<Response> {
     // timeout. Stan trzymany w KV (cross-instance), fail-open przy
     // niedostępnym KV. Patrz `groqCircuitBreaker.ts`.
     const cbDecision = await cbGate()
-    if (!cbDecision.allow) {
+    if (cbDecision.allow === false) {
+      // Explicit discriminator check (`=== false`) zamiast `!cbDecision.allow`
+      // — bez tego Vercel TS checker gubi narrow do `{allow:false, ...}` i nie
+      // widzi `retryAfterSec`. Standalone tsc narrowuje OK, więc to różnica
+      // konfiguracji per-file checker'a Vercel.
+      const retryAfterSec = cbDecision.retryAfterSec
       console.warn(
         '[Groq CB] OPEN — refusing request, retryAfter:',
-        cbDecision.retryAfterSec,
+        retryAfterSec,
         's',
       )
       void incrCounter('groq:cb:short_circuit')
-      const message = CIRCUIT_OPEN_MESSAGE_TEMPLATE(cbDecision.retryAfterSec)
+      const message = CIRCUIT_OPEN_MESSAGE_TEMPLATE(retryAfterSec)
       void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
       return streamFinalContentChunked(message, null)
     }

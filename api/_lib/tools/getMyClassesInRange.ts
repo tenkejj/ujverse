@@ -116,7 +116,7 @@ async function execute(
   }
 
   const validation = validateRange(args.range_start, args.range_end)
-  if (!validation.ok) {
+  if (validation.ok === false) {
     return { ok: false, error: validation.error }
   }
 

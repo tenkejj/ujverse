@@ -77,10 +77,10 @@ class CookieJar {
  * naprawia (Node 19.7+) — używamy go i fallback'ujemy na `raw()` jeśli brak.
  */
 function extractSetCookies(headers: Headers): string[] {
-  // @ts-expect-error — getSetCookie istnieje w Node 19.7+ ale typy mogą nie być
+  // `getSetCookie()` jest w TS 5.0+ lib.dom.d.ts (Node 19.7+ runtime). Wcześniej
+  // wymagało `@ts-expect-error`; obecnie typy istnieją, więc usunęliśmy je.
   if (typeof headers.getSetCookie === 'function') {
-    // @ts-expect-error
-    return headers.getSetCookie() as string[]
+    return headers.getSetCookie()
   }
   const sc = headers.get('set-cookie')
   return sc ? [sc] : []
