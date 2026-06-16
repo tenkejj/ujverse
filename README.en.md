@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://ujverse.pl">ujverse.pl</a>
+  <a href="https://ujverse.vercel.app/)">ujverse.pl</a>
   ·
   <a href="mailto:franciszek.dranka@student.uj.edu.pl">franciszek.dranka@student.uj.edu.pl</a>
   ·
