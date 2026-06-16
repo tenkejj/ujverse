@@ -2,6 +2,8 @@
 
 > Author: **Franciszek Dranka** &nbsp;·&nbsp; Contact: [franciszek.dranka@student.uj.edu.pl](mailto:franciszek.dranka@student.uj.edu.pl) &nbsp;·&nbsp; Copyright © 2026 — All Rights Reserved (see [LICENSE](./LICENSE)).
 
+<img width="728" height="1372" alt="logo" src="https://github.com/user-attachments/assets/26d999a2-87dc-47ba-85aa-67a2c19e3fc8" />
+
 UJverse is a modern, real-time social platform designed exclusively for the academic community of Uniwersytet Jagielloński. It bundles a Twitter-style feed, an AI assistant grounded in live university data, an aggregated events hub (with daily scraping of official UJ sources), a Meilisearch-powered omni-search, faculty/zone groups and a curated "Niezbędnik UJ" — all behind a single, premium glass-themed UI.
 
 The application is built with a strong focus on performance, real-time data synchronization, and a premium user experience, bridging the gap between outdated university forums and noisy mainstream social media.
