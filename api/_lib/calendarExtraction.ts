@@ -22,13 +22,16 @@
  * trzy różne system prompty.
  *
  * Strategia rate-limit:
- *   - Pojedyncze wywołanie per row; brak retry przy 429 (kolejna iteracja
- *     scrapera spróbuje ponownie).
+ *   - `withGroqRetry` (3 próby, exp. backoff) wokół `completeJson` — większość
+ *     429 znika bez przerywania całego passu scrapera.
+ *   - Po wyczerpaniu retry caller dostaje `rate_limited` i robi krótką pauzę
+ *     przed kolejnym rzędem (nie `break` na całym batchu).
  *   - Caller decyduje o throttle (np. max N per cron run, sequential żeby
  *     nie spalić quota Groqa).
  */
 
 import { GroqProvider, GroqProviderError } from './GroqProvider.js'
+import { LlmServiceError, withGroqRetry } from './llmService.js'
 
 /**
  * Wartości `kind` jakie BIELIK ma prawo zwrócić. Lista 1:1 z CHECK
@@ -239,12 +242,14 @@ export async function extractAnnouncementMetadata(
   const truncated = trimmed.length > 4000 ? trimmed.slice(0, 4000) + '\n[...]' : trimmed
 
   try {
-    const modelOutput = await provider.completeJson(
-      [
-        { role: 'system', content: buildSystemPrompt(today) },
-        { role: 'user', content: truncated },
-      ],
-      { temperature: 0.0 },
+    const modelOutput = await withGroqRetry(() =>
+      provider.completeJson(
+        [
+          { role: 'system', content: buildSystemPrompt(today) },
+          { role: 'user', content: truncated },
+        ],
+        { temperature: 0.0 },
+      ),
     )
 
     const cleaned = stripCodeFences(modelOutput)
@@ -278,7 +283,13 @@ export async function extractAnnouncementMetadata(
 
     return { status: 'ok', summary, extraction }
   } catch (error) {
-    if (error instanceof GroqProviderError && error.status === 429) {
+    const groqStatus =
+      error instanceof GroqProviderError
+        ? error.status
+        : error instanceof LlmServiceError && error.cause instanceof GroqProviderError
+          ? error.cause.status
+          : null
+    if (groqStatus === 429) {
       return { status: 'rate_limited' }
     }
     const msg = error instanceof Error ? error.message : String(error)

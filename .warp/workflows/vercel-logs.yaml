@@ -6,8 +6,8 @@ tags:
   - vercel
 description: |
   Stream logów z produkcyjnego deploymentu Vercel. Podaj URL lub ID deploymentu,
-  np. `ujverse.pl` albo konkretny `dpl_xxx`.
+  np. `ujverse.vercel.app` albo konkretny `dpl_xxx`.
 arguments:
   - name: deployment_or_url
-    description: URL lub ID deploymentu (np. ujverse.pl)
-    default_value: ujverse.pl
+    description: URL lub ID deploymentu (np. ujverse.vercel.app)
+    default_value: ujverse.vercel.app

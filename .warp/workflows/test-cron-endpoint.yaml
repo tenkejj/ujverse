@@ -16,7 +16,7 @@ description: |
   /api/extract-usos-registrations, /api/generate-briefings, /api/prewarm-chat
 arguments:
   - name: base_url
-    description: Base URL (http://localhost:3000 albo https://ujverse.pl)
+    description: Base URL (http://localhost:3000 albo https://ujverse.vercel.app)
     default_value: http://localhost:3000
   - name: path
     description: Ścieżka endpointu

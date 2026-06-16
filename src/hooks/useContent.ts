@@ -96,12 +96,17 @@ export function useAnnouncements(department?: string): UseAnnouncementsResult {
     aliveRef.current = true
     void load({ silent: false })
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = DataService.subscribeAnnouncements(() => {
-      void load({ silent: true })
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        void load({ silent: true })
+      }, 1500)
     })
 
     return () => {
       aliveRef.current = false
+      if (debounceTimer) clearTimeout(debounceTimer)
       unsubscribe()
     }
   }, [load])

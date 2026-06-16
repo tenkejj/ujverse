@@ -5,7 +5,7 @@
  * Vercel Cron schedule: pn 06:00 UTC (= 08:00 CEST / 07:00 CET — kompromis
  * DST). Wpisany w `vercel.json`. Manualny trigger:
  *   curl -H "Authorization: Bearer $CRON_SECRET" \
- *        https://ujverse.pl/api/generate-briefings
+ *        https://ujverse.vercel.app/api/generate-briefings
  *
  * Idempotentne: RPC `generate_weekly_briefings_for_week` ma ON CONFLICT na
  * (user_id, week_start) — re-runy w tym samym tygodniu nadpisują payload

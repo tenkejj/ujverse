@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAnnouncementBadge } from '../../lib/announcementBranding'
+import { pickDisplaySummary } from '../../lib/announcementSummary'
 import {
   ANNOUNCEMENT_STATUS_BADGE,
   ANNOUNCEMENT_STATUS_DOT,
@@ -157,7 +158,9 @@ export default function AnnouncementCard({
 
   const navigate = useNavigate()
 
-  const { summary, extractedCalendar, title: facultyTitle, sourceUrl } = announcement.metadata
+  const { summary: aiSummary, extractedCalendar, title: facultyTitle, sourceUrl } =
+    announcement.metadata
+  const displaySummary = pickDisplaySummary(aiSummary, announcement.body, facultyTitle)
   const sourceBadge = getAnnouncementBadge(announcement.metadata.source)
   const calendarDayKey =
     extractedCalendar !== null ? isoStartsToCalendarDayKey(extractedCalendar.starts_at) : null
@@ -245,12 +248,13 @@ export default function AnnouncementCard({
           </button>
         )}
       </div>
-      {summary !== null && summary.length > 0 && (
-        // TL;DR od Bielika — wizualnie podkreślone (pasek z lewej + większa
-        // czcionka niż body). Świadomie NAD body clampem — to jest pierwsza
-        // rzecz którą widzi user; surowy body służy do weryfikacji.
-        <p className="mb-2 pl-2 border-l-2 border-brand-gold/60 dark:border-brand-gold-bright/60 text-xs font-medium leading-snug text-zinc-800 dark:text-zinc-200">
-          {summary}
+      {displaySummary !== null && displaySummary.length > 0 && (
+        // TL;DR — Bielik (`metadata.summary`) lub heurystyka z pierwszego zdania.
+        <p
+          className="mb-2 pl-2 border-l-2 border-brand-gold/60 dark:border-brand-gold-bright/60 text-xs font-medium leading-snug text-zinc-800 dark:text-zinc-200"
+          title={aiSummary ? undefined : 'Podgląd — pełne streszczenie AI wkrótce'}
+        >
+          {displaySummary}
         </p>
       )}
       <AnnouncementBodyClamp

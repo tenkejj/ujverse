@@ -9,7 +9,7 @@
     "email": "franciszek.dranka@student.uj.edu.pl"
   },
   "license": "SEE LICENSE IN LICENSE",
-  "homepage": "https://ujverse.pl",
+  "homepage": "https://ujverse.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/tenkejj/ujverse.git"

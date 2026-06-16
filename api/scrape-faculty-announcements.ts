@@ -176,7 +176,7 @@ async function lecturerNameToNominativeWithCache(supabase: SupabaseClient, raw: 
  * spaleniem quota Groqa w jednej iteracji. Z 16 source'ami i potencjalnie
  * 50+ świeżych komunikatów per run, większy budżet niż w pre-refaktorze.
  */
-const EXTRACTION_BUDGET_PER_RUN = 30
+const EXTRACTION_BUDGET_PER_RUN = 45
 
 /**
  * Trzeci pass — pobranie pełnej treści artykułu z `source_url`
@@ -187,7 +187,7 @@ const EXTRACTION_BUDGET_PER_RUN = 30
  * Patrz migracja `20260715130000_announcements_full_body.sql` dla
  * uzasadnienia osobnej kolumny `full_body` (vs nadpisanie `body`).
  */
-const FULL_BODY_BUDGET_PER_RUN = 20
+const FULL_BODY_BUDGET_PER_RUN = 25
 
 /**
  * Próg długości body, poniżej którego uznajemy że to excerpt i warto
@@ -196,6 +196,10 @@ const FULL_BODY_BUDGET_PER_RUN = 20
  * upper bound dla excerptów. Pełne artykuły zwykle >800.
  */
 const SHORT_BODY_THRESHOLD = 600
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 /**
  * Wykonuje trzeci pass dla pojedynczego rzędu:
@@ -247,6 +251,16 @@ async function fetchFullBodyForRow(
   }
   if (fullBody && fullBody.length >= 300) {
     patch.full_body = fullBody
+    // Gdy Bielik wcześniej szedł na samym excerpcie bez summary — kolejka
+    // ponownej ekstrakcji po bogatszej treści.
+    const { data: meta } = await supabase
+      .from('announcements')
+      .select('summary')
+      .eq('id', row.id)
+      .maybeSingle()
+    if (!meta?.summary) {
+      patch.extraction_attempted_at = null
+    }
   }
 
   const { error } = await supabase.from('announcements').update(patch).eq('id', row.id)
@@ -602,7 +616,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         if (rateLimited) {
           extractionRateLimited = true
-          break
+          // Krótka pauza zamiast `break` — reszta budżetu może przejść po cooldown.
+          await sleep(2500)
+          continue
         }
         if (ok) extractionExtracted += 1
       }

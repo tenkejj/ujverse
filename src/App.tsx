@@ -216,6 +216,8 @@ function App() {
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState('')
+  /** Raz na sesję: po załadowaniu profilu ustawiamy filtr na `profiles.department`. */
+  const departmentDefaultFromProfileRef = useRef<string | null>(null)
   const [isMobileComposeOpen, setIsMobileComposeOpen] = useState(false)
 
   // Notifications
@@ -364,6 +366,22 @@ function App() {
     },
     [navigate],
   )
+
+  // Po wejściu na stronę (i załadowaniu profilu) filtr wydziału + komunikaty
+  // startują na wydziale usera — np. WZiKS zamiast „Wszystkie”. Raz na sesję:
+  // jeśli user przełączy pille ręcznie, nie nadpisujemy przy kolejnych renderach.
+  useEffect(() => {
+    departmentDefaultFromProfileRef.current = null
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    const canon = canonicalDepartment(myProfile?.department)
+    if (!canon) return
+    if (departmentDefaultFromProfileRef.current === session.user.id) return
+    departmentDefaultFromProfileRef.current = session.user.id
+    setSelectedDepartment(canon)
+  }, [session?.user?.id, myProfile?.department])
 
   /** Keep navigation-related state aligned with the URL (hybrid shell). */
   useEffect(() => {

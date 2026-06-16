@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
 
 // Stempel autora w DevTools — minifier produkcyjny zachowuje stringi
 // w `console.log`, więc to zostaje widoczne też w buildzie. Cel: ktoś, kto
-// otwiera DevTools na ujverse.pl, od razu widzi kto stoi za projektem.
+// otwiera DevTools na ujverse.vercel.app, od razu widzi kto stoi za projektem.
 if (typeof window !== 'undefined') {
   try {
     console.log(

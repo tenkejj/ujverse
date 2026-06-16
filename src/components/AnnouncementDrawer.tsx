@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { getAnnouncementBadge } from '../lib/announcementBranding'
+import { pickDisplaySummary } from '../lib/announcementSummary'
 import {
   ANNOUNCEMENT_STATUS_BADGE,
   ANNOUNCEMENT_STATUS_DOT,
@@ -56,7 +57,13 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
   const navigate = useNavigate()
   if (typeof document === 'undefined') return null
 
-  const summary = announcement?.metadata.summary ?? null
+  const summary = announcement
+    ? pickDisplaySummary(
+        announcement.metadata.summary,
+        announcement.body,
+        announcement.metadata.title,
+      )
+    : null
   const extractedCalendar = announcement?.metadata.extractedCalendar ?? null
   const facultyTitle = announcement?.metadata.title ?? null
   const sourceUrl = announcement?.metadata.sourceUrl ?? null
