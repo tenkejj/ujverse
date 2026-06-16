@@ -165,7 +165,7 @@ export function useDailyBrief({ userId, cohort, myProfile }: Params): UseDailyBr
 
   const loadAnnouncements = useCallback(async () => {
     try {
-      const rows = await AnnouncementsAdapter.fetch()
+      const rows = await AnnouncementsAdapter.fetch({ limit: 40 })
       const now = new Date()
       const recent = rows.filter((r) => isWithinHours(r.created_at, ANNOUNCEMENTS_RECENT_HOURS, now))
       setAnnouncements(recent.slice(0, MAX_ANNOUNCEMENTS_FOR_BRIEF))

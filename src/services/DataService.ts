@@ -34,7 +34,7 @@ import type { WeeklyBriefingRow } from '../types/briefing'
 import { CalendarAdapter } from './adapters/CalendarAdapter'
 import type { Unsubscribe } from './adapters/BaseAdapter'
 import type { CalendarEntry, CalendarSearchParams } from '../types/calendar'
-import { canonicalDepartment, departmentGroup } from '../lib/departments'
+import { departmentGroup } from '../lib/departments'
 
 /**
  * DataService — jedyny punkt styku komponentów UI z danymi.
@@ -61,25 +61,29 @@ class DataServiceImpl {
   async listAnnouncements(
     opts?: { department?: string },
   ): Promise<UnifiedContent<AnnouncementMeta>[]> {
-    const items = await AnnouncementsAdapter.list()
     const dept = opts?.department?.trim() ?? ''
-    const group = dept ? new Set(departmentGroup(dept)) : null
-    const filtered = !group || group.size === 0
-      ? items
-      : items.filter((ann) => {
-          const row = canonicalDepartment(ann.metadata.department)
-          if (row == null) return true
-          return group.has(row)
-        })
+    const group = dept ? departmentGroup(dept) : undefined
+    const items = await AnnouncementsAdapter.list({
+      departments: group && group.length > 0 ? group : undefined,
+    })
 
     // Bezpiecznik: niezależnie od sortowania po stronie Supabase / adaptera,
     // UnifiedContent wychodzi z DataService zawsze chronologicznie (najnowsze
     // na górze). Dzięki temu UI nie musi znać źródła danych ani implementacji.
-    return filtered.slice().sort((a, b) => {
+    return items.slice().sort((a, b) => {
       const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0
       const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0
       return dateB - dateA
     })
+  }
+
+  /** Pełna treść jednego komunikatu (z `full_body` gdy jest) — lazy przy „rozwiń”. */
+  async fetchAnnouncementById(
+    id: string,
+  ): Promise<UnifiedContent<AnnouncementMeta> | null> {
+    const row = await AnnouncementsAdapter.fetchById(id)
+    if (!row) return null
+    return AnnouncementsAdapter.toUnified(row)
   }
 
   /* Realtime dla komunikatów — cb bez danych, UI zrobi refetch. */

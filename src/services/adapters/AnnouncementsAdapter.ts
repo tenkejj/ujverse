@@ -1,6 +1,9 @@
 import { supabase } from '../../supabaseClient'
 import { UjverseSanitizer } from '../../lib/sanitizer'
-import { activeAnnouncementCutoff } from '../../lib/announcementRecency'
+import {
+  activeAnnouncementCutoff,
+  LIST_ANNOUNCEMENTS_LIMIT,
+} from '../../lib/announcementRecency'
 import type {
   AnnouncementMeta,
   AnnouncementSourceKind,
@@ -71,6 +74,19 @@ const ALLOWED_SOURCE_KINDS = new Set<AnnouncementSourceKind>([
   'manual',
 ])
 
+/** Kolumny listy — BEZ `full_body` (lazy-load w `fetchById` przy „rozwiń”). */
+const LIST_SELECT =
+  'id, body_fingerprint, department, source, source_kind, source_url, title, lecturer_name, body, status, created_at, summary, extracted_calendar'
+
+/** Pojedynczy rekord — z pełną treścią artykułu. */
+const DETAIL_SELECT = `${LIST_SELECT}, full_body`
+
+export type AnnouncementsFetchOpts = {
+  /** Filtr po `announcements.department` (aliasy z `departmentGroup`). */
+  departments?: string[]
+  limit?: number
+}
+
 function parseRow(row: Record<string, unknown>): AnnouncementRow | null {
   const id = row.id
   const lecturer_name = row.lecturer_name
@@ -140,19 +156,26 @@ class AnnouncementsAdapterImpl
 {
   readonly type = 'announcement' as const
 
-  async fetch(): Promise<AnnouncementRow[]> {
+  async fetch(opts?: AnnouncementsFetchOpts): Promise<AnnouncementRow[]> {
     // Sync cutoff z desktopowym `AcademicAnnouncementsWidget` (mobile `AnnouncementPills`
     // wcześniej widział pełną historię). `activeAnnouncementCutoff()` używa
     // `ACTIVE_ANNOUNCEMENT_DAYS` z `lib/announcementRecency.ts` jako jedynego
     // źródła prawdy — zmiana okna w jednym miejscu propaguje się do query.
     const since = activeAnnouncementCutoff().toISOString()
-    const { data, error } = await supabase
+    const limit = opts?.limit ?? LIST_ANNOUNCEMENTS_LIMIT
+    let query = supabase
       .from('announcements')
-      .select(
-        'id, body_fingerprint, department, source, source_kind, source_url, title, lecturer_name, body, full_body, status, created_at, summary, extracted_calendar',
-      )
+      .select(LIST_SELECT)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
+      .limit(limit)
+
+    const depts = opts?.departments?.filter((d) => d.trim().length > 0)
+    if (depts && depts.length > 0) {
+      query = query.in('department', depts)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       throw new Error(error.message)
@@ -161,6 +184,21 @@ class AnnouncementsAdapterImpl
     return data
       .map((r) => parseRow(r as Record<string, unknown>))
       .filter((x): x is AnnouncementRow => x !== null)
+  }
+
+  /** Pełna treść jednego komunikatu — wywoływane lazy przy „rozwiń” w karcie. */
+  async fetchById(id: string): Promise<AnnouncementRow | null> {
+    const { data, error } = await supabase
+      .from('announcements')
+      .select(DETAIL_SELECT)
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error(error.message)
+    }
+    if (!data) return null
+    return parseRow(data as Record<string, unknown>)
   }
 
   toUnified(raw: AnnouncementRow): UnifiedContent<AnnouncementMeta> | null {
@@ -218,8 +256,8 @@ class AnnouncementsAdapterImpl
    * priorytet zachowujemy żeby cancelled lecturer-blocks z ISI nie schodziły
    * pod informacyjne komunikaty Liferay/WP z tego samego tygodnia.
    */
-  async list(): Promise<UnifiedContent<AnnouncementMeta>[]> {
-    const raws = await this.fetch()
+  async list(opts?: AnnouncementsFetchOpts): Promise<UnifiedContent<AnnouncementMeta>[]> {
+    const raws = await this.fetch(opts)
     const unified = raws
       .map((r) => this.toUnified(r))
       .filter((x): x is UnifiedContent<AnnouncementMeta> => x !== null)

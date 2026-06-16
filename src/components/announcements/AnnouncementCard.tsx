@@ -7,6 +7,7 @@ import {
   ANNOUNCEMENT_STATUS_LABEL,
 } from '../../lib/announcementStatusStyles'
 import { sideMutedCls } from '../../lib/sidePanelStyles'
+import { DataService } from '../../services/DataService'
 import type { AnnouncementMeta, UnifiedContent } from '../../types/content'
 import {
   CALENDAR_ENTRY_KIND_COLORS,
@@ -111,12 +112,49 @@ export default function AnnouncementCard({
   className = '',
 }: Props) {
   const [expandedLocal, setExpandedLocal] = useState(false)
+  const [displayBody, setDisplayBody] = useState(announcement.body)
+  const [loadingFullBody, setLoadingFullBody] = useState(false)
+  const fullBodyFetchedRef = useRef(false)
   const expanded = expandedProp ?? expandedLocal
   const toggleExpand =
     onToggleExpand ??
     (() => {
       setExpandedLocal((v) => !v)
     })
+
+  // Reset przy zmianie komunikatu (realtime refetch / filtr wydziału).
+  useLayoutEffect(() => {
+    setDisplayBody(announcement.body)
+    fullBodyFetchedRef.current = false
+    setLoadingFullBody(false)
+  }, [announcement.id, announcement.body])
+
+  const handleToggleExpand = () => {
+    const willExpand = !expanded
+    toggleExpand()
+
+    if (!willExpand || fullBodyFetchedRef.current || loadingFullBody) return
+
+    const kind = announcement.metadata.sourceKind
+    const mightHaveFullBody =
+      kind === 'liferay' || kind === 'wordpress_cm' || Boolean(announcement.metadata.sourceUrl)
+    if (!mightHaveFullBody) return
+
+    setLoadingFullBody(true)
+    void DataService.fetchAnnouncementById(announcement.id)
+      .then((detail) => {
+        if (!detail?.body || detail.body.length <= announcement.body.length) return
+        setDisplayBody(detail.body)
+        fullBodyFetchedRef.current = true
+      })
+      .catch((err) => {
+        console.warn('[AnnouncementCard] full body fetch failed', err)
+      })
+      .finally(() => {
+        setLoadingFullBody(false)
+      })
+  }
+
   const navigate = useNavigate()
 
   const { summary, extractedCalendar, title: facultyTitle, sourceUrl } = announcement.metadata
@@ -215,7 +253,14 @@ export default function AnnouncementCard({
           {summary}
         </p>
       )}
-      <AnnouncementBodyClamp body={announcement.body} expanded={expanded} onToggle={toggleExpand} />
+      <AnnouncementBodyClamp
+        body={displayBody}
+        expanded={expanded}
+        onToggle={handleToggleExpand}
+      />
+      {loadingFullBody && (
+        <p className={`mt-1 text-[10px] ${sideMutedCls}`}>Ładuję pełną treść…</p>
+      )}
       {sourceUrl && (
         // Deep-link do oryginalnego ogłoszenia na portalu wydziału (Liferay/WP).
         // `stopPropagation` — jeśli karta jest w trybie `onOpen` (search wynik
