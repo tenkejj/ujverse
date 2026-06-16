@@ -14,6 +14,9 @@
     "api/scrape-faculty-announcements.ts": {
       "maxDuration": 300
     },
+    "api/reextract-announcements.ts": {
+      "maxDuration": 300
+    },
     "api/scrape-discounts.ts": {
       "maxDuration": 60
     },

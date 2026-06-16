@@ -20,7 +20,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Send, Square, X } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
+import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
@@ -164,7 +164,7 @@ export default function ChatAssistantFab({
       key="chat-fab"
       type="button"
       onClick={() => setOpen(true)}
-      aria-label="Otwórz asystenta AI"
+      aria-label="Otwórz Versusia"
       className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-[#1e293b] text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950"
       style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
       initial={{ opacity: 0, scale: 0.85 }}
@@ -195,7 +195,7 @@ export default function ChatAssistantFab({
       <motion.section
         role="dialog"
         aria-modal="true"
-        aria-label="Asystent UJverse"
+        aria-label={CHAT_ASSISTANT_NAME}
         className={`flex max-h-[90dvh] min-h-0 flex-col overflow-hidden rounded-t-3xl shadow-[0_-12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${SHEET_GLASS_CLS}`}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
@@ -212,7 +212,7 @@ export default function ChatAssistantFab({
             </span>
             <div className="flex flex-col leading-tight">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                Asystent UJverse
+                {CHAT_ASSISTANT_NAME}
               </h2>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{CHAT_MODEL_LABEL}</p>
             </div>

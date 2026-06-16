@@ -41,18 +41,20 @@ const DEFAULT_TEMPERATURE = 0.7
  * po naszych krótkich tool-flow odpowiedziach.
  *
  * - `MAX_TOKENS_TOOL_DECISION` — round-trip "zdecyduj jakie tool wywołać".
- *   Model w naszej architekturze albo wybiera tool_call (krótki JSON), albo
- *   pisze odpowiedź na small-talk (~30-100 tok). 300 to bezpieczny sufit.
+ *   Model albo wybiera tool_call (krótki JSON), albo pisze odpowiedź
+ *   wprost. Qwen3-32b z `reasoning_format: hidden` nadal liczy reasoning
+ *   do `max_tokens` — przy starym capie 320 widoczna odpowiedź ucinała się
+ *   w pół słowa („…zniżek albo infy"). 768 daje ~200 tok na reasoning +
+ *   ~500 tok na treść dla usera.
  *
  * - `MAX_TOKENS_TEXT_REPLY` — fallback dla zwykłej rozmowy (bez tooli).
- *   Trochę większy budżet, gdy model musi coś własnymi słowami napisać.
  *
  * Cap NIE wpływa na finalną odpowiedź dla narzędzi — formatujemy je
  * server-side w `formatToolResultAsFinalAnswer`, więc model nigdy nie
  * "syntetyzuje" wyniku. Płynnie redukuje to output tokeny.
  */
-const MAX_TOKENS_TOOL_DECISION = 320
-const MAX_TOKENS_TEXT_REPLY = 480
+const MAX_TOKENS_TOOL_DECISION = 768
+const MAX_TOKENS_TEXT_REPLY = 512
 
 /**
  * Modele "reasoning" — w trakcie generacji emitują chain-of-thought

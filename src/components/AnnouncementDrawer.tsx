@@ -15,6 +15,7 @@ import {
   type AnnouncementExtractedCalendar,
 } from '../types/calendar'
 import UserAvatar from './UserAvatar'
+import AnnouncementTldr from './announcements/AnnouncementTldr'
 import LecturerSubscribeBell from './announcements/LecturerSubscribeBell'
 
 function formatAnnDate(iso: string): string {
@@ -181,13 +182,8 @@ export default function AnnouncementDrawer({ announcement, onClose }: Props) {
                 </div>
               </div>
             </div>
-            {summary !== null && summary.length > 0 && (
-              // TL;DR od Bielika — pierwsza sekcja po headerze, podkreślone
-              // wizualnie złotym paskiem (brand). Świadomie NAD pełnym body,
-              // żeby user mógł zorientować się w komunikacie w 2 sekundy.
-              <p className="mt-4 pl-3 border-l-2 border-brand-gold/70 dark:border-brand-gold-bright/70 text-[15px] font-medium leading-snug text-fg-primary">
-                {summary}
-              </p>
+            {summary !== null && (
+              <AnnouncementTldr summary={summary} variant="drawer" />
             )}
             <p className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-fg-primary/90 dark:text-zinc-300">
               {announcement.body}

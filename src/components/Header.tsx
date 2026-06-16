@@ -41,6 +41,8 @@ type Props = {
   onRefreshPosts: () => void
   /** Otwiera mobilny drawer z pełną listą sekcji (`<lg`). */
   onOpenMobileDrawer: () => void
+  /** Ten sam `max-w` + padding co `<main>` — wyrównanie headera z treścią. */
+  contentShellClass?: string
 }
 
 export default function Header({
@@ -67,6 +69,7 @@ export default function Header({
   onNavigateToSettings,
   onRefreshPosts,
   onOpenMobileDrawer,
+  contentShellClass = 'w-full px-4',
 }: Props) {
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
@@ -110,13 +113,14 @@ export default function Header({
   return (
     <>
     <header
-      className={`${HEADER_MOBILE.containerClass} w-full flex items-center justify-between sticky top-0 z-50 overflow-visible border-t-0 outline-none ring-0 shadow-none ${
+      className={`w-full sticky top-0 z-50 overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
           : 'bg-bg-app/80 backdrop-blur-md backdrop-saturate-150 dark:bg-black/20 dark:backdrop-blur-md dark:backdrop-saturate-150'
       }`}
     >
-      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
+      <div className={`${contentShellClass} ${HEADER_MOBILE.containerClass}`}>
+      <div className={`${HEADER_MOBILE.leftZoneClass} relative z-10`}>
         {/* Burger otwiera `MobileDrawer` z pełną listą sekcji + szukajką. Widoczny
          *  na `<lg`, bo od `lg` lewy `SideNav` przejmuje rolę nawigacji. */}
         <div className="block lg:hidden">
@@ -137,9 +141,19 @@ export default function Header({
             />
           </button>
         </div>
+        <div className="hidden md:flex items-center min-w-0">
+          <OmniSearchHub
+            cohortId={cohortId}
+            onNavigateToUser={onNavigateToUser}
+            onNavigateToPost={onNavigateToPost}
+            onNavigateToEvents={onNavigateToEvents}
+            onNavigateToSearch={onNavigateToSearch}
+            onNavigateToAulaMessage={onNavigateToAulaMessage}
+          />
+        </div>
       </div>
 
-      <div className="flex-1 flex justify-center items-center overflow-visible min-w-0">
+      <div className={`${HEADER_MOBILE.centerZoneClass} overflow-visible min-w-0`}>
         <motion.button
           type="button"
           whileTap={{ scale: 0.95 }}
@@ -163,21 +177,13 @@ export default function Header({
               maskPosition: 'center',
               WebkitMaskPosition: 'center',
             }}
-            className={`mx-auto ${HEADER_MOBILE.logoClass} transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright bg-logo-navy`}
+            className={`${HEADER_MOBILE.logoClass} transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright bg-logo-navy`}
           />
         </motion.button>
       </div>
 
-      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-end gap-3 relative z-10`}>
+      <div className={`${HEADER_MOBILE.rightZoneClass} relative z-10`}>
         <div className="hidden md:flex items-center gap-1.5 shrink-0">
-          <OmniSearchHub
-            cohortId={cohortId}
-            onNavigateToUser={onNavigateToUser}
-            onNavigateToPost={onNavigateToPost}
-            onNavigateToEvents={onNavigateToEvents}
-            onNavigateToSearch={onNavigateToSearch}
-            onNavigateToAulaMessage={onNavigateToAulaMessage}
-          />
           <button
             type="button"
             onClick={toggleTheme}
@@ -338,6 +344,7 @@ export default function Header({
             )}
           </AnimatePresence>
         </div>
+      </div>
       </div>
     </header>
     </>

@@ -28,6 +28,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { Check, Copy, Loader2, RotateCcw, Sparkles, X } from 'lucide-react'
 import TypewriterMarkdown from '../chat/TypewriterMarkdown'
+import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
 import { consumeStream } from '../../services/ai/AulaAiService'
 
 type Props = {
@@ -207,7 +208,7 @@ export default function AiInsightModal({
         {/* Footer actions */}
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-zinc-200 px-4 py-2.5 dark:border-white/10">
           <span className="text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            Asystent UJverse · qwen3 32B
+            {CHAT_ASSISTANT_NAME}
           </span>
           <div className="flex items-center gap-1.5">
             <button

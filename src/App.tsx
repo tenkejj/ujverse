@@ -108,6 +108,57 @@ function isResetPasswordPath(pathname: string): boolean {
   return normalized === '/reset-password'
 }
 
+/** Wspólny `max-w` + padding dla headera i `<main>` — jedna oś z SideNav. */
+function getAppContentShellClass(view: AppShellView): string {
+  if (view === 'chat' || view === 'aula') return 'w-full px-4 lg:px-6'
+  if (view === 'events' || view === 'miejsca' || view === 'notifications') {
+    return 'mx-auto w-full max-w-[1800px] px-4 lg:px-6 xl:px-8'
+  }
+  if (view === 'mojPlan') {
+    return 'mx-auto w-full max-w-[1600px] px-4 lg:px-8 xl:px-12'
+  }
+  if (
+    view === 'feed' ||
+    view === 'profile' ||
+    view === 'userProfile' ||
+    view === 'search' ||
+    view === 'group' ||
+    view === 'sale' ||
+    view === 'znizki' ||
+    view === 'usos' ||
+    view === 'adminDiag' ||
+    view === 'adminReports'
+  ) {
+    return 'mx-auto w-full max-w-[1600px] px-4 lg:px-6'
+  }
+  if (view === 'settings') return 'mx-auto w-full max-w-2xl px-4'
+  return 'mx-auto w-full max-w-2xl px-4'
+}
+
+function getMainLayoutClass(view: AppShellView): string {
+  if (view === 'chat' || view === 'aula') return 'w-full'
+  const base = 'py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4'
+  if (view === 'settings') return `${base} space-y-0`
+  if (view === 'profile' || view === 'userProfile') return `${base} space-y-4`
+  // Wąskie widoki (post, thread itd.) — jak dawniej `max-w-2xl space-y-3`.
+  const shellWideViews: AppShellView[] = [
+    'feed',
+    'search',
+    'group',
+    'sale',
+    'znizki',
+    'usos',
+    'adminDiag',
+    'adminReports',
+    'events',
+    'miejsca',
+    'notifications',
+    'mojPlan',
+  ]
+  if (!shellWideViews.includes(view)) return `${base} space-y-3`
+  return base
+}
+
 type RouteParseOk = {
   kind: 'ok'
   view: AppShellView
@@ -1331,6 +1382,9 @@ function App() {
       ? 'feed'
       : navActiveView
 
+  const contentShellClass = getAppContentShellClass(effectiveActiveView)
+  const mainLayoutClass = getMainLayoutClass(effectiveActiveView)
+
   const sharedPostProps = {
     myProfile,
     displayName,
@@ -1651,7 +1705,8 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app lg:flex lg:items-start">
+      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
+        <div className="lg:flex lg:items-start lg:min-h-dvh lg:mx-auto lg:w-full lg:max-w-[1920px]">
         <SideNav
           activeView={navActiveView}
           unreadCount={unreadCount}
@@ -1706,6 +1761,7 @@ function App() {
             onNavigateToSettings={openSettings}
             onRefreshPosts={() => feedMutations.invalidateFeed()}
             onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
+            contentShellClass={contentShellClass}
           />
 
           <Suspense fallback={null}>
@@ -1715,37 +1771,7 @@ function App() {
             />
           </Suspense>
 
-          <main
-          className={
-            effectiveActiveView === 'chat' || effectiveActiveView === 'aula'
-              ? 'w-full'
-              : `mx-auto py-4 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-4 ${
-                  effectiveActiveView === 'events' || effectiveActiveView === 'miejsca' || effectiveActiveView === 'notifications'
-                    // Hub-layout (main + side rail) potrzebuje szerokiego pola
-                    // gry na PC; standardowe `max-w-7xl` ścina rail i wymusza
-                    // wąską siatkę kart. `max-w-[1800px]` daje pełen widescreen
-                    // experience bez rozwleczenia na 4K.
-                    ? 'max-w-[1800px] px-4 lg:px-6 xl:px-8'
-                    : effectiveActiveView === 'mojPlan'
-                      // Unified Mój Plan ma być full-bleed eye-candy: szkło
-                      // + duże typo żyją na widescreen, gold akcent karmi się
-                      // dużą powierzchnią.
-                      ? 'max-w-[1600px] px-4 lg:px-8 xl:px-12'
-                      : effectiveActiveView === 'feed' || effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile'
-                      || effectiveActiveView === 'search' ||
-                        effectiveActiveView === 'group' ||
-                        effectiveActiveView === 'sale' ||
-                        effectiveActiveView === 'znizki' ||
-                        effectiveActiveView === 'usos' ||
-                        effectiveActiveView === 'adminDiag' ||
-                        effectiveActiveView === 'adminReports'
-                      ? 'max-w-7xl px-4 lg:px-6'
-                      : effectiveActiveView === 'settings'
-                        ? 'max-w-2xl px-4 space-y-0'
-                        : 'max-w-2xl space-y-3 px-4'
-                } ${effectiveActiveView === 'profile' || effectiveActiveView === 'userProfile' ? 'space-y-4' : ''}`
-          }
-        >
+          <main className={`${contentShellClass} ${mainLayoutClass}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={`${effectiveActiveView}:${viewedHandle ?? ''}`}
@@ -1772,6 +1798,7 @@ function App() {
               setIsMobileComposeOpen(true)
             }}
           />
+        </div>
         </div>
       </div>
 

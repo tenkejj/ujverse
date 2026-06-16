@@ -16,6 +16,7 @@ import {
   type AnnouncementExtractedCalendar,
 } from '../../types/calendar'
 import BaseCard from '../ui/BaseCard'
+import AnnouncementTldr from './AnnouncementTldr'
 import LecturerSubscribeBell from './LecturerSubscribeBell'
 
 function formatAnnDate(iso: string): string {
@@ -248,14 +249,8 @@ export default function AnnouncementCard({
           </button>
         )}
       </div>
-      {displaySummary !== null && displaySummary.length > 0 && (
-        // TL;DR — Bielik (`metadata.summary`) lub heurystyka z pierwszego zdania.
-        <p
-          className="mb-2 pl-2 border-l-2 border-brand-gold/60 dark:border-brand-gold-bright/60 text-xs font-medium leading-snug text-zinc-800 dark:text-zinc-200"
-          title={aiSummary ? undefined : 'Podgląd — pełne streszczenie AI wkrótce'}
-        >
-          {displaySummary}
-        </p>
+      {displaySummary !== null && (
+        <AnnouncementTldr summary={displaySummary} variant="card" />
       )}
       <AnnouncementBodyClamp
         body={displayBody}

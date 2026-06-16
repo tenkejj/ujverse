@@ -26,7 +26,7 @@ import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Send, Square } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
+import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
 import { buildWelcomeOpener } from '../../lib/welcomeOpener'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
@@ -270,7 +270,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
                 }`}
               />
               <span className="truncate text-sm font-medium text-fg-primary">
-                {CHAT_MODEL_LABEL}
+                {CHAT_ASSISTANT_NAME}
               </span>
             </div>
           </div>
@@ -432,7 +432,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
             )}
           </form>
           <p className="mt-2 text-center text-[11px] text-fg-secondary">
-            Asystent UJverse może się mylić — sprawdzaj ważne informacje.
+            {CHAT_ASSISTANT_NAME} może się mylić — sprawdzaj ważne informacje.
           </p>
         </div>
       </div>

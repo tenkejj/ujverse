@@ -22,10 +22,13 @@ export const ICONS_MOBILE = {
 } as const
 
 export const HEADER_MOBILE = {
-  containerClass: 'h-14 md:h-16 gap-2 px-4',
-  sideSectionClass: 'w-[100px] min-w-[100px] md:w-24 md:min-w-24',
-  logoClass:
-    'h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2.25px] translate-x-[1.75px] md:translate-x-0',
+  /** Siatka 1fr / auto / 1fr — logo w geometrycznym środku (mobile: oś z plusem w BottomNav). */
+  containerClass:
+    'h-14 md:h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-0',
+  leftZoneClass: 'flex items-center justify-start min-w-0',
+  centerZoneClass: 'flex items-center justify-center',
+  rightZoneClass: 'flex items-center justify-end gap-2 md:gap-3 min-w-0',
+  logoClass: 'h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 shrink-0',
   themeToggleButtonClass:
     'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',
   userMenuButtonClass:
@@ -690,15 +693,17 @@ export const BOTTOM_NAV_MOBILE = {
   navScrolledClass: 'bg-bg-app/80 backdrop-blur-lg border-zinc-200 dark:border-white/5',
   navDefaultClass: 'bg-bg-app border-border-app',
   safeAreaBottomInset: 'env(safe-area-inset-bottom)',
-  rowClass: 'flex items-center justify-center gap-1 px-2 py-1.5 max-w-lg mx-auto min-h-16',
+  /** Pełna szerokość + 5 równych kolumn — FAB w środkowej kolumnie = 50vw (oś z logo). */
+  rowClass: 'grid grid-cols-5 items-end w-full px-4 py-1.5 min-h-16',
   iconButtonBaseClass:
-    'flex flex-col flex-1 items-center justify-center gap-1 min-h-[56px] py-2 px-1 transition-colors rounded-xl',
+    'flex flex-col col-span-1 items-center justify-center gap-1 min-h-[56px] py-2 px-1 transition-colors rounded-xl',
   iconButtonActiveClass: 'text-[#1e293b] dark:text-accent-interactive',
   iconButtonInactiveClass: 'text-[#1e293b]/75 dark:text-gray-400 dark:hover:text-white/90',
   iconButtonLabelClass: 'text-[10px] font-semibold leading-none tracking-tight truncate max-w-full',
   iconButtonLabelInactiveClass: 'text-[#1e293b]/70 dark:text-gray-400',
   iconButtonLabelActiveClass: 'text-[#1e293b] dark:text-accent-interactive',
-  composeWrapperClass: 'flex items-center justify-center shrink-0 px-0.5 min-h-[56px]',
+  composeWrapperClass:
+    'col-start-3 flex items-center justify-center shrink-0 px-0.5 min-h-[56px]',
   composeButtonClass:
     'h-14 w-14 rounded-full flex items-center justify-center border-0 outline-none shadow-lg bg-zinc-900 text-white dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-zinc-900 dark:shadow-lg dark:shadow-brand-gold/40 transition-transform duration-200 hover:brightness-[1.03] active:brightness-[0.97] dark:hover:brightness-105 dark:active:brightness-95',
   bellIconClass: 'h-7 w-7 shrink-0 transition-colors',

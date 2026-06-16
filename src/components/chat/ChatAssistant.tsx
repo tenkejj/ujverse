@@ -33,7 +33,7 @@ import {
   widgetGoldCls,
 } from '../../lib/sidePanelStyles'
 import type { Profile } from '../../types'
-import { CHAT_MODEL_LABEL } from '../../lib/chatModel'
+import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import AnimatedBot from './AnimatedBot'
@@ -172,7 +172,7 @@ export default function ChatAssistant({
           className={`${widgetGoldCls} shrink-0`}
         />
         <div className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className={sectionTitleCls}>Asystent UJverse</span>
+          <span className={sectionTitleCls}>{CHAT_ASSISTANT_NAME}</span>
           <span className={`text-[10px] ${sideMutedCls}`}>{CHAT_MODEL_LABEL}</span>
         </div>
         <button

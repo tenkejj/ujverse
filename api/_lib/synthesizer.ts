@@ -169,7 +169,7 @@ export async function synthesizeAnswer(
       // („całkiem przyzwoicie", „akurat blisko centrum") i przy 5+ wynikach
       // potrzebuje miejsca na wszystkie + krótkie reakcje. 400 tok = ~8 zdań
       // PL z luzem, eliminuje cięcia w pół słowa typu „bez zbędnego kopi[owania]".
-      maxTokens: 400,
+      maxTokens: 512,
       // Wyższa temperatura → mniej powtarzalne formy, więcej naturalnych
       // wariacji ("Pizzy taniej?" vs "Pod pizzę masz parę miejsc" vs „Tanio
       // na pizzę: ..."). 0.75 to sweet spot dla Llama 8B w PL — niżej brzmi
@@ -236,7 +236,7 @@ export async function* streamAnswer(
 
   yield* provider.streamCompletion(messages, [], {
     model: GROQ_SMALLTALK_MODEL,
-    maxTokens: 400,
+    maxTokens: 512,
     temperature: 0.75,
     toolChoice: 'none',
   })

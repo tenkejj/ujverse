@@ -363,6 +363,18 @@ const SMALLTALK_PATTERNS: readonly RegExp[] = [
   /^test[\s!.?,]*$/i,
   /^pa[\s!.?,]*$/i,
   /^pa pa[\s!.?,]*$/i,
+  /^aight\s*bet[\s!.?,]*$/i,
+  /^bet[\s!.?,]*$/i,
+  /^lol[\s!.?,]*$/i,
+  /^haha[\s!.?,]*$/i,
+  /^aha[\s!.?,]*$/i,
+  /^no[\s!.?,]*$/i,
+  /^dobra[\s!.?,]*$/i,
+  /^git[\s!.?,]*$/i,
+  /^fair[\s!.?,]*$/i,
+  /^nice[\s!.?,]*$/i,
+  /^cool[\s!.?,]*$/i,
+  /^z dupy[\s!.?,]*$/i,
 ] as const
 
 /**
@@ -370,7 +382,7 @@ const SMALLTALK_PATTERNS: readonly RegExp[] = [
  * Powyżej tego progu zakładamy że jest jakieś merytoryczne pytanie i narzędzia
  * MOGĄ być potrzebne — kierujemy do default tool-aware path.
  */
-const SMALLTALK_MAX_LENGTH = 24
+const SMALLTALK_MAX_LENGTH = 36
 
 /** Zwraca treść ostatniej wiadomości `role: 'user'` z historii (lub `''`). */
 function lastUserMessageContent(messages: GroqMessage[]): string {
@@ -1231,14 +1243,14 @@ export default async function handler(req: Request): Promise<Response> {
     // odpowiedzi w pół słowa. 400 tok = ~7-8 zdań PL, max comfort.
     const isSmallTalkPath = !useTools
     const completeOpts = isSmallTalkPath
-      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 400 }
-      : undefined
+      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 512 }
+      : { maxTokens: 768 }
     if (isSmallTalkPath) {
       void incrCounter('groq:small_talk_path')
       console.log(
         '[Groq] small-talk path — model:',
         GROQ_SMALLTALK_MODEL,
-        '| maxTokens: 400',
+        '| maxTokens: 512',
       )
     }
     // Circuit breaker — gdy ostatnie N requestów do Groqa padło 429/5xx,

@@ -1,9 +1,17 @@
 /**
- * TL;DR do wyświetlenia w karcie komunikatu — preferuje `summary` z Bielika,
- * fallback na pierwsze zdanie z body gdy AI jeszcze nie przetworzyło rekordu.
+ * TL;DR do wyświetlenia w karcie komunikatu — preferuje `summary` z Versusia
+ * (Llama 8B w passie scrapera), fallback na pierwsze zdanie z body gdy AI
+ * jeszcze nie przetworzyło rekordu.
  */
 
 const JUNK_SUMMARY_RE = /^komunikat(y)?\s+wydziałow/i
+
+export type DisplaySummarySource = 'ai' | 'heuristic'
+
+export type DisplaySummary = {
+  text: string
+  source: DisplaySummarySource
+}
 
 function heuristicSummary(body: string, title?: string | null): string | null {
   const t = body.trim()
@@ -30,8 +38,12 @@ export function pickDisplaySummary(
   summary: string | null | undefined,
   body: string,
   title?: string | null,
-): string | null {
+): DisplaySummary | null {
   const fromAi = summary?.trim()
-  if (fromAi && fromAi.length > 0 && !JUNK_SUMMARY_RE.test(fromAi)) return fromAi
-  return heuristicSummary(body, title)
+  if (fromAi && fromAi.length > 0 && !JUNK_SUMMARY_RE.test(fromAi)) {
+    return { text: fromAi, source: 'ai' }
+  }
+  const heuristic = heuristicSummary(body, title)
+  if (!heuristic) return null
+  return { text: heuristic, source: 'heuristic' }
 }

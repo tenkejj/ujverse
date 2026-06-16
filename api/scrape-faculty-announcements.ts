@@ -27,7 +27,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
-import { extractAnnouncementMetadata } from './_lib/calendarExtraction.js'
+import { runAnnouncementMetadataExtractionForRow } from './_lib/announcementMetadataPass.js'
 import {
   bodyFingerprintHex,
   FACULTY_SOURCES,
@@ -276,33 +276,12 @@ async function runCalendarExtractionForRow(
   provider: GroqProvider,
   row: { id: string; body: string },
 ): Promise<{ ok: boolean; rateLimited: boolean }> {
-  const result = await extractAnnouncementMetadata(provider, row.body)
-
-  if (result.status === 'rate_limited') {
-    console.warn('[scrape-faculty] metadata extraction 429 — pausing, id=', row.id)
-    return { ok: false, rateLimited: true }
-  }
-
-  if (result.status === 'error') {
-    console.warn('[scrape-faculty] metadata extraction error id=', row.id, 'msg=', result.message)
-    return { ok: false, rateLimited: false }
-  }
-
-  const { error: updateError } = await supabase
-    .from('announcements')
-    .update({
-      summary: result.summary,
-      extracted_calendar: result.extraction,
-      extraction_attempted_at: new Date().toISOString(),
-    })
-    .eq('id', row.id)
-
-  if (updateError) {
-    console.error('[scrape-faculty] failed to write extracted metadata id=', row.id, updateError.message)
-    return { ok: false, rateLimited: false }
-  }
-
-  return { ok: true, rateLimited: false }
+  return runAnnouncementMetadataExtractionForRow(
+    supabase,
+    provider,
+    row,
+    '[scrape-faculty]',
+  )
 }
 
 /**
