@@ -39,6 +39,8 @@ const CHIPS_BY_TOOL: Record<ToolName, readonly string[]> = {
   find_lecturer: ['Jego ogłoszenia', 'Subskrybuj go'],
   get_lecturer_announcements_by_name: ['Pokaż starsze', 'Subskrybuj go'],
   get_my_followed_lecturers: ['Najnowsze ogłoszenia', 'Kogo jeszcze dodać?'],
+  get_unread_notifications: ['Co w planie?', 'Co przegapiłem?'],
+  get_co_przegapilem: ['Moje powiadomienia', 'Co jutro?', 'Co w Auli?'],
 }
 
 /**

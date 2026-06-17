@@ -3,17 +3,35 @@
  */
 
 import { buildToolCacheKey } from './cache.js'
+import { tryFastPath } from './fastPath.js'
+import { isPersonalTool } from './personalTools.js'
 import { buildToolFacts, tryCompactSynthesis } from './synthesizer.js'
 
-/** Zsynchronizowane z `api/chat.ts` — anty-spam + oszczędność Qwen3. */
+/** Organiczne odpowiedzi Groq / small-talk — krótki TTL. */
 export const RESPONSE_CACHE_TTL_SECONDS = 30
+
+/** Fast-path + prewarm — stabilne zapytania (chipy, slashy). */
+export const RESPONSE_CACHE_FAST_PATH_TTL_SECONDS = 300
+
+export function responseCacheTtlSeconds(
+  lastUserText: string,
+  opts?: { fastPathReason?: string },
+): number {
+  if (opts?.fastPathReason) return RESPONSE_CACHE_FAST_PATH_TTL_SECONDS
+  if (tryFastPath(lastUserText)) return RESPONSE_CACHE_FAST_PATH_TTL_SECONDS
+  return RESPONSE_CACHE_TTL_SECONDS
+}
 
 export function buildResponseCacheKey(
   lastUserText: string,
   useTools: boolean,
+  userId?: string | null,
 ): string {
   const normalized = lastUserText.trim().toLowerCase().replace(/\s+/g, ' ')
-  return buildToolCacheKey('chat_response', { text: normalized, useTools })
+  const match = tryFastPath(lastUserText)
+  const scope =
+    match && isPersonalTool(match.toolName) ? (userId ?? 'anon') : 'shared'
+  return buildToolCacheKey('chat_response', { text: normalized, useTools, scope })
 }
 
 /**

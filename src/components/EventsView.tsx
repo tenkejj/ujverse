@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Archive, Calendar, CalendarClock, CalendarDays, Plus, Radio, Search, Sparkles, User } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
 import { DataService } from '../services/DataService'
@@ -48,6 +48,7 @@ type Props = {
 export default function EventsView({ currentUserId, onNavigateToProfileHandle }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {
     events,
     allEvents,
@@ -65,14 +66,22 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
 
   useEffect(() => {
     const state = location.state as { openEventId?: string } | null
-    const openEventId = state?.openEventId?.trim()
+    const fromState = state?.openEventId?.trim()
+    const fromQuery = searchParams.get('open')?.trim()
+    const openEventId = fromState || fromQuery
     if (!openEventId) return
 
     setSelectedEventId(openEventId)
     const fromContext = allEvents.find((e) => e.id === openEventId)
     if (fromContext) {
       setDeepLinkEvent(fromContext)
-      navigate(location.pathname, { replace: true, state: null })
+      if (fromState) {
+        navigate(location.pathname, { replace: true, state: null })
+      } else if (fromQuery) {
+        const next = new URLSearchParams(searchParams)
+        next.delete('open')
+        setSearchParams(next, { replace: true })
+      }
       return
     }
 
@@ -80,12 +89,18 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
     void DataService.fetchEventById(openEventId).then((row) => {
       if (cancelled) return
       if (row) setDeepLinkEvent(row)
-      navigate(location.pathname, { replace: true, state: null })
+      if (fromState) {
+        navigate(location.pathname, { replace: true, state: null })
+      } else if (fromQuery) {
+        const next = new URLSearchParams(searchParams)
+        next.delete('open')
+        setSearchParams(next, { replace: true })
+      }
     })
     return () => {
       cancelled = true
     }
-  }, [allEvents, location.pathname, location.state, navigate])
+  }, [allEvents, location.pathname, location.state, navigate, searchParams, setSearchParams])
 
   const selectedEvent = useMemo(() => {
     if (!selectedEventId) return null

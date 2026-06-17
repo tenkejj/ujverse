@@ -5,7 +5,7 @@
 import {
   buildResponseCacheKey,
   formatToolResultForCache,
-  RESPONSE_CACHE_TTL_SECONDS,
+  RESPONSE_CACHE_FAST_PATH_TTL_SECONDS,
 } from './_lib/chatResponseCache.js'
 import { tryFastPath } from './_lib/fastPath.js'
 import { kvSetSafe } from './_lib/kvCache.js'
@@ -22,6 +22,8 @@ const PREWARM_QUERIES: readonly string[] = [
   'Co mam jutro?',
   'Pokaż zniżki studenckie',
   'Co w Auli?',
+  'Moje powiadomienia',
+  'Co przegapiłem?',
   'Co w przyszłym tygodniu?',
   'Wydarzenia naukowe',
   'Jakie zniżki są teraz najpopularniejsze?',
@@ -57,8 +59,8 @@ async function prewarmOne(
     if (!formatted) {
       return { query, status: 'skipped', reason: 'empty formatted result' }
     }
-    const cacheKey = buildResponseCacheKey(query, true)
-    await kvSetSafe(cacheKey, formatted, RESPONSE_CACHE_TTL_SECONDS)
+    const cacheKey = buildResponseCacheKey(query, true, ctx.userId)
+    await kvSetSafe(cacheKey, formatted, RESPONSE_CACHE_FAST_PATH_TTL_SECONDS)
     return { query, status: 'ok', contentLen: formatted.length }
   } catch (err) {
     return {

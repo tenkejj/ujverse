@@ -34,6 +34,7 @@ import {
   setUserPreference,
 } from '../lib/userPreferences'
 import { useUserPrefs } from '../hooks/useUserPrefs'
+import { useVersusMemory } from '../hooks/useVersusMemory'
 import {
   HISTORY_KEY,
   clearAllHistory,
@@ -284,6 +285,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
   const [pushBusy, setPushBusy] = useState(false)
 
   const [searchHistoryCount, refreshSearchHistoryCount] = useSearchHistoryCount()
+  const versusMemory = useVersusMemory(Boolean(myProfile?.id))
 
   // Server-side privacy flags z `profiles` — domyślnie `true` żeby nie psuć
   // wyświetlania zanim user ich nie ruszy (i dla wierszy sprzed migracji).
@@ -928,6 +930,51 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
               Przywróć
             </button>
           </Row>
+        </SectionCard>
+
+        <SectionCard
+          title="Pamięć Versusia"
+          icon={SparklesIcon}
+          description="Versuś zapamiętuje stabilne preferencje z rozmów (max 5 faktów, ważne 7 dni)."
+        >
+          <Row>
+            <RowLabel
+              icon={SparklesIcon}
+              title="Zapamiętane preferencje"
+              hint={
+                versusMemory.loading
+                  ? 'Wczytuję…'
+                  : versusMemory.facts.length > 0
+                    ? `${versusMemory.facts.length} faktów z czatu.`
+                    : 'Versuś nie ma jeszcze żadnych faktów o Tobie.'
+              }
+            />
+            <button
+              type="button"
+              onClick={() => void versusMemory.clear()}
+              disabled={
+                versusMemory.clearing ||
+                versusMemory.loading ||
+                versusMemory.facts.length === 0
+              }
+              className={dangerBtnCls}
+            >
+              <TrashIcon className="h-4 w-4" aria-hidden />
+              {versusMemory.clearing ? 'Czyszczę…' : 'Wyczyść'}
+            </button>
+          </Row>
+          {versusMemory.facts.length > 0 ? (
+            <ul className="space-y-2 px-1 pb-2 text-sm text-zinc-700 dark:text-zinc-300">
+              {versusMemory.facts.map((fact) => (
+                <li
+                  key={fact}
+                  className="rounded-xl border border-zinc-200/80 bg-zinc-50/80 px-3 py-2 dark:border-white/10 dark:bg-white/5"
+                >
+                  {fact}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </SectionCard>
 
         {/* Administrator ───────────────────────────────────────────────── */}

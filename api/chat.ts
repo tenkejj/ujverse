@@ -40,13 +40,17 @@
  * - **CORS**: preflight `OPTIONS` + `Access-Control-*` na każdej odpowiedzi.
  */
 
-import { buildResponseCacheKey, RESPONSE_CACHE_TTL_SECONDS } from './_lib/chatResponseCache.js'
+import {
+  buildResponseCacheKey,
+  RESPONSE_CACHE_TTL_SECONDS,
+  responseCacheTtlSeconds,
+} from './_lib/chatResponseCache.js'
 import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
 import { extractRequestUser } from './_lib/auth.js'
 import { getActionLabel } from './_lib/actionLabels.js'
 import { getFollowUpChips } from './_lib/followUpChips.js'
 import { tryFastPath } from './_lib/fastPath.js'
-import { buildAutoContext } from './_lib/autoContext.js'
+import { enrichWithEntityLinks } from './_lib/linkEnricher.js'
 import { detectTroll } from './_lib/trollHandler.js'
 import { detectInjection } from './_lib/injectionGuard.js'
 import { redactAndSlice } from './_lib/piiRedact.js'
@@ -719,7 +723,11 @@ function streamSynthesizedAnswer(opts: {
           )
           buffered = stripped
         }
-        buffered = polishAssistantReply(buffered)
+        buffered = enrichWithEntityLinks(
+          toolName ?? '',
+          result,
+          polishAssistantReply(buffered),
+        )
 
         // Markdown Guard: sprawdzamy buforze (tak jak w non-streaming path).
         // Jeśli wycieka tool-call JSON, w teorii za późno (już wysłaliśmy),
@@ -1146,7 +1154,11 @@ export default async function handler(req: Request): Promise<Response> {
     return streamFinalContent(trollMatch.comeback)
   }
 
-  const responseCacheKey = buildResponseCacheKey(lastUserText, useTools)
+  const responseCacheKey = buildResponseCacheKey(
+    lastUserText,
+    useTools,
+    ctx.userId,
+  )
 
   const cachedReply = await kvGetSafe<string>(responseCacheKey)
   if (cachedReply) {
@@ -1228,7 +1240,9 @@ export default async function handler(req: Request): Promise<Response> {
             await kvSetSafe(
               responseCacheKey,
               fullText,
-              RESPONSE_CACHE_TTL_SECONDS,
+              responseCacheTtlSeconds(lastUserText, {
+                fastPathReason: fastMatch.reason,
+              }),
             )
           },
         })
@@ -1442,13 +1456,18 @@ export default async function handler(req: Request): Promise<Response> {
         const sections = await Promise.all(
           toolCalls.map(async (call) => {
             const result = await runToolCall(call, ctx)
-            return synthesizeFinalAnswer(
+            const section = await synthesizeFinalAnswer(
               call.function.name,
               result,
               lastUserText,
               provider,
               usageAcc,
               recentOpeners,
+            )
+            return enrichWithEntityLinks(
+              call.function.name,
+              result,
+              section,
             )
           }),
         )

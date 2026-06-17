@@ -87,6 +87,14 @@ const ACTION_LABEL_VARIANTS: Record<ToolName, readonly string[]> = {
     'Sprawdzam kogo śledzisz',
     'Patrzę na Twoje subskrypcje',
   ],
+  get_unread_notifications: [
+    'Sprawdzam powiadomienia',
+    'Patrzę co nieprzeczytane',
+  ],
+  get_co_przegapilem: [
+    'Składam podsumowanie',
+    'Patrzę co u Ciebie siedzi',
+  ],
 }
 
 /**

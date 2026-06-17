@@ -347,11 +347,11 @@ function buildDiscountsFacts(result: unknown): ToolFactsResult {
       const headline = pickString(item, 'discount_headline')
       const address = pickStringOrNull(item, 'address')
       const category = pickStringOrNull(item, 'category')
+      const websiteUrl = pickStringOrNull(item, 'website_url')
       const catLabel = category ? DISCOUNT_CATEGORY_PL[category] ?? category : null
-      // Niektóre adresy mają już własne nawiasy ("ul. X (Galeria Y)"). Zamiast
-      // owijać kolejną parą, użyj „, " jako separatora — czystsze dla LLM.
       const where = address ? address.replace(', Kraków', '') : null
-      const parts: string[] = [business]
+      const businessLabel = websiteUrl ? `[${business}](${websiteUrl})` : business
+      const parts: string[] = [businessLabel]
       if (where) parts.push(`— ${where}`)
       if (catLabel) parts.push(`[${catLabel}]`)
       parts.push(`— oferta: ${headline}`)
@@ -388,8 +388,10 @@ function buildTrendingDiscountsFacts(result: unknown): ToolFactsResult {
       const business = pickString(item, 'business_name') || 'lokal'
       const headline = pickString(item, 'discount_headline')
       const recentUses = pickNumber(item, 'recent_uses') ?? 0
+      const websiteUrl = pickStringOrNull(item, 'website_url')
       const usesPart = recentUses > 0 ? ` (${recentUses}× w tym tygodniu)` : ''
-      return `${business} — ${headline}${usesPart}`
+      const businessLabel = websiteUrl ? `[${business}](${websiteUrl})` : business
+      return `${businessLabel} — ${headline}${usesPart}`
     })
     .join('\n')
   return {
@@ -418,6 +420,7 @@ function buildSearchEventsFacts(result: unknown): ToolFactsResult {
   const facts = items
     .map((item) => {
       const title = pickString(item, 'title') || 'wydarzenie bez tytułu'
+      const eventId = pickString(item, 'id')
       const location = pickStringOrNull(item, 'location')
       const date = pickStringOrNull(item, 'date')
       const isOfficial = pickBool(item, 'is_official')
@@ -430,7 +433,10 @@ function buildSearchEventsFacts(result: unknown): ToolFactsResult {
         : 'bez daty'
       const tag = isOfficial ? '' : ' (studenckie)'
       const where = location ? ` w ${location}` : ''
-      return `${title}${tag} — ${datePart}${where}`
+      const titleLabel = eventId
+        ? `[${title}](/events?open=${encodeURIComponent(eventId)})`
+        : title
+      return `${titleLabel}${tag} — ${datePart}${where}`
     })
     .join('\n')
 
@@ -464,6 +470,8 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
     .map((item) => {
       const lecturer =
         pickString(item, 'lecturer_name_nominative') || 'ktoś z kadry'
+      const annId = pickString(item, 'id')
+      const sourceUrl = pickStringOrNull(item, 'source_url')
       const statusKey = pickString(item, 'status')
       const statusPl = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey
       const body = pickString(item, 'body')
@@ -473,7 +481,14 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
       const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
       const deptTag = dept ? ` [${dept}]` : ''
       const tail = body ? ` — ${clip(body, 160)}` : ''
-      return `${lecturer} ${statusPl}${when}${deptTag}${tail}`
+      const lecturerLabel = annId
+        ? `[${lecturer}](/moj-plan?announcement=${encodeURIComponent(annId)})`
+        : lecturer
+      const sourceTail =
+        sourceUrl && !tail.includes(sourceUrl)
+          ? ` [źródło](${sourceUrl})`
+          : ''
+      return `${lecturerLabel} ${statusPl}${when}${deptTag}${tail}${sourceTail}`
     })
     .join('\n')
 
@@ -570,11 +585,15 @@ function buildPostsFacts(result: unknown): ToolFactsResult {
       const username =
         (author && typeof author.username === 'string' && author.username) ||
         'anon'
+      const postId = pickString(item, 'id')
       const body = pickString(item, 'body')
       const createdAt = pickStringOrNull(item, 'created_at')
       const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
       const quote = body ? ` „${clip(body, 140)}"` : ''
-      return `@${username}${when} —${quote}`
+      const authorLabel = postId
+        ? `[@${username}](/thread/${encodeURIComponent(postId)})`
+        : `@${username}`
+      return `${authorLabel}${when} —${quote}`
     })
     .join('\n')
 

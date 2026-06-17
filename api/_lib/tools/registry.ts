@@ -31,6 +31,7 @@ import {
   buildToolCacheKey,
   ttlForTool,
 } from '../cache.js'
+import { isPersonalTool } from '../personalTools.js'
 import { kvGetSafe, kvSetSafe } from '../kvCache.js'
 import { incrCounter, pushLatency } from '../metrics.js'
 
@@ -161,10 +162,13 @@ function withCache<TArgs, TResult>(
 ): ToolExecutor<TArgs, TResult> {
   const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000))
   return async (args, ctx) => {
-    const cacheKey = buildToolCacheKey(
-      toolName,
-      args as unknown as Record<string, unknown>,
-    )
+    const argsRecord = args as unknown as Record<string, unknown>
+    const cacheKey = isPersonalTool(toolName)
+      ? buildToolCacheKey(toolName, {
+          ...argsRecord,
+          __uid: ctx.userId ?? 'anon',
+        })
+      : buildToolCacheKey(toolName, argsRecord)
     const cached = await kvGetSafe<TResult>(cacheKey)
     if (cached !== undefined) {
       console.log('[Tool Cache] HIT', toolName, 'key:', cacheKey)

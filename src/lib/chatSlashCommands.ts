@@ -180,6 +180,22 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     iconBg: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
   },
   {
+    slug: 'powiadomienia',
+    label: 'Nieprzeczytane',
+    description: 'Lajki, komentarze, Aula, wykładowcy',
+    query: 'Moje powiadomienia',
+    icon: Bell,
+    iconBg: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+  },
+  {
+    slug: 'przegapilem',
+    label: 'Co przegapiłem',
+    description: 'Powiadomienia, plan, Aula, ogłoszenia',
+    query: 'Co przegapiłem?',
+    icon: Sparkles,
+    iconBg: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  },
+  {
     slug: 'pomoc',
     label: 'Co potrafisz',
     description: 'Lista możliwości Versusia',

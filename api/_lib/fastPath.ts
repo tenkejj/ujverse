@@ -39,7 +39,7 @@ type FastPathRule = {
 }
 
 /** Zwraca ISO 8601 dla początku i końca dzisiaj w UTC. */
-function todayRangeISO(): { start: string; end: string } {
+export function todayRangeISO(): { start: string; end: string } {
   const now = new Date()
   const start = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0),
@@ -96,6 +96,7 @@ const RULES: readonly FastPathRule[] = [
   // /feed — "Co nowego na feedzie?"
   {
     patterns: [
+      /^co nowego\??$/i,
       /^co nowego na feedzie\??$/i,
       /^co na feedzie\??$/i,
       /^pokaż feed\??$/i,
@@ -309,6 +310,32 @@ const RULES: readonly FastPathRule[] = [
     reason: 'official_events',
   },
 
+  // Powiadomienia
+  {
+    patterns: [
+      /^moje powiadomienia\??$/i,
+      /^nieprzeczytane\??$/i,
+      /^co mam nieprzeczytane\??$/i,
+    ],
+    toolName: 'get_unread_notifications',
+    buildArgs: () => ({ limit: 10 }),
+    reason: 'unread_notifications',
+  },
+
+  // Co przegapiłem — złożony brief
+  {
+    patterns: [
+      /^co przegapi(łem|lam)\??$/i,
+      /^co przegapilem\??$/i,
+      /^co u mnie siedzi\??$/i,
+      /^co się dzieje u mnie\??$/i,
+      /^co sie dzieje u mnie\??$/i,
+    ],
+    toolName: 'get_co_przegapilem',
+    buildArgs: () => ({}),
+    reason: 'co_przegapilem',
+  },
+
   // Kontekst usera
   {
     patterns: [
@@ -415,6 +442,11 @@ const SLASH_SLUG_RULES: Record<
     },
   },
   wykladowcy: { toolName: 'get_my_followed_lecturers', buildArgs: () => ({}) },
+  powiadomienia: {
+    toolName: 'get_unread_notifications',
+    buildArgs: () => ({ limit: 10 }),
+  },
+  przegapilem: { toolName: 'get_co_przegapilem', buildArgs: () => ({}) },
 }
 
 /**

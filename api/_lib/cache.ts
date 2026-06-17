@@ -73,6 +73,8 @@ export const TOOL_TTL_MS: Record<string, number> = {
   get_lecturer_announcements_by_name: 60_000,
   // Personal — lista subskrybowanych: dynamika podobna do aula_overview.
   get_my_followed_lecturers: 60_000,
+  get_unread_notifications: 15_000,
+  get_co_przegapilem: 30_000,
 }
 
 export function ttlForTool(name: string): number {

@@ -43,6 +43,8 @@ export type ToolName =
   | 'find_lecturer'
   | 'get_lecturer_announcements_by_name'
   | 'get_my_followed_lecturers'
+  | 'get_unread_notifications'
+  | 'get_co_przegapilem'
 
 /**
  * Mapa intent → narzędzia. Wyodrębniona, żeby łatwo dorzucać nowe narzędzia
@@ -64,6 +66,8 @@ const INTENT_TO_TOOLS: Record<string, ToolName[]> = {
   lecturer_search: ['find_lecturer'],
   lecturer_announcements: ['get_lecturer_announcements_by_name', 'find_lecturer'],
   followed_lecturers: ['get_my_followed_lecturers'],
+  notifications: ['get_unread_notifications'],
+  catchup: ['get_co_przegapilem'],
 }
 
 /**
@@ -296,6 +300,22 @@ const INTENT_KEYWORDS: Record<string, readonly string[]> = {
     'subskrypcj',
     'co u moich wykładow',
     'co u moich wykladow',
+  ],
+  notifications: [
+    'powiadom',
+    'notyfik',
+    'nieprzeczytan',
+    'nie przeczytan',
+    'co mam nieprzeczytan',
+  ],
+  catchup: [
+    'co przegapi',
+    'co przegapil',
+    'co u mnie siedzi',
+    'co się dzieje u mnie',
+    'co sie dzieje u mnie',
+    'podsumuj mój dzień',
+    'podsumuj moj dzien',
   ],
 }
 

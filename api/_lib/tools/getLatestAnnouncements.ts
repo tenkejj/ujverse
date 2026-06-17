@@ -44,6 +44,7 @@ const AnnouncementRowSchema = z.object({
   status: z.enum(['cancelled', 'remote', 'duty']),
   department: z.string().nullable(),
   source: z.string().nullable(),
+  source_url: z.string().nullable(),
   created_at: z.string(),
 })
 
@@ -66,6 +67,7 @@ export type GetLatestAnnouncementsResult = {
     status: AnnouncementRow['status']
     department: string | null
     source: string | null
+    source_url: string | null
     created_at: string
   }>
 }
@@ -81,7 +83,7 @@ async function execute(
 ): Promise<GetLatestAnnouncementsResult | GetLatestAnnouncementsError | string> {
   const { data, error } = await ctx.supabaseAdmin
     .from('announcements')
-    .select('id, lecturer_name, body, status, department, source, created_at')
+    .select('id, lecturer_name, body, status, department, source, source_url, created_at')
     .order('created_at', { ascending: false })
     .limit(MAX_ROWS)
 
@@ -134,6 +136,7 @@ async function execute(
     status: r.status,
     department: r.department,
     source: r.source,
+    source_url: r.source_url,
     created_at: r.created_at,
   }))
 

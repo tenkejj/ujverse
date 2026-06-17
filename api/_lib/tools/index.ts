@@ -29,6 +29,8 @@ import './getUpcomingOfficialEvents.js'
 import './findLecturer.js'
 import './getLecturerAnnouncements.js'
 import './getMyFollowedLecturers.js'
+import './getUnreadNotifications.js'
+import './getCoPrzegapilem.js'
 
 export {
   type Tool,
