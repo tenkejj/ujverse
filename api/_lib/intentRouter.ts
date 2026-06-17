@@ -346,6 +346,9 @@ const TYPO_CORRECTIONS: ReadonlyArray<{ typo: RegExp; canonical: string }> = [
   { typo: /\bsemster\b/gi, canonical: 'semestr' },
   { typo: /\bsemstr\b/gi, canonical: 'semestr' },
   { typo: /\begzaim\b/gi, canonical: 'egzamin' },
+  { typo: /\bversius\b/gi, canonical: 'versuś' },
+  { typo: /\bversus\b/gi, canonical: 'versuś' },
+  { typo: /\bjutr\b/gi, canonical: 'jutro' },
 ]
 
 /**

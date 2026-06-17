@@ -50,9 +50,9 @@ const ACTION_LABEL_VARIANTS: Record<ToolName, readonly string[]> = {
     'Patrzę gdzie się opłaca',
   ],
   get_trending_discounts: [
-    'Patrzę co tani modne',
+    'Patrzę co jest na topie',
     'Łapię topkę zniżek',
-    'Zerkam na hity',
+    'Zerkam na hity tygodnia',
   ],
   get_my_classes_in_range: [
     'Zaglądam do Twojego planu',

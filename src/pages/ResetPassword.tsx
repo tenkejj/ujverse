@@ -6,16 +6,11 @@ import { toast } from '../lib/appToast'
 import { supabase } from '../supabaseClient.ts'
 import AuthShell from '../components/auth/AuthShell'
 import { authInputCls } from '../components/auth/Login.tsx'
+import { AUTH_MOBILE } from '../styles/mobile-theme'
 
 const MIN_PASSWORD_LEN = 8
 
-const primaryBtnCls =
-  'inline-flex w-full items-center justify-center gap-2 rounded-xl py-3.5 ' +
-  'font-bold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 ' +
-  'bg-[#1e293b] text-white hover:bg-[#172033] active:scale-[0.99] ' +
-  'dark:bg-brand-gold-bright dark:text-black dark:hover:bg-[#f3d35f]'
-
-const inputWithIconCls = authInputCls.replace('px-3.5', 'pl-10 pr-11')
+const inputWithIconCls = authInputCls.replace('px-3.5', 'pl-10 pr-3.5')
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -103,17 +98,17 @@ export default function ResetPassword() {
   if (!hasUser) {
     return (
       <AuthShell>
-        <div className="text-center">
-          <h1 className="text-xl font-extrabold tracking-tight text-[#1e293b] dark:text-white">
+        <div className="w-full text-center">
+          <h1 className={AUTH_MOBILE.header.titleClass}>
             Link wygasł lub jest nieprawidłowy
           </h1>
-          <p className="mt-2 text-sm text-zinc-500 dark:text-white/55">
+          <p className={AUTH_MOBILE.header.subtitleClass}>
             Poproś o nowy link resetujący na stronie logowania.
           </p>
           <button
             type="button"
             onClick={() => navigate('/', { replace: true })}
-            className={primaryBtnCls + ' mt-6'}
+            className={AUTH_MOBILE.button.primary + ' mt-6'}
           >
             Wróć do logowania
           </button>
@@ -128,31 +123,28 @@ export default function ResetPassword() {
 
   return (
     <AuthShell>
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-extrabold tracking-tight text-[#1e293b] dark:text-white">
+      <div className={AUTH_MOBILE.header.blockClass}>
+        <h1 className={AUTH_MOBILE.header.titleClass}>
           Ustaw nowe hasło
         </h1>
-        <p className="mt-1.5 text-sm text-zinc-500 dark:text-white/55">
+        <p className={AUTH_MOBILE.header.subtitleClass}>
           Wpisz dwa razy nowe hasło dla swojego konta.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="text-left">
+      <form onSubmit={handleSubmit} className={AUTH_MOBILE.panel.className + ' w-full text-left'}>
         <label
           htmlFor="reset-new-password"
-          className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-white/55"
+          className={AUTH_MOBILE.input.labelClass}
         >
           Nowe hasło
         </label>
         <div className="relative mb-1.5">
-          <Lock
-            size={18}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-white/35"
-          />
+          <Lock size={18} className={AUTH_MOBILE.input.iconClass} />
           <input
             id="reset-new-password"
             type={showPassword ? 'text' : 'password'}
-            className={inputWithIconCls}
+            className={inputWithIconCls + ' pr-11'}
             placeholder={`Minimum ${MIN_PASSWORD_LEN} znaków`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -166,7 +158,7 @@ export default function ResetPassword() {
             type="button"
             onClick={() => setShowPassword((s) => !s)}
             aria-label={showPassword ? 'Ukryj hasło' : 'Pokaż hasło'}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 transition-colors hover:text-[#1e293b] dark:text-white/40 dark:hover:text-brand-gold-bright"
+            className={AUTH_MOBILE.button.showPasswordClass + ' right-2 p-1.5 min-h-0 min-w-0'}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -189,19 +181,16 @@ export default function ResetPassword() {
 
         <label
           htmlFor="reset-confirm-password"
-          className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-white/55"
+          className={AUTH_MOBILE.input.labelClass}
         >
           Potwierdź hasło
         </label>
         <div className="relative mb-1.5">
-          <Lock
-            size={18}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-white/35"
-          />
+          <Lock size={18} className={AUTH_MOBILE.input.iconClass} />
           <input
             id="reset-confirm-password"
             type={showConfirm ? 'text' : 'password'}
-            className={inputWithIconCls}
+            className={inputWithIconCls + ' pr-11'}
             placeholder="Powtórz hasło"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -212,7 +201,7 @@ export default function ResetPassword() {
             type="button"
             onClick={() => setShowConfirm((s) => !s)}
             aria-label={showConfirm ? 'Ukryj hasło' : 'Pokaż hasło'}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 transition-colors hover:text-[#1e293b] dark:text-white/40 dark:hover:text-brand-gold-bright"
+            className={AUTH_MOBILE.button.showPasswordClass + ' right-2 p-1.5 min-h-0 min-w-0'}
           >
             {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -231,7 +220,7 @@ export default function ResetPassword() {
           disabled={loading}
           whileHover={loading ? undefined : { y: -1 }}
           whileTap={loading ? undefined : { scale: 0.99 }}
-          className={primaryBtnCls}
+          className={AUTH_MOBILE.button.primary}
         >
           {loading ? (
             <>

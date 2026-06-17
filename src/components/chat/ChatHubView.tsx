@@ -26,7 +26,7 @@ import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Send, Square } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
+import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL, CHAT_PROVIDER_LABEL } from '../../lib/chatModel'
 import { buildWelcomeOpener } from '../../lib/welcomeOpener'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
@@ -35,29 +35,13 @@ import {
   isSlashMode,
   type SlashCommand,
 } from '../../lib/chatSlashCommands'
-import AnimatedBot from './AnimatedBot'
+import VersuHeroCluster from './VersuHeroCluster'
+import VersuMark from './VersuMark'
 import MessageList from './MessageList'
 import SlashCommandMenu from './SlashCommandMenu'
 import ChatVoiceButton from './ChatVoiceButton'
 
-/**
- * Quick prompts — IDENTYCZNE z `ChatAssistant.QUICK_PROMPTS`.
- *
- * Świadomie zduplikowane (nie wyciągamy do `src/lib/`), bo obie
- * powierzchnie mają suwerenne prawo do własnej listy (np. mobile
- * mógłby kiedyś dostać krótsze pytania). Dziś trzymamy je w sync,
- * żeby cache response (`buildResponseCacheKey` normalizuje tekst)
- * był współdzielony między desktopem a mobile.
- *
- * Każdy prompt mapuje 1:1 na narzędzie z deterministycznym wynikiem
- * — patrz docstring w `ChatAssistant.QUICK_PROMPTS`.
- */
-const QUICK_PROMPTS = [
-  'Co nowego na feedzie?',
-  'Najnowsze ogłoszenia',
-  'Co w przyszłym tygodniu?',
-  'Pokaż zniżki studenckie',
-] as const
+import { CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
 
 type Props = {
   displayName: string
@@ -249,50 +233,39 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
         zostaje na ekranie, tylko przechodzi w stan `disabled` — wyraźny
         feedback wizualny.
       */}
-      <header className="shrink-0 border-b border-zinc-200/60 bg-zinc-50/85 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/85">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-2 md:px-6 md:py-2.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-logo-navy/30 bg-bg-card text-logo-navy dark:border-brand-gold-bright/30 dark:text-brand-gold-bright"
-              aria-hidden
-            >
-              <AnimatedBot
-                size={17}
-                strokeWidth={2}
-                intensity={isTyping ? 'active' : 'idle'}
-              />
-            </span>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <span
-                aria-hidden
-                className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                  isTyping ? 'animate-pulse bg-emerald-400' : 'bg-emerald-400/70'
-                }`}
-              />
-              <span className="truncate text-sm font-medium text-fg-primary">
-                {CHAT_ASSISTANT_NAME}
-              </span>
+      <header className="shrink-0 border-b border-zinc-200/60 bg-zinc-50/90 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/90">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-2.5 md:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <VersuMark size={34} className="shrink-0" />
+            <div className="min-w-0 flex flex-col leading-tight">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm font-semibold tracking-tight text-fg-primary">
+                  {CHAT_ASSISTANT_NAME}
+                </span>
+                <span
+                  aria-hidden
+                  className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+                    isTyping ? 'animate-pulse bg-emerald-400' : 'bg-emerald-400/60'
+                  }`}
+                />
+              </div>
+              <p className="truncate text-[11px] text-fg-secondary">
+                {CHAT_MODEL_LABEL}
+                <span className="text-fg-secondary/65"> · {CHAT_PROVIDER_LABEL}</span>
+              </p>
             </div>
           </div>
 
-          {/*
-            Wrapper `p-1 -m-1` poszerza powierzchnię klikalną przycisku do
-            48×48 px (Apple HIG / Material recommendation) bez zmiany jego
-            wizualnego rozmiaru — ujemny margines wycofuje wpływ na layout.
-            Wcześniej `h-9 w-9` (36 px) okrąg dawał zbyt mały hit-area,
-            trafienie w róg dawało miss.
-          */}
           <button
             type="button"
             onClick={handleNewConversation}
             disabled={!canClear}
             title="Nowa rozmowa"
             aria-label="Rozpocznij nową rozmowę z asystentem"
-            className="group -m-1 inline-flex h-12 w-12 shrink-0 items-center justify-center p-1 transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-logo-navy/25 bg-transparent px-3 py-2 text-xs font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10 sm:px-3.5 sm:text-sm"
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-logo-navy/25 bg-bg-card text-logo-navy transition-colors group-hover:border-logo-navy/55 group-hover:bg-logo-navy/5 group-active:scale-[0.96] dark:border-brand-gold-bright/30 dark:text-brand-gold-bright dark:group-hover:border-brand-gold-bright/60 dark:group-hover:bg-brand-gold-bright/10">
-              <Plus size={20} strokeWidth={2.2} aria-hidden />
-            </span>
+            <Plus size={16} strokeWidth={2.25} aria-hidden />
+            <span className="sr-only sm:not-sr-only sm:inline">Nowa rozmowa</span>
           </button>
         </div>
       </header>
@@ -324,9 +297,13 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-6 text-logo-navy dark:text-brand-gold-bright"
+              className="mb-6"
             >
-              <AnimatedBot size={64} strokeWidth={1.5} intensity="wave" />
+              <VersuHeroCluster
+                containerClass="size-40"
+                iconWrapClass="size-[4.5rem]"
+                iconSize={72}
+              />
             </motion.div>
 
             <motion.h1
@@ -355,7 +332,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               role="list"
               aria-label="Sugerowane pytania"
             >
-              {QUICK_PROMPTS.map((prompt) => (
+              {CHAT_QUICK_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"

@@ -2,7 +2,7 @@
  * `useChatSend` — wspólna logika wysyłania wiadomości do asystenta AI.
  *
  * Używany przez dwie powierzchnie UI:
- * - `ChatAssistant` (desktop, inline wyspa w `FeedView`)
+ * - `ChatAssistant` (desktop, teaser wyspy w `FeedView` → nawigacja do `/chat`)
  * - `ChatAssistantFab` (mobile/tablet, FAB + bottom-sheet w `App.tsx`)
  *
  * Obie powierzchnie współdzielą stan przez `useChatStore`, więc historia

@@ -34,9 +34,15 @@ import { GROQ_SMALLTALK_MODEL, withGroqRetry } from './llmService.js'
 import type { GroqMessage } from './types.js'
 
 /**
- * System prompt dla generatora chipow. Krotki i restrykcyjny — chcemy
- * JSON, nie esej.
+ * Smart chips domyślnie WYŁĄCZONE — statyczne chipy (`followUpChips.ts`)
+ * wystarczają i kosztują 0 tok. Włącz `VERSUS_SMART_CHIPS=1` gdy masz
+ * budżet na dodatkowy call Llama 8B per odpowiedź narzędziowa.
  */
+export function isSmartChipsEnabled(): boolean {
+  const v = process.env.VERSUS_SMART_CHIPS?.trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+}
+
 const SMART_CHIPS_SYSTEM_PROMPT = `Jesteś generatorem follow-up chipów dla czatu studenckiego. Dostajesz pytanie usera + odpowiedź Versusia. Twoja praca: zaproponuj 2-3 KRÓTKIE klikalne sugestie do czego user może dalej zapytać.
 
 Reguły:

@@ -7,7 +7,7 @@
  *
  * Każda komenda mapuje 1:1 na konkretne pytanie do asystenta, świadomie
  * dobierane pod konkretne narzędzia z `api/_lib/tools/` (deterministic
- * tool routing). Trzymamy je w sync z `ChatAssistant.QUICK_PROMPTS` i
+ * tool routing). Trzymamy je w sync z `ChatHubView.QUICK_PROMPTS` i
  * `scripts/prewarm-chat-cache.ts` — response cache key normalizuje tekst,
  * więc dosłowna zgodność daje cross-surface cache hit.
  *
@@ -29,6 +29,7 @@ import {
   Sparkles,
   Tag,
   TrendingUp,
+  Users,
 } from 'lucide-react'
 
 export type SlashCommand = {
@@ -49,8 +50,7 @@ export type SlashCommand = {
 /**
  * Stały zestaw komend — 11 sztuk po dorzuceniu zniżek, planu, briefingu,
  * rejestracji USOS. Pierwsze 4 są **dokładnie** te same queries co w
- * `QUICK_PROMPTS` w `ChatAssistant.tsx` / `ChatHubView.tsx` /
- * `ChatAssistantFab.tsx` (cache współdzielony przez `buildResponseCacheKey`).
+ * `QUICK_PROMPTS` w `ChatHubView.tsx` / `ChatAssistantFab.tsx`
  *
  * Mapping na narzędzia (1:1):
  *   /feed         → get_latest_posts
@@ -156,10 +156,34 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     iconBg: 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300',
   },
   {
+    slug: 'jutro',
+    label: 'Plan na jutro',
+    description: 'Jutrzejsze zajęcia z USOS',
+    query: 'Co mam jutro?',
+    icon: CalendarDays,
+    iconBg: 'bg-teal-500/15 text-teal-700 dark:text-teal-300',
+  },
+  {
+    slug: 'aula',
+    label: 'Co w Auli',
+    description: 'Deadliney, ankiety, zadania',
+    query: 'Co w Auli?',
+    icon: ClipboardList,
+    iconBg: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+  },
+  {
+    slug: 'wykladowcy',
+    label: 'Moi wykładowcy',
+    description: 'Subskrypcje i ich ogłoszenia',
+    query: 'Moi wykładowcy',
+    icon: Users,
+    iconBg: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+  },
+  {
     slug: 'pomoc',
     label: 'Co potrafisz',
-    description: 'Lista możliwości asystenta',
-    query: 'Co potrafisz? Wymień swoje najważniejsze funkcje krótko i konkretnie.',
+    description: 'Lista możliwości Versusia',
+    query: 'Co potrafisz?',
     icon: HelpCircle,
     iconBg: 'bg-zinc-500/15 text-zinc-700 dark:text-zinc-200',
   },

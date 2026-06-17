@@ -31,7 +31,7 @@ import {
   GroqProvider,
   type GroqUsage,
 } from './GroqProvider.js'
-import { kvGetSafe, kvSetSafe } from './kvCache.js'
+import { kvGetSafe, kvSetSafe, kvDelSafe } from './kvCache.js'
 import { GROQ_SMALLTALK_MODEL, withGroqRetry } from './llmService.js'
 import { redactPII } from './piiRedact.js'
 import type { GroqMessage } from './types.js'
@@ -45,7 +45,7 @@ const MAX_FACT_LENGTH = 80
  * (extraction call), rzadziej oznacza ze nowe preferencje siedza dluzej
  * niewidoczne dla bota.
  */
-const UPDATE_EVERY_N_USER_MESSAGES = 3
+const UPDATE_EVERY_N_USER_MESSAGES = 6
 
 type StoredMemory = {
   facts: string[]
@@ -57,23 +57,8 @@ const STORAGE_KEY = (userId: string) => `chat_memory:${userId}`
 /**
  * System prompt dla ekstrakcji faktow. Restrictive, JSON-only.
  */
-const EXTRACTION_SYSTEM_PROMPT = `Jesteś analitykiem konwersacji studenckiego asystenta UJverse. Dostajesz fragment historii rozmowy + obecne fakty o userze. Twoja praca: zwrocic ZAKTUALIZOWANY zestaw faktow o userze.
-
-Reguły:
-- ZWROC TYLKO JSON: {"facts": ["fakt 1", "fakt 2", ...]}
-- Max 5 faktow. Max 80 znakow kazdy.
-- Po polsku, krotko, neutralnie (3os).
-- TYLKO STABILNE preferencje / kontekst (dieta, mieszkanie, kierunek, hobby).
-- NIE dodawaj faktow o pojedynczych zdarzeniach ("zapytal o dzisiejszy obiad").
-- NIE dodawaj danych wrazliwych (email, telefon, adres, hasla, PESEL).
-- Zachowaj stare fakty jezeli wciaz aktualne; dodaj nowe; usun zdezaktualizowane.
-- Jezeli rozmowa nie ujawnia nowych preferencji, zwroc fakty bez zmian.
-
-Przyklady:
-- User: "jestem weganinem"  -> facts: ["weganin"]
-- User: "mieszkam na Kazimierzu"  -> facts: ["weganin", "mieszka na Kazimierzu"]
-- User: "lubie kawe ale tylko bezkofeinowa"  -> facts: ["weganin", "mieszka na Kazimierzu", "kawa tylko bezkofeinowa"]
-- User: "wczoraj zaliczylem rozliczenie z BWA" -> nie zmieniaj (eventowa, nie preferencja)`
+const EXTRACTION_SYSTEM_PROMPT = `Analityk rozmów Versusia (UJverse). Z historii + obecnych faktów zwróć JSON: {"facts": ["...", ...]}.
+Max 5 faktów, max 80 znaków, po polsku, 3os. Tylko STABILNE preferencje (dieta, dzielnica, hobby) — nie pojedyncze zdarzenia. Bez PII. Zachowaj aktualne fakty gdy pasują. Brak nowych → zwróć bez zmian.`
 
 /**
  * Pobiera memory z KV. Fail-safe: blad KV -> null, caller leci bez memory.
@@ -234,7 +219,16 @@ export async function updateUserMemory(
  */
 export function formatMemoryForContext(facts: string[] | null): string {
   if (!facts || facts.length === 0) return ''
-  // Lista przecinkami (krocej niz bullety w prompcie).
   const joined = facts.map((f) => f.replace(/[.;]$/, '')).join('; ')
   return `Pamiętasz o userze: ${joined}.`
+}
+
+/** Usuwa zapamiętane preferencje usera (np. z ustawień / DELETE /api/me/memory). */
+export async function clearUserMemory(userId: string): Promise<boolean> {
+  try {
+    await kvDelSafe(STORAGE_KEY(userId))
+    return true
+  } catch {
+    return false
+  }
 }

@@ -164,12 +164,12 @@ export default function FeedView({
 
   /**
    * Sticky-island sync. Lewa wyspa (Komunikaty + Czat) trzymała stałe
-   * `h-[600px]` + `h-[460px]`, więc na desktopie kończyła się w innym
+   * `h-[600px]` + `h-[280px]`, więc na desktopie kończyła się w innym
    * miejscu niż prawa kolumna (Niezbędnik + Strefy + Wydarzenia UJ),
    * której wysokość wynika z naturalnej treści. Mierzymy więc renderowaną
    * wysokość prawego asiede `ResizeObserver`em i ustawiamy ją inline na
    * lewym aside; dzieci dzielą tę wysokość przez `flex-grow` w proporcji
-   * 600:460 (zachowując dotychczasowy rytm wizualny).
+   * 600:280 (teaser Versusia jest kompaktowy; Komunikaty dostają resztę).
    *
    * `useLayoutEffect` — sync musi nastąpić przed paintem, żeby nie było
    * FOUC z dziećmi o zerowej wysokości (basis-0 + grow). ResizeObserver
@@ -329,8 +329,8 @@ export default function FeedView({
         `useLayoutEffect` + `ResizeObserver` (patrz `leftAsideRef`),
         żeby Komunikaty + Czat kończyły się dokładnie na poziomie
         ostatniej karty prawego asiede (Wydarzenia UJ). Dzieci dzielą
-        tę wysokość przez `basis-0` + `grow-600/grow-460` zachowując
-        oryginalną proporcję 600:460 z wcześniejszych stałych wysokości.
+        tę wysokość przez `basis-0` + `grow-600/grow-280` zachowując
+        proporcję 600:280 (teaser zamiast pełnego mini-czatu).
       */}
       <aside
         ref={leftAsideRef}
@@ -344,7 +344,7 @@ export default function FeedView({
             heightClassName="h-full"
           />
         </div>
-        <div className="min-h-0 basis-0 grow-460">
+        <div className="min-h-0 basis-0 grow-280">
           <Suspense fallback={null}>
             <ChatAssistant
               myProfile={myProfile}

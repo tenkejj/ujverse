@@ -1,6 +1,6 @@
 /**
  * Welcome Opener — dynamiczny lead na empty state'cie czatu (`ChatHubView`,
- * `ChatAssistant`, `ChatAssistantFab`).
+ * `ChatAssistant`, `ChatHubView`, `ChatAssistantFab`).
  *
  * Filozofia: zamiast statycznego „Witaj, Franek. W czym mogę dziś pomóc?"
  * (które po dwóch dniach brzmi jak voicemail), generujemy parę
@@ -86,14 +86,14 @@ const HEADLINES: Record<TimeBucket, readonly string[]> = {
  */
 const SUBLINES: Record<`${DayBucket}:${TimeBucket}`, readonly string[]> = {
   'workday:morning': [
-    'Co dziś jedziesz? Jakieś zajęcia, ogłoszenia, czy szukasz czegoś konkretnego?',
-    'Co tam na dziś? Mogę sprawdzić plan, ogłoszenia albo zniżki.',
-    'Jak wygląda Twój dzień? Pomogę ogarnąć plan i sprawy z UJ.',
+    'Co dziś jedziesz? Plan, ogłoszenia z ISI, zniżki — mów co ogarnąć.',
+    'Rano na UJ — sprawdzę plan albo co nowego z wydziału.',
+    'Jak wygląda dzień? Od planu po zniżki na kawę — Versuś ogarnie.',
   ],
   'workday:forenoon': [
-    'Co tam u Ciebie? W czym mogę pomóc.',
-    'Czego dziś szukasz? Plan, ogłoszenia, wydarzenia, zniżki — wybieraj.',
-    'O co chodzi? Powiedz, a pokombinuję.',
+    'Co tam? Strzelaj — plan, ogłoszenia, zniżki, cokolwiek z UJ albo miasta.',
+    'Czego szukasz? Od razu sprawdzę w bazie, bez gadania w kółko.',
+    'Pytanie albo slash — /plan, /zniski, /oglosznia — oba działają.',
   ],
   'workday:afternoon': [
     'Co tam? Pokażę zniżki na lunch albo sprawdzę co jeszcze masz dziś.',
@@ -101,9 +101,9 @@ const SUBLINES: Record<`${DayBucket}:${TimeBucket}`, readonly string[]> = {
     'Jak idzie? Mogę pomóc z czymś z uczelni albo z miastem.',
   ],
   'workday:evening': [
-    'Co planujesz? Mogę pokazać co się dzieje wieczorem albo zniżki.',
-    'Wieczór, czas na wytchnienie. Coś znaleźć — wydarzenie, knajpę?',
-    'Jak idzie? Sprawdzę co tam się dzieje albo plan na jutro.',
+    'Co planujesz wieczorem? Impreza, knajpa, czy plan na jutro?',
+    'Wieczór — mogę znaleźć coś w mieście albo zerknąć na jutrzejszy plan.',
+    'Jak idzie? Zniżki na kolację albo co się dzieje po 20 — powiedz.',
   ],
   'workday:night': [
     'Wciąż w robocie? Mów, w czym pomóc.',

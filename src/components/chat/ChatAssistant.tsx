@@ -1,273 +1,147 @@
 /**
- * `ChatAssistant` — inline „wyspa" asystenta AI w lewej kolumnie feedu,
- * tuż pod widgetem KOMUNIKATY. Wizualnie spójna z `AcademicAnnouncementsWidget`
- * (`BaseCard` + `sectionTitleCls` + `widgetGoldCls`).
+ * `ChatAssistant` — desktopowa wyspa-teaser asystenta AI w lewej kolumnie feedu.
  *
- * - Brak FAB-a / bottom-sheetu / portalu — komponent renderuje się inline.
- * - Pełna kontrola stanu czatu przez `useChatStore` (RAM, brak persystencji).
- * - Streaming SSE i `AbortController` opakowane w `useChatSend` (DRY z FAB-em).
- * - Renderowanie wiadomości przez wspólny `MessageList` (wariant `compact`).
+ * Nie renderuje mini-czatu — zaproszenie z CTA do pełnego widoku `/chat`
+ * (`ChatHubView`). Historia rozmowy w `useChatStore` (RAM).
  *
- * Header parity z innymi wyspami: zero akcji ikonowych po prawej stronie
- * (sąsiednie widgety — Komunikaty, Niezbędnik — mają „czysty" nagłówek).
- * Czyszczenie historii dostępne jako tekstowy link „Nowa rozmowa" w stopce.
- *
- * Quick prompts: 3 perystentne chipsy nad MessageList → klik wysyła
- * od razu (pattern ChatGPT/Claude). Trzymane lokalnie, świadomie nie
- * w `src/lib/`, żeby nie podkusiły do zaciągnięcia w mobilny FAB.
- *
- * Komponent samowystarczalny — żadnego prop-drillingu (reguła #6 spec).
+ * Mobilny odpowiednik: `ChatAssistantFab` (FAB + bottom-sheet).
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, Square } from 'lucide-react'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
+import { MessageCircle } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
-import ChatVoiceButton from './ChatVoiceButton'
-import {
-  sectionTitleCls,
-  sideHeaderLinkCls,
-  sideMutedCls,
-  sidePanelHoverFocus,
-  widgetGoldCls,
-} from '../../lib/sidePanelStyles'
+import { sectionTitleCls, sideMutedCls } from '../../lib/sidePanelStyles'
 import type { Profile } from '../../types'
 import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
+import { buildWelcomeOpener } from '../../lib/welcomeOpener'
 import { useChatStore } from '../../store/useChatStore'
-import { useChatSend } from '../../hooks/useChatSend'
-import AnimatedBot from './AnimatedBot'
-import MessageList from './MessageList'
+import VersuHeroCluster from './VersuHeroCluster'
 
-const OPEN_HUB_BTN_CLS = `shrink-0 rounded-lg px-1.5 py-1 text-xs font-medium ${sideHeaderLinkCls} ${sidePanelHoverFocus}`
+const EASE = [0.16, 1, 0.3, 1] as const
+const SPRING = { type: 'spring' as const, stiffness: 380, damping: 28 }
 
-/**
- * Quick prompts dobrane tak, żeby KAŻDY 1:1 mapował na konkretne
- * narzędzie z `api/_lib/tools/` z deterministycznym wynikiem, bez
- * wprowadzania modelu w błąd (np. pytanie o WZiKS dla narzędzia bez
- * filtra wydziału prowadziło do halucynacji „mam ogłoszenia z WZiKS"
- * mimo że tool zwraca top 10 bez filtra).
- *
- * Mapowanie:
- * - „Co nowego na feedzie?" → `get_latest_posts`
- * - „Najnowsze ogłoszenia"  → `get_latest_announcements`
- * - „Pokaż konferencje"     → `search_events("konferencj")` (5+ trafień
- *   w `official_events` — dobrany pod realny stan bazy 06.2026, gdzie
- *   „juwenalia" nie istnieje, ale konferencji UJ jest sporo)
- * - „Wydarzenia naukowe"    → `search_events("nauk")` (ilike szeroko trafia)
- *
- * KEEP IN SYNC z `ChatHubView.QUICK_PROMPTS` i listą w
- * `scripts/prewarm-chat-cache.ts` (response-cache key normalizuje
- * tekst, więc dosłowna zgodność daje cross-surface cache hit).
- */
-const QUICK_PROMPTS = [
-  'Co nowego na feedzie?',
-  'Najnowsze ogłoszenia',
-  'Co w przyszłym tygodniu?',
-  'Pokaż zniżki studenckie',
-] as const
+const containerVariants: Variants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.09, delayChildren: 0.04 },
+  },
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 16, filter: 'blur(8px)' },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: { duration: 0.55, ease: EASE },
+  },
+}
 
 type Props = {
-  /** Profil zalogowanego użytkownika — awatar przy jego wiadomościach. */
   myProfile?: Profile | null
-  /** Display name — fallback dla awatara (inicjał), gdy `myProfile` brak. */
   displayName?: string
-  /**
-   * Override domyślnej klasy wysokości wyspy. Default `h-[460px]` używamy gdy
-   * komponent żyje samodzielnie; gdy parent (FeedView) wyrównuje wyspy lewej
-   * kolumny do wysokości prawego asiede, podaje tu `h-full` i kontroluje
-   * rozmiar wrapperem (flex basis).
-   */
   heightClassName?: string
 }
 
 export default function ChatAssistant({
-  myProfile,
   displayName,
-  heightClassName = 'h-[460px]',
+  heightClassName = 'h-[280px]',
 }: Props = {}) {
   const navigate = useNavigate()
-  const messages = useChatStore((s) => s.messages)
-  const isTyping = useChatStore((s) => s.isTyping)
-  const actionLabel = useChatStore((s) => s.actionLabel)
-  const clearHistory = useChatStore((s) => s.clearHistory)
-  const removeLastTurn = useChatStore((s) => s.removeLastTurn)
-  const { sendMessage, cancel } = useChatSend()
-
-  const [draft, setDraft] = useState('')
-  const scrollRef = useRef<HTMLDivElement | null>(null)
-  const inputRef = useRef<HTMLTextAreaElement | null>(null)
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [messages, isTyping])
-
-  const handleClear = useCallback(() => {
-    cancel()
-    clearHistory()
-  }, [cancel, clearHistory])
-
-  const handleSend = useCallback(
-    async (content: string) => {
-      const trimmed = content.trim()
-      if (!trimmed || isTyping) return
-      setDraft('')
-      await sendMessage(trimmed)
-    },
-    [isTyping, sendMessage],
+  const reducedMotion = useReducedMotion()
+  const hasConversation = useChatStore(
+    (s) => s.messages.some((m) => m.role !== 'system'),
   )
 
-  const handleEditLastUser = useCallback(
-    (text: string) => {
-      if (isTyping) return
-      // Wytnij ostatnią parę (user + assistant), tekst usera ląduje w composerze.
-      removeLastTurn()
-      setDraft(text)
-      window.setTimeout(() => inputRef.current?.focus(), 0)
-    },
-    [isTyping, removeLastTurn],
+  const welcome = useMemo(
+    () => buildWelcomeOpener(displayName),
+    [displayName],
   )
 
-  const handleRetryLastAssistant = useCallback(() => {
-    if (isTyping) return
-    // Capture user text (przed mutacją), wytnij parę, re-send tej samej treści.
-    const { lastUserText } = removeLastTurn()
-    if (lastUserText && lastUserText.length > 0) {
-      void sendMessage(lastUserText)
-    }
-  }, [isTyping, removeLastTurn, sendMessage])
-
-  const onSubmitForm = useCallback(
-    (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault()
-      void handleSend(draft)
-    },
-    [draft, handleSend],
-  )
-
-  const onKeyDownTextarea = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        void handleSend(draft)
-      }
-    },
-    [draft, handleSend],
-  )
-
-  const canClear = messages.length > 0 || isTyping
+  const ctaLabel = hasConversation ? 'Kontynuuj rozmowę' : 'Porozmawiaj'
 
   return (
     <BaseCard
       variant="default"
-      className={`flex ${heightClassName} min-h-0 flex-col gap-3 overflow-hidden p-4`}
+      className={`relative flex ${heightClassName} min-h-0 flex-col overflow-hidden`}
     >
-      <div className="flex items-center gap-2">
-        <AnimatedBot
-          size={16}
-          strokeWidth={2}
-          intensity={isTyping ? 'active' : 'idle'}
-          className={`${widgetGoldCls} shrink-0`}
-        />
-        <div className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className={sectionTitleCls}>{CHAT_ASSISTANT_NAME}</span>
-          <span className={`text-[10px] ${sideMutedCls}`}>{CHAT_MODEL_LABEL}</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate('/chat')}
-          className={OPEN_HUB_BTN_CLS}
-          aria-label="Otwórz pełny widok rozmowy z asystentem"
-        >
-          Otwórz pełny czat →
-        </button>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-1.5" role="group" aria-label="Szybkie pytania">
-        {QUICK_PROMPTS.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            onClick={() => void handleSend(prompt)}
-            disabled={isTyping}
-            className="rounded-full border border-zinc-200 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
-          >
-            {prompt}
-          </button>
-        ))}
-      </div>
-
-      <MessageList
-        ref={scrollRef}
-        messages={messages}
-        isTyping={isTyping}
-        actionLabel={actionLabel}
-        variant="compact"
-        className="scrollbar-thin scrollbar-thumb-zinc-800"
-        myProfile={myProfile}
-        displayName={displayName}
-        onEditLastUser={handleEditLastUser}
-        onRetryLastAssistant={handleRetryLastAssistant}
-        onChipClick={handleSend}
-      />
-
-      {canClear && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="text-[11px] font-medium text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-          >
-            Nowa rozmowa
-          </button>
-        </div>
-      )}
-
-      <form
-        onSubmit={onSubmitForm}
-        className="flex items-end gap-2 border-t border-zinc-200/70 pt-2 dark:border-white/10"
+      <motion.div
+        variants={reducedMotion ? undefined : containerVariants}
+        initial={reducedMotion ? false : 'hidden'}
+        animate="show"
+        className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-5 text-center"
       >
-        <ChatVoiceButton
-          onTranscript={(text) => {
-            setDraft((prev) => (prev ? prev + ' ' + text : text))
-            window.setTimeout(() => inputRef.current?.focus(), 0)
-          }}
-          disabled={isTyping}
-          size="compact"
-        />
-        <textarea
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={onKeyDownTextarea}
-          placeholder="Napisz wiadomość..."
-          rows={1}
-          disabled={isTyping}
-          className="max-h-28 min-h-9 flex-1 resize-none rounded-xl border border-zinc-200 bg-white/80 px-2.5 py-1.5 text-xs text-zinc-900 outline-none transition-colors focus:border-[#1e293b] focus:ring-2 focus:ring-[#1e293b]/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"
-        />
-        {isTyping ? (
-          <button
-            type="button"
-            onClick={cancel}
-            aria-label="Zatrzymaj odpowiedź"
-            title="Zatrzymaj odpowiedź"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
+        <motion.div variants={reducedMotion ? undefined : itemVariants}>
+          <VersuHeroCluster iconSize={56} />
+        </motion.div>
+
+        <motion.h2
+          variants={reducedMotion ? undefined : itemVariants}
+          className="text-base font-semibold leading-snug tracking-tight text-[#1e293b] dark:text-white"
+        >
+          {welcome.headline}
+        </motion.h2>
+
+        <motion.p
+          variants={reducedMotion ? undefined : itemVariants}
+          className="max-w-[15rem] text-xs leading-relaxed text-fg-secondary"
+        >
+          {welcome.subline}
+        </motion.p>
+
+        <motion.button
+          type="button"
+          variants={reducedMotion ? undefined : itemVariants}
+          whileHover={
+            reducedMotion
+              ? undefined
+              : {
+                  scale: 1.03,
+                  boxShadow: '0 8px 28px -6px rgb(30 41 59 / 0.35)',
+                }
+          }
+          whileTap={reducedMotion ? undefined : { scale: 0.97 }}
+          transition={SPRING}
+          onClick={() => navigate('/chat')}
+          aria-label={`${ctaLabel} z asystentem ${CHAT_ASSISTANT_NAME}`}
+          className="group relative inline-flex w-full max-w-[13.75rem] items-center justify-center gap-2 overflow-hidden rounded-full border border-logo-navy/20 bg-logo-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-logo-navy/90 dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/25 dark:hover:shadow-[0_8px_28px_-6px_rgb(201_162_57/0.2)]"
+        >
+          {!reducedMotion && (
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-linear-to-r from-transparent via-white/25 to-transparent dark:via-brand-gold-bright/20"
+              initial={{ x: '-120%' }}
+              whileHover={{ x: '120%' }}
+              transition={{ duration: 0.55, ease: 'easeInOut' }}
+            />
+          )}
+          <motion.span
+            aria-hidden
+            className="relative shrink-0"
+            animate={reducedMotion ? undefined : { rotate: [0, -8, 8, 0] }}
+            transition={
+              reducedMotion
+                ? undefined
+                : { duration: 2.6, repeat: Infinity, ease: 'easeInOut', repeatDelay: 3 }
+            }
           >
-            <Square size={12} strokeWidth={2.5} fill="currentColor" />
-          </button>
-        ) : (
-          <button
-            type="submit"
-            aria-label="Wyślij wiadomość"
-            disabled={draft.trim().length === 0}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
-          >
-            <Send size={14} strokeWidth={2} />
-          </button>
-        )}
-      </form>
+            <MessageCircle size={15} strokeWidth={2.2} />
+          </motion.span>
+          <span className="relative">{ctaLabel}</span>
+        </motion.button>
+      </motion.div>
+
+      <motion.div
+        initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.45, ease: EASE }}
+        className="relative flex shrink-0 items-center justify-center gap-1.5 border-t border-zinc-200/60 px-4 py-2 dark:border-white/8"
+      >
+        <span className={sectionTitleCls}>{CHAT_ASSISTANT_NAME}</span>
+        <span className={`text-[10px] ${sideMutedCls}`}>· {CHAT_MODEL_LABEL}</span>
+      </motion.div>
     </BaseCard>
   )
 }

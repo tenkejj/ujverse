@@ -39,7 +39,7 @@ const ENDPOINT = `${BASE_URL.replace(/\/$/, '')}/api/chat`
 
 /**
  * Lista pytań do warmowania. Świadomie pokrywa:
- * - 4 quick prompts z `ChatAssistant.tsx` / `ChatHubView.tsx`
+ * - 4 quick prompts z `ChatHubView.tsx` / `ChatAssistantFab.tsx`
  *   (KEEP IN SYNC z tamtymi `QUICK_PROMPTS`),
  * - typowe rozszerzenia (większa szansa na cache-hit dla pytań które
  *   ludzie wpiszą sami, blisko brzmiące do chipsów),

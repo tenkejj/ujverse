@@ -66,6 +66,17 @@ export async function kvGetSafe<T>(key: string): Promise<T | undefined> {
  * chce poczekać na potwierdzenie (np. test integracyjny), ale w prod
  * `void kvSetSafe(...)` też jest OK i nie blokuje strumienia SSE.
  */
+export async function kvDelSafe(key: string): Promise<void> {
+  try {
+    await kv.del(key)
+  } catch (err) {
+    console.warn(
+      '[KVCache] del failed — ignored. key:',
+      key,
+      '| err:',
+      err instanceof Error ? err.message : String(err),
+    )
+  }
 export async function kvSetSafe<T>(
   key: string,
   value: T,

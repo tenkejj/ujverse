@@ -67,9 +67,27 @@ function nextSevenDaysISO(): { start: string; end: string } {
   return { start: start.toISOString(), end: end.toISOString() }
 }
 
+/** Zwraca ISO 8601 dla zakresu jutra (UTC). */
+function tomorrowRangeISO(): { start: string; end: string } {
+  const now = new Date()
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0),
+  )
+  const end = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+      23,
+      59,
+      59,
+    ),
+  )
+  return { start: start.toISOString(), end: end.toISOString() }
+}
+
 /**
- * Reguły fast-path. Lista jest świadomie krótka — pokrywamy 11 slash commands
- * z `src/lib/chatSlashCommands.ts` plus parę bardzo popularnych wariantów.
+ * Reguły fast-path. Pokrywa slash commands + popularne warianty bez dopisków.
  *
  * Kolejność reguł nie ma znaczenia — first-match wygrywa, ale patterny
  * są wzajemnie wykluczające.
@@ -229,7 +247,175 @@ const RULES: readonly FastPathRule[] = [
     buildArgs: () => ({}),
     reason: 'usos_registrations',
   },
+
+  // Plan na jutro
+  {
+    patterns: [
+      /^co mam jutro\??$/i,
+      /^co jutro w planie\??$/i,
+      /^plan na jutro\??$/i,
+      /^mój plan na jutro\??$/i,
+      /^moj plan na jutro\??$/i,
+      /^jutro w planie\??$/i,
+    ],
+    toolName: 'get_my_classes_in_range',
+    buildArgs: () => {
+      const r = tomorrowRangeISO()
+      return { range_start: r.start, range_end: r.end }
+    },
+    reason: 'my_classes_tomorrow',
+  },
+
+  // Subskrybowani wykładowcy
+  {
+    patterns: [
+      /^moi wykładowcy\??$/i,
+      /^moi wykladowcy\??$/i,
+      /^kogo subskrybuję\??$/i,
+      /^kogo subskrybuje\??$/i,
+      /^subskrypcje wykładowców\??$/i,
+      /^subskrypcje wykladowcow\??$/i,
+    ],
+    toolName: 'get_my_followed_lecturers',
+    buildArgs: () => ({}),
+    reason: 'followed_lecturers',
+  },
+
+  // Aula
+  {
+    patterns: [
+      /^co w auli\??$/i,
+      /^moja aula\??$/i,
+      /^pokaż aulę\??$/i,
+      /^pokaz aule\??$/i,
+      /^deadliney\??$/i,
+      /^co mam do zrobienia\??$/i,
+    ],
+    toolName: 'get_my_aula_overview',
+    buildArgs: () => ({}),
+    reason: 'aula_overview',
+  },
+
+  // Oficjalne wydarzenia UJ
+  {
+    patterns: [
+      /^oficjalne wydarzenia\??$/i,
+      /^wydarzenia uj\??$/i,
+      /^co szykuje uj\??$/i,
+      /^kalendarz uj\??$/i,
+    ],
+    toolName: 'get_upcoming_official_events',
+    buildArgs: () => ({}),
+    reason: 'official_events',
+  },
+
+  // Kontekst usera
+  {
+    patterns: [
+      /^kim jestem\??$/i,
+      /^co o mnie wiesz\??$/i,
+      /^mój profil\??$/i,
+      /^moj profil\??$/i,
+    ],
+    toolName: 'get_my_user_context',
+    buildArgs: () => ({}),
+    reason: 'my_user_context',
+  },
+
+  // Plan na cały tydzień
+  {
+    patterns: [
+      /^co mam w tym tygodniu\??$/i,
+      /^co mam w tym tygodniu w planie\??$/i,
+      /^plan na tydzień\??$/i,
+      /^plan na tydzien\??$/i,
+      /^mój plan na tydzień\??$/i,
+      /^moj plan na tydzien\??$/i,
+      /^cały tydzień w planie\??$/i,
+      /^caly tydzien w planie\??$/i,
+    ],
+    toolName: 'get_my_classes_in_range',
+    buildArgs: () => {
+      const r = nextSevenDaysISO()
+      return { range_start: r.start, range_end: r.end }
+    },
+    reason: 'my_classes_week',
+  },
+
+  // Wydarzenia — oficjalne UJ
+  {
+    patterns: [/^wydarzenia\??$/i],
+    toolName: 'get_upcoming_official_events',
+    buildArgs: () => ({}),
+    reason: 'events_official_short',
+  },
+
+  // Wydarzenia w mieście / imprezy
+  {
+    patterns: [
+      /^co się dzieje\??$/i,
+      /^co sie dzieje\??$/i,
+      /^co w krakowie\??$/i,
+      /^imprezy\??$/i,
+    ],
+    toolName: 'search_events',
+    buildArgs: () => ({ query: 'krak' }),
+    reason: 'events_general',
+  },
+
+  // Studenckie wydarzenia
+  {
+    patterns: [
+      /^wydarzenia studenckie\??$/i,
+      /^co dla studentów\??$/i,
+      /^co dla studentow\??$/i,
+    ],
+    toolName: 'search_events',
+    buildArgs: () => ({ query: 'studenck' }),
+    reason: 'student_events',
+  },
 ]
+
+/** Mapowanie `/slug` → tool (gdy user wysyła sam slug bez pełnego pytania). */
+const SLASH_SLUG_RULES: Record<
+  string,
+  { toolName: string; buildArgs: () => Record<string, unknown> }
+> = {
+  feed: { toolName: 'get_latest_posts', buildArgs: () => ({}) },
+  oglosznia: { toolName: 'get_latest_announcements', buildArgs: () => ({}) },
+  tydzien: {
+    toolName: 'get_calendar_in_range',
+    buildArgs: () => {
+      const r = nextSevenDaysISO()
+      return { range_start: r.start, range_end: r.end }
+    },
+  },
+  naukowe: { toolName: 'search_events', buildArgs: () => ({ query: 'nauk' }) },
+  zniski: { toolName: 'search_discounts', buildArgs: () => ({}) },
+  trending: { toolName: 'get_trending_discounts', buildArgs: () => ({}) },
+  plan: {
+    toolName: 'get_my_classes_in_range',
+    buildArgs: () => {
+      const r = todayRangeISO()
+      return { range_start: r.start, range_end: r.end }
+    },
+  },
+  brief: { toolName: 'get_my_weekly_briefing', buildArgs: () => ({}) },
+  rejestracje: {
+    toolName: 'get_upcoming_usos_registrations',
+    buildArgs: () => ({}),
+  },
+  wziks: { toolName: 'get_latest_announcements', buildArgs: () => ({}) },
+  aula: { toolName: 'get_my_aula_overview', buildArgs: () => ({}) },
+  jutro: {
+    toolName: 'get_my_classes_in_range',
+    buildArgs: () => {
+      const r = tomorrowRangeISO()
+      return { range_start: r.start, range_end: r.end }
+    },
+  },
+  wykladowcy: { toolName: 'get_my_followed_lecturers', buildArgs: () => ({}) },
+}
 
 /**
  * Sprawdza, czy ostatnia wiadomość użytkownika pasuje do reguły fast-path.
@@ -241,6 +427,19 @@ const RULES: readonly FastPathRule[] = [
 export function tryFastPath(userMessage: string): FastPathMatch | null {
   const text = userMessage.trim().replace(/\s+/g, ' ')
   if (text.length === 0 || text.length > 120) return null
+
+  const slashMatch = text.match(/^\/([a-z0-9_-]+)$/i)
+  if (slashMatch) {
+    const slug = slashMatch[1]!.toLowerCase()
+    const slashRule = SLASH_SLUG_RULES[slug]
+    if (slashRule) {
+      return {
+        toolName: slashRule.toolName,
+        args: slashRule.buildArgs(),
+        reason: `slash:${slug}`,
+      }
+    }
+  }
 
   for (const rule of RULES) {
     for (const pattern of rule.patterns) {

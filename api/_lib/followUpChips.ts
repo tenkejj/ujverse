@@ -23,22 +23,22 @@ import type { ToolName } from './intentRouter.js'
 
 const CHIPS_BY_TOOL: Record<ToolName, readonly string[]> = {
   search_events: ['Jutro też?', 'Tylko za darmo', 'Tylko UJ'],
-  get_latest_announcements: ['Tylko mojego kierunku', 'Pokaż starsze'],
+  get_latest_announcements: ['Tylko mojego kierunku', 'Pokaż starsze', 'Szukaj w treści'],
   get_announcement_details: ['Pełna treść', 'Kiedy aktywne?', 'Inne na ten temat'],
-  get_latest_posts: ['Pokaż więcej', 'Tylko z dzisiaj'],
-  get_calendar_in_range: ['Co po sesji?', 'Tylko egzaminy'],
+  get_latest_posts: ['Pokaż więcej', 'Tylko z dzisiaj', 'Co na feedzie?'],
+  get_calendar_in_range: ['Co po sesji?', 'Tylko egzaminy', 'Co jutro?'],
   search_discounts: ['Tylko jedzenie', 'Bliżej Rynku', 'Pokaż więcej'],
-  get_trending_discounts: ['Pokaż wszystkie', 'Tylko jedzenie'],
+  get_trending_discounts: ['Pokaż wszystkie', 'Tylko jedzenie', 'Bliżej centrum'],
   get_my_classes_in_range: ['Co jutro?', 'Cały tydzień', 'Tylko egzaminy'],
-  get_my_weekly_briefing: ['Co jutro?', 'Tylko zniżki'],
-  get_upcoming_usos_registrations: ['Pokaż wszystkie', 'Tylko mojego wydziału'],
+  get_my_weekly_briefing: ['Co jutro?', 'Tylko zniżki', 'Co w Auli?'],
+  get_upcoming_usos_registrations: ['Pokaż wszystkie', 'Co w planie?'],
   get_upcoming_official_events: ['Tylko UJ', 'Pokaż w przyszłym tygodniu'],
-  find_user: ['Pokaż jego posty'],
-  get_my_user_context: [],
+  find_user: ['Pokaż jego posty', 'Znajdź inną osobę'],
+  get_my_user_context: ['Co w planie?', 'Pokaż zniżki'],
   get_my_aula_overview: ['Tylko deadliney', 'Tylko ankiety', 'Co jutro?'],
   find_lecturer: ['Jego ogłoszenia', 'Subskrybuj go'],
   get_lecturer_announcements_by_name: ['Pokaż starsze', 'Subskrybuj go'],
-  get_my_followed_lecturers: ['Najnowsze ogłoszenia od nich'],
+  get_my_followed_lecturers: ['Najnowsze ogłoszenia', 'Kogo jeszcze dodać?'],
 }
 
 /**

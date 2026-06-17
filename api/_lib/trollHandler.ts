@@ -51,14 +51,14 @@ const INSULT_PATTERNS: readonly RegExp[] = [
  * krótkie — to ma być beka, nie wykład.
  */
 const COMEBACKS: readonly string[] = [
-  'Też cię lubię. Na czym kończyliśmy?',
-  'Spoko, każdemu wolno mieć gorszy dzień. Mówisz, jak mogę pomóc?',
-  'Heh, zostawmy ten fragment dla siebie. Czego potrzebujesz?',
-  'Dzięki za feedback. Coś konkretnego mam sprawdzić?',
-  'Twoja prawda. Gadamy o czymś, czy lecimy z tematem dalej?',
-  'Notuję, oddaję do działu skarg. W międzyczasie — w czym mogę pomóc?',
-  'Zaakceptowane. Co tam u Ciebie, jakieś zniżki, ogłoszenia, plan na dziś?',
-  'OK, tłumaczy to wiele. Wracamy do roboty — czego szukasz?',
+  'No no, ja tu Versuś — nie worek na wyzwiska. Co konkretnie sprawdzamy?',
+  'Spoko, każdemu wolno mieć gorszy dzień. Plan, zniżki, ogłoszenia — strzelaj.',
+  'Heh, zostawmy ten akcent. Czego potrzebujesz z UJ albo miasta?',
+  'Dzięki za feedback — oddaję do działu skarg. A teraz: co sprawdzić?',
+  'Twoja prawda. Wracamy do roboty — czego szukasz?',
+  'Versuś nie obraża się, tylko pyta dalej. Zajęcia, feed, wydarzenia?',
+  'Zaakceptowane. Co tam u Ciebie — plan na dziś, zniżki, coś z ISI?',
+  'OK, tłumaczy to wiele. Mów co ogarnąć — od razu lecę do bazy.',
 ]
 
 export type TrollDetectionResult =

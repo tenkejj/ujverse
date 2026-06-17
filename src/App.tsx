@@ -22,6 +22,7 @@ import Auth from './Auth'
 import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import SideNav from './components/SideNav'
+import { SIDE_NAV_DESKTOP } from './styles/mobile-theme'
 import MobileDrawer from './components/MobileDrawer'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
@@ -129,7 +130,7 @@ function getAppContentShellClass(view: AppShellView): string {
     view === 'adminDiag' ||
     view === 'adminReports'
   ) {
-    return 'mx-auto w-full max-w-[1600px] px-4 lg:px-6'
+    return 'mx-auto w-full max-w-7xl px-4 lg:px-6'
   }
   if (view === 'settings') return 'mx-auto w-full max-w-2xl px-4'
   return 'mx-auto w-full max-w-2xl px-4'
@@ -1705,8 +1706,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
-        <div className="lg:flex lg:items-start lg:min-h-dvh lg:mx-auto lg:w-full lg:max-w-[1920px]">
+      <div className="min-h-dvh w-full max-w-full overflow-x-clip bg-zinc-50 dark:bg-bg-app lg:flex lg:items-start">
         <SideNav
           activeView={navActiveView}
           unreadCount={unreadCount}
@@ -1723,7 +1723,7 @@ function App() {
           onNavigateToSettings={openSettings}
         />
 
-        <div className="flex-1 min-w-0 w-full">
+        <div className={`flex-1 min-w-0 w-full ${SIDE_NAV_DESKTOP.contentOffsetClass} ${SIDE_NAV_DESKTOP.contentPadTopClass}`}>
           <Header
             myProfile={myProfile}
             displayName={displayName}
@@ -1761,7 +1761,6 @@ function App() {
             onNavigateToSettings={openSettings}
             onRefreshPosts={() => feedMutations.invalidateFeed()}
             onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
-            contentShellClass={contentShellClass}
           />
 
           <Suspense fallback={null}>
@@ -1798,7 +1797,6 @@ function App() {
               setIsMobileComposeOpen(true)
             }}
           />
-        </div>
         </div>
       </div>
 

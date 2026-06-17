@@ -49,26 +49,7 @@ const SHEET_GLASS_CLS = [
   'border-t',
 ].join(' ')
 
-/**
- * Quick prompts — IDENTYCZNE z `ChatAssistant.QUICK_PROMPTS` i
- * `ChatHubView.QUICK_PROMPTS`. Świadoma duplikacja (patrz docstring
- * w `ChatHubView`): każda powierzchnia trzyma własną kopię, ale
- * stringi MUSZĄ być 1:1, żeby `buildResponseCacheKey` (normalizuje
- * tekst) dawał cross-surface cache hit.
- *
- * Mapowanie tool → patrz docstring w `ChatAssistant.QUICK_PROMPTS`.
- *
- * Mobile-specific UX: pillsy renderujemy TYLKO przy pustej historii
- * (`messages.length === 0`) — po pierwszej wiadomości znikają, żeby
- * nie zżerać miejsca w 90dvh sheetcie podczas aktywnej rozmowy
- * (wzorzec ChatGPT / Claude mobile).
- */
-const QUICK_PROMPTS = [
-  'Co nowego na feedzie?',
-  'Najnowsze ogłoszenia',
-  'Co w przyszłym tygodniu?',
-  'Pokaż zniżki studenckie',
-] as const
+import { CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
 
 export default function ChatAssistantFab({
   hidden = false,
@@ -174,7 +155,7 @@ export default function ChatAssistantFab({
       whileTap={{ scale: 0.94 }}
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
     >
-      <AnimatedBot size={22} strokeWidth={2} intensity="idle" />
+      <AnimatedBot size={22} intensity="idle" variant="onAccent" />
     </motion.button>
   )
 
@@ -208,7 +189,11 @@ export default function ChatAssistantFab({
         <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-1">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950">
-              <AnimatedBot size={16} strokeWidth={2.2} intensity={isTyping ? 'active' : 'idle'} />
+              <AnimatedBot
+                size={16}
+                intensity={isTyping ? 'active' : 'idle'}
+                variant="onAccent"
+              />
             </span>
             <div className="flex flex-col leading-tight">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -247,7 +232,7 @@ export default function ChatAssistantFab({
             role="group"
             aria-label="Szybkie pytania"
           >
-            {QUICK_PROMPTS.map((prompt) => (
+            {CHAT_QUICK_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
                 type="button"

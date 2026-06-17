@@ -159,9 +159,10 @@ const BOT_BADGE_CLS =
   'dark:border-brand-gold-bright/30 dark:bg-bg-card dark:text-brand-gold-bright'
 
 function BotBadge({ size, sizeClass }: { size: number; sizeClass: string }) {
+  const iconSize = Math.round(size * 0.78)
   return (
     <span className={`${BOT_BADGE_CLS} ${sizeClass}`} aria-hidden>
-      <AnimatedBot size={size} strokeWidth={2} intensity="idle" />
+      <AnimatedBot size={iconSize} intensity="idle" />
     </span>
   )
 }
@@ -490,6 +491,7 @@ const TYPING_DOT_DELAYS = [0, 0.2, 0.4] as const
  * w obu wariantach (compact 14px, roomy 16px).
  */
 const THINKING_PHRASES: readonly string[] = [
+  'Versuś myśli',
   'Sekundka',
   'Już lecę',
   'Patrzę co tam',
@@ -497,7 +499,6 @@ const THINKING_PHRASES: readonly string[] = [
   'Łapię to',
   'Zaraz coś rzucę',
   'Już prawie',
-  'Już mam',
   'Robi się',
   'Moment',
 ] as const

@@ -1,38 +1,25 @@
 /**
- * `AnimatedBot` — wspólny wrapper na lucide `<Bot>` z mikro-animacją
+ * `AnimatedBot` — wspólny wrapper na `VersuMark` z mikro-animacją
  * framer-motion. Używany wszędzie gdzie chat / asystent: wyspa, FAB,
  * sheet header, welcome states, typing indicator.
  *
- * Animacje:
- *  - `idle`   — subtelne, ciągłe (scale 1 → 1.08, rotate -3° → 3°, 2.8s loop).
- *    Pasuje do "spoczynkowych" miejsc: header wyspy, FAB, sheet header.
- *  - `active` — mocniejsze, szybsze (scale 1 → 1.15, rotate -5° → 5°, 1.4s loop).
- *    Pasuje do typing indicator (przyciąga wzrok do trwającej odpowiedzi).
- *  - `wave`   — gest powitania: 4 szybkie oscylacje rotate ±20° w pierwszych
- *    ~70% cyklu (jak prawdziwe machanie ręką), potem ~30% pauzy zanim
- *    powtórka. 2.6s pełny cykl. Niejednorodne timing keyframes przez
- *    `transition.times` — bez nich framer-motion rozłożyłby je równo i
- *    całość czytałaby się jak wolne, mechaniczne kołysanie. Dedykowane dla
- *    welcome / empty states (hub, MessageList); amplituda ±20° wymaga
- *    hero-rozmiaru (≥44px) i braku ramki, żeby ikona miała przestrzeń.
+ * `variant="onAccent"` — na wypełnionym FAB / headerze sheetu.
  *
- * Respektuje `prefers-reduced-motion` przez `useReducedMotion()`: w razie
- * preferencji użytkownika renderujemy statyczny `<Bot>` (zero animacji).
- *
- * Jedno źródło prawdy zamiast duplikowania `motion.span` w 5 miejscach
- * (ChatAssistant, ChatAssistantFab × 2, MessageList × 2, ChatHubView).
+ * Respektuje `prefers-reduced-motion` — wtedy statyczny `VersuMark`.
  */
 
-import { Bot } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
+import VersuMark, { type VersuMarkVariant } from './VersuMark'
 
-export type AnimatedBotIntensity = 'idle' | 'active' | 'wave'
+export type AnimatedBotIntensity = 'idle' | 'active' | 'wave' | 'pulse'
 
 type Props = {
   size?: number
+  /** @deprecated Ignorowane — zachowane dla kompatybilności call-site. */
   strokeWidth?: number
   className?: string
   intensity?: AnimatedBotIntensity
+  variant?: VersuMarkVariant
 }
 
 const ANIMATIONS: Record<
@@ -55,24 +42,29 @@ const ANIMATIONS: Record<
     duration: 1.4,
   },
   wave: {
-    // 4 oscylacje +/- 20° upakowane w pierwszych 70% cyklu, potem pauza —
-    // czyta się jako „cześć!" gest, a nie wolne kołysanie.
     scale: [1, 1.06, 1.06, 1.06, 1.06, 1, 1],
     rotate: [0, -20, 20, -20, 20, 0, 0],
     duration: 2.6,
     times: [0, 0.1, 0.25, 0.4, 0.55, 0.7, 1],
   },
+  pulse: {
+    scale: [1, 1.045, 1],
+    rotate: [0, 0, 0],
+    duration: 3.2,
+  },
 }
 
 export default function AnimatedBot({
   size = 16,
-  strokeWidth = 2,
   className = '',
   intensity = 'idle',
+  variant = 'brand',
 }: Props) {
   const reducedMotion = useReducedMotion()
+  const mark = <VersuMark size={size} variant={variant} />
+
   if (reducedMotion) {
-    return <Bot size={size} strokeWidth={strokeWidth} className={className} />
+    return mark
   }
 
   const a = ANIMATIONS[intensity]
@@ -88,7 +80,7 @@ export default function AnimatedBot({
         ...(a.times ? { times: a.times } : {}),
       }}
     >
-      <Bot size={size} strokeWidth={strokeWidth} />
+      {mark}
     </motion.span>
   )
 }

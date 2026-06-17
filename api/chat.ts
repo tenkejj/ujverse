@@ -40,7 +40,7 @@
  * - **CORS**: preflight `OPTIONS` + `Access-Control-*` na każdej odpowiedzi.
  */
 
-import { buildToolCacheKey } from './_lib/cache.js'
+import { buildResponseCacheKey, RESPONSE_CACHE_TTL_SECONDS } from './_lib/chatResponseCache.js'
 import { GroqProvider, GroqProviderError } from './_lib/GroqProvider.js'
 import { extractRequestUser } from './_lib/auth.js'
 import { getActionLabel } from './_lib/actionLabels.js'
@@ -71,11 +71,15 @@ import {
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
 import {
   buildToolFacts,
+  tryCompactSynthesis,
   streamAnswer,
   synthesizeAnswer,
+  polishAssistantReply,
   type ToolFactsResult,
 } from './_lib/synthesizer.js'
-import { generateSmartChips } from './_lib/smartChips.js'
+import { generateSmartChips, isSmartChipsEnabled } from './_lib/smartChips.js'
+import { tryCapabilitiesReply } from './_lib/capabilitiesReply.js'
+import { trySmallTalkReply } from './_lib/smallTalkReply.js'
 import { updateUserMemory } from './_lib/userMemory.js'
 import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools/index.js'
 import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage.js'
@@ -123,21 +127,16 @@ const ALLOWED_ROLES = new Set<ChatRole>(['system', 'user', 'assistant'])
  * 300s), żeby asystent NIE odpowiadał z cache zbyt często — chcemy aby
  * Groq był faktycznie używany, a userzy widzieli świeże/zmieniające się
  * odpowiedzi. Z synthesizerem (Llama 8B) generującym wariancje per request,
- * 15s to bufor TYLKO anty-spam (gdy ten sam user wciśnie quick prompt 2× w
- * krótkim czasie). Po wygaśnięciu cache, kolejny user dostaje świeżą,
- * inaczej napisaną odpowiedź — to świadomy wybór, persona ma brzmieć
- * jak człowiek, nie jak nagrana sekretarka.
+ * 30s to kompromis: anty-spam przy double-tap, ale mniej powtórnych
+ * wywołań Qwen3 niż przy 15s. Synteza Llama i tak daje wariancję po miss.
  *
  * Per-tool cache (TTL_FOR_TOOL w `registry.ts`) zostaje — to jest cache
  * danych ze Supabase, nie odpowiedzi LLM, i ten OK zostać agresywny
  * (60-300s zależnie od narzędzia). Synteza dalej dostanie te same fakty,
  * ale model je inaczej ułoży.
  *
- * Fast-path też pisze do response-cache (też przez tę stałą), więc po 15s
- * nawet `/dzis` znów wykona narzędzie + syntezę — koszt minimalny (1×
- * Llama 8B = ~$0.0001), a UX znacznie naturalniejszy.
+ * Fast-path też pisze do response-cache (też przez tę stałą).
  */
-const RESPONSE_CACHE_TTL_SECONDS = 15
 
 /**
  * Strip Qwen3 / DeepSeek-R1 style chain-of-thought ze stringa.
@@ -498,25 +497,6 @@ async function runToolCall(
 }
 
 /**
- * Klucz response-cache'u dla pary (treść ostatniej wiadomości userskiej,
- * polityka tools). Normalizujemy: trim + lowercase + zwęź whitespace —
- * "Kiedy juwenalia?" i "kiedy   juwenalia?" trafiają w ten sam wpis,
- * zwiększając hit-rate. NIE bierzemy `userId` do klucza — odpowiedzi
- * narzędzi są publiczne (events/announcements/posts mają public RLS),
- * więc cache między userami jest bezpieczny i zwiększa pożyteczność.
- */
-function buildResponseCacheKey(
-  lastUserText: string,
-  useTools: boolean,
-): string {
-  const normalized = lastUserText.trim().toLowerCase().replace(/\s+/g, ' ')
-  return buildToolCacheKey('chat_response', {
-    text: normalized,
-    useTools,
-  })
-}
-
-/**
  * Strumień SSE z gotową finalną odpowiedzią + nagłówki standardowe dla naszej
  * konwencji `text/event-stream`. Wydzielone z handlera, żeby ścieżka
  * "cache hit → response" miała ten sam shape co ścieżka "Groq → response".
@@ -580,6 +560,9 @@ function streamFinalContentChunked(
  * `synthesizeAnswer`. Po pierwszej delcie już za późno na fallback —
  * emitujemy error message do strumienia i zamykamy.
  */
+/** Max czas na stream syntezy Llamy — potem fallback na fakty (anty-zawieszenie). */
+const SYNTHESIS_STREAM_BUDGET_MS = 14_000
+
 function streamSynthesizedAnswer(opts: {
   provider: GroqProvider
   toolName: string | null
@@ -608,6 +591,16 @@ function streamSynthesizedAnswer(opts: {
   if (facts && facts.kind === 'direct') {
     void onComplete(facts.text)
     return streamFinalContentChunked(facts.text, meta)
+  }
+
+  if (facts && facts.kind === 'synthesize') {
+    const compact = tryCompactSynthesis(userQuery, facts.facts, facts.hint)
+    if (compact) {
+      const polished = polishAssistantReply(compact)
+      void onComplete(polished)
+      void incrCounter('synthesis:compact')
+      return streamFinalContentChunked(polished, meta)
+    }
   }
 
   // 'synthesize' kind albo brak factsa (passthrough surowego string) —
@@ -644,6 +637,7 @@ function streamSynthesizedAnswer(opts: {
           // Explicit narrow — TS gubi narrowing przez `ReadableStream.start`
           // callback (zmienna `facts` captured ze scope'u może być teoretycznie
           // reassignowana przed iteracją). Powtórzony check zwęża typ lokalnie.
+          const streamStart = Date.now()
           for await (const chunk of streamAnswer({
             userQuery,
             facts: facts.facts,
@@ -652,6 +646,12 @@ function streamSynthesizedAnswer(opts: {
             provider,
             recentOpeners,
           })) {
+            if (Date.now() - streamStart > SYNTHESIS_STREAM_BUDGET_MS) {
+              console.warn(
+                '[streamSynthesizedAnswer] synthesis stream budget exceeded — using fallback',
+              )
+              break
+            }
             if (chunk.type === 'delta') {
               // NIE strippujemy per-delta przez `stripThinkingTags` bo ta
               // funkcja kończy się `.trim()` — zjada WIODĄCE SPACJE z każdej
@@ -686,6 +686,26 @@ function streamSynthesizedAnswer(opts: {
           }
         }
 
+        // Recovery: stream zakończył się bez treści (429 / pusty content) —
+        // user nie może dostać samego [DONE]. Kompakt lub surowe fakty.
+        if (buffered.length === 0 && facts?.kind === 'synthesize') {
+          const recovery = polishAssistantReply(
+            tryCompactSynthesis(userQuery, facts.facts, facts.hint) ??
+              factsToFallback(facts),
+          )
+          buffered = recovery
+          if (!emittedAnything && recovery.length > 0) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  choices: [{ delta: { content: recovery } }],
+                })}\n\n`,
+              ),
+            )
+            emittedAnything = true
+          }
+        }
+
         // Defensywny strip `<think>` na CAŁYM buforze (per-delta jest
         // niemożliwe bez utraty wiodących spacji — patrz komentarz wyżej).
         // Llama 8B nie generuje `<think>`, więc to no-op w 99.9% — strip
@@ -699,6 +719,7 @@ function streamSynthesizedAnswer(opts: {
           )
           buffered = stripped
         }
+        buffered = polishAssistantReply(buffered)
 
         // Markdown Guard: sprawdzamy buforze (tak jak w non-streaming path).
         // Jeśli wycieka tool-call JSON, w teorii za późno (już wysłaliśmy),
@@ -723,6 +744,7 @@ function streamSynthesizedAnswer(opts: {
         // zdąży, klient zostaje przy statycznych. Skip dla pustych
         // odpowiedzi i guarded-out content (nie ma o czym pisać chipów).
         if (
+          isSmartChipsEnabled() &&
           buffered.length > 0 &&
           guarded !== MARKDOWN_GUARD_ERROR &&
           toolName
@@ -828,8 +850,12 @@ async function synthesizeFinalAnswer(
 ): Promise<string> {
   const facts = buildToolFacts(toolName, result)
   if (facts.kind === 'direct') {
-    // Empty / error / passthrough — bez wywołania LLM, gotowy tekst.
     return facts.text
+  }
+  const compact = tryCompactSynthesis(userQuery, facts.facts, facts.hint)
+  if (compact) {
+    void incrCounter('synthesis:compact')
+    return polishAssistantReply(compact)
   }
   // facts.kind === 'synthesize' — wołamy Llama 8B
   try {
@@ -848,7 +874,7 @@ async function synthesizeFinalAnswer(
       console.warn('[synthesize] empty response — falling back to facts')
       return factsToFallback(facts)
     }
-    return synthesis.text
+    return polishAssistantReply(synthesis.text)
   } catch (err) {
     console.warn(
       '[synthesize] failed, falling back to facts:',
@@ -1120,19 +1146,11 @@ export default async function handler(req: Request): Promise<Response> {
     return streamFinalContent(trollMatch.comeback)
   }
 
-  // Response cache lookup (Vercel KV) — short-circuit Groqa I Supabase'a,
-  // jeśli ten sam tekst poszedł przez nas <300s temu. Pozycjonowane PO
-  // ustaleniu `useTools`, bo polityka tools jest częścią klucza (small-talk
-  // i merytoryczne pytanie o identycznej treści to różne ścieżki).
-  // `kvGetSafe` NIGDY nie rzuca — przy błędzie KV (brak konfiguracji,
-  // 5xx Upstash, timeout) zwraca undefined i jedziemy zwykłą ścieżką do Groqa.
   const responseCacheKey = buildResponseCacheKey(lastUserText, useTools)
+
   const cachedReply = await kvGetSafe<string>(responseCacheKey)
   if (cachedReply) {
-    // Self-healing: stare wpisy w KV (sprzed `stripThinkingTags`) mogą zawierać
-    // `<think>`. Strip-ujemy też na READ — gwarancja, że user nigdy nie zobaczy
-    // wycieku, nawet z 5-minutowego cache'u sprzed deploya.
-    const cleanedCached = stripThinkingTags(cachedReply)
+    const cleanedCached = polishAssistantReply(stripThinkingTags(cachedReply))
     console.log(
       '[Response Cache] HIT key:',
       responseCacheKey,
@@ -1146,6 +1164,26 @@ export default async function handler(req: Request): Promise<Response> {
   }
   console.log('[Response Cache] MISS key:', responseCacheKey)
   void incrCounter('response_cache:miss')
+
+  const capabilitiesReply = tryCapabilitiesReply(lastUserText)
+  if (capabilitiesReply) {
+    console.log('[Capabilities] match — SKIPPING Groq entirely')
+    void incrCounter('capabilities:hit')
+    void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+    void kvSetSafe(responseCacheKey, capabilitiesReply, RESPONSE_CACHE_TTL_SECONDS)
+    return streamFinalContent(capabilitiesReply)
+  }
+
+  if (!useTools) {
+    const smallTalkReply = trySmallTalkReply(lastUserText)
+    if (smallTalkReply) {
+      console.log('[SmallTalk] canned reply — SKIPPING Groq entirely')
+      void incrCounter('small_talk:canned')
+      void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+      void kvSetSafe(responseCacheKey, smallTalkReply, RESPONSE_CACHE_TTL_SECONDS)
+      return streamFinalContentChunked(smallTalkReply, null)
+    }
+  }
 
   // Fast-Path bypass: dla zapytań o WYSOKIEJ pewności (slash commands,
   // exact-match popularnych pytań) wołamy narzędzie BEZPOŚREDNIO, BEZ Groqa.
@@ -1380,7 +1418,7 @@ export default async function handler(req: Request): Promise<Response> {
             }
             // Memory update fire-and-forget — co N tur ekstrahujemy
             // preferencje usera (dieta, mieszkanie, hobby) do KV.
-            // Throttled wewnatrz updateUserMemory (modulo 3 user messages),
+            // Throttled wewnatrz updateUserMemory (modulo 6 user messages),
             // wiec to nie kazdy request triggeruje LLM call.
             void updateUserMemory({
               userId: ctx.userId,
@@ -1446,7 +1484,7 @@ export default async function handler(req: Request): Promise<Response> {
   // wygląda na surowy JSON / wyciek schematu tool-call, podmieniamy na
   // bezpieczny komunikat błędu. Robimy to PRZED zapisem do cache'u, żeby
   // nigdy nie zapisać złamanej odpowiedzi (self-perpetuating problem).
-  const guardedContent = validateMarkdown(finalContent)
+  const guardedContent = validateMarkdown(polishAssistantReply(finalContent))
   if (guardedContent === MARKDOWN_GUARD_ERROR) {
     console.warn(
       '[Markdown Guard] rewriting finalContent to error message. Original len:',

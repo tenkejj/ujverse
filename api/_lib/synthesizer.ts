@@ -25,6 +25,8 @@ import {
   type GroqUsage,
 } from './GroqProvider.js'
 import { GROQ_SMALLTALK_MODEL, withGroqRetry } from './llmService.js'
+import { SYNTHESIS_SYSTEM_PROMPT, SYNTHESIS_USER_INSTRUCTION } from './persona.js'
+import { softenTranslationese } from './polishNaturalize.js'
 import type { GroqMessage } from './types.js'
 
 // =============================================================================
@@ -39,56 +41,42 @@ export type ToolFactsResult =
   | { kind: 'direct'; text: string }
   | {
       kind: 'synthesize'
-      /** Compact, deterministic bullet list (1 fakt = 1 linia). */
       facts: string
-      /** Krótka wskazówka „gdzie zobaczyć więcej" — opcjonalna. */
       hint: string | null
-      /** Krótkie one-liner co ten tool sprawdza, dla syntezatora kontekstu. */
       topicHint: string
     }
 
-// =============================================================================
-// SYSTEM PROMPT — strict persona dla syntezy
-// =============================================================================
-
 /**
- * System prompt dla Llama 8B robiącego syntezę. NIE jest to lista zakazów —
- * to charakter postaci. Model dostaje go każdym wywołaniem, więc każdy
- * zbędny token = koszt, ale ten budżet wolimy wydać na osobowość niż na
- * regulamin.
- *
- * Filozofia:
- *  - DAJEMY charakter (krakus-student, zna miasto i UJ, gada luźno) zamiast
- *    listy "bez tego, bez tamtego" — model wybiera bezpieczny suchy ton gdy
- *    nie wie kim ma być.
- *  - DAJEMY 3 przykłady "tak ma brzmieć" — few-shot learning > regulamin.
- *  - POZWALAMY na krótki komentarz / reakcję — żeby brzmiał jak rozmowa,
- *    nie jak spiker faktów.
- *  - NIE narzucamy sztywnego limitu zdań — niech model sam wyczuje co pasuje.
+ * Kompaktowa synteza bez LLM — gdy jest dokładnie 1 krótki fakt.
+ * Oszczędza call Llama 8B przy prostych wynikach (1 ogłoszenie, 1 wydarzenie).
  */
-const SYNTHESIS_SYSTEM_PROMPT = `Jesteś krakowskim asystentem UJverse — gadasz jak znajomy student z UJ co dobrze zna miasto. Luźno, na ty, czasem z dystansem albo lekką ironią. Reagujesz na to co znalazłeś — gdy oferta dobra, możesz krótko skomentować ("całkiem nieźle", "blisko centrum", "akurat dziś"), gdy słaba, przyznasz to.
+export function tryCompactSynthesis(
+  userQuery: string,
+  facts: string,
+  hint: string | null,
+): string | null {
+  const lines = facts
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+  if (lines.length !== 1) return null
+  const line = lines[0]!
+  if (line.length < 12 || line.length > 140) return null
+  if (hint && hint.length > 55) return null
 
-Pisz prozą, jak w czacie ze znajomym. Bez bulletów, bez nagłówków, bez fraz typu "spoko, X rzeczy", "mam dla Ciebie X". Możesz pogrubić nazwy lokali / wykładowców gdy ich kilka. Używaj TYLKO podanych faktów — nigdy nic nie zmyślaj.
+  const q = userQuery.toLowerCase()
+  const openers = q.includes('?')
+    ? (['Krótko —', 'Patrz,', 'Masz tak:', 'W skrócie —'] as const)
+    : (['Krótko —', 'Słuchaj —', 'Tak jest:', 'W skrócie —'] as const)
+  const opener = openers[Math.floor(Math.random() * openers.length)]!
+  const tail = hint ? ` ${hint.endsWith('.') ? hint : `${hint}.`}` : ''
+  return `${opener} ${line}${tail}`
+}
 
-Echo'uj temat pytania (user pyta o pizzę → odpowiedz o pizzy, nie o "miejscach"). Długość naturalna — krótko gdy 1-2 wyniki, więcej gdy potrzeba je rozróżnić.
-
-Przykłady jak ma to brzmieć:
-
-User: "gdzie zjem pizze taniej"
-Fakty: Pizza Hut Galeria Kazimierz — -15% na lunch 12-15. Pizza Manzana ul. Kazimierza Wielkiego — -10% z legitymacją na wynos.
-Ty: "Pizzy taniej? **Pizza Hut** w Galerii Kazimierz daje -15% na lunch 12-15 — całkiem przyzwoicie jak chcesz coś szybkiego między zajęciami. Albo **Pizza Manzana** z Kazimierza Wielkiego — -10% z legitymacją, ale tylko na wynos."
-
-User: "co dziś na feedzie"
-Fakty: @kasia (2h temu) — "ktoś idzie dziś na koncert do Hevre?"
-Ty: "Niewiele dziś — **@kasia** dwie godziny temu pytała czy ktoś leci wieczorem do Hevre na koncert. Jak interesuje Cię taki klimat, można się dopisać."
-
-User: "pokaż zniżki na kawę"
-Fakty: (brak)
-Ty: "Akurat na kawę nic mi w bazie nie świeci. Sprawdź zakładkę Zniżki — czasem coś tam dorzucają."`
-
-// =============================================================================
-// SYNTHESIS CALL
-// =============================================================================
+/** Stosuj po złożeniu odpowiedzi z LLM lub kompaktowej syntezy. */
+export function polishAssistantReply(text: string): string {
+  return softenTranslationese(text)
+}
 
 export type SynthesisOptions = {
   userQuery: string
@@ -127,6 +115,11 @@ export async function synthesizeAnswer(
 ): Promise<SynthesisResult> {
   const { userQuery, facts, hint, topicHint, provider, recentOpeners } = opts
 
+  const compact = tryCompactSynthesis(userQuery, facts, hint)
+  if (compact) {
+    return { text: softenTranslationese(compact), usage: null }
+  }
+
   // Compose user message: kontekst + pytanie + fakty + ewentualna wskazówka.
   // Format zwięzły (LLM-friendly), nie ozdobny — model nie ma tego echo'wać.
   const userParts: string[] = [
@@ -151,7 +144,7 @@ export async function synthesizeAnswer(
       `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
     )
   }
-  userParts.push('Odpowiedz po polsku, krótko, naturalnie.')
+  userParts.push(SYNTHESIS_USER_INSTRUCTION)
 
   const messages: GroqMessage[] = [
     { role: 'system', content: SYNTHESIS_SYSTEM_PROMPT },
@@ -169,7 +162,7 @@ export async function synthesizeAnswer(
       // („całkiem przyzwoicie", „akurat blisko centrum") i przy 5+ wynikach
       // potrzebuje miejsca na wszystkie + krótkie reakcje. 400 tok = ~8 zdań
       // PL z luzem, eliminuje cięcia w pół słowa typu „bez zbędnego kopi[owania]".
-      maxTokens: 512,
+      maxTokens: 420,
       // Wyższa temperatura → mniej powtarzalne formy, więcej naturalnych
       // wariacji ("Pizzy taniej?" vs "Pod pizzę masz parę miejsc" vs „Tanio
       // na pizzę: ..."). 0.75 to sweet spot dla Llama 8B w PL — niżej brzmi
@@ -185,7 +178,7 @@ export async function synthesizeAnswer(
       : ''
 
   return {
-    text: content,
+    text: softenTranslationese(content),
     usage: result.usage,
   }
 }
@@ -227,7 +220,7 @@ export async function* streamAnswer(
       `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
     )
   }
-  userParts.push('Odpowiedz po polsku, krótko, naturalnie.')
+  userParts.push(SYNTHESIS_USER_INSTRUCTION)
 
   const messages: GroqMessage[] = [
     { role: 'system', content: SYNTHESIS_SYSTEM_PROMPT },

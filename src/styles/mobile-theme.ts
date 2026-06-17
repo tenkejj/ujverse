@@ -22,13 +22,21 @@ export const ICONS_MOBILE = {
 } as const
 
 export const HEADER_MOBILE = {
-  /** Siatka 1fr / auto / 1fr — logo w geometrycznym środku (mobile: oś z plusem w BottomNav). */
   containerClass:
-    'h-14 md:h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-0',
-  leftZoneClass: 'flex items-center justify-start min-w-0',
-  centerZoneClass: 'flex items-center justify-center',
-  rightZoneClass: 'flex items-center justify-end gap-2 md:gap-3 min-w-0',
-  logoClass: 'h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 shrink-0',
+    'relative h-14 md:h-16 gap-2 px-4 flex items-center justify-between shrink-0 ' +
+    'sticky top-0 z-50 lg:fixed lg:left-72 lg:right-0',
+  sideSectionClass: 'w-[100px] min-w-[100px] md:w-24 md:min-w-24',
+  rightSectionClass:
+    'flex-shrink-0 flex items-center justify-end gap-2 md:gap-3 relative z-10 ml-auto min-w-0',
+  /**
+   * Desktop: header = `left-72..right-0`, treść ma `lg:-ml-36` — oś feedu to
+   * środek viewportu, czyli `50%` paska minus połowa sidebara (`9rem`).
+   */
+  logoAnchorClass:
+    'pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 ' +
+    'left-1/2 -translate-x-1/2 lg:left-[calc(50%-9rem)] lg:-translate-x-1/2',
+  logoClass:
+    'h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2.25px] translate-x-[1.75px] md:translate-x-0',
   themeToggleButtonClass:
     'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',
   userMenuButtonClass:
@@ -77,6 +85,166 @@ export const SEARCH_MOBILE = {
     overlayEntry: { duration: 0.4, ease: 'easeOut' as const },
     staggerContainer: { hidden: {}, show: { transition: { staggerChildren: 0.055, delayChildren: 0.04 } } },
     historyStaggerContainer: { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0 } } },
+  },
+} as const
+
+/**
+ * AUTH_MOBILE — Linear spotlight auth (UJverse palette).
+ *
+ * Widoczny stożek światła (blobs + vignette), nowoczesne pola, bez „karty szkła”.
+ */
+export const AUTH_MOBILE = {
+  mesh: {
+    wrapperClass: 'pointer-events-none fixed inset-0 overflow-hidden',
+    /** Miękki kamień — bez ostrej kości słoniowej / żółtego kremu. */
+    baseLightClass:
+      'absolute inset-0 dark:hidden ' +
+      'bg-[linear-gradient(165deg,#f0eeeb_0%,#e6e2dc_45%,#d8d3cb_100%)]',
+    ambientLightClass:
+      'absolute inset-0 dark:hidden ' +
+      'bg-[radial-gradient(ellipse_90%_60%_at_50%_-8%,rgba(245,243,240,0.75)_0%,transparent_58%)]',
+    floorWashLightClass:
+      'absolute inset-x-0 bottom-0 h-[50vh] dark:hidden ' +
+      'bg-[linear-gradient(to_top,rgba(164,137,85,0.07)_0%,rgba(164,137,85,0.02)_35%,transparent_72%)]',
+    baseDarkClass: 'absolute inset-0 hidden bg-[#030303] dark:block',
+    vignetteLightClass:
+      'absolute inset-0 dark:hidden ' +
+      'bg-[radial-gradient(ellipse_130%_92%_at_50%_0%,transparent_36%,rgba(30,41,59,0.2)_100%)]',
+    vignetteDarkClass:
+      'absolute inset-0 hidden dark:block ' +
+      'bg-[radial-gradient(ellipse_120%_85%_at_50%_0%,transparent_38%,rgba(0,0,0,0.88)_100%)]',
+  },
+  spotlight: {
+    /** Pełna szerokość viewportu — stożek z góry ekranu, bez capów w rem na desktopie. */
+    orbPrimaryLightClass:
+      'absolute left-1/2 top-[-8%] h-[min(78vh,42rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
+      'bg-[radial-gradient(ellipse_100%_88%_at_50%_0%,rgba(248,246,243,0.92)_0%,rgba(240,237,232,0.45)_38%,transparent_68%)] ' +
+      'blur-2xl dark:hidden',
+    orbPrimaryDarkClass:
+      'absolute left-1/2 top-[-10%] hidden h-[min(80vh,44rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
+      'bg-[radial-gradient(ellipse_100%_88%_at_50%_0%,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.09)_40%,transparent_70%)] ' +
+      'blur-3xl dark:block',
+    orbGoldLightClass:
+      'absolute left-1/2 top-[-4%] h-[min(52vh,26rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
+      'bg-[radial-gradient(ellipse_100%_80%_at_50%_0%,rgba(164,137,85,0.22)_0%,rgba(180,155,110,0.08)_32%,transparent_68%)] blur-3xl dark:hidden',
+    orbGoldDarkClass:
+      'absolute left-1/2 top-[-6%] hidden h-[min(54vh,28rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
+      'bg-[radial-gradient(ellipse_100%_80%_at_50%_0%,rgba(232,200,74,0.1)_0%,transparent_68%)] blur-3xl dark:block',
+    orbNavyLightClass:
+      'absolute left-1/2 top-[6%] h-[min(38vh,18rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
+      'bg-[radial-gradient(ellipse_100%_75%_at_50%_0%,rgba(30,41,59,0.14)_0%,transparent_72%)] blur-2xl dark:hidden',
+  },
+  panel: {
+    className:
+      'rounded-2xl border p-6 sm:p-7 ' +
+      'border-white/60 bg-white/62 backdrop-blur-2xl backdrop-saturate-150 ' +
+      'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_28px_72px_-30px_rgba(30,41,59,0.22),0_10px_28px_-14px_rgba(164,137,85,0.12)] ' +
+      'ring-1 ring-[#1e293b]/[0.05] ' +
+      'dark:border-white/10 dark:bg-zinc-950/88 dark:backdrop-blur-none dark:ring-0 ' +
+      'dark:shadow-[0_20px_60px_-28px_rgba(0,0,0,0.75)]',
+  },
+  shell: {
+    pageClass:
+      'relative flex min-h-dvh flex-col items-center justify-start overflow-x-hidden overflow-y-auto ' +
+      'px-5 pt-[max(env(safe-area-inset-top),1.25rem)] pb-[max(env(safe-area-inset-bottom),2rem)] ' +
+      'sm:justify-center sm:px-6 sm:py-[max(env(safe-area-inset-top),1rem)] sm:pb-[max(env(safe-area-inset-bottom),1.5rem)]',
+    columnClass: 'relative z-10 flex w-full max-w-[22rem] flex-col items-center text-center sm:max-w-md md:max-w-lg',
+    themeToggleClass:
+      'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border p-2 ' +
+      'border-white/70 bg-white/55 text-zinc-600 shadow-[0_4px_16px_-8px_rgba(30,41,59,0.18)] backdrop-blur-xl ' +
+      'transition-colors hover:bg-white/85 hover:text-[#1e293b] ' +
+      'dark:border-white/10 dark:bg-white/[0.06] dark:text-white/70 dark:shadow-none dark:hover:bg-white/10 dark:hover:text-white',
+  },
+  logo: {
+    /** Przycięty asset tylko na auth — bez pustego paddingu z logo.png (728×1372). */
+    assetPath: '/logo-auth.png',
+    markClass:
+      'mb-6 h-[4.75rem] w-auto max-w-[min(80vw,18rem)] shrink-0 drop-shadow-[0_6px_18px_rgba(30,41,59,0.12)] ' +
+      'sm:mb-7 sm:h-[6rem] sm:max-w-[20rem] md:h-[6.5rem] md:max-w-[22rem] ' +
+      'aspect-[542/607] bg-logo-navy dark:bg-brand-gold-bright dark:drop-shadow-[0_4px_20px_rgba(232,200,74,0.25)] transition-colors duration-150 ease-in-out',
+  },
+  header: {
+    titleClass:
+      'text-[1.65rem] font-semibold leading-tight tracking-tight text-[#1e293b] dark:text-white sm:text-3xl',
+    subtitleClass: 'mt-3 text-sm leading-relaxed text-[#6b6560] dark:text-white/50 sm:mt-3.5',
+    blockClass: 'mb-7 w-full text-center sm:mb-8',
+  },
+  tabs: {
+    rowClass:
+      'mb-7 grid w-full grid-cols-2 gap-1.5 rounded-xl border p-1.5 ' +
+      'border-white/55 bg-white/38 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_10px_-6px_rgba(30,41,59,0.08)] backdrop-blur-sm ' +
+      'dark:border-white/10 dark:bg-black/40 dark:shadow-none sm:mb-8',
+    tabClass:
+      'relative rounded-lg px-3 py-3 text-sm font-semibold transition-colors focus:outline-none min-h-[48px]',
+    tabActiveClass: 'text-white dark:text-[#1e293b]',
+    tabInactiveClass:
+      'text-zinc-600 hover:text-zinc-900 dark:text-white/50 dark:hover:text-white/80',
+    pillClass:
+      'absolute inset-0 rounded-lg bg-gradient-to-b from-[#2a3a52] to-[#1e293b] ' +
+      'shadow-[0_2px_12px_-4px_rgba(30,41,59,0.35)] ' +
+      'dark:bg-brand-gold-bright dark:from-brand-gold-bright dark:to-brand-gold-bright dark:shadow-[0_2px_12px_-4px_rgba(232,200,74,0.5)]',
+    layoutId: 'auth-tab-pill',
+  },
+  input: {
+    baseClass:
+      'w-full rounded-xl border px-4 py-3.5 text-base text-zinc-900 ' +
+      'placeholder:text-zinc-400 outline-none transition-all duration-200 ' +
+      'border-white/70 bg-white/88 shadow-[inset_0_1px_2px_0_rgba(30,41,59,0.04)] ' +
+      'focus:border-[#a48955]/35 focus:ring-2 focus:ring-[#a48955]/10 focus:bg-white focus:shadow-[0_0_0_3px_rgba(164,137,85,0.06)] ' +
+      'caret-[#1e293b] ' +
+      'dark:border-white/12 dark:bg-zinc-900/80 dark:text-white dark:shadow-none ' +
+      'dark:placeholder:text-white/35 dark:focus:border-brand-gold-bright/50 ' +
+      'dark:focus:ring-brand-gold-bright/15 dark:focus:bg-white/[0.08] dark:caret-brand-gold-bright',
+    iconClass:
+      'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-white/40',
+    labelClass: 'mb-2 block text-[13px] font-medium text-zinc-600 dark:text-white/55',
+    fieldGroupClass: 'mb-6',
+  },
+  button: {
+    primary:
+      'group inline-flex w-full items-center justify-center gap-2 rounded-xl py-3.5 ' +
+      'text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 ' +
+      'bg-gradient-to-b from-[#2a3a52] to-[#1e293b] text-white ' +
+      'shadow-[0_6px_22px_-8px_rgba(30,41,59,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1)] ' +
+      'hover:from-[#32445f] hover:to-[#172033] active:scale-[0.99] ' +
+      'dark:bg-brand-gold-bright dark:from-brand-gold-bright dark:to-brand-gold-bright dark:text-[#1e293b] ' +
+      'dark:shadow-[0_4px_20px_-6px_rgba(232,200,74,0.55)] dark:hover:from-[#f0d050] dark:hover:to-[#f0d050]',
+    oauth:
+      'group inline-flex w-full items-center justify-center gap-2.5 rounded-xl border py-3.5 ' +
+      'text-sm font-medium transition-all duration-200 ' +
+      'border-white/60 bg-white/50 text-zinc-800 shadow-[0_2px_12px_-6px_rgba(30,41,59,0.1)] backdrop-blur-sm hover:bg-white/75 ' +
+      'disabled:cursor-not-allowed disabled:opacity-70 ' +
+      'dark:border-white/12 dark:bg-white/[0.04] dark:text-white/85 dark:shadow-none dark:hover:bg-white/[0.08]',
+    ghost:
+      'text-sm text-zinc-600 underline-offset-4 transition-colors ' +
+      'hover:text-[#1e293b] hover:underline ' +
+      'dark:text-white/50 dark:hover:text-brand-gold-bright',
+    ghostStrong:
+      'font-semibold text-[#1e293b] underline-offset-4 transition-colors hover:underline ' +
+      'dark:text-brand-gold-bright',
+    forgotClass:
+      'shrink-0 text-xs font-medium text-zinc-500 transition-colors hover:text-[#1e293b] ' +
+      'dark:text-white/50 dark:hover:text-brand-gold-bright',
+    showPasswordClass:
+      'absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 min-h-[40px] min-w-[40px] ' +
+      'flex items-center justify-center text-zinc-400 transition-colors hover:text-[#1e293b] ' +
+      'dark:text-white/40 dark:hover:text-brand-gold-bright',
+  },
+  divider: {
+    wrapperClass:
+      'my-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-widest text-[#7a7164] dark:text-white/38 sm:my-7',
+    lineClass:
+      'h-px flex-1 bg-gradient-to-r from-transparent via-[#1e293b]/12 to-transparent dark:via-white/10',
+  },
+  footer: {
+    primaryClass: 'mt-10 text-center text-[11px] text-zinc-500 dark:text-white/38 sm:mt-12 sm:text-xs',
+    secondaryClass:
+      'mt-1 text-center text-[10px] uppercase tracking-[0.2em] text-zinc-400 dark:text-white/30 sm:text-[11px]',
+  },
+  motion: {
+    entry: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
+    segmentSpring: { type: 'spring' as const, damping: 28, stiffness: 380 },
+    formTransition: { duration: 0.18 },
   },
 } as const
 
@@ -728,7 +896,15 @@ export const BOTTOM_NAV_MOBILE = {
  */
 export const SIDE_NAV_DESKTOP = {
   containerClass:
-    'hidden lg:flex lg:flex-col lg:shrink-0 lg:w-72 lg:sticky lg:top-0 lg:self-start lg:h-dvh lg:p-3',
+    'hidden lg:flex lg:flex-col lg:shrink-0 lg:w-72 lg:sticky lg:top-0 lg:self-start lg:h-dvh lg:p-3 lg:z-30',
+  /**
+   * Kolumna treści (flex-1): przesunięcie w lewo o połowę `lg:w-72`, żeby logo
+   * i grid feedu siedziały na osi środka viewportu, a nie środka `flex-1`.
+   * `pr-36` kompensuje margines — bez poziomego scrolla.
+   */
+  contentOffsetClass: 'lg:-ml-36 lg:pr-36',
+  /** Odstęp pod fixed header na desktopie (`md:h-16`). */
+  contentPadTopClass: 'lg:pt-16',
   innerClass:
     'flex flex-1 min-h-0 flex-col rounded-2xl border border-white/45 bg-white/45 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.65)] dark:border-white/8 dark:bg-zinc-900/30 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] overflow-hidden',
   scrollAreaClass:
