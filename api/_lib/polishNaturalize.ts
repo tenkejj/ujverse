@@ -9,6 +9,7 @@ const LEADING_CHEtnie_POMOGE = /^Chętnie (Ci )?pomogę[.!]?\s*/i
 const DOSTEPNE_OPCJE = /\bdostępne opcje\b/gi
 const ZOSTALO_ZNALEZIONE = /\bzostało znalezion[eo]\b/gi
 const WYNIKI_WYSZUKIWANIA = /\bwynik[ió]w wyszukiwania\b/gi
+const LEADING_OTO = /^Oto\s+(\d+)\s+/i
 const LEADING_NA_PODSTAWIE = /^Na podstawie[^.!?]{0,80}[.!?]\s*/i
 const NIEPOSIADAM = /\bNiestety,?\s+nie posiadam\b/gi
 const ZNALAZLEM_ELEMENTY = /\bZnalazłem\s+(\d+)\s+(wyników?|elementów?|pozycji?)\b/gi

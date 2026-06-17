@@ -77,6 +77,8 @@ export async function kvDelSafe(key: string): Promise<void> {
       err instanceof Error ? err.message : String(err),
     )
   }
+}
+
 export async function kvSetSafe<T>(
   key: string,
   value: T,
