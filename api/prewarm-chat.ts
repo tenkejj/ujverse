@@ -1,5 +1,8 @@
 /**
  * `/api/prewarm-chat` — warmuje response cache dla popularnych zapytań.
+ *
+ * Cron: na planie Hobby Vercel tylko 1×/dzień — nie dodawaj `*/N * * * *`.
+ * Po deployu odpal ręcznie: `npm run chat:prewarm` (albo curl z CRON_SECRET).
  */
 
 import {

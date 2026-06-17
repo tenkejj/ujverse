@@ -40,7 +40,6 @@
     { "path": "/api/extract-usos-registrations", "schedule": "30 6 * * *" },
     { "path": "/api/generate-briefings", "schedule": "0 6 * * 1" },
     { "path": "/api/scrape-discounts?op=expire", "schedule": "0 3 * * *" },
-    { "path": "/api/scrape-discounts?op=scrape", "schedule": "0 4 * * *" },
-    { "path": "/api/prewarm-chat", "schedule": "*/3 * * * *" }
+    { "path": "/api/scrape-discounts?op=scrape", "schedule": "0 4 * * *" }
   ]
 }
