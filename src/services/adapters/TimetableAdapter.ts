@@ -71,7 +71,7 @@ type InsertRow = {
   source: string
 }
 
-function toInsertRow(userId: string, ev: IcsEvent): InsertRow {
+function toInsertRow(userId: string, ev: IcsEvent, source: string): InsertRow {
   return {
     user_id: userId,
     uid: ev.uid,
@@ -80,7 +80,7 @@ function toInsertRow(userId: string, ev: IcsEvent): InsertRow {
     location: ev.location ? ev.location.slice(0, 240) : null,
     start_time: ev.startUtc.toISOString(),
     end_time: ev.endUtc.toISOString(),
-    source: 'usos_ics',
+    source,
   }
 }
 
@@ -92,8 +92,12 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 class TimetableAdapterImpl {
-  async importIcs(userId: string, rawIcs: string): Promise<ImportIcsResult> {
-    const { events, errors } = parseIcs(rawIcs)
+  private async importParsedEvents(
+    userId: string,
+    events: IcsEvent[],
+    errors: string[],
+    source: string,
+  ): Promise<ImportIcsResult> {
     const result: ImportIcsResult = {
       parsedCount: events.length,
       insertedCount: 0,
@@ -103,7 +107,7 @@ class TimetableAdapterImpl {
     }
     if (events.length === 0) return result
 
-    const rows = events.map((ev) => toInsertRow(userId, ev))
+    const rows = events.map((ev) => toInsertRow(userId, ev, source))
     for (const batch of chunk(rows, 200)) {
       const { error, count } = await supabase
         .from('user_timetable_entries')
@@ -120,6 +124,17 @@ class TimetableAdapterImpl {
     }
     result.skippedCount = result.parsedCount - result.insertedCount
     return result
+  }
+
+  async importIcs(userId: string, rawIcs: string): Promise<ImportIcsResult> {
+    const { events, errors } = parseIcs(rawIcs)
+    return this.importParsedEvents(userId, events, errors, 'usos_ics')
+  }
+
+  async importSpreadsheet(userId: string, data: ArrayBuffer): Promise<ImportIcsResult> {
+    const { parseSpreadsheetTimetable } = await import('../../lib/spreadsheetTimetableParser')
+    const { events, errors } = parseSpreadsheetTimetable(data)
+    return this.importParsedEvents(userId, events, errors, 'usos_excel')
   }
 
   /**

@@ -180,9 +180,13 @@ class DataServiceImpl {
     return LecturerSubscriptionsAdapter.listAnnouncementsForKeys(keys, limit)
   }
 
-  /* Plan zajęć (.ics z USOSweb). */
+  /* Plan zajęć (.ics / Excel / CSV z USOSweb). */
   async importTimetableIcs(userId: string, rawIcs: string): Promise<ImportIcsResult> {
     return TimetableAdapter.importIcs(userId, rawIcs)
+  }
+
+  async importTimetableSpreadsheet(userId: string, data: ArrayBuffer): Promise<ImportIcsResult> {
+    return TimetableAdapter.importSpreadsheet(userId, data)
   }
 
   /**

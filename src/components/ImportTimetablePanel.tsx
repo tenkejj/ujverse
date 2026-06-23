@@ -7,8 +7,8 @@
  *
  * Trzy taby:
  *   - **Link** — URL z USOSweb → proxy fetch → import
- *   - **Plik** — drag-drop / file picker (USOS-owy export pliku)
- *   - **Tekst** — surowy paste (np. user ma plik na drugim urządzeniu)
+ *   - **Plik** — drag-drop / file picker (.ics, .xlsx, .xls, .csv)
+ *   - **Tekst** — surowy paste ICS (np. user ma plik na drugim urządzeniu)
  *
  * Po imporcie panel jest collapse'd by default (sam przycisk „Aktualizuj
  * plan" + opcjonalnie „Wyczyść") — UI w „Moim Planie" jest skupione na
@@ -34,6 +34,11 @@ import {
   isLikelyUsosIcsUrl,
   type ImportIcsResult,
 } from '../services/adapters/TimetableAdapter'
+
+function isSpreadsheetFileName(name: string): boolean {
+  const lower = name.toLowerCase()
+  return lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.csv')
+}
 
 type Tab = 'url' | 'file' | 'text'
 
@@ -121,7 +126,9 @@ export default function ImportTimetablePanel({
       return false
     }
     if (result.insertedCount === 0 && result.parsedCount === 0) {
-      toast.error('Plik nie zawiera poprawnych zajęć — sprawdź czy to eksport planu z USOSweb.')
+      toast.error(
+        'Plik nie zawiera poprawnych zajęć — sprawdź czy to eksport planu z USOSweb (.ics lub Excel/CSV).',
+      )
       return false
     }
     toast.success(summarizeResult(result))
@@ -162,13 +169,30 @@ export default function ImportTimetablePanel({
     }
   }
 
+  const doImportSpreadsheet = async (data: ArrayBuffer) => {
+    setIsImporting(true)
+    const result = await DataService.importTimetableSpreadsheet(userId, data)
+    setIsImporting(false)
+    if (handleResult(result)) {
+      onImported()
+    }
+  }
+
+  const isIcsFile = (file: File): boolean =>
+    file.name.toLowerCase().endsWith('.ics') || file.type === 'text/calendar'
+
   const handleFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.ics') && file.type !== 'text/calendar') {
-      toast.error('Wybierz plik z eksportu planu USOSweb.')
+    if (isSpreadsheetFileName(file.name)) {
+      const data = await file.arrayBuffer()
+      await doImportSpreadsheet(data)
       return
     }
-    const text = await file.text()
-    await doImportText(text)
+    if (isIcsFile(file)) {
+      const text = await file.text()
+      await doImportText(text)
+      return
+    }
+    toast.error('Wybierz plik .ics, .xlsx, .xls lub .csv z eksportu planu USOSweb.')
   }
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
@@ -234,7 +258,7 @@ export default function ImportTimetablePanel({
             Wklej link z USOSweb
           </p>
           <p className={`mt-0.5 text-[11.5px] ${theme.text.muted}`}>
-            Mój USOSweb → Mój plan zajęć → eksport planu.
+            Mój USOSweb → Mój plan zajęć → eksport planu (iCalendar lub Excel/CSV).
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -354,12 +378,14 @@ export default function ImportTimetablePanel({
             <p className={`text-[13px] font-semibold ${theme.text.primary}`}>
               Upuść plik z eksportu planu tutaj
             </p>
-            <p className={`text-[11.5px] ${theme.text.muted}`}>albo</p>
+            <p className={`text-[11.5px] ${theme.text.muted}`}>
+              Obsługujemy .ics, .xlsx, .xls i .csv (eksport semestru z USOSweb)
+            </p>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isImporting}
-              className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[12px] font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200 dark:hover:bg-white/[0.09]"
+              className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[12px] font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200 dark:hover:bg-white/[0.09]"
             >
               {isImporting ? <Loader2 size={12} className="animate-spin" /> : <FileUp size={12} />}
               Wybierz plik
@@ -367,7 +393,7 @@ export default function ImportTimetablePanel({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".ics,text/calendar"
+              accept=".ics,.xlsx,.xls,.csv,text/calendar,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) void handleFile(file)
