@@ -120,16 +120,9 @@ export const AUTH_MOBILE = {
       'absolute left-1/2 top-[-8%] h-[min(78vh,42rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
       'bg-[radial-gradient(ellipse_100%_88%_at_50%_0%,rgba(248,246,243,0.92)_0%,rgba(240,237,232,0.45)_38%,transparent_68%)] ' +
       'blur-2xl dark:hidden',
-    orbPrimaryDarkClass:
-      'absolute left-1/2 top-[-10%] hidden h-[min(80vh,44rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
-      'bg-[radial-gradient(ellipse_100%_88%_at_50%_0%,rgba(255,255,255,0.24)_0%,rgba(255,255,255,0.09)_40%,transparent_70%)] ' +
-      'blur-3xl dark:block',
     orbGoldLightClass:
       'absolute left-1/2 top-[-4%] h-[min(52vh,26rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
       'bg-[radial-gradient(ellipse_100%_80%_at_50%_0%,rgba(164,137,85,0.22)_0%,rgba(180,155,110,0.08)_32%,transparent_68%)] blur-3xl dark:hidden',
-    orbGoldDarkClass:
-      'absolute left-1/2 top-[-6%] hidden h-[min(54vh,28rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
-      'bg-[radial-gradient(ellipse_100%_80%_at_50%_0%,rgba(232,200,74,0.1)_0%,transparent_68%)] blur-3xl dark:block',
     orbNavyLightClass:
       'absolute left-1/2 top-[6%] h-[min(38vh,18rem)] w-[100vw] max-w-none -translate-x-1/2 rounded-[100%] ' +
       'bg-[radial-gradient(ellipse_100%_75%_at_50%_0%,rgba(30,41,59,0.14)_0%,transparent_72%)] blur-2xl dark:hidden',

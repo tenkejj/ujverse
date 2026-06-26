@@ -16,7 +16,7 @@ const LOGO_MASK_STYLE = {
 } as const
 
 /**
- * AuthShell — spotlight + logo tuż nad treścią formularza (logo-auth.png).
+ * AuthShell — tło mesh (light: spotlight) + logo tuż nad treścią formularza (logo-auth.png).
  */
 type Props = {
   children: ReactNode
@@ -34,9 +34,7 @@ export default function AuthShell({ children }: Props) {
         <div className={AUTH_MOBILE.mesh.ambientLightClass} />
         <div className={AUTH_MOBILE.mesh.floorWashLightClass} />
         <div className={AUTH_MOBILE.spotlight.orbPrimaryLightClass} />
-        <div className={AUTH_MOBILE.spotlight.orbPrimaryDarkClass} />
         <div className={AUTH_MOBILE.spotlight.orbGoldLightClass} />
-        <div className={AUTH_MOBILE.spotlight.orbGoldDarkClass} />
         <div className={AUTH_MOBILE.spotlight.orbNavyLightClass} />
         <div className={AUTH_MOBILE.mesh.vignetteLightClass} />
         <div className={AUTH_MOBILE.mesh.vignetteDarkClass} />
