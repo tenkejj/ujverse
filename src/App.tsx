@@ -23,6 +23,7 @@ import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import SideNav from './components/SideNav'
 import { SIDE_NAV_DESKTOP } from './styles/mobile-theme'
+import { useDesktopSidebar } from './hooks/useDesktopSidebar'
 import MobileDrawer from './components/MobileDrawer'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
@@ -264,6 +265,7 @@ function App() {
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
+  const desktopSidebar = useDesktopSidebar()
 
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(null)
@@ -1721,6 +1723,8 @@ function App() {
           onNavigateToUsos={() => navigateToMainView('usos')}
           onNavigateToMiejsca={() => navigateToMainView('miejsca')}
           onNavigateToSettings={openSettings}
+          open={desktopSidebar.open}
+          onClose={desktopSidebar.close}
         />
 
         <div className={`flex-1 min-w-0 w-full ${SIDE_NAV_DESKTOP.contentPadTopClass}`}>
@@ -1761,6 +1765,8 @@ function App() {
             onNavigateToSettings={openSettings}
             onRefreshPosts={() => feedMutations.invalidateFeed()}
             onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
+            desktopSidebarOpen={desktopSidebar.open}
+            onToggleDesktopSidebar={desktopSidebar.toggle}
           />
 
           <Suspense fallback={null}>

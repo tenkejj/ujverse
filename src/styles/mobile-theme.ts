@@ -24,15 +24,13 @@ export const ICONS_MOBILE = {
 export const HEADER_MOBILE = {
   containerClass:
     'relative h-14 md:h-16 gap-2 px-4 flex items-center justify-between shrink-0 ' +
-    'sticky top-0 z-50 lg:fixed lg:left-72 lg:right-0',
+    'sticky top-0 z-50 lg:fixed lg:inset-x-0',
   sideSectionClass: 'w-[100px] min-w-[100px] md:w-24 md:min-w-24',
   rightSectionClass:
     'flex-shrink-0 flex items-center justify-end gap-2 md:gap-3 relative z-10 ml-auto min-w-0',
   /**
-   * Logo na środku paska. Od `lg` header jest `left-72..right-0` (obok
-   * sidebara), więc `left-1/2` trafia w oś kolumny treści — tę samą, w której
-   * siedzi feed. Nie przesuwamy logo o połowę sidebara: treść nie może
-   * wjeżdżać pod nawigację.
+   * Logo na środku całego okna. Header na `lg` jest pełnej szerokości
+   * (`inset-x-0`), a sidebar jest nakładką — nie przesuwa paska ani treści.
    */
   logoAnchorClass:
     'pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 left-1/2 -translate-x-1/2',
@@ -890,14 +888,17 @@ export const BOTTOM_NAV_MOBILE = {
  */
 export const SIDE_NAV_DESKTOP = {
   /**
-   * Sztywna kolumna 18rem (`min`/`max` + `overflow-hidden`), bez ujemnego
-   * marginesu na treści. Wcześniejsze `lg:-ml-36` wciągało kolumnę pod nav:
-   * na pełnej szerokości (Aula) zawsze, na Wydarzeniach i feedzie dopiero
-   * gdy siatka dochodziła do krawędzi — stąd inny „glitch” na każdej zakładce.
-   * Nieprzezroczyste tło odcina backdrop-blur od kart leżących obok.
+   * Nakładka 18rem pod headerem, nie kolumna w flexie. Schowana zjeżdża
+   * w lewo (`containerClosedClass`), więc feed i logo zostają na środku okna.
+   * Otwarta przykrywa lewą krawędź, ale nie przepycha reszty layoutu.
+   * Nieprzezroczyste tło odcina blur od kart pod spodem.
    */
   containerClass:
-    'hidden lg:flex lg:flex-col lg:w-72 lg:min-w-72 lg:max-w-72 lg:shrink-0 lg:sticky lg:top-0 lg:self-start lg:h-dvh lg:overflow-hidden bg-zinc-50 dark:bg-bg-app lg:p-3 lg:z-30',
+    'hidden lg:flex lg:flex-col lg:w-72 lg:min-w-72 lg:max-w-72 lg:fixed lg:left-0 lg:top-16 lg:z-[45] lg:h-[calc(100dvh-4rem)] lg:overflow-hidden bg-zinc-50 dark:bg-bg-app lg:p-3 lg:border-r lg:border-zinc-200/80 lg:dark:border-white/10 lg:transition-transform lg:duration-200 lg:ease-out',
+  containerOpenClass: 'lg:translate-x-0 lg:shadow-xl',
+  containerClosedClass: 'lg:-translate-x-full lg:shadow-none lg:pointer-events-none',
+  backdropClass:
+    'hidden lg:block fixed inset-x-0 bottom-0 top-16 z-40 bg-zinc-950/20 backdrop-blur-[1px] dark:bg-black/45',
   /** Odstęp pod fixed header na desktopie (`md:h-16`). */
   contentPadTopClass: 'lg:pt-16',
   innerClass:
