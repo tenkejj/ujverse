@@ -1723,7 +1723,7 @@ function App() {
           onNavigateToSettings={openSettings}
         />
 
-        <div className={`flex-1 min-w-0 w-full ${SIDE_NAV_DESKTOP.contentOffsetClass} ${SIDE_NAV_DESKTOP.contentPadTopClass}`}>
+        <div className={`flex-1 min-w-0 w-full ${SIDE_NAV_DESKTOP.contentPadTopClass}`}>
           <Header
             myProfile={myProfile}
             displayName={displayName}
