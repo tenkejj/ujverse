@@ -29,12 +29,13 @@ export const HEADER_MOBILE = {
   rightSectionClass:
     'flex-shrink-0 flex items-center justify-end gap-2 md:gap-3 relative z-10 ml-auto min-w-0',
   /**
-   * Desktop: header = `left-72..right-0`, treść ma `lg:-ml-36` — oś feedu to
-   * środek viewportu, czyli `50%` paska minus połowa sidebara (`9rem`).
+   * Logo na środku paska. Od `lg` header jest `left-72..right-0` (obok
+   * sidebara), więc `left-1/2` trafia w oś kolumny treści — tę samą, w której
+   * siedzi feed. Nie przesuwamy logo o połowę sidebara: treść nie może
+   * wjeżdżać pod nawigację.
    */
   logoAnchorClass:
-    'pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 ' +
-    'left-1/2 -translate-x-1/2 lg:left-[calc(50%-9rem)] lg:-translate-x-1/2',
+    'pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 left-1/2 -translate-x-1/2',
   logoClass:
     'h-32 w-32 sm:w-40 md:w-48 scale-[0.85] translate-y-[2.25px] translate-x-[1.75px] md:translate-x-0',
   themeToggleButtonClass:
@@ -888,14 +889,15 @@ export const BOTTOM_NAV_MOBILE = {
  * minimalne. Aktywny stan: spokojny `border + tinted bg`, bez glow.
  */
 export const SIDE_NAV_DESKTOP = {
-  containerClass:
-    'hidden lg:flex lg:flex-col lg:shrink-0 lg:w-72 lg:sticky lg:top-0 lg:self-start lg:h-dvh lg:p-3 lg:z-30',
   /**
-   * Kolumna treści (flex-1): przesunięcie w lewo o połowę `lg:w-72`, żeby logo
-   * i grid feedu siedziały na osi środka viewportu, a nie środka `flex-1`.
-   * `pr-36` kompensuje margines — bez poziomego scrolla.
+   * Sztywna kolumna 18rem (`min`/`max` + `overflow-hidden`), bez ujemnego
+   * marginesu na treści. Wcześniejsze `lg:-ml-36` wciągało kolumnę pod nav:
+   * na pełnej szerokości (Aula) zawsze, na Wydarzeniach i feedzie dopiero
+   * gdy siatka dochodziła do krawędzi — stąd inny „glitch” na każdej zakładce.
+   * Nieprzezroczyste tło odcina backdrop-blur od kart leżących obok.
    */
-  contentOffsetClass: 'lg:-ml-36 lg:pr-36',
+  containerClass:
+    'hidden lg:flex lg:flex-col lg:w-72 lg:min-w-72 lg:max-w-72 lg:shrink-0 lg:sticky lg:top-0 lg:self-start lg:h-dvh lg:overflow-hidden bg-zinc-50 dark:bg-bg-app lg:p-3 lg:z-30',
   /** Odstęp pod fixed header na desktopie (`md:h-16`). */
   contentPadTopClass: 'lg:pt-16',
   innerClass:
