@@ -18,44 +18,47 @@ import { GroqProvider, GroqProviderError } from './GroqProvider.js'
 import type { ChatRequestMessage, GroqMessage, LLMProvider } from './types.js'
 
 /**
- * Domyślny model Groqa dla całej platformy. Świadomy wybór pod kątem
- * **RPM** na free tier (źródło: console.groq.com/docs/rate-limits, czerwiec 2026):
- *
- * | Model                       | RPM | RPD    | TPM   |
- * | --------------------------- | --- | ------ | ----- |
- * | llama-3.1-8b-instant (stary)|  30 | 14 400 |  6 K  |
- * | qwen/qwen3-32b (nowy)       |  60 |  1 000 |  6 K  |
- * | moonshotai/kimi-k2-instruct |  60 |  1 000 | 10 K  |
- *
- * Wybieramy `qwen/qwen3-32b` — dwa razy wyższy RPM, dla UJverse RPD nie jest
- * bottleneckiem (oczekiwany ruch znacznie poniżej 1K zapytań/dobę). Burst
- * 60 RPM bezpośrednio obniża szansę na 429 podczas typowego użycia z kilkoma
- * równoczesnymi userami.
- *
- * Override przez `process.env.GROQ_MODEL` (np. szybki rollback na llama-8b
- * gdy zaobserwujemy regres jakości / problem z Function Calling) — żeby nie
- * trzeba było wdrażać kodu, tylko zmienić env w panelu Vercela.
+ * Modele wycofane przez Groq (console.groq.com/docs/deprecations).
+ * Zostawione w env Vercela po przerwie nadal wywracały `/api/chat` (400 → 502
+ * „Proxy Error"). Traktujemy je jak brak override i bierzemy następcę.
  */
-export const DEFAULT_GROQ_MODEL: string =
-  process.env.GROQ_MODEL ?? 'qwen/qwen3-32b'
+const RETIRED_GROQ_MODELS = new Set([
+  'qwen/qwen3-32b',
+  'qwen/qwen3.6-27b',
+  'llama-3.1-8b-instant',
+  'llama-3.3-70b-versatile',
+])
+
+function resolveGroqModel(envValue: string | undefined, fallback: string): string {
+  const trimmed = envValue?.trim()
+  if (!trimmed || RETIRED_GROQ_MODELS.has(trimmed)) return fallback
+  return trimmed
+}
 
 /**
- * Lekki model dla ścieżki SMALL-TALK (gdy `routeIntent`/`shouldUseTools`
- * uznał że tools nie są potrzebne — „cześć", „dzięki", „jak się masz").
+ * Model główny (tool calling + dłuższe odpowiedzi).
+ * Następca wycofanego `qwen/qwen3-32b` (shutdown 2026-07-17):
+ * `openai/gpt-oss-120b`.
  *
- * Po co osobny model:
- *  - qwen3-32b reasoning-aware (drogo + wolno) — dla 4-słownej grzeczności
- *    to zabicie muchy granatem;
- *  - llama-3.1-8b-instant: ~5× tańszy, ~3× szybszy w TTFB, kontekst 128k
- *    jak qwen — dla małej rozmowy w PL daje porównywalną jakość;
- *  - reasoning_format niewysyłany (llama go nie wspiera, ale nie potrzebuje
- *    — `supportsReasoningFormat` w `GroqProvider` rozróżnia per call).
- *
- * Override przez env `GROQ_SMALLTALK_MODEL` — zostawia furtkę żeby
- * przerzucić się na inny tani model bez deploya kodu.
+ * Override: `GROQ_MODEL` w env Vercela — ignorowany, gdy wskazuje model
+ * z listy wycofanych.
  */
-export const GROQ_SMALLTALK_MODEL: string =
-  process.env.GROQ_SMALLTALK_MODEL ?? 'llama-3.1-8b-instant'
+export const DEFAULT_GROQ_MODEL: string = resolveGroqModel(
+  process.env.GROQ_MODEL,
+  'openai/gpt-oss-120b',
+)
+
+/**
+ * Lekki model dla small-talku i syntezy faktów z narzędzi.
+ * Następca wycofanego `llama-3.1-8b-instant` (shutdown 2026-08-16):
+ * `openai/gpt-oss-20b`. `reasoning_effort: low` ustawia GroqProvider.
+ *
+ * Override: `GROQ_SMALLTALK_MODEL` — też z pominięciem wycofanych id.
+ */
+export const GROQ_SMALLTALK_MODEL: string = resolveGroqModel(
+  process.env.GROQ_SMALLTALK_MODEL,
+  'openai/gpt-oss-20b',
+)
 
 /**
  * Polityka retry dla wywołań Groq API.

@@ -1,6 +1,6 @@
 /**
  * `ChatAssistantFab` — mobilny FAB + bottom-sheet (90 vh) z asystentem AI
- * (`DEFAULT_GROQ_MODEL` z `api/_lib/llmService.ts`, obecnie `qwen/qwen3-32b`).
+ * (`DEFAULT_GROQ_MODEL` z `api/_lib/llmService.ts`, obecnie `openai/gpt-oss-120b`).
  *
  * Powierzchnia komplementarna do desktopowej wyspy `ChatAssistant`:
  * - Wyspa: widoczna w lewym `<aside>` `FeedView` na `lg+`.

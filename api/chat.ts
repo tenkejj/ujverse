@@ -2,7 +2,9 @@
  * Edge orchestrator dla AI chat z Function Calling (Tools).
  *
  * - **Runtime**: Vercel Edge (Web standards `Request` / `Response`).
- * - **Provider**: `GroqProvider` (OpenAI-compat) z modelem `llama-3.1-8b-instant`.
+ * - **Provider**: `GroqProvider` (OpenAI-compat). Model główny to
+ *   `DEFAULT_GROQ_MODEL` (`openai/gpt-oss-120b`), small-talk i synteza
+ *   idą przez `GROQ_SMALLTALK_MODEL` (`openai/gpt-oss-20b`).
  *   `MockProvider` z `llmService.ts` jest świadomie pominięty w tool-aware
  *   ścieżce — bez `GROQ_API_KEY` brakuje sensu uruchamiać Function Calling.
  * - **Persona**: `UJVERSE_SYSTEM_PROMPT` z `_lib/llmService.ts` injectowany
@@ -12,10 +14,10 @@
  *   Dwa wyniki możliwe:
  *   (a) model zwraca `content` (bez `tool_calls`) → finalna odpowiedź,
  *   (b) model zwraca `tool_calls[]` → wykonujemy każdy egzekutor, ekstrahujemy
- *       FAKTY (`buildToolFacts`), a finalną odpowiedź układa **mały, tani
- *       Llama 8B** (`synthesizeAnswer` w `_lib/synthesizer.ts`) — to daje
- *       naturalną prozę zamiast templatowych „X rzeczy: ..." odpowiedzi.
- *       Cost: +1 round-trip do Groqa (Llama 8B, ~150ms TTFB, ~$0.0001/req).
+ *       FAKTY (`buildToolFacts`), a finalną odpowiedź układa **mały model**
+ *       (`GROQ_SMALLTALK_MODEL` w `synthesizeAnswer`, `_lib/synthesizer.ts`) —
+ *       naturalna proza zamiast templatowych „X rzeczy: ..." odpowiedzi.
+ *       Cost: +1 round-trip do Groqa.
  *       Świadomy tradeoff dla UX nad surowym kosztem.
  * - **Response cache (Vercel KV)**: 300s rozproszony cache zindeksowany po
  *   treści ostatniej wiadomości użytkownika + flagdze `useTools`. HIT →
@@ -1295,15 +1297,18 @@ export default async function handler(req: Request): Promise<Response> {
     // / żarty / wyjaśnienia („balić auli to...") i wcześniejsze 200 ucinało
     // odpowiedzi w pół słowa. 400 tok = ~7-8 zdań PL, max comfort.
     const isSmallTalkPath = !useTools
+    // GPT-OSS liczy tokeny reasoning do `max_tokens`, nawet gdy
+    // `include_reasoning: false` ich nie zwraca. 512/768 ucinało widoczną
+    // odpowiedź albo `tool_calls` przy `reasoning_effort: low`.
     const completeOpts = isSmallTalkPath
-      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 512 }
-      : { maxTokens: 768 }
+      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 1024 }
+      : { maxTokens: 1536 }
     if (isSmallTalkPath) {
       void incrCounter('groq:small_talk_path')
       console.log(
         '[Groq] small-talk path — model:',
         GROQ_SMALLTALK_MODEL,
-        '| maxTokens: 512',
+        '| maxTokens: 1024',
       )
     }
     // Circuit breaker — gdy ostatnie N requestów do Groqa padło 429/5xx,

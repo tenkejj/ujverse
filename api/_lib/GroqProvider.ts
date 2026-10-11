@@ -2,10 +2,9 @@
  * GroqProvider — `LLMProvider` używający Groq Cloud (OpenAI-compatible API).
  *
  * - Model: konfigurowalny przez argument konstruktora (`model`). Domyślny
- *   fallback `llama-3.1-8b-instant` pozostawiony dla backward-compat (testy
- *   i `scrape-wziks.ts` które same nie podają modelu). Produkcyjna ścieżka
- *   wstrzykuje `DEFAULT_GROQ_MODEL` z `llmService.ts` — patrz tam po
- *   uzasadnienie wyboru pod kątem RPM/RPD.
+ *   fallback `openai/gpt-oss-20b` jest dla call-site'ów, które same nie
+ *   podają modelu (testy, `scrape-wziks.ts`). Produkcyjna ścieżka chatu
+ *   wstrzykuje `DEFAULT_GROQ_MODEL` z `llmService.ts`.
  * - Streaming: `stream: true` → Groq zwraca SSE w formacie OpenAI
  *   (`data: { choices: [{ delta: { content } }] }`), kompatybilnym z
  *   parserem klienta (`BielikAdapter.parseSSEStream`). Stąd brak konwersji
@@ -33,7 +32,7 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
  * konstruktorze (np. testy, scraper). Główna ścieżka chatu wstrzykuje
  * `DEFAULT_GROQ_MODEL` z `llmService.ts`.
  */
-const FALLBACK_MODEL = 'llama-3.1-8b-instant'
+const FALLBACK_MODEL = 'openai/gpt-oss-20b'
 const DEFAULT_TEMPERATURE = 0.7
 
 /**
@@ -42,10 +41,9 @@ const DEFAULT_TEMPERATURE = 0.7
  *
  * - `MAX_TOKENS_TOOL_DECISION` — round-trip "zdecyduj jakie tool wywołać".
  *   Model albo wybiera tool_call (krótki JSON), albo pisze odpowiedź
- *   wprost. Qwen3-32b z `reasoning_format: hidden` nadal liczy reasoning
- *   do `max_tokens` — przy starym capie 320 widoczna odpowiedź ucinała się
- *   w pół słowa („…zniżek albo infy"). 768 daje ~200 tok na reasoning +
- *   ~500 tok na treść dla usera.
+ *   wprost. GPT-OSS liczy reasoning do `max_tokens` nawet przy
+ *   `include_reasoning: false`. 1536 zostawia miejsce na krótki
+ *   chain-of-thought (`reasoning_effort: low`) i na `tool_calls` albo treść.
  *
  * - `MAX_TOKENS_TEXT_REPLY` — fallback dla zwykłej rozmowy (bez tooli).
  *
@@ -53,8 +51,8 @@ const DEFAULT_TEMPERATURE = 0.7
  * server-side w `formatToolResultAsFinalAnswer`, więc model nigdy nie
  * "syntetyzuje" wyniku. Płynnie redukuje to output tokeny.
  */
-const MAX_TOKENS_TOOL_DECISION = 768
-const MAX_TOKENS_TEXT_REPLY = 512
+const MAX_TOKENS_TOOL_DECISION = 1536
+const MAX_TOKENS_TEXT_REPLY = 1024
 
 /**
  * Modele "reasoning" — w trakcie generacji emitują chain-of-thought
@@ -76,6 +74,22 @@ function supportsReasoningFormat(model: string): boolean {
     m.includes('deepseek-r1') ||
     m.includes('deepseek/r1')
   )
+}
+
+/**
+ * GPT-OSS nie przyjmuje `reasoning_format` (Groq zwraca 400). Reasoning idzie
+ * osobnym polem; `include_reasoning: false` + `reasoning_effort: low` trzyma
+ * krótki tool-decision bez zjadania `max_tokens` na chain-of-thought.
+ */
+function applyReasoningControls(body: Record<string, unknown>, model: string): void {
+  if (model.toLowerCase().includes('gpt-oss')) {
+    body.reasoning_effort = 'low'
+    body.include_reasoning = false
+    return
+  }
+  if (supportsReasoningFormat(model)) {
+    body.reasoning_format = 'hidden'
+  }
 }
 
 /**
@@ -154,9 +168,8 @@ export type GroqCompleteWithToolsOptions = {
   /** OpenAI-compat: 'auto' (default) | 'none' | { type:'function', function:{name} }. */
   toolChoice?: 'auto' | 'none'
   /**
-   * Override modelu per call — przydatne gdy chcemy lekką ścieżkę
-   * (`llama-3.1-8b-instant`) dla small-talku, a domyślny `qwen3-32b`
-   * tylko gdy faktycznie tools są w grze.
+   * Override modelu per call — lekka ścieżka (`GROQ_SMALLTALK_MODEL`)
+   * dla small-talku, a `DEFAULT_GROQ_MODEL` gdy tools są w grze.
    * Default: model z konstruktora.
    */
   model?: string
@@ -205,9 +218,7 @@ export class GroqProvider implements LLMProvider {
       temperature: DEFAULT_TEMPERATURE,
       max_tokens: MAX_TOKENS_TEXT_REPLY,
     }
-    if (supportsReasoningFormat(this.model)) {
-      body.reasoning_format = 'hidden'
-    }
+    applyReasoningControls(body, this.model)
     const response = await fetch(GROQ_URL, {
       method: 'POST',
       headers: {
@@ -253,9 +264,7 @@ export class GroqProvider implements LLMProvider {
       temperature: opts.temperature ?? DEFAULT_TEMPERATURE,
       max_tokens: MAX_TOKENS_TEXT_REPLY,
     }
-    if (supportsReasoningFormat(this.model)) {
-      body.reasoning_format = 'hidden'
-    }
+    applyReasoningControls(body, this.model)
     const response = await this.postJson(body)
 
     const data = (await response.json().catch(() => null)) as GroqChatCompletionResponse | null
@@ -299,12 +308,7 @@ export class GroqProvider implements LLMProvider {
       body.tools = tools
       body.tool_choice = opts.toolChoice ?? 'auto'
     }
-    // `reasoning_format` zależy od MODELU faktycznie wysyłanego, nie od
-    // domyślnego z konstruktora — gdy override'em zjeżdżamy z qwen3 na
-    // llamę 8b, nie chcemy wysłać parametru, którego mała llama nie zna.
-    if (supportsReasoningFormat(effectiveModel)) {
-      body.reasoning_format = 'hidden'
-    }
+    applyReasoningControls(body, effectiveModel)
 
     const response = await this.postJson(body)
     const data = (await response.json().catch(() => null)) as GroqChatCompletionWithToolsResponse | null
@@ -365,9 +369,7 @@ export class GroqProvider implements LLMProvider {
       body.tools = tools
       body.tool_choice = opts.toolChoice ?? 'auto'
     }
-    if (supportsReasoningFormat(effectiveModel)) {
-      body.reasoning_format = 'hidden'
-    }
+    applyReasoningControls(body, effectiveModel)
 
     const response = await fetch(GROQ_URL, {
       method: 'POST',

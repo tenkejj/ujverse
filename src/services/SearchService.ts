@@ -9,13 +9,14 @@ import {
   readContentIndexName,
   USERS_INDEX,
 } from '../lib/meilisearchClient'
+import { searchAulaFallback, searchUnifiedFallback } from './searchFallback'
 
 type SearchOpts = {
   signal?: AbortSignal
   limit?: number
 }
 
-type UnifiedSearchOpts = SearchOpts & {
+export type UnifiedSearchOpts = SearchOpts & {
   includeUsers?: boolean
   includeContent?: boolean
   userDepartmentFilter?: string
@@ -155,10 +156,17 @@ class SearchServiceImpl {
       return { content: [], users: [] }
     }
 
-    const response = await meiliSearchInstance.multiSearch(
-      { queries },
-      opts?.signal ? { signal: opts.signal } : undefined,
-    )
+    let response: Awaited<ReturnType<typeof meiliSearchInstance.multiSearch>>
+    try {
+      response = await meiliSearchInstance.multiSearch(
+        { queries },
+        opts?.signal ? { signal: opts.signal } : undefined,
+      )
+    } catch (err) {
+      if (opts?.signal?.aborted) throw err
+      console.warn('[SearchService] Meilisearch niedostępny, szukam w Supabase', err)
+      return searchUnifiedFallback(normalized, opts, tagFilter, textQuery)
+    }
 
     let content: SearchHit[] = []
     let users: SearchUserHit[] = []
@@ -220,26 +228,33 @@ class SearchServiceImpl {
       filters.push(`createdAtTs >= ${Math.floor(opts.since)}`)
     }
 
-    const response = await meiliSearchInstance.multiSearch(
-      {
-        queries: [
-          {
-            indexUid: AULA_INDEX,
-            q: trimmed,
-            limit: opts.limit ?? 20,
-            offset: opts.offset ?? 0,
-            filter: filters.join(' AND '),
-            sort: ['createdAtTs:desc'],
-            attributesToHighlight: ['content', 'fileNames'],
-            attributesToCrop: ['content'],
-            cropLength: 30,
-            highlightPreTag: '<mark>',
-            highlightPostTag: '</mark>',
-          },
-        ],
-      },
-      opts.signal ? { signal: opts.signal } : undefined,
-    )
+    let response: Awaited<ReturnType<typeof meiliSearchInstance.multiSearch>>
+    try {
+      response = await meiliSearchInstance.multiSearch(
+        {
+          queries: [
+            {
+              indexUid: AULA_INDEX,
+              q: trimmed,
+              limit: opts.limit ?? 20,
+              offset: opts.offset ?? 0,
+              filter: filters.join(' AND '),
+              sort: ['createdAtTs:desc'],
+              attributesToHighlight: ['content', 'fileNames'],
+              attributesToCrop: ['content'],
+              cropLength: 30,
+              highlightPreTag: '<mark>',
+              highlightPostTag: '</mark>',
+            },
+          ],
+        },
+        opts.signal ? { signal: opts.signal } : undefined,
+      )
+    } catch (err) {
+      if (opts.signal?.aborted) throw err
+      console.warn('[SearchService] Meilisearch (Aula) niedostępny, szukam w Supabase', err)
+      return searchAulaFallback(trimmed, opts)
+    }
 
     const result = response.results[0]
     const rawHits = result?.hits ?? []

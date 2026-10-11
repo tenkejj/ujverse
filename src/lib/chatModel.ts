@@ -6,7 +6,7 @@
 export const CHAT_ASSISTANT_NAME = 'VERSUŚ'
 
 /** Etykieta modelu — podtytuł pod imieniem asystenta (opcjonalnie). */
-export const CHAT_MODEL_LABEL = 'Qwen3 32B'
+export const CHAT_MODEL_LABEL = 'GPT-OSS'
 
 /** Provider — opcjonalne do drobnego druku w stopce / tooltipie. */
 export const CHAT_PROVIDER_LABEL = 'Groq'
