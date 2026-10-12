@@ -158,11 +158,10 @@ export async function synthesizeAnswer(
   const result = await withGroqRetry(() =>
     provider.completeWithTools(messages, [], {
       model: GROQ_SMALLTALK_MODEL,
-      // Budżet z zapasem — z luźną personą model dodaje komentarze
-      // („całkiem przyzwoicie", „akurat blisko centrum") i przy 5+ wynikach
-      // potrzebuje miejsca na wszystkie + krótkie reakcje. 400 tok = ~8 zdań
-      // PL z luzem, eliminuje cięcia w pół słowa typu „bez zbędnego kopi[owania]".
-      maxTokens: 420,
+      // GPT-OSS dolicza ukryty reasoning do `max_tokens`. 420 zjadało
+      // widoczne zdanie albo zwracało pusty `content`. 1024 zostawia
+      // miejsce na krótki chain-of-thought i pełną odpowiedź po polsku.
+      maxTokens: 1024,
       // Wyższa temperatura → mniej powtarzalne formy, więcej naturalnych
       // wariacji ("Pizzy taniej?" vs "Pod pizzę masz parę miejsc" vs „Tanio
       // na pizzę: ..."). 0.75 to sweet spot dla Llama 8B w PL — niżej brzmi
@@ -229,7 +228,7 @@ export async function* streamAnswer(
 
   yield* provider.streamCompletion(messages, [], {
     model: GROQ_SMALLTALK_MODEL,
-    maxTokens: 512,
+    maxTokens: 1024,
     temperature: 0.75,
     toolChoice: 'none',
   })

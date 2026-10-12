@@ -144,9 +144,9 @@ export async function generateSmartChips(
         () =>
           provider.completeWithTools(messages, [], {
             model: GROQ_SMALLTALK_MODEL,
-            // Maly budzet - JSON z 3 chipami to ~40 tokenow. 80 tok = bufor
-            // na ewentualny prefix typu "Oto chipy: " ktory potem odrzucamy.
-            maxTokens: 80,
+            // JSON z 3 chipami jest krótki, ale GPT-OSS liczy reasoning
+            // do `max_tokens`. 80 kończyło się pustym `content`.
+            maxTokens: 512,
             // Niska temperatura — chcemy deterministyczne JSON, nie poezje.
             temperature: 0.3,
             toolChoice: 'none',

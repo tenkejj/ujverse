@@ -168,7 +168,8 @@ export async function updateUserMemory(
       () =>
         provider.completeWithTools(messages, [], {
           model: GROQ_SMALLTALK_MODEL,
-          maxTokens: 200,
+          // Ekstrakcja JSON jest krótka; zapas jest na ukryty reasoning GPT-OSS.
+          maxTokens: 512,
           // Niska temperatura - chcemy stabilna ekstrakcje, nie kreatywnosc.
           temperature: 0.2,
           toolChoice: 'none',

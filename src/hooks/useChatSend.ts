@@ -91,7 +91,18 @@ export function useChatSend(): UseChatSendResult {
           }
           useChatStore.getState().appendAssistantMessage(event.content)
         }
+        const last = useChatStore.getState().messages.at(-1)
+        if (
+          !controller.signal.aborted &&
+          last?.role === 'assistant' &&
+          last.content.trim().length === 0
+        ) {
+          useChatStore.getState().dropTrailingEmptyAssistant()
+          useChatStore.getState().setError('Pusta odpowiedź asystenta.')
+          toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
+        }
       } catch (err) {
+        useChatStore.getState().dropTrailingEmptyAssistant()
         if (controller.signal.aborted) return
         // DEBUG (Krok 3): pełen rzut błędu do F12 → Console.
         // `LLMServiceError` niesie też status HTTP — przydatne, gdy proxy

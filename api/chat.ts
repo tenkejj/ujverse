@@ -2,9 +2,10 @@
  * Edge orchestrator dla AI chat z Function Calling (Tools).
  *
  * - **Runtime**: Vercel Edge (Web standards `Request` / `Response`).
- * - **Provider**: `GroqProvider` (OpenAI-compat). Model główny to
- *   `DEFAULT_GROQ_MODEL` (`openai/gpt-oss-120b`), small-talk i synteza
- *   idą przez `GROQ_SMALLTALK_MODEL` (`openai/gpt-oss-20b`).
+ * - **Provider**: `GroqProvider` (OpenAI-compat). Pełny zestaw narzędzi
+ *   decyduje `DEFAULT_GROQ_MODEL` (`openai/gpt-oss-120b`). Small-talk,
+ *   zawężona lista narzędzi (router) i synteza faktów idą przez
+ *   `GROQ_SMALLTALK_MODEL` (`openai/gpt-oss-20b`).
  *   `MockProvider` z `llmService.ts` jest świadomie pominięty w tool-aware
  *   ścieżce — bez `GROQ_API_KEY` brakuje sensu uruchamiać Function Calling.
  * - **Persona**: `UJVERSE_SYSTEM_PROMPT` z `_lib/llmService.ts` injectowany
@@ -72,6 +73,7 @@ import { kvGetSafe, kvSetSafe } from './_lib/kvCache.js'
 import {
   DEFAULT_GROQ_MODEL,
   GROQ_SMALLTALK_MODEL,
+  LlmServiceError,
   withGroqRetry,
   withPersona,
 } from './_lib/llmService.js'
@@ -116,7 +118,20 @@ const MAX_CONTENT_CHARS = 2500
  */
 const MAX_HISTORY_MESSAGES = 8
 /** Komunikat zwracany użytkownikowi gdy Groq odpowie 429 (rate limit / quota). */
-const RATE_LIMIT_USER_MESSAGE = 'System przeciążony (Rate Limit). Spróbuj za minutę.'
+const RATE_LIMIT_USER_MESSAGE =
+  'Za dużo pytań naraz. Daj mi minutę i spróbuj jeszcze raz.'
+/**
+ * Gdy model po retry nadal nie odpowie (5xx, transport, złe żądanie),
+ * klient dostaje to zdanie w SSE 200. Puste 502 „Proxy Error" zostawiało
+ * w UI pustą chmurkę i toast „Asystent nie odpowiada".
+ */
+const PROVIDER_FAILURE_MESSAGE =
+  'Coś po drodze się wykrzaczyło — spróbuj jeszcze raz za chwilę.'
+/**
+ * Decyzja narzędzi idzie mniejszym modelem, gdy router zawęził listę do
+ * co najwyżej tylu schematów. Pełny zestaw zostaje na `DEFAULT_GROQ_MODEL`.
+ */
+const ROUTED_DECISION_TOOL_CAP = 4
 /**
  * Komunikat dla circuit-breaker'a — gdy ostatnie N requestów się posypało,
  * przyznajemy się otwarcie (lepsze niż timeout). Dynamiczny `retryAfterSec`
@@ -167,6 +182,107 @@ export function stripThinkingTags(text: string): string {
   let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '')
   cleaned = cleaned.replace(/<think>[\s\S]*$/i, '')
   return cleaned.trim()
+}
+
+const THINK_OPEN = '<think>'
+const THINK_CLOSE = '</think>'
+
+function suffixMatchingPrefix(text: string, needle: string): number {
+  const lower = text.toLowerCase()
+  const max = Math.min(needle.length - 1, lower.length)
+  for (let n = max; n > 0; n--) {
+    if (needle.startsWith(lower.slice(-n))) return n
+  }
+  return 0
+}
+
+/**
+ * Filtr strumienia: `<think>` nie może dotrzeć do klienta. `stripThinkingTags`
+ * działa na całym buforze dopiero po `done`, a delty są już wtedy wyświetlone.
+ * Pierwsze znaki trzymamy, dopóki nie wiadomo, czy to otwarcie tagu.
+ */
+class StreamingThinkGate {
+  private buf = ''
+  private inside = false
+  private decided = false
+
+  push(delta: string): string {
+    if (!delta) return ''
+    this.buf += delta
+    return this.drain()
+  }
+
+  flush(): string {
+    if (this.inside) {
+      this.buf = ''
+      this.inside = false
+      return ''
+    }
+    const out = this.buf
+    this.buf = ''
+    return out
+  }
+
+  private drain(): string {
+    let out = ''
+    while (this.buf.length > 0) {
+      if (this.inside) {
+        const closeAt = this.buf.toLowerCase().indexOf(THINK_CLOSE)
+        if (closeAt === -1) return out
+        this.buf = this.buf.slice(closeAt + THINK_CLOSE.length)
+        this.inside = false
+        continue
+      }
+
+      if (!this.decided) {
+        const lead = this.buf.length - this.buf.trimStart().length
+        const head = this.buf.slice(lead)
+        const lowerHead = head.toLowerCase()
+        if (
+          lowerHead.length < THINK_OPEN.length &&
+          THINK_OPEN.startsWith(lowerHead)
+        ) {
+          return out
+        }
+        this.decided = true
+        if (lowerHead.startsWith(THINK_OPEN)) {
+          this.inside = true
+          this.buf = head.slice(THINK_OPEN.length)
+          continue
+        }
+      }
+
+      const openAt = this.buf.toLowerCase().indexOf(THINK_OPEN)
+      if (openAt === -1) {
+        const keep = suffixMatchingPrefix(this.buf, THINK_OPEN)
+        if (keep === 0) {
+          out += this.buf
+          this.buf = ''
+        } else {
+          out += this.buf.slice(0, this.buf.length - keep)
+          this.buf = this.buf.slice(this.buf.length - keep)
+        }
+        return out
+      }
+      out += this.buf.slice(0, openAt)
+      this.buf = this.buf.slice(openAt + THINK_OPEN.length)
+      this.inside = true
+    }
+    return out
+  }
+}
+
+/**
+ * `withGroqRetry` owija każdy błąd w `LlmServiceError`. Sprawdzenie
+ * `instanceof GroqProviderError` na wyniku retry nigdy nie widzi 429,
+ * więc łagodna ścieżka SSE nie działała i user dostawał 502.
+ */
+function groqErrorFrom(err: unknown): GroqProviderError | null {
+  if (err instanceof GroqProviderError) return err
+  if (err instanceof LlmServiceError && err.cause instanceof GroqProviderError) {
+    return err.cause
+  }
+  return null
 }
 
 type ProxyMessage = { role: string; content: string }
@@ -645,6 +761,16 @@ function streamSynthesizedAnswer(opts: {
           // callback (zmienna `facts` captured ze scope'u może być teoretycznie
           // reassignowana przed iteracją). Powtórzony check zwęża typ lokalnie.
           const streamStart = Date.now()
+          const thinkGate = new StreamingThinkGate()
+          const emitVisible = (content: string) => {
+            if (!content) return
+            buffered += content
+            emittedAnything = true
+            const payload = JSON.stringify({
+              choices: [{ delta: { content } }],
+            })
+            controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
+          }
           for await (const chunk of streamAnswer({
             userQuery,
             facts: facts.facts,
@@ -660,23 +786,10 @@ function streamSynthesizedAnswer(opts: {
               break
             }
             if (chunk.type === 'delta') {
-              // NIE strippujemy per-delta przez `stripThinkingTags` bo ta
-              // funkcja kończy się `.trim()` — zjada WIODĄCE SPACJE z każdej
-              // delty Groqa. Llama 8B (GROQ_SMALLTALK_MODEL używany przez
-              // `streamAnswer`) emituje tokeny typu " w", " Galerii", " Pizza"
-              // i .trim() zlepia wszystkie słowa razem („Pizza Hut w Galerii"
-              // → „PizzaHutwGalerii"). Llama 8B i tak nie generuje `<think>`,
-              // więc strip jest zbędny w streamie. Defensywne: cały bufor
-              // przechodzi przez `stripThinkingTags` po `done` (jakby kiedyś
-              // syntezator przeszedł na model z reasoning leak).
-              const content = chunk.content
-              if (!content) continue
-              buffered += content
-              emittedAnything = true
-              const payload = JSON.stringify({
-                choices: [{ delta: { content } }],
-              })
-              controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
+              // Nie wołamy `stripThinkingTags` per delta — kończy się `.trim()`
+              // i skleja tokeny („ w", „ Galerii") w jedno słowo. Tag `<think>`
+              // zdejmuje bramka, która nie rusza zwykłych spacji.
+              emitVisible(thinkGate.push(chunk.content))
             } else if (chunk.type === 'done') {
               if (chunk.usage) usageAcc.add(chunk.usage)
             } else if (chunk.type === 'error') {
@@ -691,6 +804,7 @@ function streamSynthesizedAnswer(opts: {
               break
             }
           }
+          emitVisible(thinkGate.flush())
         }
 
         // Recovery: stream zakończył się bez treści (429 / pusty content) —
@@ -1064,19 +1178,6 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError(500, 'Internal token-budget invariant violated')
   }
 
-  // Auto-context: niewidoczny `system` message z datą/godziną/profilem usera.
-  // Wstrzykiwany jako DRUGI system po personie (`UJVERSE_SYSTEM_PROMPT`)
-  // — Groq łączy multiple `system`-y w spójną tożsamość, a my zyskujemy
-  // sterowanie sytuacyjne („wieczór wtorku" → bot wie czego nie proponować).
-  // Profil cache'owany 5 min w KV, więc DB hit max raz per usera per okno.
-  const autoContext = await buildAutoContext(user.userId, ctx.supabaseAdmin)
-  const personaConversation = withPersona(pruned)
-  const conversation: GroqMessage[] = [
-    personaConversation[0]!,
-    { role: 'system', content: autoContext },
-    ...personaConversation.slice(1),
-  ]
-
   // Tool-call throttling + Intent Routing.
   //
   // Krok 1: czy użytkownik w ogóle WYMAGA narzędzi? Small-talk ("cześć",
@@ -1268,6 +1369,17 @@ export default async function handler(req: Request): Promise<Response> {
     void incrCounter('fast_path:miss')
   }
 
+  // Auto-context dopiero po cache / small-talk / fast-path. Te skróty nie
+  // wołają modelu, a profil + pamięć to odczyt KV (a przy miss — Supabase).
+  // Wstrzykiwany jako drugi `system` po personie.
+  const autoContext = await buildAutoContext(user.userId, ctx.supabaseAdmin)
+  const personaConversation = withPersona(pruned)
+  const conversation: GroqMessage[] = [
+    personaConversation[0]!,
+    { role: 'system', content: autoContext },
+    ...personaConversation.slice(1),
+  ]
+
   let finalContent = ''
   /**
    * 429 z Groqa NIE jest błędem fatalnym dla użytkownika — to przejściowy
@@ -1276,6 +1388,10 @@ export default async function handler(req: Request): Promise<Response> {
    * tak jakby model sam to powiedział.
    */
   let rateLimited = false
+  /** Model po retry nie oddał odpowiedzi — zdanie po polsku, bez cache. */
+  let providerFailed = false
+  /** Puste / awaryjne treści nie mogą utknąć w KV na kolejną turę. */
+  let suppressResponseCache = false
   /**
    * Najnowsza nazwa narzędzia, której orchestrator używa przy budowie
    * odpowiedzi. Wysyłamy ją jako meta event w SSE, żeby klient mógł pokazać
@@ -1285,31 +1401,50 @@ export default async function handler(req: Request): Promise<Response> {
    */
   let executedToolName: string | null = null
   // `usageAcc` zadeklarowany powyżej (przed fast-path) — sumuje tokeny ze
-  // wszystkich wywołań Groqa: tool decision (qwen3-32b) + synthesis (Llama 8B).
+  // wszystkich wywołań Groqa: decyzja narzędzi + synteza na 20B.
   let resolvedModel = DEFAULT_GROQ_MODEL
 
   try {
     type Completion = Awaited<ReturnType<GroqProvider['completeWithTools']>>
     let completion: Completion | null = null
-    // Mały model dla ścieżki SMALL-TALK (brak tools, „cześć/dzięki/co u Ciebie").
-    // qwen3-32b kosztowałby ~5× więcej i odpowiadał ~3× wolniej dla luźnej
-    // pogawędki. Cap 400 tok — z nową luźną personą model dorzuca komentarze
-    // / żarty / wyjaśnienia („balić auli to...") i wcześniejsze 200 ucinało
-    // odpowiedzi w pół słowa. 400 tok = ~7-8 zdań PL, max comfort.
+    // Small-talk („cześć") i zawężona lista narzędzi idą na 20B.
+    // Pełny zestaw narzędzi zostaje na 120B.
     const isSmallTalkPath = !useTools
+    // Router już wybrał 1–4 narzędzi. 20B układa tool_call szybciej niż 120B,
+    // a krótka lista schematów nie potrzebuje dużego modelu. Pełny zestaw
+    // (`routedIntent === 'all'`) zostaje na 120B.
+    const routedSmallModel =
+      useTools &&
+      Array.isArray(routedIntent) &&
+      effectiveTools.length > 0 &&
+      effectiveTools.length <= ROUTED_DECISION_TOOL_CAP
     // GPT-OSS liczy tokeny reasoning do `max_tokens`, nawet gdy
-    // `include_reasoning: false` ich nie zwraca. 512/768 ucinało widoczną
-    // odpowiedź albo `tool_calls` przy `reasoning_effort: low`.
+    // `include_reasoning: false` ich nie zwraca. Niski temperature przy
+    // narzędziach trzyma wybór funkcji, a nie luźną prozę.
     const completeOpts = isSmallTalkPath
-      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 1024 }
-      : { maxTokens: 1536 }
+      ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 1024, temperature: 0.7 }
+      : routedSmallModel
+        ? { model: GROQ_SMALLTALK_MODEL, maxTokens: 1024, temperature: 0.2 }
+        : { model: DEFAULT_GROQ_MODEL, maxTokens: 1536, temperature: 0.2 }
+    const decisionLane = isSmallTalkPath
+      ? 'small-talk'
+      : routedSmallModel
+        ? 'routed-20b'
+        : 'full-120b'
+    console.log(
+      '[Groq] decision model:',
+      completeOpts.model,
+      '| lane:',
+      decisionLane,
+      '| maxTokens:',
+      completeOpts.maxTokens,
+      '| tools:',
+      effectiveTools.length,
+    )
     if (isSmallTalkPath) {
       void incrCounter('groq:small_talk_path')
-      console.log(
-        '[Groq] small-talk path — model:',
-        GROQ_SMALLTALK_MODEL,
-        '| maxTokens: 1024',
-      )
+    } else if (routedSmallModel) {
+      void incrCounter('groq:routed_small_model')
     }
     // Circuit breaker — gdy ostatnie N requestów do Groqa padło 429/5xx,
     // odmawiamy NATYCHMIAST z friendly message zamiast czekać 3-5s na
@@ -1348,16 +1483,27 @@ export default async function handler(req: Request): Promise<Response> {
       // czyści `open_until` (no-op gdy klucza i tak nie było). Tani write.
       void cbRecordSuccess()
     } catch (err) {
-      if (err instanceof GroqProviderError && err.status === 429) {
-        console.warn('[api/chat] Groq 429 (rate limit) — graceful degrade for user')
+      const groqErr = groqErrorFrom(err)
+      const status = groqErr?.status ?? null
+      if (status === 429) {
+        console.warn('[api/chat] Groq 429 after retry — graceful degrade for user')
         rateLimited = true
         void cbRecordError({ status: 429, reason: 'rate_limit' })
-      } else if (err instanceof GroqProviderError && err.status && err.status >= 500) {
-        // 5xx z Groqa = problem po ich stronie, też karmimy CB
-        void cbRecordError({ status: err.status, reason: 'server_error' })
-        throw err
+      } else if (status !== null && status >= 500) {
+        console.error(
+          '[api/chat] Groq',
+          status,
+          'after retry — graceful degrade:',
+          groqErr?.message,
+        )
+        providerFailed = true
+        void cbRecordError({ status, reason: 'server_error' })
       } else {
-        throw err
+        console.error(
+          '[api/chat] model call failed after retry — graceful degrade:',
+          err instanceof Error ? err.message : err,
+        )
+        providerFailed = true
       }
     }
 
@@ -1487,22 +1633,33 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (rateLimited) {
       finalContent = RATE_LIMIT_USER_MESSAGE
+      suppressResponseCache = true
+    } else if (providerFailed) {
+      finalContent = PROVIDER_FAILURE_MESSAGE
+      suppressResponseCache = true
     } else if (!finalContent) {
       console.warn(
         '[api/chat] empty finalContent after single-shot path — using safe fallback',
       )
       finalContent = 'Przepraszam, nie udało mi się dokończyć odpowiedzi. Spróbuj ponownie.'
+      suppressResponseCache = true
     }
   } catch (err) {
-    if (err instanceof GroqProviderError) {
-      console.error('LLM provider HTTP error:', err.status, err.message)
-      return jsonError(err.status ?? 502, err.message)
+    const groqErr = groqErrorFrom(err)
+    console.error(
+      '[api/chat] unhandled failure:',
+      groqErr ? `groq ${groqErr.status ?? 'n/a'} ${groqErr.message}` : err,
+    )
+    if (groqErr?.status === 429) {
+      void cbRecordError({ status: 429, reason: 'rate_limit' })
+      void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+      return streamFinalContentChunked(RATE_LIMIT_USER_MESSAGE, null)
     }
-    console.error('LLM provider transport error:', err)
-    return new Response('Proxy Error', {
-      status: 502,
-      headers: { ...CORS_HEADERS },
-    })
+    if (groqErr?.status && groqErr.status >= 500) {
+      void cbRecordError({ status: groqErr.status, reason: 'server_error' })
+    }
+    void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+    return streamFinalContentChunked(PROVIDER_FAILURE_MESSAGE, null)
   }
 
   // Markdown Guard — OSTATNIA bramka przed wysłaniem. Jeśli `finalContent`
@@ -1528,7 +1685,7 @@ export default async function handler(req: Request): Promise<Response> {
   // request-u; mimo to `await`-ujemy, bo Edge function nie ma `waitUntil`
   // w darmowym planie i bez awaita Promise mógłby zostać porzucony.
   if (
-    !rateLimited &&
+    !suppressResponseCache &&
     guardedContent.length > 0 &&
     guardedContent !== MARKDOWN_GUARD_ERROR
   ) {

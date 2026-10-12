@@ -65,6 +65,12 @@ type ChatState = {
    * tylko assistant (defensywnie). Nie chcemy partial-state tropików.
    */
   removeLastTurn: () => { lastUserText: string | null }
+  /**
+   * Zdejmuje ostatnią wiadomość asystenta, gdy nie dostała żadnej treści.
+   * Nieudany request zostawiał pustą chmurkę obok pytania usera.
+   * Wiadomość usera zostaje — da się ją wysłać ponownie.
+   */
+  dropTrailingEmptyAssistant: () => void
   clearHistory: () => void
 }
 
@@ -209,6 +215,15 @@ export const useChatStore = create<ChatState>((set) => ({
       return { messages: next }
     })
     return { lastUserText }
+  },
+
+  dropTrailingEmptyAssistant: () => {
+    set((state) => {
+      const last = state.messages[state.messages.length - 1]
+      if (!last || last.role !== 'assistant') return state
+      if (last.content.trim().length > 0) return state
+      return { messages: state.messages.slice(0, -1) }
+    })
   },
 
   clearHistory: () =>
