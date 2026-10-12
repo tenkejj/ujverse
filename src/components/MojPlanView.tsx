@@ -6,11 +6,10 @@
  * do tła:
  *
  *   1. Data i krótkie powitanie
- *   2. Pasek tygodnia (zakres, liczby, prev / dziś / next)
- *   3. Jedna linia: co jest teraz albo następne
- *   4. Dni jako zwykła lista zajęć
- *   5. Terminy, zmiany i wydarzenia — na telefonie za zwinięciem
- *   6. Import planu z USOSweb
+ *   2. Karta „teraz / następne”: godzina, nazwa, sala, prowadzący
+ *   3. Tydzień jako plan: kolumny dni na desktopie, wybrany dzień na telefonie
+ *   4. Terminy, zmiany i wydarzenia — na telefonie za zwinięciem
+ *   5. Import planu z USOSweb
  *
  * Nawigacja: brak back-buttona, brak side-railu, brak duplikujących widgetów.
  *
@@ -50,6 +49,7 @@ import {
   KIND_LABELS,
   KIND_TONE,
 } from './briefing/briefingFormat'
+import type { TodayClass } from '../hooks/useTodayClasses'
 import type { TimetableEntryRow } from '../services/adapters/TimetableAdapter'
 import type { Profile } from '../types'
 import type { Cohort } from '../types/database'
@@ -345,15 +345,108 @@ function ChangesEmptyCard() {
   )
 }
 
-/** Jedna linia zajęć: godzina, nazwa, sala. Odwołane otwiera komunikat. */
-function ClassTicket({
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+
+function soonLabel(minutes: number): string | null {
+  if (minutes <= 0) return null
+  if (minutes < 60) return `za ${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest === 0 ? `za ${hours} h` : `za ${hours} h ${rest} min`
+}
+
+/** Poniedziałek–piątek zawsze, weekend tylko gdy są zajęcia. */
+function visiblePlanDays(days: { date: Date; entries: TimetableEntryRow[] }[]) {
+  return days.filter((d) => {
+    const dow = d.date.getDay()
+    if (dow === 0 || dow === 6) return d.entries.length > 0
+    return true
+  })
+}
+
+/** Najważniejsza informacja: godzina, nazwa, sala i prowadzący, każde w osobnej linii. */
+function NowCard({
+  item,
+  todayCount,
+}: {
+  item: TodayClass | null
+  todayCount: number
+}) {
+  if (!item) {
+    return (
+      <div className="rounded-2xl border border-zinc-200/80 bg-white px-5 py-4 dark:border-white/10 dark:bg-zinc-950/50">
+        <p className={`text-[15px] font-semibold ${theme.text.primary}`}>
+          {todayCount > 0 ? 'Na dziś koniec' : 'Dziś bez zajęć'}
+        </p>
+        <p className={`mt-1 text-[13px] ${theme.text.muted}`}>
+          Reszta tygodnia jest w planie poniżej.
+        </p>
+      </div>
+    )
+  }
+
+  const cancelled = item.isCancelled
+  const soon = cancelled ? null : soonLabel(item.startsInMinutes)
+  return (
+    <div
+      className={[
+        'rounded-2xl border px-5 py-4',
+        cancelled
+          ? 'border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/[0.08]'
+          : 'border-[#1e293b]/20 bg-white dark:border-brand-gold-bright/25 dark:bg-zinc-950/60',
+      ].join(' ')}
+    >
+      <p
+        className={`text-[11px] font-bold uppercase tracking-[0.16em] ${
+          cancelled ? 'text-red-600 dark:text-red-300' : 'text-[#1e293b] dark:text-brand-gold-bright'
+        }`}
+      >
+        {cancelled ? 'Odwołane' : item.startsInMinutes === 0 ? 'Teraz' : 'Następne'}
+        {soon && (
+          <span className="ml-2 font-semibold normal-case tracking-normal">{soon}</span>
+        )}
+      </p>
+      <p
+        className={`mt-2 font-mono text-[1.75rem] font-semibold tabular-nums leading-none ${
+          cancelled ? 'text-red-800 line-through dark:text-red-200' : 'text-zinc-950 dark:text-white'
+        }`}
+      >
+        {fmtHM(item.startDate)}–{fmtHM(item.endDate)}
+      </p>
+      <p
+        className={`mt-3 text-xl font-semibold leading-snug ${
+          cancelled
+            ? 'text-red-800 line-through dark:text-red-200'
+            : 'text-zinc-950 dark:text-zinc-50'
+        }`}
+      >
+        {item.summary}
+      </p>
+      {item.location && (
+        <p className={`mt-2 text-[15px] ${cancelled ? 'text-red-700 dark:text-red-200' : theme.text.primary}`}>
+          {item.location}
+        </p>
+      )}
+      {item.lecturer_name && (
+        <p className={`mt-0.5 text-[14px] ${theme.text.muted}`}>{item.lecturer_name}</p>
+      )}
+    </div>
+  )
+}
+
+/** Jedno zajęcie w planie: zakres godzin, nazwa, sala. Odwołane otwiera komunikat. */
+function PlanBlock({
   entry,
+  emphasized,
+  large,
   onOpenCancellation,
-  emphasized = false,
 }: {
   entry: TimetableEntryRow
+  emphasized: boolean
+  large: boolean
   onOpenCancellation: (announcementId: string) => void
-  emphasized?: boolean
 }) {
   const start = new Date(entry.start_time)
   const end = new Date(entry.end_time)
@@ -364,8 +457,6 @@ function ClassTicket({
       onOpenCancellation(entry.cancelled_announcement_id)
     }
   }
-
-  const meta = [entry.location, entry.lecturer_name].filter(Boolean).join(' · ')
 
   return (
     <div
@@ -383,90 +474,176 @@ function ClassTicket({
           : undefined
       }
       className={[
-        'flex gap-3 rounded-xl border px-3 py-2.5',
+        large ? 'px-4 py-3.5' : 'rounded-lg px-2 py-2',
         isCancelled
-          ? 'cursor-pointer border-red-200 bg-red-50/80 dark:border-red-500/30 dark:bg-red-500/[0.07]'
+          ? 'cursor-pointer bg-red-50 dark:bg-red-500/[0.08]'
           : emphasized
-            ? 'border-[#1e293b]/25 bg-white dark:border-brand-gold-bright/30 dark:bg-zinc-950/70'
-            : 'border-zinc-200/80 bg-white/70 dark:border-white/10 dark:bg-zinc-950/40',
+            ? 'border-l-2 border-[#1e293b] bg-[#1e293b]/[0.06] dark:border-brand-gold-bright dark:bg-brand-gold-bright/[0.08]'
+            : '',
       ].join(' ')}
     >
-      <div className="w-12 shrink-0 pt-0.5">
-        <p
-          className={`font-mono text-[13px] font-semibold tabular-nums leading-none ${
-            isCancelled
-              ? 'text-red-700 line-through dark:text-red-300'
-              : 'text-zinc-900 dark:text-zinc-50'
-          }`}
-        >
-          {fmtHM(start)}
+      <p
+        className={[
+          'font-mono font-semibold tabular-nums leading-none',
+          large ? 'text-[15px]' : 'text-[12px]',
+          isCancelled ? 'text-red-700 line-through dark:text-red-300' : 'text-zinc-950 dark:text-zinc-50',
+        ].join(' ')}
+      >
+        {fmtHM(start)}–{fmtHM(end)}
+      </p>
+      <p
+        className={[
+          'mt-1.5 font-semibold leading-snug',
+          large ? 'text-[16px]' : 'text-[13px]',
+          isCancelled
+            ? 'text-red-800 line-through dark:text-red-200'
+            : 'text-zinc-900 dark:text-zinc-50',
+        ].join(' ')}
+      >
+        {entry.summary}
+      </p>
+      {isCancelled && (
+        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">
+          Odwołane
         </p>
-        <p className="mt-1 font-mono text-[11px] tabular-nums leading-none text-zinc-400">
-          {fmtHM(end)}
+      )}
+      {entry.location && (
+        <p className={`mt-1 leading-snug ${large ? 'text-[13.5px]' : 'text-[12px]'} text-zinc-600 dark:text-zinc-300`}>
+          {entry.location}
         </p>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-          <span className={isCancelled ? 'text-red-800 line-through decoration-red-400/70 dark:text-red-200' : ''}>
-            {entry.summary}
-          </span>
-          {isCancelled && (
-            <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">
-              odwołane
-            </span>
-          )}
+      )}
+      {large && entry.lecturer_name && (
+        <p className="mt-0.5 text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">
+          {entry.lecturer_name}
         </p>
-        {meta && (
-          <p className="mt-0.5 truncate text-[12.5px] text-zinc-500 dark:text-zinc-400">{meta}</p>
-        )}
-        {isCancelled && entry.cancelled_announcement_body && (
-          <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-red-800/90 dark:text-red-200/90">
-            {entry.cancelled_announcement_body.replace(/\s+/g, ' ').trim()}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   )
 }
 
-function DayBlock({
-  date,
-  isToday,
-  isPast,
-  entries,
+/**
+ * Tydzień jako plan, nie lista.
+ * Desktop: siedem kolumn w jednej tabeli. Telefon: wybór dnia i jego kolumna.
+ */
+function WeekBoard({
+  days,
+  today,
   nextEntryId,
   onOpenCancellation,
 }: {
-  date: Date
-  isToday: boolean
-  isPast: boolean
-  entries: TimetableEntryRow[]
+  days: { date: Date; entries: TimetableEntryRow[] }[]
+  today: Date
   nextEntryId: number | null
   onOpenCancellation: (announcementId: string) => void
 }) {
+  const [picked, setPicked] = useState<string | null>(null)
+  const weekId = dayKey(days[0]?.date ?? today)
+
+  useEffect(() => {
+    setPicked(null)
+  }, [weekId])
+
+  const visible = visiblePlanDays(days)
+  const fallback =
+    visible.find((d) => isSameDay(d.date, today)) ??
+    visible.find((d) => d.entries.length > 0) ??
+    visible[0]
+  const active = visible.find((d) => dayKey(d.date) === picked) ?? fallback
+
   return (
-    <div className={`flex gap-3 ${isPast && !isToday ? 'opacity-55' : ''}`}>
-      <div className="w-11 shrink-0 pt-2.5 text-center">
-        <p
-          className={`text-[11px] font-semibold uppercase tracking-wide ${
-            isToday ? 'text-[#1e293b] dark:text-brand-gold-bright' : 'text-zinc-500'
-          }`}
-        >
-          {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
-        </p>
-        <p className="text-lg font-semibold tabular-nums leading-none text-zinc-900 dark:text-zinc-50">
-          {date.getDate()}
-        </p>
+    <div>
+      <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1 xl:hidden">
+        {visible.map(({ date, entries }) => {
+          const selected = active ? isSameDay(date, active.date) : false
+          const isToday = isSameDay(date, today)
+          return (
+            <button
+              key={dayKey(date)}
+              type="button"
+              onClick={() => setPicked(dayKey(date))}
+              aria-pressed={selected}
+              className={[
+                'flex min-h-14 min-w-12 shrink-0 flex-col items-center justify-center rounded-xl px-2',
+                selected
+                  ? 'bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950'
+                  : 'border border-zinc-200 bg-white text-zinc-700 dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-200',
+              ].join(' ')}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wide">
+                {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
+              </span>
+              <span className="text-[15px] font-semibold tabular-nums leading-none">{date.getDate()}</span>
+              <span
+                className={`mt-1 size-1 rounded-full ${
+                  entries.length > 0 ? 'bg-current' : 'bg-transparent'
+                }`}
+              />
+            </button>
+          )
+        })}
       </div>
-      <div className="min-w-0 flex-1 space-y-2">
-        {entries.map((entry) => (
-          <ClassTicket
-            key={entry.id}
-            entry={entry}
-            emphasized={entry.id === nextEntryId}
-            onOpenCancellation={onOpenCancellation}
-          />
-        ))}
+
+      {active && (
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-950/40 xl:hidden">
+          {active.entries.length === 0 ? (
+            <p className="px-4 py-10 text-center text-[14px] text-zinc-500">Wolne</p>
+          ) : (
+            active.entries.map((entry, index) => (
+              <div key={entry.id} className={index > 0 ? 'border-t border-zinc-200 dark:border-white/10' : ''}>
+                <PlanBlock
+                  entry={entry}
+                  large
+                  emphasized={entry.id === nextEntryId}
+                  onOpenCancellation={onOpenCancellation}
+                />
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      <div
+        className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white xl:grid dark:border-white/10 dark:bg-zinc-950/40"
+        style={{ gridTemplateColumns: `repeat(${visible.length}, minmax(0, 1fr))` }}
+      >
+        {visible.map(({ date, entries }, column) => {
+          const isToday = isSameDay(date, today)
+          return (
+            <div
+              key={dayKey(date)}
+              className={column > 0 ? 'border-l border-zinc-200 dark:border-white/10' : ''}
+            >
+              <div
+                className={[
+                  'border-b px-2 py-2.5 text-center',
+                  isToday
+                    ? 'border-[#1e293b]/20 bg-[#1e293b] text-white dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright dark:text-zinc-950'
+                    : 'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-zinc-300',
+                ].join(' ')}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide">
+                  {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
+                </p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums leading-none">{date.getDate()}</p>
+              </div>
+              <div className="flex min-h-28 flex-col gap-1 p-1.5">
+                {entries.length === 0 ? (
+                  <p className="m-auto text-[12px] text-zinc-400">wolne</p>
+                ) : (
+                  entries.map((entry) => (
+                    <PlanBlock
+                      key={entry.id}
+                      entry={entry}
+                      large={false}
+                      emphasized={entry.id === nextEntryId}
+                      onOpenCancellation={onOpenCancellation}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -658,77 +835,34 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
         showAiCta={showAiCta}
       />
 
-      {/* 2. HERO — okładka tygodnia */}
-      <PlanHero
-        weekStart={weekStart}
-        isCurrentWeek={isCurrentWeek}
-        onPrev={() => setWeekStart(addDays(weekStart, -7))}
-        onNext={() => setWeekStart(addDays(weekStart, 7))}
-        onToday={() => setWeekStart(currentWeekStart)}
-        stats={stats}
-      />
-
-      {isCurrentWeek && daily.nextClass && (
-        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[15px] leading-snug text-zinc-800 dark:text-zinc-100">
-          <span className="font-semibold text-[#1e293b] dark:text-brand-gold-bright">
-            {daily.nextClass.startsInMinutes === 0 ? 'Teraz' : 'Następne'}
-          </span>
-          <span>{daily.nextClass.summary}</span>
-          <span className="text-zinc-500 dark:text-zinc-400">{fmtHM(daily.nextClass.startDate)}</span>
-          {daily.nextClass.location && (
-            <span className="text-zinc-500 dark:text-zinc-400">{daily.nextClass.location}</span>
-          )}
-        </p>
+      {isCurrentWeek && (
+        <NowCard item={daily.nextClass} todayCount={daily.classes.length} />
       )}
 
-      {/* Tydzień — lista dni */}
       <section className="space-y-3">
-        <SectionHeader
-          icon={CalendarClock}
-          title="Plan tygodnia"
-          subtitle={
-            daysWithEntries.length === 0
-              ? 'wolne'
-              : `${daysWithEntries.length} ${daysWithEntries.length === 1 ? 'dzień' : 'dni'}`
-          }
+        <PlanHero
+          weekStart={weekStart}
+          isCurrentWeek={isCurrentWeek}
+          onPrev={() => setWeekStart(addDays(weekStart, -7))}
+          onNext={() => setWeekStart(addDays(weekStart, 7))}
+          onToday={() => setWeekStart(currentWeekStart)}
+          stats={stats}
         />
 
         {loading && rows.length === 0 ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-32 animate-pulse rounded-3xl bg-zinc-100 dark:bg-white/[0.04]"
-              />
-            ))}
-          </div>
+          <div className="h-48 animate-pulse rounded-2xl bg-zinc-100 dark:bg-white/[0.04]" />
         ) : daysWithEntries.length === 0 ? (
-          <div
-            className={[
-              'rounded-3xl border px-6 py-16 text-center',
-              'border-zinc-200/70 bg-white/65 backdrop-blur-md',
-              'dark:border-white/[0.07] dark:bg-zinc-950/40',
-            ].join(' ')}
-          >
-            <p className={`text-2xl font-extrabold ${theme.text.primary}`}>Wolny tydzień</p>
-            <p className={`mt-2 text-[14px] ${theme.text.muted}`}>
-              Brak zajęć w tym tygodniu.
-            </p>
+          <div className="rounded-2xl border border-zinc-200/80 bg-white px-6 py-14 text-center dark:border-white/10 dark:bg-zinc-950/40">
+            <p className={`text-xl font-semibold ${theme.text.primary}`}>Wolny tydzień</p>
+            <p className={`mt-2 text-[14px] ${theme.text.muted}`}>Brak zajęć w tym tygodniu.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {daysWithEntries.map(({ date, entries }) => (
-              <DayBlock
-                key={date.toISOString()}
-                date={date}
-                isToday={isSameDay(date, today)}
-                isPast={date.getTime() < today.getTime()}
-                entries={entries}
-                nextEntryId={isCurrentWeek ? daily.nextClass?.id ?? null : null}
-                onOpenCancellation={handleOpenCancellation}
-              />
-            ))}
-          </div>
+          <WeekBoard
+            days={days}
+            today={today}
+            nextEntryId={isCurrentWeek ? daily.nextClass?.id ?? null : null}
+            onOpenCancellation={handleOpenCancellation}
+          />
         )}
       </section>
 
