@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { MessageCircle } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
-import { sectionTitleCls, sideMutedCls } from '../../lib/sidePanelStyles'
 import type { Profile } from '../../types'
 import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { buildWelcomeOpener } from '../../lib/welcomeOpener'
@@ -65,28 +64,32 @@ export default function ChatAssistant({
   return (
     <BaseCard
       variant="default"
-      className={`relative flex ${heightClassName} min-h-0 flex-col overflow-hidden`}
+      className={`relative grid ${heightClassName} min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden`}
     >
       <motion.div
         variants={reducedMotion ? undefined : containerVariants}
         initial={reducedMotion ? false : 'hidden'}
         animate="show"
-        className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-5 text-center"
+        className="flex min-h-0 flex-col items-center justify-center gap-2 px-4 py-3 text-center"
       >
         <motion.div variants={reducedMotion ? undefined : itemVariants}>
-          <VersuHeroCluster iconSize={56} />
+          <VersuHeroCluster
+            containerClass="size-16"
+            iconWrapClass="size-11"
+            iconSize={40}
+          />
         </motion.div>
 
         <motion.h2
           variants={reducedMotion ? undefined : itemVariants}
-          className="text-base font-semibold leading-snug tracking-tight text-[#1e293b] dark:text-white"
+          className="w-full text-balance text-[15px] font-semibold leading-snug tracking-tight text-[#1e293b] dark:text-white"
         >
           {welcome.headline}
         </motion.h2>
 
         <motion.p
           variants={reducedMotion ? undefined : itemVariants}
-          className="max-w-[15rem] text-xs leading-relaxed text-fg-secondary"
+          className="w-full max-w-[16rem] text-balance text-[13px] leading-snug text-fg-secondary"
         >
           {welcome.subline}
         </motion.p>
@@ -106,42 +109,21 @@ export default function ChatAssistant({
           transition={SPRING}
           onClick={() => navigate('/chat')}
           aria-label={`${ctaLabel} z asystentem ${CHAT_ASSISTANT_NAME}`}
-          className="group relative inline-flex w-full max-w-[13.75rem] items-center justify-center gap-2 overflow-hidden rounded-full border border-logo-navy/20 bg-logo-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-logo-navy/90 dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/25 dark:hover:shadow-[0_8px_28px_-6px_rgb(201_162_57/0.2)]"
+          className="mt-0.5 inline-flex w-full max-w-[13.5rem] items-center justify-center gap-2 rounded-full bg-[#1e293b] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold-bright dark:text-zinc-950 dark:hover:bg-brand-gold-bright/90"
         >
-          {!reducedMotion && (
-            <motion.span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 bg-linear-to-r from-transparent via-white/25 to-transparent dark:via-brand-gold-bright/20"
-              initial={{ x: '-120%' }}
-              whileHover={{ x: '120%' }}
-              transition={{ duration: 0.55, ease: 'easeInOut' }}
-            />
-          )}
-          <motion.span
-            aria-hidden
-            className="relative shrink-0"
-            animate={reducedMotion ? undefined : { rotate: [0, -8, 8, 0] }}
-            transition={
-              reducedMotion
-                ? undefined
-                : { duration: 2.6, repeat: Infinity, ease: 'easeInOut', repeatDelay: 3 }
-            }
-          >
-            <MessageCircle size={15} strokeWidth={2.2} />
-          </motion.span>
-          <span className="relative">{ctaLabel}</span>
+          <MessageCircle size={15} strokeWidth={2.2} className="shrink-0" />
+          <span>{ctaLabel}</span>
         </motion.button>
       </motion.div>
 
-      <motion.div
-        initial={reducedMotion ? false : { opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: reducedMotion ? 0 : 0.45, ease: EASE }}
-        className="relative flex shrink-0 items-center justify-center gap-1.5 border-t border-zinc-200/60 px-4 py-2 dark:border-white/8"
-      >
-        <span className={sectionTitleCls}>{CHAT_ASSISTANT_NAME}</span>
-        <span className={`text-[10px] ${sideMutedCls}`}>· {CHAT_MODEL_LABEL}</span>
-      </motion.div>
+      <div className="flex shrink-0 items-center justify-center gap-1.5 border-t border-zinc-200/80 bg-zinc-50/90 px-4 py-1.5 dark:border-white/10 dark:bg-black/40">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
+          {CHAT_ASSISTANT_NAME}
+        </span>
+        <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+          · {CHAT_MODEL_LABEL}
+        </span>
+      </div>
     </BaseCard>
   )
 }

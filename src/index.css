@@ -18,12 +18,13 @@ html {
   max-width: 100vw;
   touch-action: pan-y;
   /*
-   * Rezerwujemy miejsce na pionowy scrollbar zawsze, nawet gdy treść mieści
-   * się w viewporcie. Bez tego krótkie widoki (notyfikacje, ustawienia) nie
-   * mają scrollbara, długie (feed/wydarzenia) mają — content przeskakuje
-   * w bok o ~15 px przy każdej zmianie widoku/animacji AnimatePresence.
+   * Rezerwujemy miejsce na pionowy scrollbar zawsze, po obu krawędziach.
+   * Sam prawy gutter zsuwa środek layoutu (50%) o pół szerokości paska
+   * w lewo od środka okna — na 2K to ok. 8 px, przez co logo w headerze
+   * nie siedzi na osi monitora. Drugi gutter z lewej wyrównuje oś.
+   * Krótkie widoki nie gubią paska, więc treść nie przeskakuje w bok.
    */
-  scrollbar-gutter: stable;
+  scrollbar-gutter: stable both-edges;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
