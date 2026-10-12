@@ -78,6 +78,29 @@ export function polishAssistantReply(text: string): string {
   return softenTranslationese(text)
 }
 
+/**
+ * Lista faktów bez drugiego wywołania modelu. Linie są już po polsku
+ * (tytuł, data, miejsce, link). Przepisanie ich przez GPT-OSS zjadało
+ * kilka–kilkanaście sekund na ukryty reasoning i gubiło szczegóły.
+ */
+export function formatListedFacts(
+  facts: string,
+  hint: string | null,
+  topicHint: string,
+): string | null {
+  const lines = facts
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+  if (lines.length === 0) return null
+  const lead = topicHint.trim().replace(/\.+$/, '')
+  const bullets = lines
+    .map((line) => (line.startsWith('- ') ? line : `- ${line}`))
+    .join('\n')
+  const tail = hint ? `\n${hint.trim().replace(/\.+$/, '')}.` : ''
+  return `${lead}:\n${bullets}${tail}`
+}
+
 export type SynthesisOptions = {
   userQuery: string
   facts: string
@@ -118,6 +141,11 @@ export async function synthesizeAnswer(
   const compact = tryCompactSynthesis(userQuery, facts, hint)
   if (compact) {
     return { text: softenTranslationese(compact), usage: null }
+  }
+
+  const listed = formatListedFacts(facts, hint, topicHint)
+  if (listed) {
+    return { text: listed, usage: null }
   }
 
   // Compose user message: kontekst + pytanie + fakty + ewentualna wskazówka.

@@ -3,9 +3,10 @@
  *
  * - **Runtime**: Vercel Edge (Web standards `Request` / `Response`).
  * - **Provider**: `GroqProvider` (OpenAI-compat). Pełny zestaw narzędzi
- *   decyduje `DEFAULT_GROQ_MODEL` (`openai/gpt-oss-120b`). Small-talk,
- *   zawężona lista narzędzi (router) i synteza faktów idą przez
- *   `GROQ_SMALLTALK_MODEL` (`openai/gpt-oss-20b`).
+ *   decyduje `DEFAULT_GROQ_MODEL` (`openai/gpt-oss-120b`). Small-talk
+ *   spoza gotowych odpowiedzi i zawężona lista narzędzi (router) idą
+ *   przez `GROQ_SMALLTALK_MODEL` (`openai/gpt-oss-20b`). Fakty z narzędzi
+ *   składamy na serwerze (`formatListedFacts`) — bez drugiego calla.
  *   `MockProvider` z `llmService.ts` jest świadomie pominięty w tool-aware
  *   ścieżce — bez `GROQ_API_KEY` brakuje sensu uruchamiać Function Calling.
  * - **Persona**: `UJVERSE_SYSTEM_PROMPT` z `_lib/llmService.ts` injectowany
@@ -81,6 +82,7 @@ import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
 import {
   buildToolFacts,
   tryCompactSynthesis,
+  formatListedFacts,
   streamAnswer,
   synthesizeAnswer,
   polishAssistantReply,
@@ -132,6 +134,37 @@ const PROVIDER_FAILURE_MESSAGE =
  * co najwyżej tylu schematów. Pełny zestaw zostaje na `DEFAULT_GROQ_MODEL`.
  */
 const ROUTED_DECISION_TOOL_CAP = 4
+/**
+ * Odczyt KV na ścieżce odpowiedzi. Gdy Upstash wisi, „cześć" czekało
+ * kilka sekund zanim w ogóle wrócił gotowy tekst. Po budżecie traktujemy
+ * to jak pudło i lecimy dalej.
+ */
+const RESPONSE_CACHE_LOOKUP_BUDGET_MS = 400
+
+function kvGetWithin<T>(key: string, budgetMs: number): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      resolve(undefined)
+    }, budgetMs)
+    kvGetSafe<T>(key).then(
+      (value) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(value)
+      },
+      () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(undefined)
+      },
+    )
+  })
+}
 /**
  * Komunikat dla circuit-breaker'a — gdy ostatnie N requestów się posypało,
  * przyznajemy się otwarcie (lepsze niż timeout). Dynamiczny `retryAfterSec`
@@ -724,6 +757,12 @@ function streamSynthesizedAnswer(opts: {
       void incrCounter('synthesis:compact')
       return streamFinalContentChunked(polished, meta)
     }
+    const listed = formatListedFacts(facts.facts, facts.hint, facts.topicHint)
+    if (listed) {
+      void onComplete(listed)
+      void incrCounter('synthesis:listed')
+      return streamFinalContentChunked(listed, meta)
+    }
   }
 
   // 'synthesize' kind albo brak factsa (passthrough surowego string) —
@@ -1264,7 +1303,21 @@ export default async function handler(req: Request): Promise<Response> {
     ctx.userId,
   )
 
-  const cachedReply = await kvGetSafe<string>(responseCacheKey)
+  const cacheLookupStarted = Date.now()
+  const cachedReply = await kvGetWithin<string>(
+    responseCacheKey,
+    RESPONSE_CACHE_LOOKUP_BUDGET_MS,
+  )
+  if (
+    !cachedReply &&
+    Date.now() - cacheLookupStarted >= RESPONSE_CACHE_LOOKUP_BUDGET_MS
+  ) {
+    console.warn(
+      '[Response Cache] lookup exceeded',
+      RESPONSE_CACHE_LOOKUP_BUDGET_MS,
+      'ms — treating as miss',
+    )
+  }
   if (cachedReply) {
     const cleanedCached = polishAssistantReply(stripThinkingTags(cachedReply))
     console.log(
