@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
 import { Bell, ChevronDown, LogOut, Menu, Moon, Pencil, Settings, Sun, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -107,6 +108,37 @@ export default function Header({
     return () => window.removeEventListener('keydown', onKey)
   }, [notificationsPanelOpen, onCloseNotificationsPanel])
 
+  const logo = (
+    <div className={HEADER_MOBILE.logoAnchorClass}>
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.95 }}
+        onClick={() => {
+          onNavigateToFeed()
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+          onRefreshPosts()
+        }}
+        className="pointer-events-auto overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 inline-flex items-center justify-center border-0"
+        aria-label="Strona główna"
+      >
+        <div
+          aria-hidden
+          style={{
+            maskImage: 'url(/logo.png)',
+            WebkitMaskImage: 'url(/logo.png)',
+            maskSize: 'contain',
+            WebkitMaskSize: 'contain',
+            maskRepeat: 'no-repeat',
+            WebkitMaskRepeat: 'no-repeat',
+            maskPosition: 'center',
+            WebkitMaskPosition: 'center',
+          }}
+          className={`mx-auto ${HEADER_MOBILE.logoClass} transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright bg-logo-navy`}
+        />
+      </motion.button>
+    </div>
+  )
+
   return (
     <>
     <header
@@ -137,36 +169,6 @@ export default function Header({
             />
           </button>
         </div>
-      </div>
-
-      {/* Logo absolute — duży mask (h-32) nie rozpycha wysokości paska */}
-      <div className={HEADER_MOBILE.logoAnchorClass}>
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            onNavigateToFeed()
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-            onRefreshPosts()
-          }}
-          className="pointer-events-auto overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 inline-flex items-center justify-center border-0"
-          aria-label="Strona główna"
-        >
-          <div
-            aria-hidden
-            style={{
-              maskImage: 'url(/logo.png)',
-              WebkitMaskImage: 'url(/logo.png)',
-              maskSize: 'contain',
-              WebkitMaskSize: 'contain',
-              maskRepeat: 'no-repeat',
-              WebkitMaskRepeat: 'no-repeat',
-              maskPosition: 'center',
-              WebkitMaskPosition: 'center',
-            }}
-            className={`mx-auto ${HEADER_MOBILE.logoClass} transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright bg-logo-navy`}
-          />
-        </motion.button>
       </div>
 
       <div className={HEADER_MOBILE.rightSectionClass}>
@@ -341,6 +343,7 @@ export default function Header({
         </div>
       </div>
     </header>
+    {createPortal(logo, document.body)}
     </>
   )
 }

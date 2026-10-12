@@ -29,11 +29,13 @@ export const HEADER_MOBILE = {
   rightSectionClass:
     'flex-shrink-0 flex items-center justify-end gap-2 md:gap-3 relative z-10 ml-auto min-w-0',
   /**
-   * Logo na środku paska. Pudełko ma proporcje pliku, więc znak (wyśrodkowany
-   * w PNG) siedzi na osi kolumny — bez ręcznego translate.
+   * Logo na osi okna. Kolumna treści zmienia szerokość między tabami, więc
+   * środek headera nie jest środkiem monitora. `fixed` musi wisieć na
+   * `document.body` — `backdrop-filter` headera inaczej łapie pozycjonowanie.
+   * Pudełko ma proporcje pliku, więc znak z PNG siedzi na tej osi.
    */
   logoAnchorClass:
-    'pointer-events-none absolute top-1/2 left-1/2 z-[1] -translate-x-1/2 -translate-y-1/2',
+    'pointer-events-none fixed top-0 left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16',
   logoClass: 'h-[6.75rem] w-auto aspect-[728/1372]',
   themeToggleButtonClass:
     'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',
