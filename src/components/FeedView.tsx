@@ -358,8 +358,7 @@ export default function FeedView({
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
       <div className="flex min-w-0 w-full max-w-full flex-col items-stretch gap-4">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 md:max-w-3xl lg:max-w-[900px] px-0">
-          <TodayPlanStrip userId={currentUserId} />
+        <div className="mx-auto w-full max-w-2xl md:max-w-3xl lg:max-w-[900px] px-0">
           <div className="hidden md:flex w-full flex-col border border-zinc-200 dark:border-white/10 rounded-xl bg-white dark:bg-zinc-950/50 overflow-hidden shadow-sm p-0">
             <ComposeBox
               myProfile={myProfile}
@@ -416,6 +415,8 @@ export default function FeedView({
         ref={rightAsideRef}
         className={`hidden lg:flex flex-col ${unifiedCardGapCls} sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pt-0`}
       >
+        <TodayPlanStrip userId={currentUserId} className="shrink-0" />
+
         <Niezbednik />
 
         <CalendarMiniWidget className="shrink-0" />

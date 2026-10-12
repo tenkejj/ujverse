@@ -5,15 +5,12 @@
  * akademickie w jednym miejscu, w kolejności od najbardziej zaktualizowanego
  * do tła:
  *
- *   1. Greeting bar (powitanie + data + AI brief CTA)
- *   2. Hero tygodnia (zakres + 4 stat-kafle + nav prev/dziś/next)
- *   3. (gdy current week) DZIŚ — najbliższe zajęcia + status dnia
- *   4. Plan tygodnia — dni z zajęciami jako szklane bilety
- *   5. Najbliższy termin (egzamin) — wyróżniona karta
- *   6. Zmiany w planie (z tygodniowego briefingu)
- *   7. Komunikaty od Twoich wykładowców
- *   8. Eventy UJ w tym tygodniu
- *   9. Import / aktualizuj plan z USOSweb
+ *   1. Data i krótkie powitanie
+ *   2. Pasek tygodnia (zakres, liczby, prev / dziś / next)
+ *   3. Jedna linia: co jest teraz albo następne
+ *   4. Dni jako zwykła lista zajęć
+ *   5. Terminy, zmiany i wydarzenia — na telefonie za zwinięciem
+ *   6. Import planu z USOSweb
  *
  * Nawigacja: brak back-buttona, brak side-railu, brak duplikujących widgetów.
  *
@@ -30,18 +27,14 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Coffee,
   GraduationCap,
-  MapPin,
   Megaphone,
   Moon,
   RefreshCw,
   Sparkles,
   Sun,
   Sunrise,
-  TrendingUp,
-  X as XIcon,
   type LucideIcon,
 } from 'lucide-react'
 import EmptyState from './EmptyState'
@@ -54,12 +47,10 @@ import { theme } from '../styles/theme'
 import {
   fmtDayDate,
   fmtHM as fmtHMIso,
-  fmtHours as fmtHoursBriefing,
   KIND_LABELS,
   KIND_TONE,
 } from './briefing/briefingFormat'
 import type { TimetableEntryRow } from '../services/adapters/TimetableAdapter'
-import type { TodayClass } from '../hooks/useTodayClasses'
 import type { Profile } from '../types'
 import type { Cohort } from '../types/database'
 
@@ -131,14 +122,6 @@ function fmtTodayLong(d: Date): string {
   })
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
-function durationLabel(ms: number): string {
-  const totalMinutes = Math.round(ms / 60_000)
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  if (h === 0) return `${m} min`
-  if (m === 0) return `${h} h`
-  return `${h} h ${m}m`
-}
 function buildSalutation(now: Date): { hello: string; Icon: LucideIcon } {
   const h = now.getHours()
   if (h < 5) return { hello: 'Dobranoc', Icon: Moon }
@@ -157,24 +140,6 @@ function firstName(p: Profile | null): string {
   }
   return (p.username ?? '').trim()
 }
-function startsInLabel(c: TodayClass): string {
-  if (c.startsInMinutes === -1) return 'Skończone'
-  if (c.startsInMinutes === 0) return 'Trwa teraz'
-  if (c.startsInMinutes < 60) return `Za ${c.startsInMinutes} min`
-  const h = Math.floor(c.startsInMinutes / 60)
-  const m = c.startsInMinutes % 60
-  return m === 0 ? `Za ${h} h` : `Za ${h} h ${m} min`
-}
-
-// ─── Shared glass tokens ────────────────────────────────────────────────────
-const GLASS_HERO_CLS = [
-  'relative overflow-hidden rounded-[28px] border p-8 sm:p-10 md:p-12 lg:p-14',
-  'border-zinc-200/80 bg-white/85 backdrop-blur-2xl backdrop-saturate-150',
-  'shadow-[0_50px_120px_-50px_rgba(15,23,42,0.45)] ring-1 ring-zinc-900/5',
-  'dark:border-white/10 dark:bg-zinc-950/55',
-  'dark:shadow-[0_50px_120px_-50px_rgba(0,0,0,0.95)] dark:ring-white/[0.04]',
-].join(' ')
-
 const GLASS_PANEL_CLS = [
   'relative overflow-hidden rounded-2xl border p-4 sm:p-5',
   'border-zinc-200/70 bg-white/75 backdrop-blur-xl backdrop-saturate-150',
@@ -184,7 +149,7 @@ const GLASS_PANEL_CLS = [
 ].join(' ')
 
 const SECTION_TITLE_CLS =
-  'flex items-center gap-2.5 text-[12px] font-bold uppercase tracking-[0.24em] text-[#1e293b] dark:text-brand-gold-bright sm:text-[13px]'
+  'flex items-center gap-2 text-[15px] font-semibold text-zinc-900 dark:text-zinc-50'
 const SECTION_BADGE_CLS =
   'inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-[11px] font-extrabold tabular-nums ' +
   'border-[#1e293b]/25 bg-[#1e293b]/[0.06] text-[#1e293b] ' +
@@ -238,12 +203,12 @@ function GreetingBar({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-1">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.24em] text-[#1e293b] dark:text-brand-gold-bright sm:text-[11.5px]">
-          <SalIcon size={12} strokeWidth={2.5} />
+        <div className="flex items-center gap-1.5 text-[13px] text-zinc-500 dark:text-zinc-400">
+          <SalIcon size={13} strokeWidth={2.25} />
           {todayLabel}
         </div>
-        <p className={`mt-1 text-[18px] font-extrabold leading-tight sm:text-[22px] ${theme.text.primary}`}>
-          {greeting ? `${salutation.hello}, ${greeting}!` : salutation.hello}
+        <p className={`mt-0.5 truncate text-base font-semibold leading-tight ${theme.text.primary}`}>
+          {greeting ? `${salutation.hello}, ${greeting}` : salutation.hello}
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -251,7 +216,7 @@ function GreetingBar({
           <button
             type="button"
             onClick={onOpenAi}
-            className="inline-flex h-10 items-center gap-2 rounded-2xl bg-[#1e293b] px-4 text-[12px] font-bold uppercase tracking-[0.14em] text-white shadow-[0_10px_28px_-12px_rgba(15,23,42,0.55)] transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold-bright dark:text-black dark:shadow-[0_10px_28px_-12px_rgba(232,200,74,0.55)] dark:hover:bg-brand-gold-bright/90"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#1e293b] px-3 text-[13px] font-semibold text-white hover:bg-[#1e293b]/90 dark:bg-brand-gold-bright dark:text-zinc-950 dark:hover:bg-brand-gold-bright/90"
           >
             <Sparkles size={13} strokeWidth={2.5} />
             AI brief
@@ -262,7 +227,7 @@ function GreetingBar({
           onClick={onRefresh}
           disabled={refreshing}
           aria-label="Odśwież"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-200/80 bg-white/70 text-zinc-700 backdrop-blur-md transition-colors hover:bg-white hover:text-zinc-900 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200 dark:hover:bg-white/[0.08]"
+          className="inline-flex size-9 items-center justify-center rounded-full text-zinc-600 hover:bg-black/5 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-white/10"
         >
           <RefreshCw size={15} strokeWidth={2.25} className={refreshing ? 'animate-spin' : ''} />
         </button>
@@ -271,11 +236,7 @@ function GreetingBar({
   )
 }
 
-/**
- * Wielka hero karta tygodnia — dramatyczna „okładka": zakres dat (gigantyczne
- * typo), 4 stat-kafle (zajęcia / godziny / odwołane / aktywne dni) i kontrolki
- * nawigacji prev / dziś / next.
- */
+/** Pasek tygodnia: zakres, jedno zdanie ze statystyką, prev / dziś / next. */
 function PlanHero({
   weekStart,
   isCurrentWeek,
@@ -291,196 +252,52 @@ function PlanHero({
   onToday: () => void
   stats: { classes: number; hours: number; cancelled: number; daysWithClasses: number }
 }) {
+  const summary = [
+    `${stats.classes} ${stats.classes === 1 ? 'zajęcie' : 'zajęć'}`,
+    `${stats.hours} h`,
+    stats.cancelled > 0 ? `${stats.cancelled} odwołane` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <div className={GLASS_HERO_CLS}>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-[#1e293b]/[0.08] blur-3xl dark:bg-brand-gold-bright/[0.12]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-40 -bottom-40 h-[32rem] w-[32rem] rounded-full bg-[#1e293b]/[0.05] blur-3xl dark:bg-brand-gold-bright/[0.08]"
-      />
-
-      <div className="relative flex flex-col gap-8 lg:gap-10">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-[0.28em] text-[#1e293b] dark:text-brand-gold-bright sm:text-[12px]">
-              <CalendarDays size={13} strokeWidth={2.5} />
-              {isCurrentWeek ? 'Bieżący tydzień' : 'Plan tygodnia'}
-            </div>
-            <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-6xl md:text-7xl lg:text-8xl">
-              {fmtWeekRange(weekStart)}
-            </h1>
-            <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-[15px]">
-              Twój plan zajęć, zmiany od wykładowców i terminy w jednym widoku.
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              aria-label="Poprzedni tydzień"
-              onClick={onPrev}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200/80 bg-white/70 text-zinc-700 backdrop-blur-md transition-colors hover:bg-white hover:text-zinc-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200 dark:hover:bg-white/[0.08]"
-            >
-              <ChevronLeft size={20} strokeWidth={2.25} />
-            </button>
-            {!isCurrentWeek && (
-              <button
-                type="button"
-                onClick={onToday}
-                className="inline-flex h-11 items-center rounded-2xl border border-[#1e293b]/30 bg-[#1e293b]/[0.07] px-4 text-[12px] font-bold uppercase tracking-[0.16em] text-[#1e293b] transition-colors hover:bg-[#1e293b]/12 dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/18"
-              >
-                Dziś
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label="Następny tydzień"
-              onClick={onNext}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-200/80 bg-white/70 text-zinc-700 backdrop-blur-md transition-colors hover:bg-white hover:text-zinc-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200 dark:hover:bg-white/[0.08]"
-            >
-              <ChevronRight size={20} strokeWidth={2.25} />
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
-          <StatTile icon={CalendarDays} value={stats.classes} label="zajęć" />
-          <StatTile icon={Clock} value={`${stats.hours}h`} label="godzin" isText />
-          <StatTile
-            icon={XIcon}
-            value={stats.cancelled}
-            label="odwołanych"
-            tone={stats.cancelled > 0 ? 'danger' : 'neutral'}
-          />
-          <StatTile icon={TrendingUp} value={stats.daysWithClasses} label="dni z zajęciami" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function StatTile({
-  icon: Icon,
-  value,
-  label,
-  isText = false,
-  tone = 'neutral',
-}: {
-  icon: LucideIcon
-  value: number | string
-  label: string
-  isText?: boolean
-  tone?: 'neutral' | 'danger'
-}) {
-  const toneCls =
-    tone === 'danger'
-      ? 'text-red-600 dark:text-red-300'
-      : 'text-[#1e293b] dark:text-brand-gold-bright'
-  return (
-    <div
-      className={[
-        'group relative overflow-hidden rounded-3xl border p-5 sm:p-6',
-        'border-zinc-200/60 bg-white/70 backdrop-blur-md',
-        'dark:border-white/[0.07] dark:bg-white/[0.03]',
-        'transition-colors hover:border-[#1e293b]/25 dark:hover:border-brand-gold-bright/30',
-      ].join(' ')}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 dark:text-zinc-400 sm:text-[11px]">
-          {label}
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className={`truncate text-lg font-semibold leading-tight ${theme.text.primary}`}>
+          {fmtWeekRange(weekStart)}
+        </h1>
+        <p className={`mt-0.5 text-[13px] ${theme.text.muted}`}>
+          {isCurrentWeek ? 'Ten tydzień' : 'Inny tydzień'}
+          {' · '}
+          {summary}
         </p>
-        <Icon size={14} strokeWidth={2.5} className={`shrink-0 ${toneCls}`} />
       </div>
-      <p
-        className={`mt-3 text-4xl font-extrabold leading-none tracking-tight tabular-nums sm:text-5xl lg:text-6xl ${toneCls}`}
-      >
-        {isText ? value : String(value)}
-      </p>
-    </div>
-  )
-}
-
-/**
- * Empty-state „Dziś" — dwie odmiany:
- *  - `free`:  brak zajęć w ogóle dziś (lajt dzień)
- *  - `done`:  były zajęcia, wszystkie skończone (dzień zamknięty)
- *
- * Świadomie BEZ ikony Sparkles — była identyczna jak w innych sekcjach
- * i wyglądała jak placeholder. Tu daje większy, bardziej „dashboardowy"
- * akcent z kolorowanym tile-em po lewej.
- */
-function TodayEmptyCard({
-  variant,
-  todayClassesCount,
-  doneTodayCount,
-}: {
-  variant: 'free' | 'done'
-  todayClassesCount: number
-  doneTodayCount: number
-}) {
-  const isFree = variant === 'free'
-  const Icon = isFree ? Coffee : CheckCircle2
-  const title = isFree ? 'Lajt dzień' : 'Dzień zamknięty'
-  const description = isFree
-    ? 'Brak zaplanowanych zajęć. Dobry moment, żeby zająć się tym, co naprawdę ważne.'
-    : todayClassesCount > 0
-      ? `Masz za sobą ${doneTodayCount} z ${todayClassesCount}. Plan tygodnia jest poniżej.`
-      : 'Wszystkie zajęcia na dziś za nami. Plan tygodnia poniżej.'
-
-  const accent = isFree
-    ? {
-        tileBg: 'bg-emerald-100/80 dark:bg-emerald-500/[0.14]',
-        tileBorder: 'border-emerald-300/60 dark:border-emerald-500/30',
-        tileIcon: 'text-emerald-700 dark:text-emerald-300',
-        ringGlow:
-          'bg-emerald-400/[0.10] dark:bg-emerald-400/[0.10]',
-      }
-    : {
-        tileBg: 'bg-zinc-100/80 dark:bg-white/[0.05]',
-        tileBorder: 'border-zinc-200/80 dark:border-white/[0.08]',
-        tileIcon: 'text-zinc-600 dark:text-zinc-300',
-        ringGlow:
-          'bg-zinc-400/[0.08] dark:bg-zinc-300/[0.04]',
-      }
-
-  return (
-    <div
-      className={[
-        'relative overflow-hidden rounded-3xl border p-5 sm:p-6 md:p-7',
-        'border-zinc-200/70 bg-white/80 backdrop-blur-xl backdrop-saturate-150',
-        'shadow-[0_25px_80px_-40px_rgba(15,23,42,0.25)]',
-        'dark:border-white/[0.08] dark:bg-zinc-950/45',
-        'dark:shadow-[0_30px_90px_-40px_rgba(0,0,0,0.9)]',
-      ].join(' ')}
-    >
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full blur-3xl ${accent.ringGlow}`}
-      />
-      <div className="relative flex items-center gap-4 sm:gap-5">
-        <div
-          className={[
-            'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border sm:h-16 sm:w-16',
-            accent.tileBg,
-            accent.tileBorder,
-          ].join(' ')}
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          aria-label="Poprzedni tydzień"
+          onClick={onPrev}
+          className="inline-flex size-9 items-center justify-center rounded-full text-zinc-600 hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/10"
         >
-          <Icon size={26} strokeWidth={2.25} className={accent.tileIcon} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p
-            className={`text-[18px] font-extrabold leading-tight sm:text-[22px] ${theme.text.primary}`}
+          <ChevronLeft size={18} strokeWidth={2.25} />
+        </button>
+        {!isCurrentWeek && (
+          <button
+            type="button"
+            onClick={onToday}
+            className="inline-flex h-9 items-center rounded-full px-3 text-[13px] font-semibold text-[#1e293b] hover:bg-black/5 dark:text-brand-gold-bright dark:hover:bg-white/10"
           >
-            {title}
-          </p>
-          <p
-            className={`mt-1 text-[13.5px] leading-relaxed sm:text-[14.5px] ${theme.text.muted}`}
-          >
-            {description}
-          </p>
-        </div>
+            Dziś
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="Następny tydzień"
+          onClick={onNext}
+          className="inline-flex size-9 items-center justify-center rounded-full text-zinc-600 hover:bg-black/5 dark:text-zinc-300 dark:hover:bg-white/10"
+        >
+          <ChevronRight size={18} strokeWidth={2.25} />
+        </button>
       </div>
     </div>
   )
@@ -528,153 +345,15 @@ function ChangesEmptyCard() {
   )
 }
 
-/**
- * „Dziś" — sekcja z najbliższym (lub trwającym) zajęciem dnia. Renderowana
- * TYLKO gdy jesteśmy na bieżącym tygodniu. Pokazuje highlight kursu, progress
- * bar dnia i meta (lokacja, prowadzący).
- */
-function TodaySection({
-  nextClass,
-  cancelledTodayCount,
-  todayClassesCount,
-  doneTodayCount,
-}: {
-  nextClass: TodayClass | null
-  cancelledTodayCount: number
-  todayClassesCount: number
-  doneTodayCount: number
-}) {
-  const progressPct =
-    todayClassesCount > 0 ? Math.round((doneTodayCount / todayClassesCount) * 100) : 0
-
-  if (!nextClass) {
-    const isFreeDay = cancelledTodayCount === 0 && todayClassesCount === 0
-    return (
-      <section className="space-y-3">
-        <SectionHeader
-          icon={Sun}
-          title="Dziś"
-          subtitle={isFreeDay ? 'lajt dzień' : 'dzień skończony'}
-        />
-        <TodayEmptyCard
-          variant={isFreeDay ? 'free' : 'done'}
-          todayClassesCount={todayClassesCount}
-          doneTodayCount={doneTodayCount}
-        />
-      </section>
-    )
-  }
-
-  const isLive = nextClass.startsInMinutes === 0
-  const isImminent = nextClass.startsInMinutes >= 0 && nextClass.startsInMinutes <= 30
-  const isCancelled = nextClass.isCancelled
-
-  return (
-    <section className="space-y-3">
-      <SectionHeader
-        icon={Sun}
-        title="Dziś"
-        subtitle={isLive ? 'trwa teraz' : isImminent ? 'za chwilę' : 'nadchodzi'}
-      />
-      <div
-        className={[
-          'relative overflow-hidden rounded-3xl border p-6 sm:p-8',
-          'backdrop-blur-xl backdrop-saturate-150',
-          isCancelled
-            ? 'border-red-300/70 bg-red-50/75 dark:border-red-500/30 dark:bg-red-500/[0.06]'
-            : 'border-zinc-200/70 bg-white/85 dark:border-white/[0.09] dark:bg-zinc-950/50',
-          isImminent && !isCancelled
-            ? 'ring-1 ring-[#1e293b]/30 dark:ring-brand-gold-bright/35'
-            : '',
-          'shadow-[0_30px_90px_-40px_rgba(15,23,42,0.30)] dark:shadow-[0_35px_100px_-40px_rgba(0,0,0,0.95)]',
-        ].join(' ')}
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[#1e293b]/[0.05] blur-3xl dark:bg-brand-gold-bright/[0.10]"
-        />
-        <div className="relative">
-          <div className="flex flex-wrap items-center gap-2">
-            <Clock size={14} strokeWidth={2.25} className="text-[#1e293b] dark:text-brand-gold-bright" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#1e293b] dark:text-brand-gold-bright">
-              {isLive ? 'Trwa teraz' : 'Najbliższe zajęcia'}
-            </span>
-            {isLive && (
-              <span className="relative flex h-2 w-2" aria-hidden>
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-            )}
-            {cancelledTodayCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-red-500">
-                {cancelledTodayCount} odwołane
-              </span>
-            )}
-          </div>
-
-          <h2
-            className={`mt-2 text-2xl font-extrabold leading-tight sm:text-3xl md:text-4xl ${
-              isCancelled
-                ? 'text-red-800 line-through decoration-red-400/60 dark:text-red-100'
-                : theme.text.primary
-            }`}
-          >
-            {nextClass.summary}
-          </h2>
-
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13.5px] sm:text-[14.5px]">
-            <span className="inline-flex items-center gap-1.5 font-extrabold tabular-nums text-[#1e293b] dark:text-brand-gold-bright">
-              <Clock size={14} strokeWidth={2.5} />
-              {startsInLabel(nextClass)}
-            </span>
-            <span className={`tabular-nums font-mono ${theme.text.muted}`}>
-              {fmtHM(nextClass.startDate)}–{fmtHM(nextClass.endDate)}
-            </span>
-            {nextClass.location && (
-              <span className={`inline-flex min-w-0 items-center gap-1.5 ${theme.text.muted}`}>
-                <MapPin size={13} className="shrink-0" />
-                <span className="truncate">{nextClass.location}</span>
-              </span>
-            )}
-            {nextClass.lecturer_name && (
-              <span className={`inline-flex items-center gap-1.5 ${theme.text.muted}`}>
-                <GraduationCap size={13} className="shrink-0" />
-                {nextClass.lecturer_name}
-              </span>
-            )}
-          </div>
-
-          {progressPct > 0 && todayClassesCount > 0 && (
-            <div className="mt-5">
-              <div className={`mb-1.5 flex items-center justify-between text-[10.5px] font-bold uppercase tracking-[0.2em] ${theme.text.muted}`}>
-                <span>Postęp dnia · {doneTodayCount} z {todayClassesCount}</span>
-                <span className="tabular-nums">{progressPct}%</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-white/[0.08]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#1e293b] to-[#1e293b]/60 transition-all duration-500 dark:from-brand-gold-bright dark:to-brand-gold-bright/60"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/**
- * Pojedyncze zajęcie w timetable — wielki szklany bilet z czasówką po lewej
- * i meta po prawej (lokacja + prowadzący). Cancelled = czerwone + clickable
- * (deep-link do komunikatu).
- */
+/** Jedna linia zajęć: godzina, nazwa, sala. Odwołane otwiera komunikat. */
 function ClassTicket({
   entry,
   onOpenCancellation,
+  emphasized = false,
 }: {
   entry: TimetableEntryRow
   onOpenCancellation: (announcementId: string) => void
+  emphasized?: boolean
 }) {
   const start = new Date(entry.start_time)
   const end = new Date(entry.end_time)
@@ -686,18 +365,7 @@ function ClassTicket({
     }
   }
 
-  const cardCls = [
-    'group relative overflow-hidden rounded-3xl border',
-    'backdrop-blur-xl backdrop-saturate-150',
-    isCancelled
-      ? 'border-red-300/70 bg-red-50/75 dark:border-red-500/30 dark:bg-red-500/[0.06]'
-      : 'border-zinc-200/70 bg-white/80 dark:border-white/[0.09] dark:bg-zinc-950/45',
-    'shadow-[0_25px_80px_-40px_rgba(15,23,42,0.30)] dark:shadow-[0_35px_90px_-40px_rgba(0,0,0,0.95)]',
-    'transition-all duration-150',
-    isCancelled
-      ? 'cursor-pointer hover:bg-red-50 dark:hover:bg-red-500/[0.10] hover:-translate-y-px'
-      : 'hover:border-[#1e293b]/25 dark:hover:border-brand-gold-bright/30',
-  ].join(' ')
+  const meta = [entry.location, entry.lecturer_name].filter(Boolean).join(' · ')
 
   return (
     <div
@@ -714,84 +382,48 @@ function ClassTicket({
             }
           : undefined
       }
-      className={cardCls}
+      className={[
+        'flex gap-3 rounded-xl border px-3 py-2.5',
+        isCancelled
+          ? 'cursor-pointer border-red-200 bg-red-50/80 dark:border-red-500/30 dark:bg-red-500/[0.07]'
+          : emphasized
+            ? 'border-[#1e293b]/25 bg-white dark:border-brand-gold-bright/30 dark:bg-zinc-950/70'
+            : 'border-zinc-200/80 bg-white/70 dark:border-white/10 dark:bg-zinc-950/40',
+      ].join(' ')}
     >
-      <div className="flex">
-        <div
-          className={[
-            'flex flex-col items-center justify-center gap-2 border-r px-5 py-6 sm:px-7 sm:py-7 md:px-8 md:py-8',
+      <div className="w-12 shrink-0 pt-0.5">
+        <p
+          className={`font-mono text-[13px] font-semibold tabular-nums leading-none ${
             isCancelled
-              ? 'border-red-200/70 bg-red-100/55 dark:border-red-500/22 dark:bg-red-500/[0.10]'
-              : 'border-zinc-200/70 bg-zinc-50/80 dark:border-white/[0.07] dark:bg-white/[0.025]',
-          ].join(' ')}
+              ? 'text-red-700 line-through dark:text-red-300'
+              : 'text-zinc-900 dark:text-zinc-50'
+          }`}
         >
-          <span
-            className={`font-mono text-2xl font-extrabold tabular-nums leading-none sm:text-3xl md:text-4xl ${
-              isCancelled
-                ? 'text-red-700 line-through decoration-red-400/60 dark:text-red-200'
-                : 'text-zinc-900 dark:text-zinc-50'
-            }`}
-          >
-            {fmtHM(start)}
+          {fmtHM(start)}
+        </p>
+        <p className="mt-1 font-mono text-[11px] tabular-nums leading-none text-zinc-400">
+          {fmtHM(end)}
+        </p>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+          <span className={isCancelled ? 'text-red-800 line-through decoration-red-400/70 dark:text-red-200' : ''}>
+            {entry.summary}
           </span>
-          <div className="flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400 sm:text-[11px]">
-            <span className="inline-block h-px w-3 bg-current opacity-50" />
-            {durationLabel(end.getTime() - start.getTime())}
-            <span className="inline-block h-px w-3 bg-current opacity-50" />
-          </div>
-          <span
-            className={`font-mono text-base font-semibold tabular-nums leading-none sm:text-lg md:text-xl ${
-              isCancelled
-                ? 'text-red-600/70 line-through dark:text-red-300/70'
-                : 'text-zinc-500 dark:text-zinc-400'
-            }`}
-          >
-            {fmtHM(end)}
-          </span>
-        </div>
-
-        <div className="min-w-0 flex-1 px-5 py-5 sm:px-7 sm:py-6 md:px-8 md:py-7">
-          <div className="flex items-start justify-between gap-3">
-            <h3
-              className={`min-w-0 text-lg font-extrabold leading-tight sm:text-xl md:text-2xl ${
-                isCancelled
-                  ? 'text-red-800 line-through decoration-red-400/60 dark:text-red-100'
-                  : 'text-zinc-900 dark:text-zinc-50'
-              }`}
-            >
-              {entry.summary}
-            </h3>
-            {isCancelled && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_8px_22px_-8px_rgba(220,38,38,0.6)] dark:bg-red-500">
-                <XIcon size={10} strokeWidth={3} />
-                odwołane
-              </span>
-            )}
-          </div>
-
-          {(entry.location || entry.lecturer_name) && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px] text-zinc-600 dark:text-zinc-400 sm:text-[14px]">
-              {entry.location && (
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin size={13} strokeWidth={2} className="text-[#1e293b]/70 dark:text-brand-gold-bright/75" />
-                  <span className="font-medium">{entry.location}</span>
-                </span>
-              )}
-              {entry.lecturer_name && (
-                <span className="inline-flex items-center gap-1.5">
-                  <GraduationCap size={13} strokeWidth={2} className="text-[#1e293b]/70 dark:text-brand-gold-bright/75" />
-                  <span className="font-medium">{entry.lecturer_name}</span>
-                </span>
-              )}
-            </div>
+          {isCancelled && (
+            <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-300">
+              odwołane
+            </span>
           )}
-
-          {isCancelled && entry.cancelled_announcement_body && (
-            <p className="mt-3 line-clamp-2 text-[12.5px] leading-relaxed text-red-900/90 dark:text-red-200/90 sm:text-[13.5px]">
-              {entry.cancelled_announcement_body.replace(/\s+/g, ' ').trim()}
-            </p>
-          )}
-        </div>
+        </p>
+        {meta && (
+          <p className="mt-0.5 truncate text-[12.5px] text-zinc-500 dark:text-zinc-400">{meta}</p>
+        )}
+        {isCancelled && entry.cancelled_announcement_body && (
+          <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-red-800/90 dark:text-red-200/90">
+            {entry.cancelled_announcement_body.replace(/\s+/g, ' ').trim()}
+          </p>
+        )}
       </div>
     </div>
   )
@@ -802,46 +434,38 @@ function DayBlock({
   isToday,
   isPast,
   entries,
+  nextEntryId,
   onOpenCancellation,
 }: {
   date: Date
   isToday: boolean
   isPast: boolean
   entries: TimetableEntryRow[]
+  nextEntryId: number | null
   onOpenCancellation: (announcementId: string) => void
 }) {
   return (
-    <div
-      className={`grid grid-cols-[80px_1fr] gap-4 sm:grid-cols-[110px_1fr] sm:gap-6 lg:grid-cols-[140px_1fr] lg:gap-8 ${
-        isPast && !isToday ? 'opacity-55' : ''
-      }`}
-    >
-      <div className="flex flex-col items-start gap-1 pt-3 sm:pt-4">
-        <span
-          className={`text-[11px] font-bold uppercase tracking-[0.22em] sm:text-[12px] ${
-            isToday
-              ? 'text-[#1e293b] dark:text-brand-gold-bright'
-              : 'text-zinc-500 dark:text-zinc-500'
+    <div className={`flex gap-3 ${isPast && !isToday ? 'opacity-55' : ''}`}>
+      <div className="w-11 shrink-0 pt-2.5 text-center">
+        <p
+          className={`text-[11px] font-semibold uppercase tracking-wide ${
+            isToday ? 'text-[#1e293b] dark:text-brand-gold-bright' : 'text-zinc-500'
           }`}
         >
           {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
-        </span>
-        <span
-          className={`text-5xl font-extrabold leading-none tabular-nums sm:text-6xl lg:text-7xl ${
-            isToday
-              ? 'text-[#1e293b] dark:text-brand-gold-bright'
-              : 'text-zinc-900 dark:text-zinc-100'
-          }`}
-        >
+        </p>
+        <p className="text-lg font-semibold tabular-nums leading-none text-zinc-900 dark:text-zinc-50">
           {date.getDate()}
-        </span>
-        <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-500 sm:text-[12px]">
-          {MONTH_NAMES_GENITIVE[date.getMonth()].slice(0, 3)}
-        </span>
+        </p>
       </div>
-      <div className="space-y-3 sm:space-y-3.5">
+      <div className="min-w-0 flex-1 space-y-2">
         {entries.map((entry) => (
-          <ClassTicket key={entry.id} entry={entry} onOpenCancellation={onOpenCancellation} />
+          <ClassTicket
+            key={entry.id}
+            entry={entry}
+            emphasized={entry.id === nextEntryId}
+            onOpenCancellation={onOpenCancellation}
+          />
         ))}
       </div>
     </div>
@@ -865,6 +489,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
   const [timetableCount, setTimetableCount] = useState<number>(0)
   const [refreshTick, setRefreshTick] = useState(0)
   const [aiOpen, setAiOpen] = useState(false)
+  const [extrasOpen, setExtrasOpen] = useState(false)
 
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart])
   const isCurrentWeek = useMemo(
@@ -946,15 +571,6 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
     }
   }, [rows, daysWithEntries.length])
 
-  const doneTodayCount = useMemo(
-    () => daily.classes.filter((c) => c.startsInMinutes === -1 && !c.isCancelled).length,
-    [daily.classes],
-  )
-  const todayActiveCount = useMemo(
-    () => daily.classes.filter((c) => !c.isCancelled).length,
-    [daily.classes],
-  )
-
   const hasAiContent =
     daily.classes.length > 0 || daily.tasks.length > 0 || daily.announcements.length > 0
   const showAiCta = isCurrentWeek && hasAiContent
@@ -986,7 +602,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
       <div className="space-y-8">
         <div
           className={[
-            'relative overflow-hidden rounded-[28px] border p-10 text-center sm:p-16 md:p-20',
+            'relative overflow-hidden rounded-2xl border px-5 py-8 text-center sm:px-8',
             'border-zinc-200/70 bg-white/80 backdrop-blur-2xl backdrop-saturate-150',
             'shadow-[0_50px_120px_-50px_rgba(15,23,42,0.45)] ring-1 ring-zinc-900/5',
             'dark:border-white/10 dark:bg-zinc-950/50',
@@ -1002,11 +618,11 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
             className="pointer-events-none absolute -left-40 -bottom-40 h-[32rem] w-[32rem] rounded-full bg-[#1e293b]/[0.05] blur-3xl dark:bg-brand-gold-bright/[0.08]"
           />
           <div className="relative">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-[#1e293b]/25 bg-[#1e293b]/[0.07] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.10]">
-              <CalendarDays size={36} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
+            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl border border-[#1e293b]/25 bg-[#1e293b]/[0.07] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.10]">
+              <CalendarDays size={22} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
             </div>
-            <h1 className={`text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl ${theme.text.primary}`}>
-              Twój plan — w jednym miejscu
+            <h1 className={`text-2xl font-semibold tracking-tight ${theme.text.primary}`}>
+              Twój plan w jednym miejscu
             </h1>
             <p className={`mx-auto mt-4 max-w-2xl text-[14.5px] leading-relaxed sm:text-[16px] ${theme.text.muted}`}>
               Wklej link z USOSweb (Mój USOSweb → Mój plan zajęć → eksport
@@ -1032,7 +648,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
   }
 
   return (
-    <div className="space-y-8 sm:space-y-10">
+    <div className="space-y-5">
       {/* 1. GREETING — datę + powitanie + AI brief / refresh */}
       <GreetingBar
         myProfile={myProfile}
@@ -1052,17 +668,20 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
         stats={stats}
       />
 
-      {/* 3. DZIŚ — tylko gdy bieżący tydzień */}
-      {isCurrentWeek && (
-        <TodaySection
-          nextClass={daily.nextClass}
-          cancelledTodayCount={daily.cancelledTodayCount}
-          todayClassesCount={todayActiveCount}
-          doneTodayCount={doneTodayCount}
-        />
+      {isCurrentWeek && daily.nextClass && (
+        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[15px] leading-snug text-zinc-800 dark:text-zinc-100">
+          <span className="font-semibold text-[#1e293b] dark:text-brand-gold-bright">
+            {daily.nextClass.startsInMinutes === 0 ? 'Teraz' : 'Następne'}
+          </span>
+          <span>{daily.nextClass.summary}</span>
+          <span className="text-zinc-500 dark:text-zinc-400">{fmtHM(daily.nextClass.startDate)}</span>
+          {daily.nextClass.location && (
+            <span className="text-zinc-500 dark:text-zinc-400">{daily.nextClass.location}</span>
+          )}
+        </p>
       )}
 
-      {/* 4. TYDZIEŃ — lista dni */}
+      {/* Tydzień — lista dni */}
       <section className="space-y-3">
         <SectionHeader
           icon={CalendarClock}
@@ -1097,7 +716,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
             </p>
           </div>
         ) : (
-          <div className="space-y-5 sm:space-y-7">
+          <div className="space-y-4">
             {daysWithEntries.map(({ date, entries }) => (
               <DayBlock
                 key={date.toISOString()}
@@ -1105,6 +724,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
                 isToday={isSameDay(date, today)}
                 isPast={date.getTime() < today.getTime()}
                 entries={entries}
+                nextEntryId={isCurrentWeek ? daily.nextClass?.id ?? null : null}
                 onOpenCancellation={handleOpenCancellation}
               />
             ))}
@@ -1112,7 +732,18 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
         )}
       </section>
 
-      {/* 5–8: WEEKLY BRIEFING — next exam, zmiany, komunikaty, eventy */}
+      {isCurrentWeek && (weekly.briefing || weekly.error) && (
+        <button
+          type="button"
+          onClick={() => setExtrasOpen((v) => !v)}
+          className="text-left text-[13px] font-semibold text-[#1e293b] underline-offset-2 hover:underline lg:hidden dark:text-brand-gold-bright"
+        >
+          {extrasOpen ? 'Zwiń terminy i zmiany' : 'Terminy, zmiany i wydarzenia'}
+        </button>
+      )}
+
+      <div className={extrasOpen ? 'space-y-5' : 'hidden space-y-5 lg:block'}>
+      {/* Terminy, zmiany, komunikaty, eventy — na telefonie za zwinięciem */}
       {weekly.briefing && isCurrentWeek && (
         <>
           {weekly.briefing.payload.next_exam && (
@@ -1129,7 +760,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                   <div className="min-w-0">
-                    <p className={`text-2xl font-extrabold leading-tight ${theme.text.primary} sm:text-3xl`}>
+                    <p className={`text-lg font-semibold leading-snug ${theme.text.primary}`}>
                       {weekly.briefing.payload.next_exam.title}
                     </p>
                     <p className={`mt-2 text-[13.5px] ${theme.text.muted} sm:text-[14.5px]`}>
@@ -1275,25 +906,17 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
             </section>
           )}
 
-          {/* Stats meta — krótki znacznik briefingu (zniknie po sygnaturze
-              "ostatnio zaktualizowano"), żeby kontekst nie zniknął całkiem. */}
-          <p className={`text-center text-[11px] ${theme.text.muted}`}>
-            Briefing zaktualizowany {new Date(weekly.briefing.generated_at).toLocaleString('pl-PL')} ·{' '}
-            tydzień: {fmtHoursBriefing(weekly.briefing.payload.classes.hours)} ·{' '}
-            {weekly.briefing.payload.classes.cancelled} odwołanych
-          </p>
         </>
       )}
 
-      {/* Weekly briefing error — pokazujemy tylko gdy current week, żeby nie
-          straszyć usera na historycznych podglądach. */}
       {weekly.error && isCurrentWeek && (
         <div className={`${GLASS_PANEL_CLS} text-[13px] text-red-600 dark:text-red-400/90`}>
           {weekly.error}
         </div>
       )}
+      </div>
 
-      {/* 9. IMPORT — utility band na dole */}
+      {/* Import planu zostaje na wierzchu — to jedyna droga, żeby lista żyła. */}
       <div className="pt-4">
         <ImportTimetablePanel
           userId={userId}
