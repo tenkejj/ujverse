@@ -98,6 +98,14 @@ export default function SideNav({
               variant="sidebar"
             />
             <NavItem
+              icon={ClipboardList}
+              label="Mój plan"
+              active={activeView === 'mojPlan'}
+              onClick={onNavigateToMojPlan}
+              variant="sidebar"
+              title="Mój plan — zajęcia na dziś i na tydzień"
+            />
+            <NavItem
               icon={CalendarDays}
               label="Wydarzenia"
               active={activeView === 'events'}
@@ -152,14 +160,6 @@ export default function SideNav({
 
             {moreOpen && (
               <div className="flex flex-col gap-1.5">
-                <NavItem
-                  icon={ClipboardList}
-                  label="Mój Plan"
-                  active={activeView === 'mojPlan'}
-                  onClick={onNavigateToMojPlan}
-                  variant="sidebar"
-                  title="Mój Plan — subskrypcje wykładowców"
-                />
                 <NavItem
                   icon={Tag}
                   label="Couponek UJ"

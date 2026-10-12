@@ -426,7 +426,7 @@ function TodayEmptyCard({
   const description = isFree
     ? 'Brak zaplanowanych zajęć. Dobry moment, żeby zająć się tym, co naprawdę ważne.'
     : todayClassesCount > 0
-      ? `Wszystkie ${doneTodayCount} ${doneTodayCount === 1 ? 'zajęcia' : 'zajęcia'} na dziś za Tobą. Plan tygodnia poniżej.`
+      ? `Masz za sobą ${doneTodayCount} z ${todayClassesCount}. Plan tygodnia jest poniżej.`
       : 'Wszystkie zajęcia na dziś za nami. Plan tygodnia poniżej.'
 
   const accent = isFree

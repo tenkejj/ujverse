@@ -17,6 +17,7 @@ import EmptyState from './EmptyState'
 import FeedSkeleton from './FeedSkeleton'
 import Niezbednik from './Niezbednik'
 import CalendarMiniWidget from './calendar/CalendarMiniWidget'
+import TodayPlanStrip from './plan/TodayPlanStrip'
 import MobileDashboard from './mobile/MobileDashboard'
 import BaseCard from './ui/BaseCard'
 import {
@@ -357,7 +358,8 @@ export default function FeedView({
 
       {/* ── CENTER COLUMN ───────────────────────────────────────────── */}
       <div className="flex min-w-0 w-full max-w-full flex-col items-stretch gap-4">
-        <div className="mx-auto w-full max-w-2xl md:max-w-3xl lg:max-w-[900px] px-0">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 md:max-w-3xl lg:max-w-[900px] px-0">
+          <TodayPlanStrip userId={currentUserId} />
           <div className="hidden md:flex w-full flex-col border border-zinc-200 dark:border-white/10 rounded-xl bg-white dark:bg-zinc-950/50 overflow-hidden shadow-sm p-0">
             <ComposeBox
               myProfile={myProfile}
