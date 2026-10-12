@@ -70,7 +70,7 @@ import {
   checkAndConsumeRateLimit,
   extractClientIp,
 } from './_lib/ipRateLimit.js'
-import { kvGetSafe, kvSetSafe } from './_lib/kvCache.js'
+import { kvGetWithin, kvSetSafe } from './_lib/kvCache.js'
 import {
   DEFAULT_GROQ_MODEL,
   GROQ_SMALLTALK_MODEL,
@@ -140,31 +140,6 @@ const ROUTED_DECISION_TOOL_CAP = 4
  * to jak pudło i lecimy dalej.
  */
 const RESPONSE_CACHE_LOOKUP_BUDGET_MS = 400
-
-function kvGetWithin<T>(key: string, budgetMs: number): Promise<T | undefined> {
-  return new Promise((resolve) => {
-    let settled = false
-    const timer = setTimeout(() => {
-      if (settled) return
-      settled = true
-      resolve(undefined)
-    }, budgetMs)
-    kvGetSafe<T>(key).then(
-      (value) => {
-        if (settled) return
-        settled = true
-        clearTimeout(timer)
-        resolve(value)
-      },
-      () => {
-        if (settled) return
-        settled = true
-        clearTimeout(timer)
-        resolve(undefined)
-      },
-    )
-  })
-}
 /**
  * Komunikat dla circuit-breaker'a — gdy ostatnie N requestów się posypało,
  * przyznajemy się otwarcie (lepsze niż timeout). Dynamiczny `retryAfterSec`
@@ -1742,7 +1717,7 @@ export default async function handler(req: Request): Promise<Response> {
     guardedContent.length > 0 &&
     guardedContent !== MARKDOWN_GUARD_ERROR
   ) {
-    await kvSetSafe(responseCacheKey, guardedContent, RESPONSE_CACHE_TTL_SECONDS)
+    void kvSetSafe(responseCacheKey, guardedContent, RESPONSE_CACHE_TTL_SECONDS)
     console.log(
       '[Response Cache] SET key:',
       responseCacheKey,

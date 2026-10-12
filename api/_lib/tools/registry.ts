@@ -32,7 +32,7 @@ import {
   ttlForTool,
 } from '../cache.js'
 import { isPersonalTool } from '../personalTools.js'
-import { kvGetSafe, kvSetSafe } from '../kvCache.js'
+import { kvGetWithin, kvSetSafe } from '../kvCache.js'
 import { incrCounter, pushLatency } from '../metrics.js'
 
 /**
@@ -155,6 +155,9 @@ export function listToolNames(): string[] {
  * dla `Date`/`Map`/`Set`/`BigInt`. Tools świadomie zwracają string ISO dla
  * dat (np. `created_at`) i prymitywy, więc serializacja jest niezauważalna.
  */
+/** Wiszący odczyt KV nie może blokować narzędzia dłużej niż tyle. */
+const TOOL_CACHE_LOOKUP_BUDGET_MS = 400
+
 function withCache<TArgs, TResult>(
   toolName: string,
   execute: ToolExecutor<TArgs, TResult>,
@@ -169,7 +172,19 @@ function withCache<TArgs, TResult>(
           __uid: ctx.userId ?? 'anon',
         })
       : buildToolCacheKey(toolName, argsRecord)
-    const cached = await kvGetSafe<TResult>(cacheKey)
+    const cacheLookupStarted = Date.now()
+    const cached = await kvGetWithin<TResult>(cacheKey, TOOL_CACHE_LOOKUP_BUDGET_MS)
+    if (
+      cached === undefined &&
+      Date.now() - cacheLookupStarted >= TOOL_CACHE_LOOKUP_BUDGET_MS
+    ) {
+      console.warn(
+        '[Tool Cache] lookup exceeded',
+        TOOL_CACHE_LOOKUP_BUDGET_MS,
+        'ms —',
+        toolName,
+      )
+    }
     if (cached !== undefined) {
       console.log('[Tool Cache] HIT', toolName, 'key:', cacheKey)
       void incrCounter(`tool_cache:hit:${toolName}`)
@@ -183,7 +198,9 @@ function withCache<TArgs, TResult>(
     const result = await execute(args, ctx)
     void pushLatency(`tool:${toolName}_ms`, Date.now() - startedAt)
     if (isCacheable(result)) {
-      await kvSetSafe(cacheKey, result, ttlSeconds)
+      // Zapis nie może trzymać odpowiedzi. Wiszący KV wcześniej dokładał
+      // kilka sekund już po tym, jak fakty były gotowe.
+      void kvSetSafe(cacheKey, result, ttlSeconds)
       console.log(
         '[Tool Cache] MISS -> set',
         toolName,

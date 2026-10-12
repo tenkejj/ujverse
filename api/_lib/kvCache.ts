@@ -59,6 +59,35 @@ export async function kvGetSafe<T>(key: string): Promise<T | undefined> {
 }
 
 /**
+ * Odczyt z twardym budżetem. Wiszący Upstash nie może trzymać odpowiedzi
+ * czatu — po `budgetMs` zwracamy `undefined` (jak pudło) i nie czekamy.
+ */
+export function kvGetWithin<T>(key: string, budgetMs: number): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      resolve(undefined)
+    }, budgetMs)
+    kvGetSafe<T>(key).then(
+      (value) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(value)
+      },
+      () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(undefined)
+      },
+    )
+  })
+}
+
+/**
  * Zapisuje wartość do KV z TTL (sekundy). Fire-and-forget z punktu widzenia
  * UX-u — błąd zapisu NIGDY nie wywraca requestu, tylko warn do logu.
  *
