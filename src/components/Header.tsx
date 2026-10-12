@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { Bell, ChevronDown, LogOut, Menu, Moon, PanelLeft, PanelLeftClose, Pencil, Settings, Sun, User } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Menu, Moon, Pencil, Settings, Sun, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
@@ -41,9 +41,6 @@ type Props = {
   onRefreshPosts: () => void
   /** Otwiera mobilny drawer z pełną listą sekcji (`<lg`). */
   onOpenMobileDrawer: () => void
-  /** Desktopowy sidebar (`lg+`) — nakładka, domyślnie schowana. */
-  desktopSidebarOpen: boolean
-  onToggleDesktopSidebar: () => void
 }
 
 export default function Header({
@@ -70,8 +67,6 @@ export default function Header({
   onNavigateToSettings,
   onRefreshPosts,
   onOpenMobileDrawer,
-  desktopSidebarOpen,
-  onToggleDesktopSidebar,
 }: Props) {
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
@@ -122,42 +117,26 @@ export default function Header({
       }`}
     >
       <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
-        {/* `<lg`: drawer. `lg+`: ten sam przycisk chowa i wysuwa sidebar,
-         *  który jest nakładką i nie przesuwa treści. */}
-        <button
-          type="button"
-          onClick={() => {
-            setMenuOpen(false)
-            onCloseNotificationsPanel()
-            onOpenMobileDrawer()
-          }}
-          aria-label="Otwórz menu"
-          className="lg:hidden w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
-        >
-          <Menu
-            size={ICONS_MOBILE.bottomNavIconSize}
-            strokeWidth={ICONS_MOBILE.bottomNavInactiveStrokeWidth}
-            className="shrink-0"
-          />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMenuOpen(false)
-            onCloseNotificationsPanel()
-            onToggleDesktopSidebar()
-          }}
-          aria-label={desktopSidebarOpen ? 'Schowaj menu' : 'Pokaż menu'}
-          aria-expanded={desktopSidebarOpen}
-          aria-controls="desktop-sidenav"
-          className="hidden lg:flex w-14 h-14 items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
-        >
-          {desktopSidebarOpen ? (
-            <PanelLeftClose size={26} strokeWidth={1.85} className="shrink-0" />
-          ) : (
-            <PanelLeft size={26} strokeWidth={1.85} className="shrink-0" />
-          )}
-        </button>
+        {/* Burger otwiera `MobileDrawer` z pełną listą sekcji + szukajką. Widoczny
+         *  na `<lg`, bo od `lg` lewy `SideNav` przejmuje rolę nawigacji. */}
+        <div className="block lg:hidden">
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              onCloseNotificationsPanel()
+              onOpenMobileDrawer()
+            }}
+            aria-label="Otwórz menu"
+            className="w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
+          >
+            <Menu
+              size={ICONS_MOBILE.bottomNavIconSize}
+              strokeWidth={ICONS_MOBILE.bottomNavInactiveStrokeWidth}
+              className="shrink-0"
+            />
+          </button>
+        </div>
       </div>
 
       {/* Logo absolute — duży mask (h-32) nie rozpycha wysokości paska */}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   AlarmClock,
   BookOpen,
@@ -10,7 +10,6 @@ import {
   Home,
   LogOut,
   Moon,
-  PanelLeftClose,
   Settings,
   Sun,
   Tag,
@@ -47,9 +46,6 @@ type Props = {
   onNavigateToUsos: () => void
   onNavigateToMiejsca: () => void
   onNavigateToSettings: () => void
-  /** Czy nakładka jest wysunięta. Schowana nie zabiera miejsca w layoucie. */
-  open: boolean
-  onClose: () => void
 }
 
 /**
@@ -78,61 +74,19 @@ export default function SideNav({
   onNavigateToUsos,
   onNavigateToMiejsca,
   onNavigateToSettings,
-  open,
-  onClose,
 }: Props) {
   const { theme: colorMode, toggleTheme } = useTheme()
   // Domyślnie zwinięta — żeby pierwszy rzut oka pokazywał tylko 6 głównych
   // pozycji, a nie 11. Mniej zagęszczenia = lepsza czytelność.
   const [moreOpen, setMoreOpen] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  const go = (action: () => void) => () => {
-    action()
-    onClose()
-  }
-
   return (
-    <>
-    {open && (
-      <button
-        type="button"
-        className={SIDE_NAV_DESKTOP.backdropClass}
-        aria-label="Schowaj menu"
-        onClick={onClose}
-      />
-    )}
     <aside
-      id="desktop-sidenav"
       aria-label="Nawigacja główna"
-      aria-hidden={!open}
-      inert={!open}
-      className={`${SIDE_NAV_DESKTOP.containerClass} ${
-        open ? SIDE_NAV_DESKTOP.containerOpenClass : SIDE_NAV_DESKTOP.containerClosedClass
-      }`}
+      className={SIDE_NAV_DESKTOP.containerClass}
     >
+      <div className={SIDE_NAV_DESKTOP.stickyClass}>
       <div className={SIDE_NAV_DESKTOP.innerClass}>
-        <div className="flex items-center justify-between px-3 pt-3">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#1e293b]/60 dark:text-zinc-500">
-            Menu
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Schowaj menu"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#1e293b]/70 hover:bg-white/70 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
-          >
-            <PanelLeftClose size={18} strokeWidth={2} />
-          </button>
-        </div>
         <div className={SIDE_NAV_DESKTOP.scrollAreaClass}>
           <div className={SIDE_NAV_DESKTOP.groupClass}>
             <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Główne</p>
@@ -140,21 +94,21 @@ export default function SideNav({
               icon={Home}
               label="Strona główna"
               active={activeView === 'feed'}
-              onClick={go(onNavigateToFeed)}
+              onClick={onNavigateToFeed}
               variant="sidebar"
             />
             <NavItem
               icon={CalendarDays}
               label="Wydarzenia"
               active={activeView === 'events'}
-              onClick={go(onNavigateToEvents)}
+              onClick={onNavigateToEvents}
               variant="sidebar"
             />
             <NavItem
               icon={GraduationCap}
               label="Aula"
               active={activeView === 'aula'}
-              onClick={go(onNavigateToAula)}
+              onClick={onNavigateToAula}
               variant="sidebar"
               hasUnread={aulaHasUnread}
               title="Aula — czat rocznika"
@@ -163,7 +117,7 @@ export default function SideNav({
               icon={Bell}
               label="Powiadomienia"
               active={activeView === 'notifications'}
-              onClick={go(onNavigateToNotifications)}
+              onClick={onNavigateToNotifications}
               variant="sidebar"
               badgeCount={unreadCount}
             />
@@ -171,7 +125,7 @@ export default function SideNav({
               icon={User}
               label="Profil"
               active={activeView === 'profile'}
-              onClick={go(onNavigateToProfile)}
+              onClick={onNavigateToProfile}
               variant="sidebar"
             />
           </div>
@@ -202,7 +156,7 @@ export default function SideNav({
                   icon={ClipboardList}
                   label="Mój Plan"
                   active={activeView === 'mojPlan'}
-                  onClick={go(onNavigateToMojPlan)}
+                  onClick={onNavigateToMojPlan}
                   variant="sidebar"
                   title="Mój Plan — subskrypcje wykładowców"
                 />
@@ -210,7 +164,7 @@ export default function SideNav({
                   icon={Tag}
                   label="Couponek UJ"
                   active={activeView === 'znizki'}
-                  onClick={go(onNavigateToZnizki)}
+                  onClick={onNavigateToZnizki}
                   variant="sidebar"
                   title="Couponek UJ — zniżki studenckie"
                 />
@@ -218,14 +172,14 @@ export default function SideNav({
                   icon={AlarmClock}
                   label="Rejestracje USOS"
                   active={activeView === 'usos'}
-                  onClick={go(onNavigateToUsos)}
+                  onClick={onNavigateToUsos}
                   variant="sidebar"
                 />
                 <NavItem
                   icon={BookOpen}
                   label="Miejsca do nauki"
                   active={activeView === 'miejsca'}
-                  onClick={go(onNavigateToMiejsca)}
+                  onClick={onNavigateToMiejsca}
                   variant="sidebar"
                   title="Miejsca do nauki — live presence"
                 />
@@ -243,7 +197,7 @@ export default function SideNav({
               icon={Settings}
               label="Ustawienia"
               active={false}
-              onClick={go(onNavigateToSettings)}
+              onClick={onNavigateToSettings}
               variant="sidebar"
             />
             <NavItem
@@ -257,13 +211,13 @@ export default function SideNav({
               icon={LogOut}
               label="Wyloguj się"
               active={false}
-              onClick={go(() => void supabase.auth.signOut())}
+              onClick={() => void supabase.auth.signOut()}
               variant="sidebar"
             />
           </div>
         </div>
       </div>
+      </div>
     </aside>
-    </>
   )
 }

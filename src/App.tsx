@@ -22,8 +22,6 @@ import Auth from './Auth'
 import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import SideNav from './components/SideNav'
-import { SIDE_NAV_DESKTOP } from './styles/mobile-theme'
-import { useDesktopSidebar } from './hooks/useDesktopSidebar'
 import MobileDrawer from './components/MobileDrawer'
 import ProfileModal from './components/ProfileModal'
 import FeedView from './components/FeedView'
@@ -110,7 +108,41 @@ function isResetPasswordPath(pathname: string): boolean {
   return normalized === '/reset-password'
 }
 
-/** Wspólny `max-w` + padding dla headera i `<main>` — jedna oś z SideNav. */
+/**
+ * Kolumna treści na desktopie. Na szerokim oknie siedzi na środku, a sidebar
+ * wisi w lewym marginesie i styka się z nią. Gdy margines jest węższy niż
+ * 18rem, kolumna dosuwa się do menu zamiast chować się pod nim.
+ */
+function getAppFrameClass(view: AppShellView): string {
+  // Na lg kolumna ma szerokość treści i jest na środku okna, ale nigdy
+  // nie wchodzi pod sidebar (18rem). Menu wisi tuż po jej lewej stronie.
+  if (view === 'chat' || view === 'aula') {
+    return 'w-full lg:ml-[18rem] lg:w-[calc(100%-18rem)]'
+  }
+  if (view === 'events' || view === 'miejsca' || view === 'notifications') {
+    return 'w-full lg:ml-[max(18rem,calc(50%-900px))] lg:w-[min(1800px,calc(100%-18rem))]'
+  }
+  if (view === 'mojPlan') {
+    return 'w-full lg:ml-[max(18rem,calc(50%-800px))] lg:w-[min(1600px,calc(100%-18rem))]'
+  }
+  if (
+    view === 'feed' ||
+    view === 'profile' ||
+    view === 'userProfile' ||
+    view === 'search' ||
+    view === 'group' ||
+    view === 'sale' ||
+    view === 'znizki' ||
+    view === 'usos' ||
+    view === 'adminDiag' ||
+    view === 'adminReports'
+  ) {
+    return 'w-full lg:ml-[max(18rem,calc(50%-40rem))] lg:w-[min(80rem,calc(100%-18rem))]'
+  }
+  return 'w-full lg:ml-[max(18rem,calc(50%-21rem))] lg:w-[min(42rem,calc(100%-18rem))]'
+}
+
+/** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */
 function getAppContentShellClass(view: AppShellView): string {
   if (view === 'chat' || view === 'aula') return 'w-full px-4 lg:px-6'
   if (view === 'events' || view === 'miejsca' || view === 'notifications') {
@@ -265,7 +297,6 @@ function App() {
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
-  const desktopSidebar = useDesktopSidebar()
 
   const [activePostId, setActivePostId] = useState<string | null>(null)
   const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(null)
@@ -1386,6 +1417,7 @@ function App() {
       : navActiveView
 
   const contentShellClass = getAppContentShellClass(effectiveActiveView)
+  const appFrameClass = getAppFrameClass(effectiveActiveView)
   const mainLayoutClass = getMainLayoutClass(effectiveActiveView)
 
   const sharedPostProps = {
@@ -1708,7 +1740,8 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-dvh w-full max-w-full overflow-x-clip bg-zinc-50 dark:bg-bg-app lg:flex lg:items-start">
+      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
+        <div className={`relative min-h-dvh ${appFrameClass}`}>
         <SideNav
           activeView={navActiveView}
           unreadCount={unreadCount}
@@ -1723,11 +1756,9 @@ function App() {
           onNavigateToUsos={() => navigateToMainView('usos')}
           onNavigateToMiejsca={() => navigateToMainView('miejsca')}
           onNavigateToSettings={openSettings}
-          open={desktopSidebar.open}
-          onClose={desktopSidebar.close}
         />
 
-        <div className={`flex-1 min-w-0 w-full ${SIDE_NAV_DESKTOP.contentPadTopClass}`}>
+        <div className="min-w-0 w-full flex-1">
           <Header
             myProfile={myProfile}
             displayName={displayName}
@@ -1765,8 +1796,6 @@ function App() {
             onNavigateToSettings={openSettings}
             onRefreshPosts={() => feedMutations.invalidateFeed()}
             onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
-            desktopSidebarOpen={desktopSidebar.open}
-            onToggleDesktopSidebar={desktopSidebar.toggle}
           />
 
           <Suspense fallback={null}>
@@ -1803,6 +1832,7 @@ function App() {
               setIsMobileComposeOpen(true)
             }}
           />
+        </div>
         </div>
       </div>
 
