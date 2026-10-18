@@ -226,6 +226,27 @@ body {
   touch-action: pan-y;
 }
 
+/*
+ * iOS (viewport-fit=cover): przy scrollu sticky/fixed header potrafi
+ * zjechać o wysokość paska statusu i zostawić prześwit z feedem.
+ * Fałszywy pas NAD headerem domalowuje to samo tło, więc dziury nie widać.
+ */
+@media (max-width: 1023px) {
+  .uj-header-bar {
+    background-color: color-mix(in srgb, var(--bg-app) 94%, transparent);
+  }
+  .uj-header-bar::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -5rem;
+    height: 5rem;
+    background: inherit;
+    pointer-events: none;
+  }
+}
+
 #root {
   width: 100%;
   max-width: 100%;

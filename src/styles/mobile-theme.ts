@@ -22,12 +22,30 @@ export const ICONS_MOBILE = {
 } as const
 
 export const HEADER_MOBILE = {
+  /**
+   * Na telefonie header jest `fixed` przy samej górze viewportu i ma
+   * `padding-top: env(safe-area-inset-top)`, żeby tło wchodziło pod pasek
+   * statusu. Inaczej `sticky` na iOS zostawia dziurę i feed prześwituje
+   * między zegarem a paskiem. Od `lg` wraca do kolumny (`sticky`).
+   */
   containerClass:
-    'relative h-14 md:h-16 gap-2 px-4 flex items-center justify-between shrink-0 ' +
-    'sticky top-0 z-50',
-  sideSectionClass: 'w-[100px] min-w-[100px] md:w-24 md:min-w-24',
+    'z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
+    'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 ' +
+    'h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] ' +
+    'md:h-[calc(4rem+env(safe-area-inset-top,0px))] ' +
+    'lg:sticky lg:top-0 lg:h-16 lg:pt-0',
+  /** Zajmuje w layoucie miejsce headera, który na `<lg` jest wyjęty z flow. */
+  headerSpacerClass:
+    'pointer-events-none h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:h-[calc(4rem+env(safe-area-inset-top,0px))] lg:hidden',
+  sideSectionClass: 'min-w-0 justify-self-start',
+  /**
+   * Pusty pas na środku headera, równy szerokości logo z zapasem.
+   * Logo jest `fixed` na osi kolumny; bez tego pasa pasek szukania
+   * (prawa komórka) dochodzi do znaku na 2K, gdzie kolumna ma 80rem.
+   */
+  logoLaneClass: 'w-[8.5rem] shrink-0',
   rightSectionClass:
-    'flex-shrink-0 flex items-center justify-end gap-2 md:gap-3 relative z-10 ml-auto min-w-0',
+    'flex w-full min-w-0 items-center justify-end gap-2 md:gap-3 relative z-10 justify-self-end',
   /**
    * Logo nad środkową kolumną feedu. Na `lg+` oś to środek ramki feedu
    * (`ml-[max(18rem,50%-40rem)]` + połowa `w-[min(80rem,100%-18rem)]` —
@@ -38,7 +56,7 @@ export const HEADER_MOBILE = {
    * headera inaczej łapie pozycjonowanie.
    */
   logoAnchorClass:
-    'pointer-events-none fixed top-0 left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16 ' +
+    'pointer-events-none fixed top-[env(safe-area-inset-top,0px)] left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16 lg:top-0 ' +
     'lg:left-[calc(max(18rem,50%-40rem)+min(80rem,100%-18rem)/2)]',
   logoClass: 'h-[6.75rem] w-auto aspect-[728/1372]',
   themeToggleButtonClass:
@@ -351,13 +369,9 @@ export const OMNI_DESKTOP = {
   // między ikoną, opcjonalnym `modeBadge`, inputem i przyciskiem `X` jest
   // egzekwowane przez `gap-2`, nie przez `mr-*` na dzieciach.
   //
-  // Widoczność `hidden xl:flex` (≥ 1280 px): poniżej tego progu prawa
-  // strona headera (capsule + 3 przyciski + user-menu) wchodzi w obszar
-  // wyśrodkowanego logo. Zamiast capsule pokazujemy wtedy ikonę-lupę
-  // w lewej sekcji — patrz `Header.tsx` (`block xl:hidden`). Klik w lupę
-  // nawiguje od razu do `/search` (SearchDashboard), bez pośredniego overlaya.
-  // Szerokość `w-72 2xl:w-80` (288/320 px) trzyma capsule poza środkiem
-  // viewportu przy każdym aktywnym breakpoincie (xl 1280, 2xl 1536).
+  // Widoczność od `xl`. Szerokość schodzi z wolnego miejsca w prawej
+  // komórce headera (po ikonach i menu użytkownika), z sufitem `18/20rem`.
+  // Lewą granicę trzyma `logoLaneClass`, więc kapsuła nie dotyka logo.
   //
   // Glassmorphism zachowany: `backdrop-blur-md backdrop-saturate-150` +
   // półprzezroczyste tło (`bg-white/80 dark:bg-bg-card/80`).
@@ -365,7 +379,7 @@ export const OMNI_DESKTOP = {
   // (`inset 0 1px 0 rgba(255,255,255,0.7)`) odsłaniają backdrop-blur ponad headerem.
   // Dark: zostaje bez zmian (już dobrze widać glass dzięki `bg-bg-card/80` na ciemnym tle).
   inputCapsuleWrap:
-    'relative hidden xl:flex h-10 w-72 2xl:w-80 shrink-0 items-center gap-2 rounded-2xl px-3.5 ' +
+    'relative ml-auto hidden h-10 w-full min-w-0 max-w-72 shrink items-center gap-2 rounded-2xl px-3.5 xl:flex 2xl:max-w-80 ' +
     'backdrop-blur-md backdrop-saturate-150 ' +
     'border border-white/55 bg-white/55 ' +
     'shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_8px_-3px_rgba(15,23,42,0.1)] ' +

@@ -4,12 +4,12 @@ import DepartmentFilter from './DepartmentFilter'
  * FeedFilters — wrapper agregujący filtry feedu (na razie tylko wydział).
  *
  * Przy `sticky=true` przyklejają się do dolnej krawędzi mobile-headera
- * (`top-14` = wysokość `HEADER_MOBILE.containerClass` na <md). Na `md+`
+ * (`top` = wysokość headera na <md, razem z `safe-area-inset-top`). Na `md+`
  * sticky/blur/padding są resetowane — desktopowy feed osadza filtry w karcie
  * z compose, więc dziedziczy jej tło i layout.
  *
  * Mobile sticky bar (zgodnie z taskiem):
- *  - `sticky top-14` — przyklejony do dolnej krawędzi headera (h-14).
+ *  - `sticky` pod headerem (3.5rem + safe area), żeby nie wjeżdżał pod pasek.
  *  - `bg-black/90 backdrop-blur-md` — wymagane w spec'u; dla trybu light
  *    nakładamy fallback `bg-bg-app/95`, żeby czarny pasek nie zalewał
  *    białego feedu.
@@ -26,7 +26,7 @@ type Props = {
 }
 
 const STICKY_MOBILE_CLS =
-  'sticky top-14 z-40 -mx-4 px-4 py-1.5 ' +
+  'sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-40 -mx-4 px-4 py-1.5 ' +
   'bg-bg-app/95 dark:bg-black/90 backdrop-blur-md backdrop-saturate-150 ' +
   'border-b border-zinc-200/60 dark:border-white/5 ' +
   'md:static md:top-auto md:z-auto md:mx-0 md:px-0 md:py-0 ' +

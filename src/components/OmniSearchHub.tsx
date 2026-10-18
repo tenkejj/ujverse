@@ -99,7 +99,7 @@ export default function OmniSearchHub(props: Props) {
   const aulaOffset = eventsOffset + o.results.events.length
 
   return (
-    <div ref={containerRef} className="relative hidden md:flex">
+    <div ref={containerRef} className="relative hidden min-w-0 flex-1 xl:flex">
       <div className={T.inputCapsuleWrap}>
         <Search strokeWidth={2} className={T.inputLeadingIcon} aria-hidden />
         {o.parsed.mode !== 'all' && (

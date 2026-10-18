@@ -152,14 +152,15 @@ export default function Header({
 
   return (
     <>
+    <div aria-hidden className={HEADER_MOBILE.headerSpacerClass} />
     <header
-      className={`${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 shadow-none ${
+      className={`uj-header-bar ${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
           : 'bg-bg-app/80 backdrop-blur-md backdrop-saturate-150 dark:bg-black/20 dark:backdrop-blur-md dark:backdrop-saturate-150'
       }`}
     >
-      <div className={`${HEADER_MOBILE.sideSectionClass} flex-shrink-0 flex items-center justify-start relative z-10`}>
+      <div className={`${HEADER_MOBILE.sideSectionClass} flex items-center justify-start relative z-10`}>
         {/* Burger otwiera `MobileDrawer` z pełną listą sekcji + szukajką. Widoczny
          *  na `<lg`, bo od `lg` lewy `SideNav` przejmuje rolę nawigacji. */}
         <div className="block lg:hidden">
@@ -182,8 +183,10 @@ export default function Header({
         </div>
       </div>
 
+      <div aria-hidden className={HEADER_MOBILE.logoLaneClass} />
+
       <div className={HEADER_MOBILE.rightSectionClass}>
-        <div className="hidden md:flex items-center gap-1.5 shrink-0">
+        <div className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5">
           <OmniSearchHub
             cohortId={cohortId}
             onNavigateToUser={onNavigateToUser}

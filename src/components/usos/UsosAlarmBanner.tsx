@@ -123,7 +123,7 @@ export default function UsosAlarmBanner({ userId, onNavigateToUsos }: Props) {
           animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
           exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -32 }}
           transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          className="sticky top-0 z-40 w-full bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 px-3 py-2 shadow-sm ring-1 ring-red-200/60 dark:from-red-500/10 dark:via-orange-500/10 dark:to-amber-500/10 dark:ring-red-400/20"
+          className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-40 w-full bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 px-3 py-2 shadow-sm ring-1 ring-red-200/60 md:top-[calc(4rem+env(safe-area-inset-top,0px))] lg:top-0 dark:from-red-500/10 dark:via-orange-500/10 dark:to-amber-500/10 dark:ring-red-400/20"
           role="alert"
           aria-live="polite"
         >
