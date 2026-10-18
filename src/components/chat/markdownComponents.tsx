@@ -45,7 +45,7 @@ export const MARKDOWN_COMPONENTS: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[#1e293b] underline underline-offset-2 hover:opacity-80 dark:text-brand-gold-bright"
+      className="text-brand-ink underline underline-offset-2 hover:opacity-80 dark:text-brand-gold-bright"
     >
       {children}
     </a>

@@ -150,7 +150,7 @@ export default function EventAttendeesModal({
         <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
           {loading ? (
             <div className="flex justify-center py-14">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1e293b] border-t-transparent dark:border-brand-gold-bright" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-ink border-t-transparent dark:border-brand-gold-bright" />
             </div>
           ) : total === 0 ? (
             <p className="px-4 py-12 text-center text-sm text-fg-secondary">

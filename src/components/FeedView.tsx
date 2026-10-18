@@ -301,7 +301,7 @@ export default function FeedView({
             <div ref={loadMoreRef} aria-hidden className="h-1 w-full" />
             {isFetchingNextPage && (
               <div className="flex justify-center py-6">
-                <div className="h-6 w-6 rounded-full border-2 border-[#1e293b]/30 border-t-[#1e293b] animate-spin dark:border-brand-gold/30 dark:border-t-brand-gold-bright" />
+                <div className="h-6 w-6 rounded-full border-2 border-brand-ink/30 border-t-brand-ink animate-spin dark:border-brand-gold/30 dark:border-t-brand-gold-bright" />
               </div>
             )}
             {!hasNextPage && (

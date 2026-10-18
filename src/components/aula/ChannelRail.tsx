@@ -113,13 +113,13 @@ export default function ChannelRail({
       ].join(' ')}
     >
       <div className="border-b border-zinc-200 px-4 py-3 dark:border-white/10">
-        <div className="flex items-center justify-between gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+        <div className="flex items-center justify-between gap-2 text-brand-ink dark:text-brand-gold-bright">
           <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Sale</span>
           <button
             type="button"
             onClick={onCreate}
             aria-label="Stwórz salę"
-            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[#1e293b]/70 hover:bg-black/[0.06] hover:text-[#1e293b] dark:text-brand-gold-bright/70 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-brand-ink/70 hover:bg-black/[0.06] hover:text-brand-ink dark:text-brand-gold-bright/70 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
           >
             <Plus size={14} />
           </button>
@@ -181,7 +181,7 @@ export default function ChannelRail({
               <button
                 type="button"
                 onClick={onClearKindFilter}
-                className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[#1e293b] underline-offset-2 hover:underline dark:text-brand-gold-bright"
+                className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright"
               >
                 <X size={10} />
                 Wyczyść filter
@@ -263,7 +263,7 @@ function GeneralRoomItem({
       className={[
         'group flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
         active
-          ? 'bg-[#1e293b]/[0.08] font-semibold text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
+          ? 'bg-brand-ink/[0.08] font-semibold text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
           : showUnread
             ? 'font-semibold text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
             : 'text-fg-secondary hover:bg-black/[0.04] hover:text-fg-primary dark:hover:bg-white/[0.05]',
@@ -272,7 +272,7 @@ function GeneralRoomItem({
     >
       <GraduationCap
         size={14}
-        className="shrink-0 text-[#1e293b]/70 dark:text-brand-gold-bright/80"
+        className="shrink-0 text-brand-ink/70 dark:text-brand-gold-bright/80"
       />
       <span className="min-w-0 flex-1 truncate">Sala główna</span>
       <TaskBadge count={openTasks} />
@@ -316,7 +316,7 @@ function ChannelItem({
       className={[
         'group flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
         active
-          ? 'bg-[#1e293b]/[0.08] font-semibold text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
+          ? 'bg-brand-ink/[0.08] font-semibold text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
           : showUnread
             ? 'font-semibold text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
             : 'text-fg-secondary hover:bg-black/[0.04] hover:text-fg-primary dark:hover:bg-white/[0.05]',

@@ -60,7 +60,7 @@ export default function PollDisplay({
   return (
     <div className="mt-2 max-w-md rounded-xl border border-zinc-200/80 bg-zinc-50/60 p-3 dark:border-white/10 dark:bg-white/[0.03]">
       <div className="mb-2 flex items-center gap-2">
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-ink/10 text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
           <BarChart3 size={11} strokeWidth={2.5} />
         </span>
         <h4 className="min-w-0 flex-1 text-sm font-bold leading-snug text-fg-primary">
@@ -95,7 +95,7 @@ export default function PollDisplay({
                 className={[
                   'group relative block w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors',
                   isMine
-                    ? 'border-[#1e293b]/40 bg-white dark:border-brand-gold-bright/40 dark:bg-white/[0.05]'
+                    ? 'border-brand-ink/40 bg-white dark:border-brand-gold-bright/40 dark:bg-white/[0.05]'
                     : 'border-zinc-200 bg-white/70 hover:border-zinc-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.02] dark:hover:border-white/20 dark:hover:bg-white/[0.05]',
                   isClosed ? 'cursor-default' : 'cursor-pointer',
                 ].join(' ')}
@@ -106,7 +106,7 @@ export default function PollDisplay({
                   className={[
                     'absolute inset-y-0 left-0 z-0',
                     isMine
-                      ? 'bg-[#1e293b]/12 dark:bg-brand-gold-bright/15'
+                      ? 'bg-brand-ink/12 dark:bg-brand-gold-bright/15'
                       : isTop
                         ? 'bg-emerald-500/10 dark:bg-emerald-400/10'
                         : 'bg-zinc-300/35 dark:bg-white/[0.06]',
@@ -121,7 +121,7 @@ export default function PollDisplay({
                     className={[
                       'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                       isMine
-                        ? 'border-[#1e293b] bg-[#1e293b] text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-bg-card'
+                        ? 'border-brand-ink bg-brand-ink text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-bg-card'
                         : 'border-zinc-300 bg-transparent dark:border-white/25',
                     ].join(' ')}
                   >
@@ -134,7 +134,7 @@ export default function PollDisplay({
                     className={[
                       'shrink-0 text-xs tabular-nums transition-colors',
                       isMine
-                        ? 'font-bold text-[#1e293b] dark:text-brand-gold-bright'
+                        ? 'font-bold text-brand-ink dark:text-brand-gold-bright'
                         : 'font-semibold text-zinc-500 dark:text-zinc-400',
                     ].join(' ')}
                   >
@@ -184,7 +184,7 @@ export default function PollDisplay({
             <button
               type="button"
               onClick={() => onVote(poll.message_id, null)}
-              className="ml-2 text-[11px] font-semibold text-zinc-500 underline-offset-2 hover:text-[#1e293b] hover:underline dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+              className="ml-2 text-[11px] font-semibold text-zinc-500 underline-offset-2 hover:text-brand-ink hover:underline dark:text-zinc-400 dark:hover:text-brand-gold-bright"
             >
               cofnij głos
             </button>

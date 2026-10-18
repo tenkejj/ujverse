@@ -152,7 +152,7 @@ export default function OmniSearchHub(props: Props) {
             o.close()
             props.onNavigateToSearch()
           }}
-          className="shrink-0 p-1 rounded-md text-[#1e293b]/70 hover:text-[#1e293b] hover:bg-zinc-100 dark:text-brand-gold-bright/70 dark:hover:text-brand-gold-bright dark:hover:bg-white/5 transition-all"
+          className="shrink-0 p-1 rounded-md text-brand-ink/70 hover:text-brand-ink hover:bg-zinc-100 dark:text-brand-gold-bright/70 dark:hover:text-brand-gold-bright dark:hover:bg-white/5 transition-all"
           title="Otwórz pełną wyszukiwarkę"
           aria-label="Otwórz pełną wyszukiwarkę"
         >
@@ -194,7 +194,7 @@ export default function OmniSearchHub(props: Props) {
 
               {showLoading && (
                 <div className={T.loadingRow} role="status" aria-live="polite">
-                  <Loader2 size={14} className="animate-spin text-[#1e293b] dark:text-brand-gold-bright" />
+                  <Loader2 size={14} className="animate-spin text-brand-ink dark:text-brand-gold-bright" />
                   Szukam…
                 </div>
               )}
@@ -528,7 +528,7 @@ function AulaSection({
                     {author}
                     {hit.channelId == null ? (
                       <span
-                        className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-[#1e293b]/[0.06] px-1.5 py-0.5 align-baseline text-[10px] font-semibold text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
+                        className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 align-baseline text-[10px] font-semibold text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
                         title="Sala główna"
                       >
                         <GraduationCap size={9} />
@@ -588,7 +588,7 @@ function RecentSection({
         <button
           type="button"
           onClick={onClearAll}
-          className="mr-1 mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-[#1e293b] dark:hover:text-brand-gold-bright"
+          className="mr-1 mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-brand-ink dark:hover:text-brand-gold-bright"
         >
           Wyczyść
         </button>

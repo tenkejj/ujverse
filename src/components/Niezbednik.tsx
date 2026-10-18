@@ -50,7 +50,7 @@ function ExternalRow({ label, href, Icon, tag }: { label: string; href: string; 
         <Icon size={18} className={`shrink-0 ${widgetGoldCls}`} strokeWidth={2} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug truncate">
+        <p className="text-sm font-bold text-brand-ink dark:text-white leading-snug truncate">
           {label}
         </p>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">{tag}</span>
@@ -83,7 +83,7 @@ function InternalRow({
         <Icon size={18} className={`shrink-0 ${widgetGoldCls}`} strokeWidth={2} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-[#1e293b] dark:text-white leading-snug truncate">
+        <p className="text-sm font-bold text-brand-ink dark:text-white leading-snug truncate">
           {label}
         </p>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">{tag}</span>

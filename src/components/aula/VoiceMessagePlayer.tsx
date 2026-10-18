@@ -80,7 +80,7 @@ export default function VoiceMessagePlayer({
         onClick={togglePlay}
         disabled={!url || errored}
         aria-label={isPlaying ? 'Pauza' : 'Odtwórz głosówkę'}
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e293b] text-white shadow-sm transition-colors hover:bg-[#1e293b]/90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-gold-bright dark:text-bg-card dark:hover:bg-brand-gold-bright/85"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-ink text-white shadow-sm transition-colors hover:bg-brand-ink/90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-gold-bright dark:text-bg-card dark:hover:bg-brand-gold-bright/85"
       >
         {isPlaying ? <Pause size={16} strokeWidth={2.5} /> : <Play size={16} strokeWidth={2.5} className="ml-[2px]" />}
       </button>
@@ -97,7 +97,7 @@ export default function VoiceMessagePlayer({
           className="h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-zinc-300/70 dark:bg-white/15"
         >
           <div
-            className="h-full rounded-full bg-[#1e293b] transition-[width] duration-100 dark:bg-brand-gold-bright"
+            className="h-full rounded-full bg-brand-ink transition-[width] duration-100 dark:bg-brand-gold-bright"
             style={{ width: `${progress * 100}%` }}
           />
         </div>
@@ -115,7 +115,7 @@ export default function VoiceMessagePlayer({
           rel="noopener noreferrer"
           aria-label={`Pobierz ${attachment.file_name}`}
           title="Pobierz"
-          className="shrink-0 rounded-md p-1.5 text-zinc-400 opacity-0 transition-opacity hover:bg-black/[0.05] hover:text-[#1e293b] group-hover:opacity-100 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
+          className="shrink-0 rounded-md p-1.5 text-zinc-400 opacity-0 transition-opacity hover:bg-black/[0.05] hover:text-brand-ink group-hover:opacity-100 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
         >
           <Download size={14} />
         </a>

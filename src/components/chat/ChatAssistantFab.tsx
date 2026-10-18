@@ -146,7 +146,7 @@ export default function ChatAssistantFab({
       type="button"
       onClick={() => setOpen(true)}
       aria-label="Otwórz Versusia"
-      className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-[#1e293b] text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950"
+      className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-brand-ink text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950"
       style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -188,7 +188,7 @@ export default function ChatAssistantFab({
 
         <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-1">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-ink text-white dark:bg-brand-gold-bright dark:text-zinc-950">
               <AnimatedBot
                 size={16}
                 intensity={isTyping ? 'active' : 'idle'}
@@ -238,7 +238,7 @@ export default function ChatAssistantFab({
                 type="button"
                 onClick={() => void handleSend(prompt)}
                 disabled={isTyping}
-                className="shrink-0 rounded-full border border-zinc-200 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-[#1e293b] backdrop-blur-md transition-colors hover:border-[#1e293b]/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
+                className="shrink-0 rounded-full border border-zinc-200 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-brand-ink backdrop-blur-md transition-colors hover:border-brand-ink/30 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70"
               >
                 {prompt}
               </button>
@@ -266,7 +266,7 @@ export default function ChatAssistantFab({
             placeholder="Napisz wiadomość..."
             rows={1}
             disabled={isTyping}
-            className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-[#1e293b] focus:ring-2 focus:ring-[#1e293b]/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
+            className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
           />
           {isTyping ? (
             <button
@@ -283,7 +283,7 @@ export default function ChatAssistantFab({
               type="submit"
               aria-label="Wyślij wiadomość"
               disabled={draft.trim().length === 0}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e293b] text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-ink text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
             >
               <Send size={17} strokeWidth={2} />
             </button>

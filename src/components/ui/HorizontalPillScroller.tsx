@@ -11,7 +11,7 @@ export const SCROLL_STEP_PX = 220
 
 export const ARROW_BTN_VISUAL_CLS =
   'inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 ' +
-  'bg-white/10 text-[#1e293b] backdrop-blur-md transition-colors hover:bg-white/20 ' +
+  'bg-white/10 text-brand-ink backdrop-blur-md transition-colors hover:bg-white/20 ' +
   'dark:border-white/10 dark:bg-zinc-800/40 dark:text-white dark:hover:bg-zinc-700/60'
 
 export const OVERLAY_LEFT_CLS =

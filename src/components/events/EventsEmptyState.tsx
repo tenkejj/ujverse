@@ -66,7 +66,7 @@ export default function EventsEmptyState({ variant, context, suggestions = [] }:
               onClick={s.onClick}
               className={E.hintChipClass}
             >
-              <Sparkles size={13} strokeWidth={2} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
+              <Sparkles size={13} strokeWidth={2} className="shrink-0 text-brand-ink dark:text-brand-gold-bright" aria-hidden />
               {s.label}
             </button>
           ))}

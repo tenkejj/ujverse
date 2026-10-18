@@ -187,7 +187,7 @@ export default function UsosRegistrationsView({ userId, studyProgram, yearStarte
               onChange={(e) =>
                 setFilter((f) => ({ ...f, sort: e.target.value as RegistrationFilter['sort'] }))
               }
-              className="h-10 rounded-2xl border border-zinc-200 bg-white/80 px-3 text-[12.5px] font-medium text-zinc-700 backdrop-blur-md transition-colors focus:border-[#1e293b]/40 focus:outline-none dark:border-white/10 dark:bg-black/25 dark:text-zinc-200"
+              className="h-10 rounded-2xl border border-zinc-200 bg-white/80 px-3 text-[12.5px] font-medium text-zinc-700 backdrop-blur-md transition-colors focus:border-brand-ink/40 focus:outline-none dark:border-white/10 dark:bg-black/25 dark:text-zinc-200"
               aria-label="Sortuj"
             >
               {(Object.entries(SORT_LABELS) as Array<[RegistrationFilter['sort'], string]>).map(([slug, label]) => (
@@ -251,7 +251,7 @@ export default function UsosRegistrationsView({ userId, studyProgram, yearStarte
                     key={u.registration_id}
                     type="button"
                     onClick={() => handleOpenDetail(u.registration_id)}
-                    className="group flex w-72 shrink-0 flex-col items-start gap-1 rounded-2xl border border-zinc-200/70 bg-white/80 px-3.5 py-2.5 text-left backdrop-blur-xl backdrop-saturate-150 transition-colors hover:border-[#1e293b]/25 hover:bg-white dark:border-white/10 dark:bg-zinc-950/45 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/60"
+                    className="group flex w-72 shrink-0 flex-col items-start gap-1 rounded-2xl border border-zinc-200/70 bg-white/80 px-3.5 py-2.5 text-left backdrop-blur-xl backdrop-saturate-150 transition-colors hover:border-brand-ink/25 hover:bg-white dark:border-white/10 dark:bg-zinc-950/45 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/60"
                   >
                     <div className="flex w-full items-center justify-between gap-2">
                       <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide ${kindMeta.tint}`}>
@@ -263,7 +263,7 @@ export default function UsosRegistrationsView({ userId, studyProgram, yearStarte
                           ? 'text-red-700 dark:text-red-300'
                           : cd.phase === 'live'
                             ? 'text-emerald-700 dark:text-emerald-300'
-                            : 'text-[#1e293b] dark:text-brand-gold-bright'
+                            : 'text-brand-ink dark:text-brand-gold-bright'
                       }`}>
                         <Clock size={10} strokeWidth={2.3} />
                         {cd.compact}
@@ -272,7 +272,7 @@ export default function UsosRegistrationsView({ userId, studyProgram, yearStarte
                     <p className="line-clamp-1 text-[13px] font-bold text-zinc-900 dark:text-zinc-100">
                       {u.title}
                     </p>
-                    <p className="line-clamp-1 text-[11.5px] font-semibold text-[#1e293b] dark:text-brand-gold-bright">
+                    <p className="line-clamp-1 text-[11.5px] font-semibold text-brand-ink dark:text-brand-gold-bright">
                       {u.audience_label ?? [u.study_program, u.year ? `${u.year} rok` : null].filter(Boolean).join(' · ')}
                     </p>
                     <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 tabular-nums">

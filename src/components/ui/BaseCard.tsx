@@ -64,11 +64,11 @@ function variantClasses(variant: BaseCardVariant): string {
         // Dark:  złoty ring + neutralna ciemna powierzchnia (bez brunatnego
         //        `#1a1508` "sepia" tinta, który czytał się jak krem na ciemnym tle).
         //        Premium-akcent niesie WYŁĄCZNIE border + ring + shadow.premium.
-        'border-[#1e293b]/30 dark:border-[#D4AF37]/45',
-        'bg-gradient-to-br from-zinc-50 via-[#1e293b]/[0.04] to-white ' +
+        'border-brand-ink/30 dark:border-[#D4AF37]/45',
+        'bg-gradient-to-br from-zinc-50 via-brand-ink/[0.04] to-white ' +
           'dark:from-zinc-950/70 dark:via-zinc-950/55 dark:to-zinc-950/40',
         shadow.premium,
-        'ring-1 ring-[#1e293b]/10 dark:ring-[#D4AF37]/20',
+        'ring-1 ring-brand-ink/10 dark:ring-[#D4AF37]/20',
         colors.surface.glass,
       ].join(' ')
     case 'default':
@@ -88,13 +88,13 @@ function interactiveClasses(variant: BaseCardVariant): string {
   // Hover-akcent krawędzi: navy w light, gold w dark — spójnie dla wszystkich
   // wariantów. Wcześniej `hover:border-[#D4AF37]/45` (gold) leciał też w light.
   const accentBorderHover =
-    'hover:border-[#1e293b]/45 dark:hover:border-[#D4AF37]/45'
+    'hover:border-brand-ink/45 dark:hover:border-[#D4AF37]/45'
 
   if (variant === 'inner') {
     return `${theme.transition.base} ${accentBorderHover} cursor-pointer`
   }
   if (variant === 'premium') {
-    return `${theme.transition.base} cursor-pointer hover:border-[#1e293b]/55 hover:ring-[#1e293b]/20 dark:hover:border-[#D4AF37]/60 dark:hover:ring-[#D4AF37]/40`
+    return `${theme.transition.base} cursor-pointer hover:border-brand-ink/55 hover:ring-brand-ink/20 dark:hover:border-[#D4AF37]/60 dark:hover:ring-[#D4AF37]/40`
   }
   // `default` — hover dodaje aureolę systemową:
   //   light: subtelny granat, dark: ciepły złoty (jak `theme.shadow.cardGlow`).

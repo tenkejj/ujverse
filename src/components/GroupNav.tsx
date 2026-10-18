@@ -32,7 +32,7 @@ const RAIL_HEADER_CLS = 'hidden md:flex relative mb-2 min-w-0 items-center justi
 const ROW_CLS = `group m-0 w-full flex cursor-pointer items-center gap-2 p-2.5 shadow-none ${sidePanelHoverFocus}`
 const ROW_ICON_COL_CLS = 'shrink-0 flex w-12 items-center justify-center min-h-[36px]'
 const ROW_NAME_CLS =
-  'min-w-0 flex-1 truncate text-left text-sm font-bold text-[#1e293b] dark:text-white leading-snug'
+  'min-w-0 flex-1 truncate text-left text-sm font-bold text-brand-ink dark:text-white leading-snug'
 const ROW_HASH_CLS = `shrink-0 text-xs ${widgetGoldCls}`
 const CARD_CLS = 'p-4 flex flex-col gap-4 shrink-0'
 
@@ -41,10 +41,10 @@ const RAIL_TRACK_CLS =
   '-mx-0.5 px-0.5 pb-1 [-webkit-overflow-scrolling:touch]'
 const RAIL_TAB_CLS =
   'shrink-0 flex w-16 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-center ' +
-  'text-zinc-600 transition-colors hover:text-[#1e293b] active:text-[#1e293b] ' +
+  'text-zinc-600 transition-colors hover:text-brand-ink active:text-brand-ink ' +
   'dark:text-zinc-300 dark:hover:text-brand-gold-bright dark:active:text-brand-gold-bright ' +
   '[-webkit-tap-highlight-color:transparent] focus-visible:outline-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:focus-visible:ring-brand-gold/35'
+  'focus-visible:ring-2 focus-visible:ring-brand-ink/30 dark:focus-visible:ring-brand-gold/35'
 const RAIL_TAB_LABEL_CLS =
   'w-full truncate text-[10px] font-medium leading-none tracking-wide'
 

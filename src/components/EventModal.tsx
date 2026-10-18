@@ -165,7 +165,7 @@ function EventModalContent({
               href={event.mapUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex flex-wrap items-center gap-1 text-slate-600 transition-colors hover:text-[#1e293b] dark:text-slate-400 dark:hover:text-brand-gold-bright"
+              className="inline-flex flex-wrap items-center gap-1 text-slate-600 transition-colors hover:text-brand-ink dark:text-slate-400 dark:hover:text-brand-gold-bright"
             >
               <span className="underline-offset-2 hover:underline">{event.location}</span>
             </a>
@@ -182,7 +182,7 @@ function EventModalContent({
           href={event.event_url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold ${goldIconCls} transition-colors hover:text-[#1e293b]/80 dark:hover:text-brand-gold-bright`}
+          className={`mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold ${goldIconCls} transition-colors hover:text-brand-ink/80 dark:hover:text-brand-gold-bright`}
         >
           <ExternalLink size={16} className={`shrink-0 ${goldIconCls}`} strokeWidth={2} aria-hidden />
           Strona wydarzenia u źródła
@@ -213,7 +213,7 @@ function EventModalContent({
             type="button"
             onClick={onOpenAttendees}
             aria-label={`Zobacz listę uczestników (${attendeeCount.toString()})`}
-            className="group flex min-w-[180px] flex-1 cursor-pointer flex-wrap items-center justify-end gap-3 rounded-xl px-2 py-1 transition-colors hover:bg-slate-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:hover:bg-white/6 dark:focus-visible:ring-brand-gold/40"
+            className="group flex min-w-[180px] flex-1 cursor-pointer flex-wrap items-center justify-end gap-3 rounded-xl px-2 py-1 transition-colors hover:bg-slate-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 dark:hover:bg-white/6 dark:focus-visible:ring-brand-gold/40"
           >
             <Users size={16} className={`shrink-0 ${goldIconCls}`} aria-hidden />
             {avatars.length > 0 && (
@@ -229,7 +229,7 @@ function EventModalContent({
                 ))}
               </div>
             )}
-            <span className="shrink-0 text-right text-sm leading-snug text-slate-600 underline-offset-2 transition-colors group-hover:text-[#1e293b] group-hover:underline dark:text-slate-400 dark:group-hover:text-brand-gold-bright">
+            <span className="shrink-0 text-right text-sm leading-snug text-slate-600 underline-offset-2 transition-colors group-hover:text-brand-ink group-hover:underline dark:text-slate-400 dark:group-hover:text-brand-gold-bright">
               {formatOthersLine(attendeeCount)}
             </span>
           </button>
@@ -238,7 +238,7 @@ function EventModalContent({
           href={generateGoogleCalendarLink(event)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-fit items-center gap-2 text-sm text-slate-600 transition-colors hover:text-[#1e293b] dark:text-slate-400 dark:hover:text-brand-gold-bright"
+          className="inline-flex w-fit items-center gap-2 text-sm text-slate-600 transition-colors hover:text-brand-ink dark:text-slate-400 dark:hover:text-brand-gold-bright"
         >
           <CalendarPlus size={16} className={`shrink-0 ${goldIconCls}`} aria-hidden />
           Dodaj do kalendarza
@@ -267,7 +267,7 @@ function EventModalContent({
           <img src={trimmedBannerUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <div
-            className="h-full w-full bg-gradient-to-br from-[#1e293b]/[0.08] to-transparent dark:from-brand-gold/15 dark:to-transparent"
+            className="h-full w-full bg-gradient-to-br from-brand-ink/[0.08] to-transparent dark:from-brand-gold/15 dark:to-transparent"
             aria-hidden
           />
         )}

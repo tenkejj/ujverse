@@ -30,12 +30,15 @@ html {
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-uj-blue:   #003399;
-  --color-uj-navy:   #002D62;
-  --color-uj-gold:   #C49A6C;
+  /* Oficjalne hexy SIW UJ (Pantone 2945 / 465) */
+  --color-uj-blue:   #00519E;
+  --color-uj-navy:   #0c4a86;
+  --color-uj-gold:   #CDB590;
   --color-uj-orange: #FF9900;
   --color-brand-gold: var(--brand-gold);
   --color-brand-gold-bright: var(--brand-gold-bright);
+  /* Główny atrament UI — w light granat logo, w „Kolory UJ” błękit SIW */
+  --color-brand-ink: var(--brand-ink);
   --color-app-bg:    #000000;
   --color-card-bg:   #09090b;
   --color-border-main: #27272a;
@@ -84,6 +87,7 @@ html {
 @layer base {
   :root {
     /* Light: granat z logo (slate-800), bez pomarańczu na tekstach */
+    --brand-ink: #1e293b;
     --logo-navy: #1e293b;
     /* Kość słoniowa — tło i karty w light */
     --background: #F9F7F2;
@@ -110,7 +114,43 @@ html {
     --accent-interactive: var(--uj-deep-gold);
     --accent-purple: #1e2a4f;
   }
+  /*
+   * „Kolory UJ” — hexy z Systemu Identyfikacji Wizualnej UJ / UJ CM:
+   *   błękit Pantone 2945 C → #00519E (RGB 0,81,158)
+   *   złoto/beż Pantone 465 C → #CDB590 (RGB 205,181,144)
+   * Atrament UI jest nieco pogłębiony (#0c4a86), tło chłodno-białe —
+   * żeby zachować czytelność bez jaskrawego „flagowego” błękitu na dużych
+   * płaszczyznach.
+   */
+  .theme-uj {
+    --brand-ink: #0c4a86;
+    --logo-navy: #0c4a86;
+    --background: #f3f6fa;
+    --card: #fbfcfe;
+    --border: rgb(12 74 134 / 0.12);
+    --modal-bg: #fbfcfe;
+    --modal-border: rgb(12 74 134 / 0.14);
+    --brand-gold: #b89768;
+    --brand-gold-bright: #cdb590;
+    --primary: var(--brand-ink);
+    --bg-app: var(--background);
+    --bg-card: var(--card);
+    --border-app: var(--border);
+    --text-primary: #0c4a86;
+    --text-secondary: rgb(12 74 134 / 0.62);
+    --text-label: rgb(12 74 134 / 0.72);
+    --zone-accent-strong: #0c4a86;
+    --zone-accent-muted: #b89768;
+    --zone-list-bg: #ffffff;
+    --uj-deep-gold: #a8895a;
+    --accent-gold: var(--uj-deep-gold);
+    --accent-like: #b89768;
+    --accent-interactive: #0c4a86;
+    --accent-purple: #0a3a6b;
+  }
   .dark {
+    /* brand-ink zostaje navy z :root — dark UI i tak używa dark:gold */
+    --brand-ink: #1e293b;
     --logo-navy: #0f172a;
     --uj-deep-gold: #a48955;
     --background: #000000;

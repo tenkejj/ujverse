@@ -243,7 +243,7 @@ export default function AiInsightModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#1e293b] px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-ink px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-brand-ink/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
             >
               Zamknij
             </button>

@@ -205,7 +205,7 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
               >
                 {ingestFromStaticFallback ? (
                   <>
-                    <Archive size={12} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
+                    <Archive size={12} className="shrink-0 text-brand-ink dark:text-brand-gold-bright" aria-hidden />
                     Archiwum
                   </>
                 ) : (

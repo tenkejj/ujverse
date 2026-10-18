@@ -115,17 +115,17 @@ function errorMessage(err: unknown): string {
 
 // ── Tokeny stylów (lokalne, spójne z SettingsView/AdminDiagView) ──────────
 
-const accentText = 'text-[#1e293b] dark:text-brand-gold-bright'
+const accentText = 'text-brand-ink dark:text-brand-gold-bright'
 
 const sectionIconBubble =
   'flex h-8 w-8 items-center justify-center rounded-xl ' +
-  'border border-[#1e293b]/15 bg-[#1e293b]/[0.05] text-[#1e293b] ' +
+  'border border-brand-ink/15 bg-brand-ink/[0.05] text-brand-ink ' +
   'dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/[0.06] dark:text-brand-gold-bright'
 
 const outlineBtnCls =
   'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 ' +
   'text-xs font-semibold transition-colors ' +
-  'border-[#1e293b]/35 bg-transparent text-[#1e293b] hover:border-[#1e293b]/55 hover:bg-[#1e293b]/[0.04] ' +
+  'border-brand-ink/35 bg-transparent text-brand-ink hover:border-brand-ink/55 hover:bg-brand-ink/[0.04] ' +
   'dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/60 ' +
   'dark:hover:bg-brand-gold-bright/[0.06] disabled:cursor-not-allowed disabled:opacity-55'
 
@@ -146,7 +146,7 @@ const successBtnCls =
 const noteFieldCls =
   'w-full resize-none rounded-xl border border-border-app bg-transparent px-3 py-2 text-sm leading-relaxed ' +
   'text-fg-primary placeholder:text-fg-tertiary outline-none transition-colors ' +
-  'focus:border-[#1e293b]/45 focus:bg-[#1e293b]/3 ' +
+  'focus:border-brand-ink/45 focus:bg-brand-ink/3 ' +
   'dark:focus:border-brand-gold/45 dark:focus:bg-white/4'
 
 // ── Etykiety / metadata statusu ───────────────────────────────────────────
@@ -464,7 +464,7 @@ export default function AdminReportsView({ myProfile, onBack }: Props) {
           <button
             type="button"
             onClick={onBack}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/70 text-zinc-700 backdrop-blur transition-colors hover:border-[#1e293b]/30 hover:bg-white hover:text-[#1e293b] dark:border-white/10 dark:bg-white/4 dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-white/7 dark:hover:text-brand-gold-bright"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/70 text-zinc-700 backdrop-blur transition-colors hover:border-brand-ink/30 hover:bg-white hover:text-brand-ink dark:border-white/10 dark:bg-white/4 dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-white/7 dark:hover:text-brand-gold-bright"
             aria-label="Poprzednia strona"
           >
             <ArrowLeft size={20} strokeWidth={2.25} aria-hidden />
@@ -507,8 +507,8 @@ export default function AdminReportsView({ myProfile, onBack }: Props) {
                 onClick={() => setFilter(f.id)}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                   isActive
-                    ? 'border-[#1e293b]/45 bg-[#1e293b]/8 text-[#1e293b] dark:border-brand-gold/45 dark:bg-brand-gold/10 dark:text-brand-gold-bright'
-                    : 'border-transparent text-fg-secondary hover:border-[#1e293b]/25 hover:bg-[#1e293b]/4 hover:text-fg-primary dark:hover:border-brand-gold/25 dark:hover:bg-white/4 dark:hover:text-zinc-100'
+                    ? 'border-brand-ink/45 bg-brand-ink/8 text-brand-ink dark:border-brand-gold/45 dark:bg-brand-gold/10 dark:text-brand-gold-bright'
+                    : 'border-transparent text-fg-secondary hover:border-brand-ink/25 hover:bg-brand-ink/4 hover:text-fg-primary dark:hover:border-brand-gold/25 dark:hover:bg-white/4 dark:hover:text-zinc-100'
                 }`}
                 aria-pressed={isActive}
               >
@@ -516,7 +516,7 @@ export default function AdminReportsView({ myProfile, onBack }: Props) {
                 <span
                   className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums ${
                     isActive
-                      ? 'bg-[#1e293b]/15 text-[#1e293b] dark:bg-brand-gold/20 dark:text-brand-gold-bright'
+                      ? 'bg-brand-ink/15 text-brand-ink dark:bg-brand-gold/20 dark:text-brand-gold-bright'
                       : 'bg-zinc-200/70 text-fg-secondary dark:bg-white/10 dark:text-fg-secondary'
                   }`}
                 >
@@ -658,7 +658,7 @@ function ReportCard({
           {targetKind === 'post' ? 'Post' : targetKind === 'comment' ? 'Komentarz' : '—'} #
           {targetKind === 'post' ? item.post_id : item.comment_id}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-[#1e293b]/15 bg-[#1e293b]/4 px-2.5 py-0.5 text-[11px] font-semibold text-[#1e293b] dark:border-brand-gold/30 dark:bg-brand-gold/8 dark:text-brand-gold-bright">
+        <span className="inline-flex items-center gap-1 rounded-full border border-brand-ink/15 bg-brand-ink/4 px-2.5 py-0.5 text-[11px] font-semibold text-brand-ink dark:border-brand-gold/30 dark:bg-brand-gold/8 dark:text-brand-gold-bright">
           {item.reason}
         </span>
         <span className="ml-auto font-mono text-[11px] text-fg-tertiary" title={item.created_at}>

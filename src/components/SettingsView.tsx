@@ -28,7 +28,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { toast } from '../lib/appToast'
 import { supabase } from '../supabaseClient'
-import { useTheme } from '../ThemeContext'
+import { THEME_META, THEME_ORDER, useTheme } from '../ThemeContext'
 import {
   applyVisualPreferences,
   setUserPreference,
@@ -62,22 +62,22 @@ type Props = {
 }
 
 // ── Tokens ────────────────────────────────────────────────────────────────
-const accentText = 'text-[#1e293b] dark:text-brand-gold-bright'
+const accentText = 'text-brand-ink dark:text-brand-gold-bright'
 const accentIconCls = `shrink-0 ${accentText}`
 
 const sectionHeaderCls =
   'flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] ' +
-  'text-[#1e293b] dark:text-brand-gold-bright'
+  'text-brand-ink dark:text-brand-gold-bright'
 
 const sectionIconBubble =
   'flex h-8 w-8 items-center justify-center rounded-xl ' +
-  'border border-[#1e293b]/15 bg-[#1e293b]/[0.05] text-[#1e293b] ' +
+  'border border-brand-ink/15 bg-brand-ink/[0.05] text-brand-ink ' +
   'dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/[0.06] dark:text-brand-gold-bright'
 
 const outlineBtnCls =
   'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 py-1.5 ' +
   'text-sm font-semibold transition-colors ' +
-  'border-[#1e293b]/35 bg-transparent text-[#1e293b] hover:border-[#1e293b]/55 hover:bg-[#1e293b]/[0.04] ' +
+  'border-brand-ink/35 bg-transparent text-brand-ink hover:border-brand-ink/55 hover:bg-brand-ink/[0.04] ' +
   'dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/60 ' +
   'dark:hover:bg-brand-gold-bright/[0.06] disabled:cursor-not-allowed disabled:opacity-55'
 
@@ -88,14 +88,14 @@ const dangerBtnCls =
   'dark:border-rose-500/40 dark:text-rose-300 dark:hover:border-rose-400/55 dark:hover:bg-rose-500/[0.08]'
 
 const primaryBtnCls =
-  'inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e293b] py-2.5 text-sm font-bold ' +
-  'text-white transition-colors hover:bg-[#1e293b]/90 ' +
+  'inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-ink py-2.5 text-sm font-bold ' +
+  'text-white transition-colors hover:bg-brand-ink/90 ' +
   'dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85 ' +
   'disabled:cursor-not-allowed disabled:opacity-55'
 
 const fieldCls =
   'w-full rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 text-zinc-900 outline-none ' +
-  'placeholder:text-zinc-400 focus:border-[#1e293b] ' +
+  'placeholder:text-zinc-400 focus:border-brand-ink ' +
   'dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 ' +
   'dark:focus:border-brand-gold-bright'
 
@@ -128,11 +128,11 @@ function SettingsToggle({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => !disabled && onChange(!enabled)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold/45 ${
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 dark:focus-visible:ring-brand-gold/45 ${
         disabled ? 'cursor-not-allowed opacity-55' : ''
       } ${
         enabled
-          ? 'bg-[#1e293b] dark:bg-brand-gold dark:shadow-[0_0_10px_rgba(201,162,39,0.35)]'
+          ? 'bg-brand-ink dark:bg-brand-gold dark:shadow-[0_0_10px_rgba(201,162,39,0.35)]'
           : 'bg-zinc-300 dark:bg-zinc-700'
       }`}
     >
@@ -268,7 +268,7 @@ function clearLocalAppCache(): number {
 // ── Main component ────────────────────────────────────────────────────────
 
 export default function SettingsView({ email, myProfile, onProfilePatch, onBack }: Props) {
-  const { theme, toggleTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const prefs = useUserPrefs()
   const navigate = useNavigate()
   const isAdmin = myProfile?.role === 'admin'
@@ -580,7 +580,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
         <button
           type="button"
           onClick={onBack}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/70 text-zinc-700 backdrop-blur transition-colors hover:border-[#1e293b]/30 hover:bg-white hover:text-[#1e293b] dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-white/[0.07] dark:hover:text-brand-gold-bright"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-white/70 text-zinc-700 backdrop-blur transition-colors hover:border-brand-ink/30 hover:bg-white hover:text-brand-ink dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-white/[0.07] dark:hover:text-brand-gold-bright"
           aria-label="Poprzednia strona"
         >
           <ArrowLeft size={20} strokeWidth={2.25} aria-hidden />
@@ -697,27 +697,49 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
           icon={PaintBrushIcon}
           description="Dopasuj motyw i intensywność animacji do swoich preferencji."
         >
-          <Row>
-            <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
+          <div className="space-y-3 px-1 py-1">
+            <div className="flex min-w-0 items-center gap-3">
               {theme === 'dark' ? (
-                <MoonIcon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
+                <MoonIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
+              ) : theme === 'uj' ? (
+                <AcademicCapIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               ) : (
-                <SunIcon className={`h-5 w-5 ${accentIconCls}`} aria-hidden />
+                <SunIcon className={`h-5 w-5 shrink-0 ${accentIconCls}`} aria-hidden />
               )}
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">Motyw</p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {theme === 'dark' ? 'Ciemny — granat + złoto.' : 'Jasny — biała mleczna szyba.'}
+                  {THEME_META[theme].hint}
                 </p>
               </div>
             </div>
-            <SettingsToggle
-              id="theme-toggle"
-              ariaLabel="Przełącz motyw"
-              enabled={theme === 'dark'}
-              onChange={() => toggleTheme()}
-            />
-          </Row>
+            <div
+              role="radiogroup"
+              aria-label="Motyw kolorystyczny"
+              className="grid grid-cols-3 gap-1.5 rounded-xl border border-zinc-200/80 bg-zinc-50/80 p-1 dark:border-white/10 dark:bg-white/[0.04]"
+            >
+              {THEME_ORDER.map((id) => {
+                const selected = theme === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setTheme(id)}
+                    className={[
+                      'rounded-lg px-2 py-2 text-center text-[12px] font-semibold transition-colors',
+                      selected
+                        ? 'bg-brand-ink text-white shadow-sm dark:bg-brand-gold-bright dark:text-zinc-950'
+                        : 'text-zinc-600 hover:bg-white/80 hover:text-brand-ink dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-brand-gold-bright',
+                    ].join(' ')}
+                  >
+                    {THEME_META[id].shortLabel}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           <Row>
             <RowLabel

@@ -70,14 +70,14 @@ function ActionBadge({ type, clean }: { type: AppNotification['type']; clean?: b
     if (type === 'reply_aula') {
       return (
         <span className={wrap} aria-hidden>
-          <GraduationCap size={12} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
+          <GraduationCap size={12} className="text-brand-ink dark:text-brand-gold-bright" strokeWidth={2.25} />
         </span>
       )
     }
     if (type === 'mention_aula') {
       return (
         <span className={wrap} aria-hidden>
-          <AtSign size={12} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
+          <AtSign size={12} className="text-brand-ink dark:text-brand-gold-bright" strokeWidth={2.25} />
         </span>
       )
     }
@@ -98,7 +98,7 @@ function ActionBadge({ type, clean }: { type: AppNotification['type']; clean?: b
     if (type === 'aula_task_new') {
       return (
         <span className={wrap} aria-hidden>
-          <CheckSquare size={12} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
+          <CheckSquare size={12} className="text-brand-ink dark:text-brand-gold-bright" strokeWidth={2.25} />
         </span>
       )
     }
@@ -342,7 +342,7 @@ function LecturerAnnouncementRow({
   void cleanOverlay
 
   const unreadRing = !notif.is_read
-    ? 'ring-1 ring-[#1e293b]/12 dark:ring-brand-gold-bright/25'
+    ? 'ring-1 ring-brand-ink/12 dark:ring-brand-gold-bright/25'
     : ''
 
   return (
@@ -431,7 +431,7 @@ function WeeklyBriefingRow({
   void cleanOverlay
 
   const unreadRing = !notif.is_read
-    ? 'ring-1 ring-[#1e293b]/12 dark:ring-brand-gold-bright/25'
+    ? 'ring-1 ring-brand-ink/12 dark:ring-brand-gold-bright/25'
     : ''
 
   return (
@@ -599,7 +599,7 @@ function NotificationRow({
 
   const unreadRing =
     !notif.is_read
-      ? 'ring-1 ring-[#1e293b]/12 dark:ring-brand-gold-bright/25'
+      ? 'ring-1 ring-brand-ink/12 dark:ring-brand-gold-bright/25'
       : ''
 
   return (
@@ -628,7 +628,7 @@ function NotificationRow({
         <div className="min-w-0 flex-1">
           <p className={`text-[13.5px] leading-snug ${theme.text.primary}`}>
             <span
-              className={`font-semibold ${onNavigateToUser ? 'cursor-pointer group-hover:text-[#1e293b] dark:group-hover:text-brand-gold-bright' : ''}`}
+              className={`font-semibold ${onNavigateToUser ? 'cursor-pointer group-hover:text-brand-ink dark:group-hover:text-brand-gold-bright' : ''}`}
               onClick={onNavigateToUser && notif.actor_id ? (e) => { e.stopPropagation(); onNavigateToUser(notif.actor_id!) } : undefined}
             >
               {actorName}
@@ -1087,7 +1087,7 @@ export default function NotificationsView({
             <button
               type="button"
               onClick={onMarkAllRead}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200 ease-in-out ${theme.colors.border.gold} bg-[#1e293b]/10 text-[#1e293b] hover:bg-[#1e293b]/16 active:scale-[0.98] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/18`}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-colors duration-200 ease-in-out ${theme.colors.border.gold} bg-brand-ink/10 text-brand-ink hover:bg-brand-ink/16 active:scale-[0.98] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/18`}
             >
               Oznacz wszystkie
             </button>
@@ -1154,7 +1154,7 @@ function NotificationsHubShell({
           <div className="flex flex-col gap-5 p-5 sm:p-6 md:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#1e293b]/25 bg-[#1e293b]/[0.05] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#1e293b] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-ink/25 bg-brand-ink/[0.05] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-brand-ink dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright">
                   <Bell size={12} strokeWidth={2.5} aria-hidden />
                   Centrum powiadomień
                 </span>
@@ -1169,7 +1169,7 @@ function NotificationsHubShell({
                 <button
                   type="button"
                   onClick={onMarkAllRead}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#1e293b]/25 bg-[#1e293b] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all hover:bg-[#0f172a] active:scale-[0.98] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright dark:text-[#1e293b] dark:hover:bg-brand-gold"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-brand-ink/25 bg-brand-ink px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all hover:bg-[#0f172a] active:scale-[0.98] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright dark:text-brand-ink dark:hover:bg-brand-gold"
                 >
                   <Check size={14} strokeWidth={2.5} aria-hidden />
                   Oznacz wszystkie
@@ -1295,14 +1295,14 @@ function HubStatCell({
     <div
       className={`flex flex-col items-start gap-1 rounded-2xl border px-3 py-3 sm:px-4 ${
         emphasized
-          ? 'border-[#1e293b]/25 bg-[#1e293b]/[0.05] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08]'
+          ? 'border-brand-ink/25 bg-brand-ink/[0.05] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08]'
           : 'border-zinc-200/70 bg-zinc-50/60 dark:border-white/[0.06] dark:bg-white/[0.02]'
       }`}
     >
       <span
         className={`text-2xl font-extrabold leading-none tabular-nums sm:text-3xl ${
           emphasized
-            ? 'text-[#1e293b] dark:text-brand-gold-bright'
+            ? 'text-brand-ink dark:text-brand-gold-bright'
             : 'text-zinc-900 dark:text-zinc-100'
         }`}
       >

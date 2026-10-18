@@ -22,14 +22,14 @@ export default function PinnedMessagesStrip({ pinned, onJump }: Props) {
   if (pinned.length === 0) return null
 
   return (
-    <div className="border-b border-zinc-200 bg-[#1e293b]/[0.03] dark:border-white/10 dark:bg-brand-gold-bright/[0.04]">
+    <div className="border-b border-zinc-200 bg-brand-ink/[0.03] dark:border-white/10 dark:bg-brand-gold-bright/[0.04]">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.03]"
       >
-        <div className="flex items-center gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+        <div className="flex items-center gap-2 text-brand-ink dark:text-brand-gold-bright">
           <Pin size={14} strokeWidth={2.25} />
           <span className="text-[11px] font-bold uppercase tracking-[0.2em]">
             Przypięte ({pinned.length})

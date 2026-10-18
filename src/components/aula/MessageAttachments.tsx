@@ -116,7 +116,7 @@ function FileCard({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Pobierz ${attachment.file_name}`}
-          className="shrink-0 rounded-md p-1.5 text-zinc-500 hover:bg-black/5 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
+          className="shrink-0 rounded-md p-1.5 text-zinc-500 hover:bg-black/5 hover:text-brand-ink dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
         >
           <Download size={15} />
         </a>

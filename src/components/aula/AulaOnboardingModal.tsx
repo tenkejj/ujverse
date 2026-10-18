@@ -28,15 +28,15 @@ const STUDY_MODES: ReadonlyArray<{ id: StudyMode; label: string; hint: string }>
 
 const fieldCls =
   'w-full rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 text-zinc-900 outline-none ' +
-  'placeholder:text-zinc-400 focus:border-[#1e293b] ' +
+  'placeholder:text-zinc-400 focus:border-brand-ink ' +
   'dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 ' +
   'dark:focus:border-brand-gold-bright'
 
 const labelCls = 'mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-white/55'
 
 const primaryBtnCls =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-5 py-2.5 text-sm font-bold ' +
-  'text-white transition-colors hover:bg-[#1e293b]/90 ' +
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-ink px-5 py-2.5 text-sm font-bold ' +
+  'text-white transition-colors hover:bg-brand-ink/90 ' +
   'dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85 ' +
   'disabled:cursor-not-allowed disabled:opacity-55'
 
@@ -98,7 +98,7 @@ export default function AulaOnboardingModal({ userId, myProfile, onClose, onSave
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="flex items-start gap-3 border-b border-zinc-200 px-5 pb-4 pt-5 dark:border-white/10">
-          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e293b]/[0.06] text-[#1e293b] dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright">
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-ink/[0.06] text-brand-ink dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright">
             <GraduationCap size={20} />
           </div>
           <div className="min-w-0 flex-1">
@@ -181,7 +181,7 @@ export default function AulaOnboardingModal({ userId, myProfile, onClose, onSave
                     onClick={() => setMode(m.id)}
                     className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                       active
-                        ? 'border-[#1e293b] bg-[#1e293b]/[0.05] dark:border-brand-gold-bright dark:bg-brand-gold-bright/[0.08]'
+                        ? 'border-brand-ink bg-brand-ink/[0.05] dark:border-brand-gold-bright dark:bg-brand-gold-bright/[0.08]'
                         : 'border-zinc-200 hover:border-zinc-300 dark:border-white/10 dark:hover:border-white/20'
                     }`}
                   >

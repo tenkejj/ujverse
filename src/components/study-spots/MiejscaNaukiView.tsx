@@ -242,18 +242,18 @@ export default function MiejscaNaukiView({ session, onNavigateToProfile }: Props
                       {active && (
                         <motion.span
                           layoutId="miejsca-view-bg"
-                          className="absolute inset-0 rounded-full bg-[#1e293b] dark:bg-[#D4AF37]"
+                          className="absolute inset-0 rounded-full bg-brand-ink dark:bg-[#D4AF37]"
                           transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                         />
                       )}
                       <Icon
                         size={13}
                         strokeWidth={2.4}
-                        className={`relative z-[1] shrink-0 transition-colors ${active ? 'text-white dark:text-[#1e293b]' : 'text-zinc-600 dark:text-zinc-400'}`}
+                        className={`relative z-[1] shrink-0 transition-colors ${active ? 'text-white dark:text-brand-ink' : 'text-zinc-600 dark:text-zinc-400'}`}
                         aria-hidden
                       />
                       <span
-                        className={`relative z-[1] transition-colors ${active ? 'text-white dark:text-[#1e293b]' : 'text-zinc-600 dark:text-zinc-400'}`}
+                        className={`relative z-[1] transition-colors ${active ? 'text-white dark:text-brand-ink' : 'text-zinc-600 dark:text-zinc-400'}`}
                       >
                         {label}
                       </span>
@@ -312,7 +312,7 @@ export default function MiejscaNaukiView({ session, onNavigateToProfile }: Props
                 onChange={(e) =>
                   setFilter((f) => ({ ...f, sort: e.target.value as StudySpotFilter['sort'] }))
                 }
-                className="h-10 rounded-2xl border border-zinc-200 bg-white/80 px-3 text-[12.5px] font-medium text-zinc-700 backdrop-blur-md transition-colors focus:border-[#1e293b]/40 focus:outline-none dark:border-white/10 dark:bg-black/25 dark:text-zinc-200"
+                className="h-10 rounded-2xl border border-zinc-200 bg-white/80 px-3 text-[12.5px] font-medium text-zinc-700 backdrop-blur-md transition-colors focus:border-brand-ink/40 focus:outline-none dark:border-white/10 dark:bg-black/25 dark:text-zinc-200"
                 aria-label="Sortuj"
               >
                 {(Object.entries(SORT_LABELS) as Array<[StudySpotFilter['sort'], string]>).map(([slug, label]) => (

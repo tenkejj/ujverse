@@ -27,13 +27,13 @@ export default function CompactEventRow({ event: ev, onSelect }: Props) {
         <span className={`block text-[10px] font-bold ${widgetGoldCls} leading-none uppercase tracking-wide`}>
           {monthLabel}
         </span>
-        <span className="block text-[15px] font-extrabold text-[#1e293b] dark:text-white leading-tight">
+        <span className="block text-[15px] font-extrabold text-brand-ink dark:text-white leading-tight">
           {dayNum}
         </span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-1.5">
-          <p className="text-sm font-medium text-[#1e293b] dark:text-white leading-snug truncate min-w-0">
+          <p className="text-sm font-medium text-brand-ink dark:text-white leading-snug truncate min-w-0">
             {ev.title}
           </p>
           {official ? (

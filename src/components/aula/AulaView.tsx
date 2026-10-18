@@ -257,7 +257,7 @@ function MembersSheet({
       >
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-white/15" />
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+          <div className="flex items-center gap-2 text-brand-ink dark:text-brand-gold-bright">
             <Users size={16} />
             <span className="text-[11px] font-bold uppercase tracking-[0.22em]">
               Członkowie ({members.length})
@@ -795,7 +795,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
     return (
       <>
         <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
-          <GraduationCap size={40} className="text-[#1e293b]/40 dark:text-brand-gold-bright/40" />
+          <GraduationCap size={40} className="text-brand-ink/40 dark:text-brand-gold-bright/40" />
           <h2 className="mt-4 text-xl font-bold text-fg-primary">Aula — czat Twojego rocznika</h2>
           <p className="mt-2 max-w-md text-sm text-fg-secondary">
             Uzupełnij kierunek, rok i tryb studiów, a wpadniesz prosto do czatu swojej grupy.
@@ -803,7 +803,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
           <button
             type="button"
             onClick={() => setOnboardingModalOpen(true)}
-            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-ink px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-ink/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
           >
             Uzupełnij dane studiów
           </button>
@@ -826,7 +826,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   if (cohortLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-[#1e293b]/50 dark:text-brand-gold-bright/50" />
+        <Loader2 size={28} className="animate-spin text-brand-ink/50 dark:text-brand-gold-bright/50" />
       </div>
     )
   }
@@ -854,7 +854,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
   if (!cohort) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
-        <MessagesSquare size={40} className="text-[#1e293b]/40 dark:text-brand-gold-bright/40" />
+        <MessagesSquare size={40} className="text-brand-ink/40 dark:text-brand-gold-bright/40" />
         <h2 className="mt-4 text-xl font-bold text-fg-primary">Nie znaleziono rocznika</h2>
         <p className="mt-2 max-w-md text-sm text-fg-secondary">
           Spróbuj odświeżyć stronę. Jeśli problem się powtarza, sprawdź dane studiów w ustawieniach.
@@ -887,7 +887,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
       {/* Cohort meta + members aside (desktop only) */}
       <aside className="hidden w-60 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white/70 backdrop-blur-md dark:border-white/10 dark:bg-bg-card/70 xl:flex">
         <div className="border-b border-zinc-200 px-4 py-4 dark:border-white/10">
-          <div className="flex items-center gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+          <div className="flex items-center gap-2 text-brand-ink dark:text-brand-gold-bright">
             <GraduationCap size={18} />
             <span className="text-[10px] font-bold uppercase tracking-[0.22em]">Twój rocznik</span>
           </div>
@@ -1037,7 +1037,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
             <MessageSkeleton />
           ) : tree.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
-              <MessagesSquare size={36} className="text-[#1e293b]/30 dark:text-brand-gold-bright/30" />
+              <MessagesSquare size={36} className="text-brand-ink/30 dark:text-brand-gold-bright/30" />
               {activeChannelId != null ? (
                 <>
                   <p className="mt-3 text-sm font-semibold text-fg-primary">
@@ -1149,7 +1149,7 @@ export default function AulaView({ currentUserId, myProfile, onProfilePatch, onA
               setShowNewBadge(false)
               scrollToBottom(true)
             }}
-            className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] px-3 py-1.5 text-xs font-bold text-white shadow-lg transition-transform hover:scale-[1.03] dark:bg-brand-gold dark:text-black"
+            className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 inline-flex items-center gap-1.5 rounded-full bg-brand-ink px-3 py-1.5 text-xs font-bold text-white shadow-lg transition-transform hover:scale-[1.03] dark:bg-brand-gold dark:text-black"
             aria-label="Przewiń do nowych wiadomości"
           >
             <ArrowDown size={13} />
@@ -1373,7 +1373,7 @@ function MobileAulaSubHeader({
         {activeChannel ? (
           <ChannelKindPill kind={activeChannel.kind} size="sm" />
         ) : (
-          <GraduationCap size={13} className="text-[#1e293b]/70 dark:text-brand-gold-bright/80" />
+          <GraduationCap size={13} className="text-brand-ink/70 dark:text-brand-gold-bright/80" />
         )}
         <span className="max-w-[10rem] truncate">{activeChannel?.name ?? 'Sala główna'}</span>
       </button>
@@ -1516,7 +1516,7 @@ function ChannelsSheet({
         onDragEnd={handleDragEnd}
       >
         <div className="flex items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3 dark:border-white/10">
-          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1e293b] dark:text-brand-gold-bright">
+          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-ink dark:text-brand-gold-bright">
             Sale
           </span>
           <button

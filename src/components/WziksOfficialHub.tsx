@@ -95,14 +95,14 @@ function OfficialUjCard({ event }: { event: UJEvent }) {
           <img src={event.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#1e293b]/[0.12] to-transparent dark:from-brand-gold/15 dark:to-transparent"
+            className="absolute inset-0 bg-gradient-to-br from-brand-ink/[0.12] to-transparent dark:from-brand-gold/15 dark:to-transparent"
             aria-hidden
           />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
         <div className="absolute top-2 left-2 z-[3] flex flex-col gap-1.5">
           <OfficialBadge size="sm" variant="floating" />
-          <div className="inline-flex w-fit min-w-[3rem] flex-col items-center rounded-lg border border-[#1e293b]/35 bg-white/80 px-2 py-1 text-center backdrop-blur-sm dark:border-brand-gold/40 dark:bg-black/55">
+          <div className="inline-flex w-fit min-w-[3rem] flex-col items-center rounded-lg border border-brand-ink/35 bg-white/80 px-2 py-1 text-center backdrop-blur-sm dark:border-brand-gold/40 dark:bg-black/55">
             <span className={`block text-[9px] font-bold uppercase leading-none ${goldMuted}`}>
               {monthLabel}
             </span>
@@ -111,7 +111,7 @@ function OfficialUjCard({ event }: { event: UJEvent }) {
         </div>
       </div>
       <div className="relative z-[2] flex min-h-0 flex-1 flex-col gap-2 border-t border-zinc-200/90 bg-white/95 p-3 shadow-sm dark:border-white/10 dark:bg-transparent dark:shadow-none">
-        <span className={`inline-flex w-fit rounded-full border border-[#1e293b]/35 bg-[#1e293b]/[0.06] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${goldMuted} dark:border-brand-gold/40 dark:bg-brand-gold/10`}>
+        <span className={`inline-flex w-fit rounded-full border border-brand-ink/35 bg-brand-ink/[0.06] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${goldMuted} dark:border-brand-gold/40 dark:bg-brand-gold/10`}>
           {facultyChipLabel(event)}
         </span>
         <h3 className="text-[13px] font-extrabold text-fg-primary leading-snug line-clamp-3">{event.title}</h3>

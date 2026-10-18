@@ -232,7 +232,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                   />
                 ) : (
                   <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-border-app bg-bg-app/70 shadow-none ring-0 dark:border-white/10 dark:bg-bg-app">
-                    <span className="text-2xl font-bold text-[#1e293b] dark:text-brand-gold-bright">
+                    <span className="text-2xl font-bold text-brand-ink dark:text-brand-gold-bright">
                       {(name || session.user.email || 'U').charAt(0).toUpperCase()}
                     </span>
                   </div>
@@ -246,7 +246,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                   type="button"
                   disabled={isUploadingAvatar}
                   onClick={() => avatarInputRef.current?.click()}
-                  className="absolute -bottom-0.5 -right-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-bg-app bg-logo-navy text-white shadow-lg shadow-[#1e293b]/25 ring-0 transition-transform hover:scale-110 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-gold-bright dark:text-slate-900 dark:shadow-brand-gold/35"
+                  className="absolute -bottom-0.5 -right-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-bg-app bg-logo-navy text-white shadow-lg shadow-brand-ink/25 ring-0 transition-transform hover:scale-110 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-gold-bright dark:text-slate-900 dark:shadow-brand-gold/35"
                 >
                   <ImagePlus className="h-4 w-4" />
                 </button>
@@ -351,7 +351,7 @@ export default function ProfileModal({ session, profile, onClose, onSaved, onAva
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-xl bg-logo-navy px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#1e293b]/20 ring-0 outline-none transition-opacity hover:opacity-90 disabled:opacity-70 dark:bg-brand-gold-bright dark:text-slate-900 dark:shadow-brand-gold/30"
+                className="rounded-xl bg-logo-navy px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-ink/20 ring-0 outline-none transition-opacity hover:opacity-90 disabled:opacity-70 dark:bg-brand-gold-bright dark:text-slate-900 dark:shadow-brand-gold/30"
               >
                 {saving ? 'Zapisuję…' : 'Zapisz'}
               </button>

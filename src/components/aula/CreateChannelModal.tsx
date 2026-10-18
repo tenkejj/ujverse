@@ -53,7 +53,7 @@ const SLUG_MAX = 31
 
 const fieldCls =
   'w-full rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 text-zinc-900 outline-none ' +
-  'placeholder:text-zinc-400 focus:border-[#1e293b] ' +
+  'placeholder:text-zinc-400 focus:border-brand-ink ' +
   'dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 ' +
   'dark:focus:border-brand-gold-bright'
 
@@ -61,8 +61,8 @@ const labelCls =
   'mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-white/55'
 
 const primaryBtnCls =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] px-5 py-2.5 text-sm font-bold ' +
-  'text-white transition-colors hover:bg-[#1e293b]/90 ' +
+  'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-ink px-5 py-2.5 text-sm font-bold ' +
+  'text-white transition-colors hover:bg-brand-ink/90 ' +
   'dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85 ' +
   'disabled:cursor-not-allowed disabled:opacity-55'
 

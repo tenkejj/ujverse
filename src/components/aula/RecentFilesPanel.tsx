@@ -137,7 +137,7 @@ function FileRow({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Otwórz"
-            className="rounded-md p-1.5 text-zinc-500 hover:bg-black/5 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
+            className="rounded-md p-1.5 text-zinc-500 hover:bg-black/5 hover:text-brand-ink dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
           >
             <ExternalLink size={14} />
           </a>
@@ -145,7 +145,7 @@ function FileRow({
             href={signedUrl}
             download={file.file_name}
             aria-label="Pobierz"
-            className="rounded-md p-1.5 text-zinc-500 hover:bg-black/5 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
+            className="rounded-md p-1.5 text-zinc-500 hover:bg-black/5 hover:text-brand-ink dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-brand-gold-bright"
           >
             <Download size={14} />
           </a>
@@ -245,7 +245,7 @@ export default function RecentFilesPanel({ cohortId, onClose }: Props) {
               onClick={() => setFilter(key)}
               className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
                 active
-                  ? 'border-[#1e293b] bg-[#1e293b] text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-black'
+                  ? 'border-brand-ink bg-brand-ink text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-black'
                   : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:bg-white/[0.08]'
               }`}
             >
@@ -327,7 +327,7 @@ export default function RecentFilesPanel({ cohortId, onClose }: Props) {
       >
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-white/15" />
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+          <div className="flex items-center gap-2 text-brand-ink dark:text-brand-gold-bright">
             <FolderOpen size={16} />
             <span className="text-[11px] font-bold uppercase tracking-[0.22em]">
               Pliki rocznika ({files.length})
@@ -358,7 +358,7 @@ export default function RecentFilesPanel({ cohortId, onClose }: Props) {
         }
       >
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-white/10">
-          <div className="flex items-center gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+          <div className="flex items-center gap-2 text-brand-ink dark:text-brand-gold-bright">
             <FolderOpen size={16} />
             <span className="text-[11px] font-bold uppercase tracking-[0.22em]">
               Pliki rocznika ({files.length})

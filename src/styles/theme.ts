@@ -2,14 +2,14 @@
  * UJverse design tokens — jedyne źródło prawdy dla wyglądu kart / sekcji.
  *
  * Dwa tokeny akcentowe:
- *   - `gold.primary` (#1e293b) — główny akcent Light Mode (tekst, border, interakcje).
- *   - `gold.muted`   (#1e293b) — ikony sekcji i tytuły sekcyjne (spójne z logotypem).
- *   - `gold.bright`  (#e8c84a) — dark-mode highlight (obecny Tailwind `brand-gold-bright`).
+ *   - `gold.primary` — atrament UI (`brand-ink`: navy / błękit UJ / …).
+ *   - `gold.bright`  (#e8c84a) — dark-mode highlight (`brand-gold-bright`).
  */
 
 export const theme = {
   colors: {
     gold: {
+      /** Domyślny light; runtime bierze `var(--brand-ink)`. */
       primary: '#1e293b',
       muted: '#1e293b',
       bright: '#e8c84a',
@@ -26,8 +26,8 @@ export const theme = {
     border: {
       base: 'border-zinc-200 dark:border-white/10',
       subtle: 'border-zinc-800',
-      gold: 'border-[#1e293b]/45',
-      goldStrong: 'border-[#1e293b]/60',
+      gold: 'border-brand-ink/45',
+      goldStrong: 'border-brand-ink/60',
     },
   },
   radius: {
@@ -66,9 +66,9 @@ export const theme = {
   text: {
     primary: 'text-zinc-900 dark:text-zinc-100',
     muted: 'text-zinc-500 dark:text-zinc-400',
-    gold: 'text-[#1e293b]',
-    goldMuted: 'text-[#1e293b] dark:text-brand-gold-bright',
-    sectionHeader: 'text-[#1e293b] dark:text-brand-gold-bright',
+    gold: 'text-brand-ink',
+    goldMuted: 'text-brand-ink dark:text-brand-gold-bright',
+    sectionHeader: 'text-brand-ink dark:text-brand-gold-bright',
   },
   button: {
     /**
@@ -77,15 +77,15 @@ export const theme = {
      * Light: navy fill, biały tekst. Dark: brand-gold fill, czarny tekst.
      */
     primary:
-      'inline-flex items-center justify-center gap-2 rounded-xl bg-[#1e293b] text-white ' +
-      'font-bold transition-colors hover:bg-[#1e293b]/90 ' +
+      'inline-flex items-center justify-center gap-2 rounded-xl bg-brand-ink text-white ' +
+      'font-bold transition-colors hover:bg-brand-ink/90 ' +
       'dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85',
     /**
      * Obrysowany CTA – „akcja drugorzędna" (Udostępnij, Anuluj, „Bierzesz udział").
      */
     outline:
       'inline-flex items-center justify-center gap-2 rounded-xl border bg-transparent ' +
-      'border-[#1e293b]/45 text-[#1e293b] font-semibold transition-colors hover:bg-[#1e293b]/5 ' +
+      'border-brand-ink/45 text-brand-ink font-semibold transition-colors hover:bg-brand-ink/5 ' +
       'dark:border-brand-gold/45 dark:text-brand-gold-bright dark:hover:bg-brand-gold/10',
     /**
      * Pływający przycisk-ikona nad plakatem (modal toolbar, hero karuzela).
@@ -93,7 +93,7 @@ export const theme = {
      */
     floatingIcon:
       'inline-flex items-center justify-center rounded-full p-2 backdrop-blur-sm transition-colors ' +
-      'border border-[#1e293b]/25 bg-white/75 text-[#1e293b] hover:bg-white/95 ' +
+      'border border-brand-ink/25 bg-white/75 text-brand-ink hover:bg-white/95 ' +
       'dark:border-brand-gold/35 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/55',
     floatingIconDanger:
       'inline-flex items-center justify-center rounded-full p-2 backdrop-blur-sm transition-colors ' +
@@ -109,7 +109,7 @@ export type Theme = typeof theme
  * Używane przez BaseCard pills oraz komponenty listujące badges.
  */
 export const toneClasses = {
-  gold: 'bg-[#1e293b]/10 text-[#1e293b] border-[#1e293b]',
+  gold: 'bg-brand-ink/10 text-brand-ink border-brand-ink',
   green: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
   red: 'bg-red-500/15 text-red-300 border-red-500/30',
   blue: 'bg-blue-500/15 text-blue-300 border-blue-500/30',

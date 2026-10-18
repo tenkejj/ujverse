@@ -80,7 +80,7 @@ function buildBadges({
 
 function BadgeItem({ badge }: { badge: Badge }) {
   const accentClass = badge.accent
-    ? 'border-[#1e293b] text-[#1e293b] dark:border-brand-gold-bright/50 dark:text-brand-gold-bright'
+    ? 'border-brand-ink text-brand-ink dark:border-brand-gold-bright/50 dark:text-brand-gold-bright'
     : ''
 
   return (

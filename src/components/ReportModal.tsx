@@ -122,8 +122,8 @@ export default function ReportModal({
                       onClick={() => setSelectedReason(reason)}
                       className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${
                         isSelected
-                          ? 'border-[#1e293b]/45 bg-[#1e293b]/8 text-[#1e293b] dark:border-brand-gold/45 dark:bg-brand-gold/10 dark:text-brand-gold-bright'
-                          : 'border-border-app bg-transparent text-fg-secondary hover:border-[#1e293b]/25 hover:bg-[#1e293b]/4 hover:text-fg-primary dark:hover:border-brand-gold/25 dark:hover:bg-white/5 dark:hover:text-zinc-100'
+                          ? 'border-brand-ink/45 bg-brand-ink/8 text-brand-ink dark:border-brand-gold/45 dark:bg-brand-gold/10 dark:text-brand-gold-bright'
+                          : 'border-border-app bg-transparent text-fg-secondary hover:border-brand-ink/25 hover:bg-brand-ink/4 hover:text-fg-primary dark:hover:border-brand-gold/25 dark:hover:bg-white/5 dark:hover:text-zinc-100'
                       }`}
                       aria-pressed={isSelected}
                     >
@@ -155,7 +155,7 @@ export default function ReportModal({
                   rows={3}
                   maxLength={DETAILS_MAX_LEN}
                   placeholder="Opisz, dlaczego zgłaszasz tę treść (np. konkretny fragment, kontekst). Pomoże to administracji szybciej zareagować."
-                  className="w-full resize-none rounded-xl border border-border-app bg-transparent px-4 py-3 text-sm leading-relaxed text-fg-primary placeholder:text-fg-tertiary outline-none transition-colors focus:border-[#1e293b]/45 focus:bg-[#1e293b]/3 dark:focus:border-brand-gold/45 dark:focus:bg-white/4"
+                  className="w-full resize-none rounded-xl border border-border-app bg-transparent px-4 py-3 text-sm leading-relaxed text-fg-primary placeholder:text-fg-tertiary outline-none transition-colors focus:border-brand-ink/45 focus:bg-brand-ink/3 dark:focus:border-brand-gold/45 dark:focus:bg-white/4"
                 />
               </div>
 

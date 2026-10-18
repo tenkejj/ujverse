@@ -202,7 +202,7 @@ export default function AnnouncementCard({
         <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-0">
           {sourceBadge && (
             <span
-              className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-[#1e293b] dark:text-zinc-400 opacity-70 text-right"
+              className="block text-[9px] font-medium leading-none whitespace-nowrap shrink-0 text-brand-ink dark:text-zinc-400 opacity-70 text-right"
               title={sourceBadge.title}
             >
               {sourceBadge.label}

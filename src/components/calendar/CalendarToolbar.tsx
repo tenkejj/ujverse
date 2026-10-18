@@ -42,7 +42,7 @@ export default function CalendarToolbar({
           type="button"
           onClick={onToday}
           disabled={isCurrentMonth}
-          className="rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors disabled:cursor-default disabled:opacity-50 enabled:hover:border-[#1e293b]/45 enabled:hover:text-[#1e293b] dark:enabled:hover:border-[#D4AF37]/60 dark:enabled:hover:text-[#D4AF37] border-zinc-200 text-zinc-600 dark:border-white/10 dark:text-zinc-200"
+          className="rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors disabled:cursor-default disabled:opacity-50 enabled:hover:border-brand-ink/45 enabled:hover:text-brand-ink dark:enabled:hover:border-[#D4AF37]/60 dark:enabled:hover:text-[#D4AF37] border-zinc-200 text-zinc-600 dark:border-white/10 dark:text-zinc-200"
         >
           Dziś
         </button>

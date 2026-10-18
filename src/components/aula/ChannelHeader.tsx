@@ -148,7 +148,7 @@ export default function ChannelHeader({
       ) : (
         <GraduationCap
           size={16}
-          className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright"
+          className="shrink-0 text-brand-ink dark:text-brand-gold-bright"
         />
       )}
       <div className="min-w-0 flex-1">
@@ -200,7 +200,7 @@ export default function ChannelHeader({
           className={[
             'inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 transition-colors',
             tasksOpen
-              ? 'bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
+              ? 'bg-brand-ink/10 text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
               : 'text-zinc-500 hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200',
           ].join(' ')}
         >
@@ -220,7 +220,7 @@ export default function ChannelHeader({
           className={[
             'hidden shrink-0 items-center gap-1 rounded-md px-1.5 py-1 transition-colors sm:inline-flex',
             notesOpen
-              ? 'bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
+              ? 'bg-brand-ink/10 text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
               : 'text-zinc-500 hover:bg-black/[0.05] hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-200',
           ].join(' ')}
         >

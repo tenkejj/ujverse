@@ -191,7 +191,7 @@ export default function AulaResultsSection({
           <button
             type="button"
             onClick={() => setFilter(INITIAL_FILTER)}
-            className="ml-auto text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-[#1e293b] dark:hover:text-brand-gold-bright"
+            className="ml-auto text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-brand-ink dark:hover:text-brand-gold-bright"
           >
             Wyczyść filtry
           </button>
@@ -271,7 +271,7 @@ function FilterChip({
         'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ' +
         'disabled:cursor-not-allowed disabled:opacity-50 ' +
         (active
-          ? 'border-[#1e293b]/45 bg-[#1e293b]/10 text-[#1e293b] dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright'
+          ? 'border-brand-ink/45 bg-brand-ink/10 text-brand-ink dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright'
           : 'border-zinc-200 bg-white/60 text-zinc-600 hover:border-zinc-300 hover:bg-white/80 dark:border-white/10 dark:bg-black/25 dark:text-zinc-400 dark:hover:bg-black/40')
       }
     >
@@ -303,7 +303,7 @@ function AulaHitRow({
       className="w-full text-left"
     >
       <div className="flex items-start gap-3 px-4 py-3">
-        <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-[#1e293b] dark:border-white/10 dark:bg-black/30 dark:text-brand-gold-bright">
+        <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-brand-ink dark:border-white/10 dark:bg-black/30 dark:text-brand-gold-bright">
           <GraduationCap size={16} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
@@ -316,7 +316,7 @@ function AulaHitRow({
             </span>
             {hit.channelId == null ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full bg-[#1e293b]/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
+                className="inline-flex items-center gap-1 rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
                 title="Sala główna"
               >
                 <GraduationCap size={9} />

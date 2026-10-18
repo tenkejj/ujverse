@@ -31,11 +31,11 @@ export default function SearchUserResultRow({ hit, onOpen }: Props) {
           <img
             src={hit.avatarUrl}
             alt={displayName}
-            className="h-12 w-12 shrink-0 rounded-full object-cover object-center ring-2 ring-[#1e293b]/20 dark:ring-brand-gold/30"
+            className="h-12 w-12 shrink-0 rounded-full object-cover object-center ring-2 ring-brand-ink/20 dark:ring-brand-gold/30"
           />
         ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1e293b]/10 ring-2 ring-[#1e293b]/20 dark:bg-brand-gold-bright/15 dark:ring-brand-gold/30">
-            <span className="text-sm font-bold text-[#1e293b] dark:text-brand-gold-bright">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-ink/10 ring-2 ring-brand-ink/20 dark:bg-brand-gold-bright/15 dark:ring-brand-gold/30">
+            <span className="text-sm font-bold text-brand-ink dark:text-brand-gold-bright">
               {initial}
             </span>
           </div>

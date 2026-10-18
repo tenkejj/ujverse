@@ -142,7 +142,7 @@ export default function NotificationList({
             type="button"
             onClick={onClearAll}
             disabled={!hasAny || loading}
-            className="mx-auto block w-full text-center text-[11px] font-bold uppercase tracking-[0.2em] text-[#1e293b] transition-colors hover:text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-30 dark:text-brand-gold-bright dark:hover:text-brand-gold"
+            className="mx-auto block w-full text-center text-[11px] font-bold uppercase tracking-[0.2em] text-brand-ink transition-colors hover:text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-30 dark:text-brand-gold-bright dark:hover:text-brand-gold"
           >
             Wyczyść wszystko
           </button>

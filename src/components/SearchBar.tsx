@@ -65,7 +65,7 @@ const WPIA_DEPARTMENT = 'Wydział Prawa i Administracji' as const
 
 /** Jak nagłówek „Wydziały” w sidebarze feedu. */
 const crystalSectionTitleCls =
-  'font-bold text-[10px] uppercase tracking-[0.2em] text-[#1e293b] dark:text-brand-gold-bright'
+  'font-bold text-[10px] uppercase tracking-[0.2em] text-brand-ink dark:text-brand-gold-bright'
 
 /** Powrót: sama ikona, cel dotykowy min. 44×44, bez ramki / tła (delikatny hover). */
 const backIconBtnCls = SEARCH_MOBILE.backButtonClass
@@ -299,7 +299,7 @@ export default function SearchBar({
             type="button"
             onClick={clearHistory}
             whileTap={{ scale: 0.97 }}
-            className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-[#1e293b] dark:hover:text-brand-gold-bright"
+            className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:text-brand-ink dark:hover:text-brand-gold-bright"
           >
             Wyczyść
           </motion.button>
@@ -333,7 +333,7 @@ export default function SearchBar({
                   whileTap={{ scale: 0.99 }}
                   className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-1 pr-0 text-left [-webkit-tap-highlight-color:transparent]"
                 >
-                  <Clock size={15} strokeWidth={2} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
+                  <Clock size={15} strokeWidth={2} className="shrink-0 text-brand-ink dark:text-brand-gold-bright" aria-hidden />
                   <span className="truncate text-[15px] text-fg-primary dark:text-white">{h}</span>
                 </motion.button>
                 <motion.button
@@ -361,7 +361,7 @@ export default function SearchBar({
     const tMuted = 'text-slate-600 dark:text-slate-400'
     const tHint = 'text-slate-600 dark:text-slate-500'
     const tQuote = 'text-uj-navy dark:text-slate-300'
-    const sectionIconCls = 'text-[#1e293b] dark:text-brand-gold-bright shrink-0'
+    const sectionIconCls = 'text-brand-ink dark:text-brand-gold-bright shrink-0'
     const sectionDivider = 'border-border-app'
 
     return (
@@ -378,7 +378,7 @@ export default function SearchBar({
           >
             <Loader2
               size={ICONS_MOBILE.searchSectionIconSize}
-              className="animate-spin text-[#1e293b] dark:text-brand-gold-bright shrink-0"
+              className="animate-spin text-brand-ink dark:text-brand-gold-bright shrink-0"
             />
             Szukam…
           </motion.div>
@@ -652,7 +652,7 @@ export default function SearchBar({
                   <div className="relative min-w-0 flex-1 rounded-2xl">
                     <motion.div
                       aria-hidden
-                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-[#1e293b] dark:border-brand-gold-bright"
+                      className="pointer-events-none absolute -inset-[1px] z-0 rounded-2xl border-2 border-brand-ink dark:border-brand-gold-bright"
                       initial={false}
                       animate={{
                         opacity: mobileInputFocused ? 1 : 0,
@@ -663,7 +663,7 @@ export default function SearchBar({
                     <Search
                       size={ICONS_MOBILE.searchInputIconSize}
                       strokeWidth={ICONS_MOBILE.searchInputIconStrokeWidth}
-                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-[#1e293b] dark:text-brand-gold-bright"
+                      className="pointer-events-none absolute left-3.5 top-1/2 z-[2] -translate-y-1/2 text-brand-ink dark:text-brand-gold-bright"
                     />
                     <input
                       ref={mobileInputRef}

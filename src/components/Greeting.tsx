@@ -25,7 +25,7 @@ type Props = {
 const BUTTON_CLS =
   'm-0 flex w-full min-w-0 items-center gap-3 rounded-xl px-0 py-2 text-left ' +
   'transition-colors hover:bg-black/[0.03] active:bg-black/[0.05] ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/20 ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/20 ' +
   'dark:hover:bg-white/[0.04] dark:active:bg-white/[0.06] dark:focus-visible:ring-brand-gold/25'
 
 const PLACEHOLDER_CLS =

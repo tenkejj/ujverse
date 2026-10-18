@@ -31,7 +31,7 @@ const BODY_TOKEN_REGEX = /(https?:\/\/[^\s<>]+|www\.[^\s<>]+)|(#\w+)/gi
 /** Końcowa interpunkcja, której zwykle nie chcemy wciągać do linku ("zobacz https://x.com.") */
 const URL_TRAILING_PUNCT_REGEX = /[).,!?;:\]'"]+$/
 const LINK_HIGHLIGHT_CLASS =
-  'text-[#1e293b] font-medium hover:underline hover:text-[#1e293b]/80 dark:text-brand-gold-bright dark:hover:text-brand-gold-bright/80 transition-colors'
+  'text-brand-ink font-medium hover:underline hover:text-brand-ink/80 dark:text-brand-gold-bright dark:hover:text-brand-gold-bright/80 transition-colors'
 
 function renderBodyContent(body: string): ReactNode[] {
   const parts: ReactNode[] = []
@@ -412,7 +412,7 @@ export default function PostCard({
                 aria-label={isLiked ? 'Usuń polubienie' : 'Polub'}
               >
                 {isPop && (
-                  <span className="absolute inset-0 rounded-full bg-[#1e293b]/35 dark:bg-brand-gold-bright/25 animate-like-ripple pointer-events-none" />
+                  <span className="absolute inset-0 rounded-full bg-brand-ink/35 dark:bg-brand-gold-bright/25 animate-like-ripple pointer-events-none" />
                 )}
                 <motion.span
                   animate={isPop ? { scale: [1, 1.4, 1] } : { scale: 1 }}

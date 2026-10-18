@@ -162,7 +162,7 @@ export default function SaleFinderView(_props: Props) {
           as="button"
           onClick={() => select({ kind: 'building', building: hit.building })}
           className={`w-full text-left p-3 flex items-start gap-2.5 ${
-            isSelected ? 'border-[#1e293b]/45 dark:border-brand-gold/55' : ''
+            isSelected ? 'border-brand-ink/45 dark:border-brand-gold/55' : ''
           }`}
         >
           <Building2
@@ -186,7 +186,7 @@ export default function SaleFinderView(_props: Props) {
               {hit.building.address}
             </p>
             {dist !== null && (
-              <p className="mt-1 text-[11px] font-medium text-[#1e293b] dark:text-brand-gold-bright">
+              <p className="mt-1 text-[11px] font-medium text-brand-ink dark:text-brand-gold-bright">
                 {formatDistance(dist)} · ~{walkingMinutes(dist)} min pieszo
               </p>
             )}
@@ -205,7 +205,7 @@ export default function SaleFinderView(_props: Props) {
           select({ kind: 'room', room: hit.room, building: hit.building })
         }
         className={`w-full text-left p-3 flex items-start gap-2.5 ${
-          isSelected ? 'border-[#1e293b]/45 dark:border-brand-gold/55' : ''
+          isSelected ? 'border-brand-ink/45 dark:border-brand-gold/55' : ''
         }`}
       >
         <Hash
@@ -242,7 +242,7 @@ export default function SaleFinderView(_props: Props) {
               </span>
             )}
             {dist !== null && (
-              <span className="font-medium text-[#1e293b] dark:text-brand-gold-bright">
+              <span className="font-medium text-brand-ink dark:text-brand-gold-bright">
                 {formatDistance(dist)} · ~{walkingMinutes(dist)} min
               </span>
             )}
@@ -263,7 +263,7 @@ export default function SaleFinderView(_props: Props) {
         as="button"
         onClick={() => select({ kind: 'building', building })}
         className={`w-full text-left p-3 flex items-start gap-2.5 ${
-          isSel ? 'border-[#1e293b]/45 dark:border-brand-gold/55' : ''
+          isSel ? 'border-brand-ink/45 dark:border-brand-gold/55' : ''
         }`}
       >
         <Building2
@@ -287,7 +287,7 @@ export default function SaleFinderView(_props: Props) {
             {building.address}
           </p>
           {dist !== null && (
-            <p className="mt-1 text-[11px] font-medium text-[#1e293b] dark:text-brand-gold-bright">
+            <p className="mt-1 text-[11px] font-medium text-brand-ink dark:text-brand-gold-bright">
               {formatDistance(dist)} · ~{walkingMinutes(dist)} min pieszo
             </p>
           )}
@@ -346,7 +346,7 @@ export default function SaleFinderView(_props: Props) {
         <button
           type="button"
           onClick={requestGeo}
-          className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/25 bg-white/70 px-3 py-2 text-xs font-semibold text-[#1e293b] backdrop-blur-md transition-colors hover:bg-white/95 dark:border-brand-gold/35 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/55"
+          className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-ink/25 bg-white/70 px-3 py-2 text-xs font-semibold text-brand-ink backdrop-blur-md transition-colors hover:bg-white/95 dark:border-brand-gold/35 dark:bg-black/40 dark:text-brand-gold-bright dark:hover:bg-black/55"
         >
           <Crosshair size={14} strokeWidth={2.25} aria-hidden />
           Pokaż dystans do każdej sali
@@ -490,7 +490,7 @@ function BuildingDetailCard({
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-[10px] uppercase tracking-[0.18em] font-bold text-[#1e293b] dark:text-brand-gold-bright">
+            <span className="text-[10px] uppercase tracking-[0.18em] font-bold text-brand-ink dark:text-brand-gold-bright">
               Budynek
             </span>
             {building.short_name && (
@@ -511,13 +511,13 @@ function BuildingDetailCard({
             <MapPin
               size={14}
               strokeWidth={2}
-              className="shrink-0 mt-0.5 text-[#1e293b] dark:text-brand-gold-bright"
+              className="shrink-0 mt-0.5 text-brand-ink dark:text-brand-gold-bright"
               aria-hidden
             />
             <span className="wrap-break-word">{building.address}</span>
           </p>
           {distanceKm !== null && (
-            <p className="mt-1 text-xs font-medium text-[#1e293b] dark:text-brand-gold-bright">
+            <p className="mt-1 text-xs font-medium text-brand-ink dark:text-brand-gold-bright">
               {formatDistance(distanceKm)} · ~{walkingMinutes(distanceKm)} min pieszo
             </p>
           )}
@@ -546,9 +546,9 @@ function BuildingDetailCard({
       </div>
 
       {selectedRoom && (
-        <div className="mx-4 mb-3 rounded-xl border border-[#1e293b]/30 bg-[#1e293b]/4 px-3 py-2 dark:border-brand-gold/35 dark:bg-brand-gold/6">
+        <div className="mx-4 mb-3 rounded-xl border border-brand-ink/30 bg-brand-ink/4 px-3 py-2 dark:border-brand-gold/35 dark:bg-brand-gold/6">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-[#1e293b] dark:text-brand-gold-bright">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-brand-ink dark:text-brand-gold-bright">
               Wybrana sala
             </span>
             <p className="text-sm font-bold text-zinc-900 dark:text-white">
@@ -611,8 +611,8 @@ function BuildingDetailCard({
                       onClick={() => onPickRoom(r.id)}
                       className={`text-left rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
                         isSelected
-                          ? 'border-[#1e293b]/60 bg-[#1e293b]/8 text-[#1e293b] dark:border-brand-gold/60 dark:bg-brand-gold/12 dark:text-brand-gold-bright'
-                          : 'border-zinc-200 bg-white/60 text-zinc-800 hover:border-[#1e293b]/45 hover:bg-white dark:border-white/10 dark:bg-black/30 dark:text-zinc-200 dark:hover:border-brand-gold/55 dark:hover:bg-black/50'
+                          ? 'border-brand-ink/60 bg-brand-ink/8 text-brand-ink dark:border-brand-gold/60 dark:bg-brand-gold/12 dark:text-brand-gold-bright'
+                          : 'border-zinc-200 bg-white/60 text-zinc-800 hover:border-brand-ink/45 hover:bg-white dark:border-white/10 dark:bg-black/30 dark:text-zinc-200 dark:hover:border-brand-gold/55 dark:hover:bg-black/50'
                       }`}
                     >
                       <span className="block truncate font-mono text-[11px] text-zinc-500 dark:text-zinc-400">

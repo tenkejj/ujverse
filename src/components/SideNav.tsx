@@ -14,7 +14,7 @@ import {
   User,
 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
-import { useTheme } from '../ThemeContext'
+import { THEME_META, useTheme } from '../ThemeContext'
 import { SIDE_NAV_DESKTOP } from '../styles/mobile-theme'
 import NavItem from './nav/NavItem'
 
@@ -72,7 +72,8 @@ export default function SideNav({
   onNavigateToMiejsca,
   onNavigateToSettings,
 }: Props) {
-  const { theme: colorMode, toggleTheme } = useTheme()
+  const { theme: colorMode, cycleTheme } = useTheme()
+  const ThemeIcon = colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
 
   return (
     <aside
@@ -175,11 +176,12 @@ export default function SideNav({
               variant="sidebar"
             />
             <NavItem
-              icon={colorMode === 'dark' ? Sun : Moon}
-              label={colorMode === 'dark' ? 'Tryb jasny' : 'Tryb ciemny'}
-              active={false}
-              onClick={toggleTheme}
+              icon={ThemeIcon}
+              label={THEME_META[colorMode].shortLabel}
+              active={colorMode === 'uj'}
+              onClick={cycleTheme}
               variant="sidebar"
+              title="Zmień motyw: Jasny → Kolory UJ → Ciemny"
             />
             <NavItem
               icon={LogOut}

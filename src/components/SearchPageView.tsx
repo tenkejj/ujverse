@@ -430,7 +430,7 @@ export default function SearchPageView({
               Wyszukaj w UJverse
             </label>
             <div className="relative flex h-14 w-full items-center rounded-full border border-zinc-200 bg-white/80 px-5 shadow-sm transition-colors focus-within:border-zinc-300 dark:border-white/10 dark:bg-black/35 dark:focus-within:border-brand-gold-bright/45">
-              <Search size={19} strokeWidth={2} className="mr-3 shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
+              <Search size={19} strokeWidth={2} className="mr-3 shrink-0 text-brand-ink dark:text-brand-gold-bright" />
               <input
                 ref={searchInputRef}
                 id="search-page-query-input"
@@ -494,14 +494,14 @@ export default function SearchPageView({
                       'group flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2 ' +
                       'text-xs sm:text-sm font-semibold tracking-[0.01em] transition-all duration-200 ' +
                       'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ' +
-                      'focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/45 ' +
+                      'focus-visible:ring-brand-ink/40 dark:focus-visible:ring-brand-gold-bright/45 ' +
                       (isActive
-                        ? 'border-[#1e293b]/45 bg-[#1e293b]/10 text-[#1e293b] ' +
+                        ? 'border-brand-ink/45 bg-brand-ink/10 text-brand-ink ' +
                           'shadow-[inset_0_0_0_1px_rgba(30,41,59,0.08)] ' +
                           'dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright ' +
                           'dark:shadow-[0_0_18px_-8px_rgba(232,200,74,0.45),inset_0_0_0_1px_rgba(232,200,74,0.18)]'
                         : 'border-zinc-200 bg-white/60 text-zinc-600 ' +
-                          'hover:border-zinc-300 hover:bg-white/80 hover:text-[#1e293b] ' +
+                          'hover:border-zinc-300 hover:bg-white/80 hover:text-brand-ink ' +
                           'dark:border-white/10 dark:bg-black/25 dark:text-zinc-400 ' +
                           'dark:hover:border-white/20 dark:hover:bg-black/40 dark:hover:text-brand-gold-bright')
                     }
@@ -514,7 +514,7 @@ export default function SearchPageView({
                           'ml-0.5 hidden min-w-5 shrink-0 justify-center rounded-full px-1.5 py-0.5 sm:inline-flex ' +
                           'text-[10px] font-bold tabular-nums leading-none ' +
                           (isActive
-                            ? 'bg-[#1e293b]/15 text-[#1e293b] dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright'
+                            ? 'bg-brand-ink/15 text-brand-ink dark:bg-brand-gold-bright/20 dark:text-brand-gold-bright'
                             : 'bg-zinc-200/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')
                         }
                       >
@@ -605,7 +605,7 @@ export default function SearchPageView({
                           params.set('tab', suggestedFilter)
                           navigate(`/search?${params.toString()}`, { replace: true })
                         }}
-                        className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#1e293b]/45 bg-[#1e293b]/10 px-4 py-2 text-xs font-semibold text-[#1e293b] transition-colors hover:bg-[#1e293b]/15 dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
+                        className="mt-4 inline-flex items-center gap-2 rounded-full border border-brand-ink/45 bg-brand-ink/10 px-4 py-2 text-xs font-semibold text-brand-ink transition-colors hover:bg-brand-ink/15 dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/20"
                       >
                         Pokaż {suggestedTab?.label.toLowerCase()} ({resultCounts[suggestedFilter]})
                       </button>

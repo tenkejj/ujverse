@@ -93,7 +93,7 @@ export default function MonthGrid({
                 'border-b border-r border-zinc-100 dark:border-white/[0.04]',
                 isOutsideMonth ? 'opacity-40' : '',
                 isSelected
-                  ? 'bg-[#1e293b]/[0.05] dark:bg-[#D4AF37]/[0.08]'
+                  ? 'bg-brand-ink/[0.05] dark:bg-[#D4AF37]/[0.08]'
                   : 'hover:bg-zinc-50/80 dark:hover:bg-white/[0.03]',
               ].join(' ')}
               aria-pressed={isSelected}
@@ -105,9 +105,9 @@ export default function MonthGrid({
                   className={[
                     'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums sm:h-7 sm:w-7 sm:text-sm',
                     isToday
-                      ? 'bg-[#1e293b] text-white shadow-sm dark:bg-[#D4AF37] dark:text-[#1e293b]'
+                      ? 'bg-brand-ink text-white shadow-sm dark:bg-[#D4AF37] dark:text-brand-ink'
                       : isSelected
-                        ? 'text-[#1e293b] dark:text-[#D4AF37]'
+                        ? 'text-brand-ink dark:text-[#D4AF37]'
                         : 'text-fg-primary',
                   ].join(' ')}
                 >

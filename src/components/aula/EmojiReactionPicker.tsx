@@ -54,7 +54,7 @@ export default function EmojiReactionPicker({
             onPick(emoji)
             onClose()
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-lg transition-transform hover:scale-125 hover:bg-black/[0.04] focus:outline-none focus:ring-2 focus:ring-[#1e293b]/40 dark:hover:bg-white/[0.06] dark:focus:ring-brand-gold-bright/50"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-lg transition-transform hover:scale-125 hover:bg-black/[0.04] focus:outline-none focus:ring-2 focus:ring-brand-ink/40 dark:hover:bg-white/[0.06] dark:focus:ring-brand-gold-bright/50"
         >
           <span aria-hidden>{emoji}</span>
           <span className="sr-only">Reaguj: {emoji}</span>

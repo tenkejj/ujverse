@@ -98,7 +98,7 @@ export default function EventsHub({
               {active ? (
                 <motion.span
                   layoutId="events-hub-tab-bg"
-                  className="absolute inset-0 rounded-full bg-[#1e293b] dark:bg-[#D4AF37]"
+                  className="absolute inset-0 rounded-full bg-brand-ink dark:bg-[#D4AF37]"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               ) : null}
@@ -107,12 +107,12 @@ export default function EventsHub({
                 strokeWidth={2.25}
                 aria-hidden
                 className={`relative z-[1] shrink-0 transition-colors ${
-                  active ? 'text-white dark:text-[#1e293b]' : 'text-fg-secondary'
+                  active ? 'text-white dark:text-brand-ink' : 'text-fg-secondary'
                 }`}
               />
               <span
                 className={`relative z-[1] transition-colors ${
-                  active ? 'text-white dark:text-[#1e293b]' : 'text-fg-secondary'
+                  active ? 'text-white dark:text-brand-ink' : 'text-fg-secondary'
                 }`}
               >
                 {label}

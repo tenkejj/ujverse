@@ -22,7 +22,7 @@ type Props = {
 }
 
 const FIELD_CLS =
-  'h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:border-[#1e293b]/40 focus:outline-none dark:border-white/10 dark:bg-zinc-950/40 dark:text-zinc-200'
+  'h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:border-brand-ink/40 focus:outline-none dark:border-white/10 dark:bg-zinc-950/40 dark:text-zinc-200'
 
 const LABEL_CLS = 'mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400'
 

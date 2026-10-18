@@ -350,7 +350,7 @@ export default function ImportTimetablePanel({
                 type="button"
                 onClick={() => void doImportFromUrl(urlValue)}
                 disabled={isImporting || !urlValue.trim()}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] px-4 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#1e293b]/90 disabled:opacity-50 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-brand-ink px-4 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-ink/90 disabled:opacity-50 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
               >
                 {isImporting && <Loader2 size={12} className="animate-spin" />}
                 Pobierz i zaimportuj
@@ -422,7 +422,7 @@ export default function ImportTimetablePanel({
                 type="button"
                 onClick={() => void doImportText(rawText)}
                 disabled={isImporting || !rawText.trim()}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#1e293b] px-4 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#1e293b]/90 disabled:opacity-50 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-ink px-4 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-ink/90 disabled:opacity-50 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
               >
                 {isImporting && <Loader2 size={12} className="animate-spin" />}
                 Importuj

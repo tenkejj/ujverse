@@ -220,7 +220,7 @@ export default function AulaSearchModal({
               type="checkbox"
               checked={onlyThisChannel}
               onChange={(e) => setOnlyThisChannel(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-zinc-300 text-[#1e293b] focus:ring-[#1e293b] dark:border-white/20 dark:bg-black/30 dark:text-brand-gold-bright"
+              className="h-3.5 w-3.5 rounded border-zinc-300 text-brand-ink focus:ring-brand-ink dark:border-white/20 dark:bg-black/30 dark:text-brand-gold-bright"
             />
             <span className="inline-flex items-center gap-1">
               Tylko w sali
@@ -330,7 +330,7 @@ export default function AulaSearchModal({
       >
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-white/15" />
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+          <div className="flex items-center gap-2 text-brand-ink dark:text-brand-gold-bright">
             <Search size={16} />
             <span className="text-[11px] font-bold uppercase tracking-[0.22em]">
               Szukaj w Auli
@@ -361,7 +361,7 @@ export default function AulaSearchModal({
         }
       >
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-white/10">
-          <div className="flex items-center gap-2 text-[#1e293b] dark:text-brand-gold-bright">
+          <div className="flex items-center gap-2 text-brand-ink dark:text-brand-gold-bright">
             <Search size={16} />
             <span className="text-[11px] font-bold uppercase tracking-[0.22em]">
               Szukaj w Auli
@@ -409,7 +409,7 @@ function ResultRow({
       onClick={() => onPick(hit.messageId)}
       className="group flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-colors hover:border-zinc-200 hover:bg-zinc-50 focus:outline-none focus-visible:border-zinc-200 focus-visible:bg-zinc-50 dark:hover:border-white/10 dark:hover:bg-white/[0.04] dark:focus-visible:border-white/10 dark:focus-visible:bg-white/[0.04]"
     >
-      <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-[#1e293b] dark:border-white/10 dark:bg-black/30 dark:text-brand-gold-bright">
+      <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white/70 text-brand-ink dark:border-white/10 dark:bg-black/30 dark:text-brand-gold-bright">
         <GraduationCap size={14} strokeWidth={2} />
       </span>
       <div className="min-w-0 flex-1">
@@ -422,7 +422,7 @@ function ResultRow({
           </span>
           {hit.channelId == null ? (
             <span
-              className="inline-flex items-center gap-1 rounded-full bg-[#1e293b]/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
+              className="inline-flex items-center gap-1 rounded-full bg-brand-ink/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
               title="Sala główna"
             >
               <GraduationCap size={9} />

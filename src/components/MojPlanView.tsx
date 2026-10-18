@@ -152,7 +152,7 @@ const SECTION_TITLE_CLS =
   'flex items-center gap-2 text-[15px] font-semibold text-zinc-900 dark:text-zinc-50'
 const SECTION_BADGE_CLS =
   'inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-[11px] font-extrabold tabular-nums ' +
-  'border-[#1e293b]/25 bg-[#1e293b]/[0.06] text-[#1e293b] ' +
+  'border-brand-ink/25 bg-brand-ink/[0.06] text-brand-ink ' +
   'dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/[0.08] dark:text-brand-gold-bright'
 const SECTION_SUBTITLE_CLS = 'text-[12px] font-medium text-zinc-500 dark:text-zinc-500'
 
@@ -216,7 +216,7 @@ function GreetingBar({
           <button
             type="button"
             onClick={onOpenAi}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#1e293b] px-3 text-[13px] font-semibold text-white hover:bg-[#1e293b]/90 dark:bg-brand-gold-bright dark:text-zinc-950 dark:hover:bg-brand-gold-bright/90"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-ink px-3 text-[13px] font-semibold text-white hover:bg-brand-ink/90 dark:bg-brand-gold-bright dark:text-zinc-950 dark:hover:bg-brand-gold-bright/90"
           >
             <Sparkles size={13} strokeWidth={2.5} />
             AI brief
@@ -285,7 +285,7 @@ function PlanHero({
           <button
             type="button"
             onClick={onToday}
-            className="inline-flex h-9 items-center rounded-full px-3 text-[13px] font-semibold text-[#1e293b] hover:bg-black/5 dark:text-brand-gold-bright dark:hover:bg-white/10"
+            className="inline-flex h-9 items-center rounded-full px-3 text-[13px] font-semibold text-brand-ink hover:bg-black/5 dark:text-brand-gold-bright dark:hover:bg-white/10"
           >
             Dziś
           </button>
@@ -395,12 +395,12 @@ function NowCard({
         'rounded-2xl border px-5 py-4',
         cancelled
           ? 'border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/[0.08]'
-          : 'border-[#1e293b]/20 bg-white dark:border-brand-gold-bright/25 dark:bg-zinc-950/60',
+          : 'border-brand-ink/20 bg-white dark:border-brand-gold-bright/25 dark:bg-zinc-950/60',
       ].join(' ')}
     >
       <p
         className={`text-[11px] font-bold uppercase tracking-[0.16em] ${
-          cancelled ? 'text-red-600 dark:text-red-300' : 'text-[#1e293b] dark:text-brand-gold-bright'
+          cancelled ? 'text-red-600 dark:text-red-300' : 'text-brand-ink dark:text-brand-gold-bright'
         }`}
       >
         {cancelled ? 'Odwołane' : item.startsInMinutes === 0 ? 'Teraz' : 'Następne'}
@@ -412,7 +412,7 @@ function NowCard({
         className={`mt-2 font-mono text-[1.75rem] font-bold tabular-nums leading-none tracking-tight ${
           cancelled
             ? 'text-red-800 line-through dark:text-red-200'
-            : 'text-[#1e293b] dark:text-brand-gold-bright'
+            : 'text-brand-ink dark:text-brand-gold-bright'
         }`}
       >
         <span>{fmtHM(item.startDate)}</span>
@@ -482,7 +482,7 @@ function PlanBlock({
         isCancelled
           ? 'cursor-pointer border-red-200/80 bg-red-50 dark:border-red-500/25 dark:bg-red-500/[0.08]'
           : emphasized
-            ? 'border-[#1e293b]/30 bg-[#1e293b]/[0.06] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.10]'
+            ? 'border-brand-ink/30 bg-brand-ink/[0.06] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.10]'
             : large
               ? ''
               : 'border-zinc-200/90 bg-zinc-50/90 dark:border-white/[0.08] dark:bg-white/[0.03]',
@@ -494,7 +494,7 @@ function PlanBlock({
           large ? 'text-[15px]' : 'text-[12.5px]',
           isCancelled
             ? 'text-red-700 line-through dark:text-red-300'
-            : 'text-[#1e293b] dark:text-brand-gold-bright',
+            : 'text-brand-ink dark:text-brand-gold-bright',
         ].join(' ')}
       >
         <span>{fmtHM(start)}</span>
@@ -575,7 +575,7 @@ function WeekBoard({
               className={[
                 'flex min-h-14 min-w-12 shrink-0 flex-col items-center justify-center rounded-xl px-2',
                 selected
-                  ? 'bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950'
+                  ? 'bg-brand-ink text-white dark:bg-brand-gold-bright dark:text-zinc-950'
                   : 'border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-950/50',
               ].join(' ')}
             >
@@ -584,7 +584,7 @@ function WeekBoard({
                   'text-[10px] font-bold uppercase tracking-wide',
                   selected
                     ? ''
-                    : 'text-[#1e293b] dark:text-brand-gold-bright',
+                    : 'text-brand-ink dark:text-brand-gold-bright',
                 ].join(' ')}
               >
                 {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
@@ -644,14 +644,14 @@ function WeekBoard({
                 className={[
                   'border-b px-2 py-2.5 text-center',
                   isToday
-                    ? 'border-[#1e293b]/20 bg-[#1e293b] text-white dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright dark:text-zinc-950'
-                    : 'border-zinc-200 bg-[#1e293b]/[0.04] dark:border-white/10 dark:bg-brand-gold-bright/[0.06]',
+                    ? 'border-brand-ink/20 bg-brand-ink text-white dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright dark:text-zinc-950'
+                    : 'border-zinc-200 bg-brand-ink/[0.04] dark:border-white/10 dark:bg-brand-gold-bright/[0.06]',
                 ].join(' ')}
               >
                 <p
                   className={[
                     'text-[11px] font-bold uppercase tracking-wide',
-                    isToday ? '' : 'text-[#1e293b] dark:text-brand-gold-bright',
+                    isToday ? '' : 'text-brand-ink dark:text-brand-gold-bright',
                   ].join(' ')}
                 >
                   {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
@@ -827,15 +827,15 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
         >
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-[#1e293b]/[0.08] blur-3xl dark:bg-brand-gold-bright/[0.12]"
+            className="pointer-events-none absolute -right-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-brand-ink/[0.08] blur-3xl dark:bg-brand-gold-bright/[0.12]"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute -left-40 -bottom-40 h-[32rem] w-[32rem] rounded-full bg-[#1e293b]/[0.05] blur-3xl dark:bg-brand-gold-bright/[0.08]"
+            className="pointer-events-none absolute -left-40 -bottom-40 h-[32rem] w-[32rem] rounded-full bg-brand-ink/[0.05] blur-3xl dark:bg-brand-gold-bright/[0.08]"
           />
           <div className="relative">
-            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl border border-[#1e293b]/25 bg-[#1e293b]/[0.07] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.10]">
-              <CalendarDays size={22} className="text-[#1e293b] dark:text-brand-gold-bright" strokeWidth={2.25} />
+            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl border border-brand-ink/25 bg-brand-ink/[0.07] dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.10]">
+              <CalendarDays size={22} className="text-brand-ink dark:text-brand-gold-bright" strokeWidth={2.25} />
             </div>
             <h1 className={`text-2xl font-semibold tracking-tight ${theme.text.primary}`}>
               Twój plan w jednym miejscu
@@ -909,7 +909,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
         <button
           type="button"
           onClick={() => setExtrasOpen((v) => !v)}
-          className="text-left text-[13px] font-semibold text-[#1e293b] underline-offset-2 hover:underline lg:hidden dark:text-brand-gold-bright"
+          className="text-left text-[13px] font-semibold text-brand-ink underline-offset-2 hover:underline lg:hidden dark:text-brand-gold-bright"
         >
           {extrasOpen ? 'Zwiń terminy i zmiany' : 'Terminy, zmiany i wydarzenia'}
         </button>
@@ -925,7 +925,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
               <div
                 className={[
                   'relative overflow-hidden rounded-3xl border p-6 sm:p-8',
-                  'border-[#1e293b]/30 bg-gradient-to-br from-[#1e293b]/[0.06] via-white/80 to-white/80 backdrop-blur-xl',
+                  'border-brand-ink/30 bg-gradient-to-br from-brand-ink/[0.06] via-white/80 to-white/80 backdrop-blur-xl',
                   'shadow-[0_25px_80px_-40px_rgba(15,23,42,0.30)]',
                   'dark:border-brand-gold-bright/40 dark:from-brand-gold-bright/[0.10] dark:via-zinc-950/55 dark:to-zinc-950/55',
                   'dark:shadow-[0_35px_90px_-40px_rgba(0,0,0,0.95)]',
@@ -944,7 +944,7 @@ export default function MojPlanView({ userId, myProfile, cohort }: Props) {
                     </p>
                   </div>
                   <div className="shrink-0">
-                    <span className="inline-flex items-center rounded-2xl bg-[#1e293b] px-4 py-2 text-[13px] font-extrabold uppercase tracking-[0.12em] text-white shadow-[0_12px_30px_-12px_rgba(15,23,42,0.55)] dark:bg-brand-gold-bright dark:text-black dark:shadow-[0_12px_30px_-12px_rgba(232,200,74,0.55)]">
+                    <span className="inline-flex items-center rounded-2xl bg-brand-ink px-4 py-2 text-[13px] font-extrabold uppercase tracking-[0.12em] text-white shadow-[0_12px_30px_-12px_rgba(15,23,42,0.55)] dark:bg-brand-gold-bright dark:text-black dark:shadow-[0_12px_30px_-12px_rgba(232,200,74,0.55)]">
                       {weekly.briefing.payload.next_exam.days_away === 0
                         ? 'Dzisiaj'
                         : weekly.briefing.payload.next_exam.days_away === 1

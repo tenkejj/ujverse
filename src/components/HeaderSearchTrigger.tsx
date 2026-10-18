@@ -34,8 +34,8 @@ export default function HeaderSearchTrigger({ onNavigateToSearch, variant = 'ico
       <label className="sr-only" htmlFor="header-inline-search-input">
         Szukaj
       </label>
-      <div className="flex h-9 lg:h-10 w-52 lg:w-60 xl:w-72 shrink-0 items-center rounded-full border border-zinc-200 bg-white/80 px-3.5 backdrop-blur-md transition-colors duration-200 focus-within:border-[#1e293b]/35 dark:border-white/10 dark:bg-bg-card/80 dark:focus-within:border-brand-gold-bright/40">
-        <Search size={16} strokeWidth={2} className="mr-2.5 shrink-0 text-[#1e293b] dark:text-zinc-400" />
+      <div className="flex h-9 lg:h-10 w-52 lg:w-60 xl:w-72 shrink-0 items-center rounded-full border border-zinc-200 bg-white/80 px-3.5 backdrop-blur-md transition-colors duration-200 focus-within:border-brand-ink/35 dark:border-white/10 dark:bg-bg-card/80 dark:focus-within:border-brand-gold-bright/40">
+        <Search size={16} strokeWidth={2} className="mr-2.5 shrink-0 text-brand-ink dark:text-zinc-400" />
         <input
           id="header-inline-search-input"
           type="search"

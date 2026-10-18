@@ -209,7 +209,7 @@ export default function ZniskiView({ userId }: Props) {
               onChange={(e) =>
                 setFilter((f) => ({ ...f, sort: e.target.value as DiscountFilter['sort'] }))
               }
-              className="h-10 rounded-2xl border border-zinc-200 bg-white/80 px-3 text-[12.5px] font-medium text-zinc-700 backdrop-blur-md transition-colors focus:border-[#1e293b]/40 focus:outline-none dark:border-white/10 dark:bg-black/25 dark:text-zinc-200"
+              className="h-10 rounded-2xl border border-zinc-200 bg-white/80 px-3 text-[12.5px] font-medium text-zinc-700 backdrop-blur-md transition-colors focus:border-brand-ink/40 focus:outline-none dark:border-white/10 dark:bg-black/25 dark:text-zinc-200"
               aria-label="Sortuj"
             >
               {(Object.entries(SORT_LABELS) as Array<[DiscountFilter['sort'], string]>).map(([slug, label]) => (
@@ -272,21 +272,21 @@ export default function ZniskiView({ userId }: Props) {
                     key={t.id}
                     type="button"
                     onClick={() => handleOpenDetail(t.id)}
-                    className="group flex w-64 shrink-0 flex-col items-start gap-1 rounded-2xl border border-zinc-200/70 bg-white/80 px-3.5 py-2.5 text-left backdrop-blur-xl backdrop-saturate-150 transition-colors hover:border-[#1e293b]/25 hover:bg-white dark:border-white/10 dark:bg-zinc-950/45 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/60"
+                    className="group flex w-64 shrink-0 flex-col items-start gap-1 rounded-2xl border border-zinc-200/70 bg-white/80 px-3.5 py-2.5 text-left backdrop-blur-xl backdrop-saturate-150 transition-colors hover:border-brand-ink/25 hover:bg-white dark:border-white/10 dark:bg-zinc-950/45 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/60"
                   >
                     <div className="flex w-full items-center justify-between gap-2">
                       <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide ${meta.tint}`}>
                         <Icon size={10} strokeWidth={2.3} />
                         {meta.label}
                       </span>
-                      <span className="text-[10px] font-extrabold tabular-nums text-[#1e293b] dark:text-brand-gold-bright">
+                      <span className="text-[10px] font-extrabold tabular-nums text-brand-ink dark:text-brand-gold-bright">
                         #{idx + 1}
                       </span>
                     </div>
                     <p className="line-clamp-1 text-[13px] font-bold text-zinc-900 dark:text-zinc-100">
                       {t.business_name}
                     </p>
-                    <p className="line-clamp-1 text-[11.5px] font-semibold text-[#1e293b] dark:text-brand-gold-bright">
+                    <p className="line-clamp-1 text-[11.5px] font-semibold text-brand-ink dark:text-brand-gold-bright">
                       {t.discount_headline}
                     </p>
                     <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400">

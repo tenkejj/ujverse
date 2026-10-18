@@ -82,7 +82,7 @@ export default function EventCard({ content, onSelect }: Props) {
               <div className="flex flex-wrap items-center gap-1.5">
                 {tag ? (
                   <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border-[#1e293b]/35 bg-[#1e293b]/[0.06] ${goldMuted} dark:border-brand-gold/40 dark:bg-brand-gold/10`}
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide border-brand-ink/35 bg-brand-ink/[0.06] ${goldMuted} dark:border-brand-gold/40 dark:bg-brand-gold/10`}
                   >
                     {tag}
                   </span>

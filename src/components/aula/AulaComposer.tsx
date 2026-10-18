@@ -202,7 +202,7 @@ function MentionDropdown({
             }}
             className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${
               active
-                ? 'bg-[#1e293b]/[0.06] dark:bg-brand-gold-bright/[0.08]'
+                ? 'bg-brand-ink/[0.06] dark:bg-brand-gold-bright/[0.08]'
                 : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.04]'
             }`}
           >
@@ -618,17 +618,17 @@ export default function AulaComposer({
       onDrop={handleDrop}
     >
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-t-md border-2 border-dashed border-[#1e293b]/40 bg-white/80 backdrop-blur-sm dark:border-brand-gold-bright/40 dark:bg-bg-card/80">
-          <p className="text-sm font-semibold text-[#1e293b] dark:text-brand-gold-bright">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-t-md border-2 border-dashed border-brand-ink/40 bg-white/80 backdrop-blur-sm dark:border-brand-gold-bright/40 dark:bg-bg-card/80">
+          <p className="text-sm font-semibold text-brand-ink dark:text-brand-gold-bright">
             Upuść pliki żeby załączyć
           </p>
         </div>
       )}
 
       {replyTarget && (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-[#1e293b]/15 bg-[#1e293b]/[0.04] px-3 py-1.5 text-xs text-zinc-600 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06] dark:text-zinc-300">
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-brand-ink/15 bg-brand-ink/[0.04] px-3 py-1.5 text-xs text-zinc-600 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06] dark:text-zinc-300">
           <span className="min-w-0 truncate">
-            Odpowiadasz <span className="font-semibold text-[#1e293b] dark:text-brand-gold-bright">{replyTarget.authorName}</span>
+            Odpowiadasz <span className="font-semibold text-brand-ink dark:text-brand-gold-bright">{replyTarget.authorName}</span>
           </span>
           <button
             type="button"
@@ -673,8 +673,8 @@ export default function AulaComposer({
 
       {/* Preview nagranej głosówki (przed wysłaniem). */}
       {voicePreview && !isRecordingActive && (
-        <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#1e293b]/15 bg-[#1e293b]/[0.04] px-3 py-2 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06]">
-          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-brand-ink/15 bg-brand-ink/[0.04] px-3 py-2 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06]">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-ink/10 text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
             <Mic size={14} strokeWidth={2.25} />
           </span>
           <div className="min-w-0 flex-1">
@@ -710,8 +710,8 @@ export default function AulaComposer({
       )}
 
       {poll && (
-        <div className="mb-2 flex items-start gap-2 rounded-xl border border-[#1e293b]/15 bg-[#1e293b]/[0.04] px-3 py-2 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06]">
-          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1e293b]/10 text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
+        <div className="mb-2 flex items-start gap-2 rounded-xl border border-brand-ink/15 bg-brand-ink/[0.04] px-3 py-2 dark:border-brand-gold-bright/25 dark:bg-brand-gold-bright/[0.06]">
+          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-ink/10 text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright">
             <BarChart3 size={11} strokeWidth={2.5} />
           </span>
           <div className="min-w-0 flex-1">
@@ -761,7 +761,7 @@ export default function AulaComposer({
             className={[
               'flex h-11 w-11 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50',
               attachOpen || poll || voicePreview || pending.length > 0
-                ? 'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright'
+                ? 'border-brand-ink/40 bg-brand-ink/[0.06] text-brand-ink dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright'
                 : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06]',
             ].join(' ')}
           >
@@ -824,7 +824,7 @@ export default function AulaComposer({
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || sending || !cohortId}
           aria-label="Dodaj załącznik"
-          className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition-colors hover:bg-black/[0.04] hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-50 sm:flex dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
+          className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 transition-colors hover:bg-black/[0.04] hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-50 sm:flex dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright"
         >
           <Paperclip size={18} />
         </button>
@@ -837,8 +837,8 @@ export default function AulaComposer({
           className={[
             'hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:flex',
             poll
-              ? 'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] hover:bg-[#1e293b]/[0.1] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.15]'
-              : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] hover:text-[#1e293b] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright',
+              ? 'border-brand-ink/40 bg-brand-ink/[0.06] text-brand-ink hover:bg-brand-ink/[0.1] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.15]'
+              : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] hover:text-brand-ink dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright',
           ].join(' ')}
         >
           <BarChart3 size={18} />
@@ -877,8 +877,8 @@ export default function AulaComposer({
             isRecordingActive
               ? 'border-rose-400 bg-rose-500/10 text-rose-600 hover:bg-rose-500/15 dark:border-rose-300/50 dark:bg-rose-400/10 dark:text-rose-300'
               : voicePreview
-                ? 'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] hover:bg-[#1e293b]/[0.1] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.15]'
-                : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] hover:text-[#1e293b] dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright',
+                ? 'border-brand-ink/40 bg-brand-ink/[0.06] text-brand-ink hover:bg-brand-ink/[0.1] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.1] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.15]'
+                : 'border-zinc-200 text-zinc-600 hover:bg-black/[0.04] hover:text-brand-ink dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/[0.06] dark:hover:text-brand-gold-bright',
           ].join(' ')}
         >
           {isRecordingActive ? <X size={18} /> : <Mic size={18} />}
@@ -918,14 +918,14 @@ export default function AulaComposer({
           disabled={disabled}
           // text-base na mobile → iOS NIE auto-zoomuje (zooming komplikuje
           // submit przez SendHorizonal poza viewportem). sm:text-sm na PC.
-          className="max-h-40 min-h-[44px] w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-[#1e293b] disabled:opacity-60 sm:px-3.5 sm:text-sm dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-brand-gold-bright"
+          className="max-h-40 min-h-[44px] w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-2.5 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-brand-ink disabled:opacity-60 sm:px-3.5 sm:text-sm dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-brand-gold-bright"
         />
         <button
           type="button"
           onClick={() => void submit()}
           disabled={!canSend}
           aria-label="Wyślij"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#1e293b] text-white transition-colors hover:bg-[#1e293b]/90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-ink text-white transition-colors hover:bg-brand-ink/90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
         >
           {sending ? (
             <Loader2 size={18} className="animate-spin" />

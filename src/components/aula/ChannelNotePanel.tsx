@@ -128,7 +128,7 @@ function ChannelNoteEditor({
       <div className="flex items-center gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-white/10">
         <StickyNote
           size={14}
-          className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright"
+          className="shrink-0 text-brand-ink dark:text-brand-gold-bright"
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-fg-primary">
@@ -163,7 +163,7 @@ function ChannelNoteEditor({
           className={[
             'inline-flex min-h-[36px] items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors',
             tab === 'edit'
-              ? 'bg-[#1e293b] text-white dark:bg-brand-gold dark:text-black'
+              ? 'bg-brand-ink text-white dark:bg-brand-gold dark:text-black'
               : 'text-zinc-500 hover:bg-black/[0.04] dark:text-zinc-400 dark:hover:bg-white/[0.06]',
           ].join(' ')}
         >
@@ -177,7 +177,7 @@ function ChannelNoteEditor({
           className={[
             'inline-flex min-h-[36px] items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors',
             tab === 'preview'
-              ? 'bg-[#1e293b] text-white dark:bg-brand-gold dark:text-black'
+              ? 'bg-brand-ink text-white dark:bg-brand-gold dark:text-black'
               : 'text-zinc-500 hover:bg-black/[0.04] dark:text-zinc-400 dark:hover:bg-white/[0.06]',
           ].join(' ')}
         >

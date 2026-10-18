@@ -20,7 +20,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { useTheme } from '../ThemeContext'
+import { THEME_META, useTheme } from '../ThemeContext'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import NavItem from './nav/NavItem'
@@ -91,7 +91,8 @@ export default function MobileDrawer({
   onNavigateToSettings,
   onNavigateToSearch,
 }: Props) {
-  const { theme: colorMode, toggleTheme } = useTheme()
+  const { theme: colorMode, cycleTheme } = useTheme()
+  const ThemeIcon = colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
   const navigate = useNavigate()
   const [searchValue, setSearchValue] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -162,7 +163,7 @@ export default function MobileDrawer({
               <button
                 type="button"
                 onClick={wrap(onNavigateToProfile)}
-                className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:focus-visible:ring-brand-gold/40"
+                className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/30 dark:focus-visible:ring-brand-gold/40"
                 aria-label="Otwórz profil"
               >
                 <UserAvatar
@@ -334,11 +335,12 @@ export default function MobileDrawer({
                   variant="drawer"
                 />
                 <NavItem
-                  icon={colorMode === 'dark' ? Sun : Moon}
-                  label={colorMode === 'dark' ? 'Tryb jasny' : 'Tryb ciemny'}
-                  active={false}
-                  onClick={toggleTheme}
+                  icon={ThemeIcon}
+                  label={THEME_META[colorMode].shortLabel}
+                  active={colorMode === 'uj'}
+                  onClick={cycleTheme}
                   variant="drawer"
+                  title="Zmień motyw: Jasny → Kolory UJ → Ciemny"
                 />
               </div>
             </div>

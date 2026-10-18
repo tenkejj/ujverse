@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Moon, Sun } from 'lucide-react'
-import { useTheme } from '../../ThemeContext'
+import { GraduationCap, Moon, Sun } from 'lucide-react'
+import { THEME_META, useTheme } from '../../ThemeContext'
 import { AUTH_MOBILE } from '../../styles/mobile-theme'
 
 const LOGO_MASK_STYLE = {
@@ -23,7 +23,7 @@ type Props = {
 }
 
 export default function AuthShell({ children }: Props) {
-  const { theme, toggleTheme } = useTheme()
+  const { theme, cycleTheme } = useTheme()
   const reducedMotion = useReducedMotion()
 
   return (
@@ -42,15 +42,21 @@ export default function AuthShell({ children }: Props) {
 
       <button
         type="button"
-        onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Włącz tryb jasny' : 'Włącz tryb ciemny'}
+        onClick={cycleTheme}
+        aria-label={`Motyw: ${THEME_META[theme].label}. Kliknij, żeby zmienić.`}
         className={
           'absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] z-20 ' +
           AUTH_MOBILE.shell.themeToggleClass +
           ' sm:right-4 sm:top-4'
         }
       >
-        {theme === 'dark' ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
+        {theme === 'dark' ? (
+          <Moon size={18} strokeWidth={2} />
+        ) : theme === 'uj' ? (
+          <GraduationCap size={18} strokeWidth={2} />
+        ) : (
+          <Sun size={18} strokeWidth={2} />
+        )}
       </button>
 
       <motion.div

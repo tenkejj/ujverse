@@ -82,7 +82,7 @@ export default function ChatAssistant({
 
         <motion.h2
           variants={reducedMotion ? undefined : itemVariants}
-          className="w-full text-balance text-[15px] font-semibold leading-snug tracking-tight text-[#1e293b] dark:text-white"
+          className="w-full text-balance text-[15px] font-semibold leading-snug tracking-tight text-brand-ink dark:text-white"
         >
           {welcome.headline}
         </motion.h2>
@@ -109,7 +109,7 @@ export default function ChatAssistant({
           transition={SPRING}
           onClick={() => navigate('/chat')}
           aria-label={`${ctaLabel} z asystentem ${CHAT_ASSISTANT_NAME}`}
-          className="mt-0.5 inline-flex w-full max-w-[13.5rem] items-center justify-center gap-2 rounded-full bg-[#1e293b] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold-bright dark:text-zinc-950 dark:hover:bg-brand-gold-bright/90"
+          className="mt-0.5 inline-flex w-full max-w-[13.5rem] items-center justify-center gap-2 rounded-full bg-brand-ink px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-ink/90 dark:bg-brand-gold-bright dark:text-zinc-950 dark:hover:bg-brand-gold-bright/90"
         >
           <MessageCircle size={15} strokeWidth={2.2} className="shrink-0" />
           <span>{ctaLabel}</span>

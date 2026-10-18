@@ -60,8 +60,8 @@
 
     <!--
       Inline theme detection — odpalane PRZED CSS, eliminuje FOUC.
-      Czyta `localStorage['uj-theme']` (zob. ThemeContext) lub `prefers-color-scheme`,
-      i dodaje klasę `dark` na <html> jeszcze zanim React się zhydratuje.
+      Czyta `localStorage['uj-theme']` (`light` | `dark` | `uj`) lub
+      `prefers-color-scheme`, i dodaje klasę na <html> przed hydracją React.
     -->
     <script>
       (function () {
@@ -70,8 +70,10 @@
           var prefersDark =
             window.matchMedia &&
             window.matchMedia('(prefers-color-scheme: dark)').matches
-          var isDark = stored === 'dark' || (!stored && prefersDark)
-          if (isDark) document.documentElement.classList.add('dark')
+          var root = document.documentElement
+          root.classList.remove('dark', 'theme-uj')
+          if (stored === 'uj') root.classList.add('theme-uj')
+          else if (stored === 'dark' || (!stored && prefersDark)) root.classList.add('dark')
         } catch (e) {}
       })()
     </script>
@@ -94,6 +96,10 @@
       html.dark, html.dark body {
         background: #000000;
         color: #f8fafc;
+      }
+      html.theme-uj, html.theme-uj body {
+        background: #f3f6fa;
+        color: #0c4a86;
       }
 
       #ujverse-splash {
@@ -125,6 +131,9 @@
       html.dark #ujverse-splash .logo {
         background-color: #e8c84a;
       }
+      html.theme-uj #ujverse-splash .logo {
+        background-color: #0c4a86;
+      }
 
       #ujverse-splash .spin {
         width: 1.5rem;
@@ -133,6 +142,10 @@
         border-top-color: #1e293b;
         border-radius: 50%;
         animation: ujverse-splash-spin 0.85s linear infinite;
+      }
+      html.theme-uj #ujverse-splash .spin {
+        border-color: rgba(12, 74, 134, 0.18);
+        border-top-color: #0c4a86;
       }
       html.dark #ujverse-splash .spin {
         border-color: rgba(255, 255, 255, 0.08);

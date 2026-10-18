@@ -144,7 +144,7 @@ export default function GroupCard({
       <section aria-label={`Wpisy w strefie ${title}`} className="min-h-48">
         {loading && (
           <div className="flex justify-center py-20">
-            <div className="h-8 w-8 rounded-full border-[3px] border-[#1e293b]/30 border-t-[#1e293b] animate-spin dark:border-brand-gold/30 dark:border-t-brand-gold-bright" />
+            <div className="h-8 w-8 rounded-full border-[3px] border-brand-ink/30 border-t-brand-ink animate-spin dark:border-brand-gold/30 dark:border-t-brand-gold-bright" />
           </div>
         )}
 

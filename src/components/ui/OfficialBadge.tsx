@@ -38,10 +38,10 @@ const iconSize: Record<NonNullable<Props['size']>, number> = {
 
 const variantClasses: Record<NonNullable<Props['variant']>, string> = {
   inline:
-    'border-[#1e293b]/40 bg-[#1e293b]/[0.06] text-[#1e293b] ' +
+    'border-brand-ink/40 bg-brand-ink/[0.06] text-brand-ink ' +
     'dark:border-brand-gold/45 dark:bg-brand-gold/10 dark:text-brand-gold-bright',
   floating:
-    'border-[#1e293b]/35 bg-white/80 text-[#1e293b] backdrop-blur-sm ' +
+    'border-brand-ink/35 bg-white/80 text-brand-ink backdrop-blur-sm ' +
     'dark:border-brand-gold/45 dark:bg-black/55 dark:text-brand-gold-bright',
 }
 

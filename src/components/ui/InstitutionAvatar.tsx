@@ -40,7 +40,7 @@ export default function InstitutionAvatar({
       role="img"
       aria-label={label}
       title={label}
-      className={`flex items-center justify-center shrink-0 rounded-full ring-1 bg-[#1e293b]/[0.08] ring-[#1e293b]/20 text-[#1e293b] dark:bg-brand-gold-bright/[0.12] dark:ring-brand-gold-bright/30 dark:text-brand-gold-bright ${className}`}
+      className={`flex items-center justify-center shrink-0 rounded-full ring-1 bg-brand-ink/[0.08] ring-brand-ink/20 text-brand-ink dark:bg-brand-gold-bright/[0.12] dark:ring-brand-gold-bright/30 dark:text-brand-gold-bright ${className}`}
     >
       <Icon size={computedIconSize} strokeWidth={2.25} aria-hidden />
     </div>

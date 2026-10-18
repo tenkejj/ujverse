@@ -130,7 +130,7 @@ export default function ChannelMuteMenu({
       className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-bg-card"
     >
       <div className="border-b border-zinc-200 px-3 py-2 dark:border-white/10">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1e293b] dark:text-brand-gold-bright">
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-ink dark:text-brand-gold-bright">
           Powiadomienia
         </p>
         <p className="mt-0.5 truncate text-xs text-fg-secondary" title={channelLabel}>
@@ -227,14 +227,14 @@ function MuteModeItem({
       className={[
         'flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition-colors',
         active
-          ? 'bg-[#1e293b]/[0.06] text-[#1e293b] dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
+          ? 'bg-brand-ink/[0.06] text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright'
           : 'text-fg-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
       ].join(' ')}
     >
       <span
         className={[
           'mt-0.5 shrink-0',
-          active ? 'text-[#1e293b] dark:text-brand-gold-bright' : 'text-fg-secondary',
+          active ? 'text-brand-ink dark:text-brand-gold-bright' : 'text-fg-secondary',
         ].join(' ')}
       >
         {icon}
@@ -244,7 +244,7 @@ function MuteModeItem({
         <span className="block text-[11px] text-fg-secondary">{hint}</span>
       </span>
       {active && (
-        <Check size={14} className="mt-0.5 shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
+        <Check size={14} className="mt-0.5 shrink-0 text-brand-ink dark:text-brand-gold-bright" />
       )}
     </button>
   )

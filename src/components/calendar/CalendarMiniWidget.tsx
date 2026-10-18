@@ -93,7 +93,7 @@ export default function CalendarMiniWidget({ className = '' }: Props) {
           <CalendarRange
             size={16}
             strokeWidth={2.25}
-            className="text-[#1e293b] dark:text-[#D4AF37] shrink-0"
+            className="text-brand-ink dark:text-[#D4AF37] shrink-0"
             aria-hidden
           />
           <h3 className="text-sm font-bold text-fg-primary">Najbliższe 7 dni</h3>
@@ -133,7 +133,7 @@ export default function CalendarMiniWidget({ className = '' }: Props) {
                 className={[
                   'inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold tabular-nums',
                   isToday
-                    ? 'bg-[#1e293b] text-white dark:bg-[#D4AF37] dark:text-[#1e293b]'
+                    ? 'bg-brand-ink text-white dark:bg-[#D4AF37] dark:text-brand-ink'
                     : 'text-fg-primary',
                 ].join(' ')}
               >

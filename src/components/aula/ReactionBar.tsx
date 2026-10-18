@@ -34,7 +34,7 @@ export default function ReactionBar({ reactions, onToggle, userNames }: Props) {
           aria-label={`Reakcja ${agg.emoji}, ${agg.count} osób${agg.mine ? ', już zareagowałeś/aś' : ''}`}
           className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs leading-none transition-all ${
             agg.mine
-              ? 'border-[#1e293b]/30 bg-[#1e293b]/[0.08] text-[#1e293b] hover:bg-[#1e293b]/[0.12] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.12] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.18]'
+              ? 'border-brand-ink/30 bg-brand-ink/[0.08] text-brand-ink hover:bg-brand-ink/[0.12] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.12] dark:text-brand-gold-bright dark:hover:bg-brand-gold-bright/[0.18]'
               : 'border-zinc-200 bg-black/[0.03] text-zinc-700 hover:bg-black/[0.06] dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:bg-white/[0.08]'
           }`}
         >

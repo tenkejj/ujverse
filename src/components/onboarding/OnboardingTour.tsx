@@ -178,7 +178,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                   className={[
                     'h-1.5 rounded-full',
                     i === step
-                      ? 'w-8 bg-[#1e293b] dark:bg-brand-gold-bright'
+                      ? 'w-8 bg-brand-ink dark:bg-brand-gold-bright'
                       : i < step
                         ? 'w-2 bg-zinc-400 dark:bg-zinc-500'
                         : 'w-2 bg-zinc-200 dark:bg-white/10',
@@ -278,7 +278,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                       zamiast zimnego slate-400 z fg-secondary. Spójne z
                       AuthShell / Header / primary CTA appki.
                     */
-                    className="mt-2 text-base font-semibold text-[#1e293b]/85 dark:text-brand-gold-bright"
+                    className="mt-2 text-base font-semibold text-brand-ink/85 dark:text-brand-gold-bright"
                   >
                     {current.subtitle}
                   </motion.p>
@@ -312,7 +312,7 @@ export default function OnboardingTour({ onComplete, onSkip }: Props) {
                       }
                       type="button"
                       onClick={() => current.ctaPath && visit(current.ctaPath)}
-                      className="group mt-6 inline-flex items-center gap-1 text-[14px] font-semibold text-[#1e293b] transition-colors hover:text-zinc-600 dark:text-brand-gold-bright dark:hover:text-brand-gold"
+                      className="group mt-6 inline-flex items-center gap-1 text-[14px] font-semibold text-brand-ink transition-colors hover:text-zinc-600 dark:text-brand-gold-bright dark:hover:text-brand-gold"
                     >
                       {current.ctaLabel ?? 'Otwórz'}
                       <ArrowRight
@@ -409,7 +409,7 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
           initial={entry}
           animate={animate}
           transition={transition}
-          className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#1e293b] text-brand-gold-bright shadow-lg shadow-[#1e293b]/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
+          className="flex h-24 w-24 items-center justify-center rounded-3xl bg-brand-ink text-brand-gold-bright shadow-lg shadow-brand-ink/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
         >
           <AnimatedBot size={48} strokeWidth={1.8} intensity="wave" />
         </motion.div>
@@ -420,7 +420,7 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
           initial={entry}
           animate={animate}
           transition={transition}
-          className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#1e293b] text-brand-gold-bright shadow-lg shadow-[#1e293b]/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
+          className="flex h-24 w-24 items-center justify-center rounded-3xl bg-brand-ink text-brand-gold-bright shadow-lg shadow-brand-ink/15 sm:h-28 sm:w-28 dark:bg-brand-gold dark:text-zinc-950 dark:shadow-brand-gold/10"
         >
           {(() => {
             const Icon = step.visual as LucideIcon
@@ -458,9 +458,9 @@ function NextButton({
       transition={reduceMotion ? undefined : { type: 'spring', stiffness: 500, damping: 30 }}
       className={[
         'group inline-flex items-center gap-1.5 rounded-full px-6 py-2.5 text-[15px] font-semibold tracking-tight transition-colors',
-        'bg-[#1e293b] text-white hover:bg-[#0f172a]',
+        'bg-brand-ink text-white hover:bg-[#0f172a]',
         'dark:bg-brand-gold dark:text-zinc-950 dark:hover:bg-brand-gold-bright',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1e293b]/50 focus-visible:ring-offset-white dark:focus-visible:ring-brand-gold-bright/55 dark:focus-visible:ring-offset-zinc-900',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-ink/50 focus-visible:ring-offset-white dark:focus-visible:ring-brand-gold-bright/55 dark:focus-visible:ring-offset-zinc-900',
       ].join(' ')}
     >
       {isLast ? (

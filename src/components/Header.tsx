@@ -1,13 +1,24 @@
 import { useRef, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
-import { Bell, ChevronDown, LogOut, Menu, Moon, Pencil, Settings, Sun, User } from 'lucide-react'
+import {
+  Bell,
+  ChevronDown,
+  GraduationCap,
+  LogOut,
+  Menu,
+  Moon,
+  Pencil,
+  Settings,
+  Sun,
+  User,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import OmniSearchHub from './OmniSearchHub'
-import { useTheme } from '../ThemeContext'
+import { THEME_META, useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
@@ -72,7 +83,7 @@ export default function Header({
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
-  const { theme: colorMode, toggleTheme } = useTheme()
+  const { theme: colorMode, cycleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
 
@@ -118,7 +129,7 @@ export default function Header({
           window.scrollTo({ top: 0, behavior: 'smooth' })
           onRefreshPosts()
         }}
-        className="pointer-events-auto overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 inline-flex items-center justify-center border-0"
+        className="pointer-events-auto overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 inline-flex items-center justify-center border-0"
         aria-label="Strona główna"
       >
         <div
@@ -160,7 +171,7 @@ export default function Header({
               onOpenMobileDrawer()
             }}
             aria-label="Otwórz menu"
-            className="w-14 h-14 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40"
+            className="w-14 h-14 flex items-center justify-center rounded-full text-brand-ink dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40"
           >
             <Menu
               size={ICONS_MOBILE.bottomNavIconSize}
@@ -183,14 +194,17 @@ export default function Header({
           />
           <button
             type="button"
-            onClick={toggleTheme}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-[#1e293b] dark:text-gray-400 hover:text-[#1e293b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out"
-            aria-label={colorMode === 'dark' ? 'Przełącz na tryb jasny' : 'Przełącz na tryb ciemny'}
+            onClick={cycleTheme}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-brand-ink dark:text-gray-400 hover:text-brand-ink hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out"
+            aria-label={`Motyw: ${THEME_META[colorMode].label}. Kliknij, żeby zmienić.`}
+            title={`Motyw: ${THEME_META[colorMode].label}`}
           >
             {colorMode === 'dark' ? (
-              <Sun size={20} strokeWidth={2} className="shrink-0" />
-            ) : (
               <Moon size={20} strokeWidth={2} className="shrink-0" />
+            ) : colorMode === 'uj' ? (
+              <GraduationCap size={20} strokeWidth={2} className="shrink-0" />
+            ) : (
+              <Sun size={20} strokeWidth={2} className="shrink-0" />
             )}
           </button>
 
@@ -207,8 +221,8 @@ export default function Header({
               aria-label="Powiadomienia"
               className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-150 ease-in-out hover:bg-black/5 dark:hover:bg-white/10 ${
                 bellActive
-                  ? 'text-[#1e293b] dark:text-brand-gold-bright ring-2 ring-[#1e293b]/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(30,41,59,0.35)]'
-                  : 'text-[#1e293b] dark:text-gray-400'
+                  ? 'text-brand-ink dark:text-brand-gold-bright ring-2 ring-brand-ink/35 dark:ring-brand-gold-bright/45 shadow-[0_0_18px_-4px_rgba(30,41,59,0.35)]'
+                  : 'text-brand-ink dark:text-gray-400'
               }`}
             >
               <motion.span
@@ -225,13 +239,13 @@ export default function Header({
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center pointer-events-none">
                   <motion.span
-                    className="absolute rounded-full bg-[#1e293b] dark:bg-brand-gold-bright"
+                    className="absolute rounded-full bg-brand-ink dark:bg-brand-gold-bright"
                     style={{ width: 22, height: 22 }}
                     animate={{ scale: [1, 1.35], opacity: [0.45, 0] }}
                     transition={{ duration: 1.25, repeat: Infinity, ease: 'easeOut' }}
                     aria-hidden
                   />
-                  <span className="relative z-10 min-w-[16px] h-4 rounded-full bg-[#1e293b] text-white text-[9px] font-bold flex items-center justify-center px-0.5 shadow-sm dark:bg-accent-interactive dark:text-black">
+                  <span className="relative z-10 min-w-[16px] h-4 rounded-full bg-brand-ink text-white text-[9px] font-bold flex items-center justify-center px-0.5 shadow-sm dark:bg-accent-interactive dark:text-black">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 </span>
@@ -304,25 +318,25 @@ export default function Header({
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToProfile() }}
-                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-brand-ink/6 hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-brand-ink before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <User size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
+                    <User size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-brand-ink dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
                     Mój profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onOpenProfileModal() }}
-                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-brand-ink/6 hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-brand-ink before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <Pencil size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
+                    <Pencil size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-brand-ink dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
                     Edytuj profil
                   </button>
                   <button
                     role="menuitem"
                     onClick={() => { setMenuOpen(false); onNavigateToSettings() }}
-                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-[#1e293b]/6 hover:text-[#1e293b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-[#1e293b] before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
+                    className="group relative flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-2.5 text-sm font-medium text-fg-primary/85 transition-colors hover:bg-brand-ink/6 hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/30 dark:text-zinc-300 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright dark:focus-visible:ring-brand-gold/40 before:pointer-events-none before:absolute before:left-0 before:top-1/2 before:h-[55%] before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-brand-ink before:opacity-0 hover:before:opacity-100 dark:before:bg-brand-gold-bright"
                   >
-                    <Settings size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
+                    <Settings size={16} strokeWidth={2} className="shrink-0 text-zinc-500 transition-colors group-hover:text-brand-ink dark:text-zinc-400 dark:group-hover:text-brand-gold-bright" />
                     Ustawienia
                   </button>
                 </div>

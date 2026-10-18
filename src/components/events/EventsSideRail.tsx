@@ -65,7 +65,7 @@ export default function EventsSideRail({
             </>
           ) : (
             <>
-              <Archive size={14} strokeWidth={2} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" aria-hidden />
+              <Archive size={14} strokeWidth={2} className="shrink-0 text-brand-ink dark:text-brand-gold-bright" aria-hidden />
               <span>Archiwum (brak połączenia)</span>
             </>
           )}

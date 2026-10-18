@@ -78,7 +78,7 @@ function MessageBody({ content }: { content: string }) {
                 e.stopPropagation()
                 navigate(`/u/${encodeURIComponent(username)}`)
               }}
-              className="rounded px-0.5 font-semibold text-[#1e293b] underline-offset-2 hover:underline dark:text-brand-gold-bright"
+              className="rounded px-0.5 font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright"
             >
               {children}
             </button>
@@ -89,7 +89,7 @@ function MessageBody({ content }: { content: string }) {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[#1e293b] underline underline-offset-2 hover:opacity-80 dark:text-brand-gold-bright"
+            className="text-brand-ink underline underline-offset-2 hover:opacity-80 dark:text-brand-gold-bright"
           >
             {children}
           </a>
@@ -236,7 +236,7 @@ export default function AulaMessageItem({
           isHighlighted
             ? 'bg-brand-gold/15 dark:bg-brand-gold-bright/10'
             : isPinned
-              ? 'bg-[#1e293b]/[0.025] dark:bg-brand-gold-bright/[0.04]'
+              ? 'bg-brand-ink/[0.025] dark:bg-brand-gold-bright/[0.04]'
               : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.03]'
         }`}
       >
@@ -263,7 +263,7 @@ export default function AulaMessageItem({
             </span>
             {isPinned && (
               <span
-                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#1e293b]/[0.08] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-[#1e293b] dark:bg-brand-gold-bright/[0.12] dark:text-brand-gold-bright"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-ink/[0.08] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-brand-ink dark:bg-brand-gold-bright/[0.12] dark:text-brand-gold-bright"
                 title="Przypięte"
               >
                 <Pin size={9} strokeWidth={2.5} />
@@ -283,14 +283,14 @@ export default function AulaMessageItem({
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleEditKey}
                 rows={2}
-                className="w-full resize-y rounded-lg border border-zinc-200 bg-zinc-50/80 px-2.5 py-1.5 text-base text-zinc-900 outline-none focus:border-[#1e293b] sm:text-sm dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:focus:border-brand-gold-bright"
+                className="w-full resize-y rounded-lg border border-zinc-200 bg-zinc-50/80 px-2.5 py-1.5 text-base text-zinc-900 outline-none focus:border-brand-ink sm:text-sm dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:focus:border-brand-gold-bright"
                 autoFocus
               />
               <div className="mt-1 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={saveEdit}
-                  className="inline-flex items-center gap-1 rounded-lg bg-[#1e293b] px-2.5 py-1 text-xs font-semibold text-white dark:bg-brand-gold dark:text-black"
+                  className="inline-flex items-center gap-1 rounded-lg bg-brand-ink px-2.5 py-1 text-xs font-semibold text-white dark:bg-brand-gold dark:text-black"
                 >
                   <Check size={13} /> Zapisz
                 </button>
@@ -342,7 +342,7 @@ export default function AulaMessageItem({
                 <button
                   type="button"
                   onClick={() => onReply(node.id, authorName)}
-                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-brand-ink dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                 >
                   <CornerUpLeft size={12} /> Odpowiedz
                 </button>
@@ -353,7 +353,7 @@ export default function AulaMessageItem({
                   onClick={() => setPickerOpen((v) => !v)}
                   aria-haspopup="menu"
                   aria-expanded={pickerOpen}
-                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-brand-ink dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                 >
                   <SmilePlus size={12} /> Reaguj
                 </button>
@@ -362,7 +362,7 @@ export default function AulaMessageItem({
                 <button
                   type="button"
                   onClick={() => onTogglePin(node.id)}
-                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                  className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-brand-ink dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                 >
                   {isPinned ? (
                     <>
@@ -437,7 +437,7 @@ export default function AulaMessageItem({
                   <button
                     type="button"
                     onClick={() => { setDraft(node.content); setEditing(true) }}
-                    className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-[#1e293b] dark:text-zinc-400 dark:hover:text-brand-gold-bright"
+                    className="inline-flex min-h-[28px] items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-brand-ink dark:text-zinc-400 dark:hover:text-brand-gold-bright"
                   >
                     <Pencil size={12} /> Edytuj
                   </button>

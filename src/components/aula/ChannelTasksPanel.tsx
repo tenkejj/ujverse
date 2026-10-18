@@ -164,7 +164,7 @@ function TaskItem({
             className={[
               'inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors',
               isMine
-                ? 'border-[#1e293b] bg-[#1e293b] text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-bg-card'
+                ? 'border-brand-ink bg-brand-ink text-white dark:border-brand-gold-bright dark:bg-brand-gold-bright dark:text-bg-card'
                 : 'border-zinc-300 bg-transparent hover:border-zinc-500 dark:border-white/25 dark:hover:border-white/45',
             ].join(' ')}
             aria-hidden
@@ -373,7 +373,7 @@ function ChannelTasksEditor({
       <div className="flex items-center gap-2 border-b border-zinc-200 px-3 py-2.5 dark:border-white/10">
         <CheckSquare
           size={14}
-          className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright"
+          className="shrink-0 text-brand-ink dark:text-brand-gold-bright"
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-fg-primary">Zadania: {channelName}</p>
@@ -388,7 +388,7 @@ function ChannelTasksEditor({
           onClick={() => setCreatorOpen(true)}
           aria-label="Dodaj zadanie"
           title="Dodaj zadanie"
-          className="inline-flex items-center gap-1 rounded-md bg-[#1e293b] px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-[#1e293b]/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
+          className="inline-flex items-center gap-1 rounded-md bg-brand-ink px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-brand-ink/90 dark:bg-brand-gold dark:text-black dark:hover:bg-brand-gold/85"
         >
           <Plus size={12} />
           Dodaj
@@ -413,7 +413,7 @@ function ChannelTasksEditor({
                   className={[
                     'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition-colors',
                     active
-                      ? 'bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-bg-card'
+                      ? 'bg-brand-ink text-white dark:bg-brand-gold-bright dark:text-bg-card'
                       : isOverdueWithCount
                         ? 'bg-rose-500/15 text-rose-700 hover:bg-rose-500/20 dark:bg-rose-400/15 dark:text-rose-300 dark:hover:bg-rose-400/25'
                         : 'bg-black/[0.04] text-zinc-600 hover:bg-black/[0.08] dark:bg-white/[0.04] dark:text-zinc-300 dark:hover:bg-white/[0.08]',
@@ -461,7 +461,7 @@ function ChannelTasksEditor({
             <button
               type="button"
               onClick={() => setFilter('all')}
-              className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#1e293b] underline-offset-2 hover:underline dark:text-brand-gold-bright"
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright"
             >
               Pokaż wszystkie
             </button>

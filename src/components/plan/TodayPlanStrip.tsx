@@ -17,7 +17,7 @@ type Props = {
 }
 
 const CARD_BTN =
-  'w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/40 dark:focus-visible:ring-brand-gold-bright/50'
+  'w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 dark:focus-visible:ring-brand-gold-bright/50'
 
 function fmtHM(d: Date): string {
   return d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -114,7 +114,7 @@ export default function TodayPlanStrip({ userId, className = '' }: Props) {
     >
       <span className="flex items-center gap-3 p-3.5">
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-[#1e293b] dark:text-brand-gold-bright">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-ink dark:text-brand-gold-bright">
             Mój plan
           </span>
           <span
@@ -130,7 +130,7 @@ export default function TodayPlanStrip({ userId, className = '' }: Props) {
             {detail}
           </span>
         </span>
-        <ArrowRight size={16} strokeWidth={2.2} className="shrink-0 text-[#1e293b] dark:text-brand-gold-bright" />
+        <ArrowRight size={16} strokeWidth={2.2} className="shrink-0 text-brand-ink dark:text-brand-gold-bright" />
       </span>
     </BaseCard>
   )
