@@ -139,7 +139,9 @@ function getAppFrameClass(view: AppShellView): string {
   ) {
     return 'w-full lg:ml-[max(18rem,calc(50%-40rem))] lg:w-[min(80rem,calc(100%-18rem))]'
   }
-  return 'w-full lg:ml-[max(18rem,calc(50%-21rem))] lg:w-[min(42rem,calc(100%-18rem))]'
+  // Ustawienia i wąski post: ta sama oś co feed. Kolumna 42rem mieściła
+  // karty, ale header (logo na środku + szukajka) składał się na siebie na 2K.
+  return 'w-full lg:ml-[max(18rem,calc(50%-40rem))] lg:w-[min(80rem,calc(100%-18rem))]'
 }
 
 /** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */
@@ -165,7 +167,9 @@ function getAppContentShellClass(view: AppShellView): string {
   ) {
     return 'mx-auto w-full max-w-7xl px-4 lg:px-6'
   }
-  if (view === 'settings') return 'mx-auto w-full max-w-2xl px-4'
+  // Ramka jest szeroka jak feed (header się nie składa). Karty zostają
+  // przy lewym menu, nie na środku kolumny.
+  if (view === 'settings') return 'w-full max-w-2xl px-4 lg:px-6'
   return 'mx-auto w-full max-w-2xl px-4'
 }
 
