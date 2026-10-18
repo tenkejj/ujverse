@@ -909,24 +909,21 @@ export const SIDE_NAV_DESKTOP = {
   groupDividerClass:
     'mt-1 mx-3 border-t border-zinc-200/70 dark:border-white/8',
   sectionLabelClass:
-    'px-3 pt-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#1e293b]/60 dark:text-zinc-500',
+    'px-3 pt-3 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#1e293b] dark:text-brand-gold-bright',
   itemBaseClass:
     'group relative flex w-full items-center gap-3 rounded-full border pl-4 pr-4 py-3 text-[15px] font-medium transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/25 dark:focus-visible:ring-brand-gold/40',
   itemInactiveClass:
-    'border-transparent text-[#1e293b]/90 hover:border-white/60 hover:bg-white/65 hover:text-[#1e293b] dark:text-zinc-200 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-brand-gold-bright',
+    'border-transparent text-[#1e293b] hover:border-white/60 hover:bg-white/65 hover:text-[#1e293b] dark:text-zinc-200 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-brand-gold-bright',
   itemActiveClass:
-    'border-brand-gold/45 bg-brand-gold/10 text-[#1e293b] font-semibold dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright',
+    'border-[#1e293b]/35 bg-[#1e293b]/[0.08] text-[#1e293b] font-semibold dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright',
   iconBaseClass: 'shrink-0 transition-colors',
   iconInactiveClass:
-    'text-[#1e293b]/65 group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright',
+    'text-[#1e293b]/75 group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright',
   iconActiveClass: 'text-[#1e293b] dark:text-brand-gold-bright',
   unreadDotClass:
-    'h-2 w-2 rounded-full bg-brand-gold dark:bg-brand-gold-bright',
+    'h-2 w-2 rounded-full bg-[#1e293b] dark:bg-brand-gold-bright',
   badgePillClass:
     'ml-auto inline-flex min-w-[22px] h-5 items-center justify-center rounded-full bg-[#1e293b] px-1.5 text-[10px] font-bold text-white dark:bg-brand-gold-bright dark:text-zinc-900',
-  moreToggleClass:
-    'group flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#1e293b]/60 hover:text-[#1e293b] transition-colors dark:text-zinc-500 dark:hover:text-brand-gold-bright',
-  moreChevronClass: 'ml-auto shrink-0 transition-transform duration-200',
   iconSize: 22,
   iconStrokeWidth: 1.9,
   iconActiveStrokeWidth: 2.2,
@@ -962,19 +959,19 @@ export const MOBILE_DRAWER = {
   sectionDividerClass:
     'mt-2 mb-2 mx-3 border-t border-zinc-200/70 dark:border-white/8',
   sectionLabelClass:
-    'px-3 pt-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#1e293b]/60 dark:text-zinc-500',
+    'px-3 pt-2 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#1e293b] dark:text-brand-gold-bright',
   itemBaseClass:
     'group relative flex w-full items-center gap-3 rounded-full border pl-4 pr-4 py-3 text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e293b]/25 dark:focus-visible:ring-brand-gold/40',
   itemInactiveClass:
-    'border-transparent text-[#1e293b]/85 hover:border-white/60 hover:bg-white/65 hover:text-[#1e293b] dark:text-zinc-300 dark:hover:border-white/10 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright',
+    'border-transparent text-[#1e293b] hover:border-white/60 hover:bg-white/65 hover:text-[#1e293b] dark:text-zinc-300 dark:hover:border-white/10 dark:hover:bg-white/6 dark:hover:text-brand-gold-bright',
   itemActiveClass:
-    'border-brand-gold/45 bg-brand-gold/10 text-[#1e293b] font-semibold dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright',
+    'border-[#1e293b]/35 bg-[#1e293b]/[0.08] text-[#1e293b] font-semibold dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright',
   iconBaseClass: 'shrink-0 transition-colors',
   iconInactiveClass:
-    'text-[#1e293b]/60 group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright',
+    'text-[#1e293b]/75 group-hover:text-[#1e293b] dark:text-zinc-400 dark:group-hover:text-brand-gold-bright',
   iconActiveClass: 'text-[#1e293b] dark:text-brand-gold-bright',
   unreadDotClass:
-    'h-2 w-2 rounded-full bg-brand-gold dark:bg-brand-gold-bright',
+    'h-2 w-2 rounded-full bg-[#1e293b] dark:bg-brand-gold-bright',
   badgePillClass:
     'ml-auto inline-flex min-w-[22px] h-5 items-center justify-center rounded-full bg-[#1e293b] px-1.5 text-[10px] font-bold text-white dark:bg-brand-gold-bright dark:text-zinc-900',
   bottomRowClass:

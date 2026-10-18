@@ -1,10 +1,8 @@
-import { useState } from 'react'
 import {
   AlarmClock,
   BookOpen,
   Bell,
   CalendarDays,
-  ChevronDown,
   ClipboardList,
   GraduationCap,
   Home,
@@ -15,7 +13,6 @@ import {
   Tag,
   User,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { supabase } from '../supabaseClient'
 import { useTheme } from '../ThemeContext'
 import { SIDE_NAV_DESKTOP } from '../styles/mobile-theme'
@@ -52,9 +49,9 @@ type Props = {
  * Lewy sticky sidebar (>=lg) — wariant **Unified Glass**. Cały sidebar
  * to jeden glass-kontener z subtelnym blur + top-sheen. Sekcje
  * („Główne", „Strefa studenta", „Konto") wewnątrz są oznaczone tylko
- * nagłówkiem i delikatną hairline'ową kreską między grupami — nie ma
- * już osobnych kart-wysp. Items są pełnoszerokimi pigułkami
- * `rounded-full`; aktywna pozycja dostaje gold border + tinted bg.
+ * nagłówkiem w kolorze motywu i hairline'ową kreską między grupami.
+ * Strefa studenta jest zawsze widoczna. Items to pełnoszerokie pigułki
+ * `rounded-full`; aktywna pozycja dostaje border + tinted bg w kolorze marki.
  *
  * SideNav jest **bezstanowy** w kwestii nawigacji — wszystkie callbacki
  * idą przez props (zasada „session ownership" + jeden hub routingu w
@@ -76,9 +73,6 @@ export default function SideNav({
   onNavigateToSettings,
 }: Props) {
   const { theme: colorMode, toggleTheme } = useTheme()
-  // Domyślnie zwinięta — żeby pierwszy rzut oka pokazywał tylko 6 głównych
-  // pozycji, a nie 11. Mniej zagęszczenia = lepsza czytelność.
-  const [moreOpen, setMoreOpen] = useState(false)
 
   return (
     <aside
@@ -141,50 +135,30 @@ export default function SideNav({
           <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
 
           <div className={SIDE_NAV_DESKTOP.groupClass}>
-            <button
-              type="button"
-              onClick={() => setMoreOpen((v) => !v)}
-              className={SIDE_NAV_DESKTOP.moreToggleClass}
-              aria-expanded={moreOpen}
-            >
-              Strefa studenta
-              <motion.span
-                aria-hidden
-                animate={{ rotate: moreOpen ? 180 : 0 }}
-                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-                className={SIDE_NAV_DESKTOP.moreChevronClass}
-              >
-                <ChevronDown size={12} strokeWidth={2.4} />
-              </motion.span>
-            </button>
-
-            {moreOpen && (
-              <div className="flex flex-col gap-1.5">
-                <NavItem
-                  icon={Tag}
-                  label="Couponek UJ"
-                  active={activeView === 'znizki'}
-                  onClick={onNavigateToZnizki}
-                  variant="sidebar"
-                  title="Couponek UJ — zniżki studenckie"
-                />
-                <NavItem
-                  icon={AlarmClock}
-                  label="Rejestracje USOS"
-                  active={activeView === 'usos'}
-                  onClick={onNavigateToUsos}
-                  variant="sidebar"
-                />
-                <NavItem
-                  icon={BookOpen}
-                  label="Miejsca do nauki"
-                  active={activeView === 'miejsca'}
-                  onClick={onNavigateToMiejsca}
-                  variant="sidebar"
-                  title="Miejsca do nauki — live presence"
-                />
-              </div>
-            )}
+            <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Strefa studenta</p>
+            <NavItem
+              icon={Tag}
+              label="Couponek UJ"
+              active={activeView === 'znizki'}
+              onClick={onNavigateToZnizki}
+              variant="sidebar"
+              title="Couponek UJ — zniżki studenckie"
+            />
+            <NavItem
+              icon={AlarmClock}
+              label="Rejestracje USOS"
+              active={activeView === 'usos'}
+              onClick={onNavigateToUsos}
+              variant="sidebar"
+            />
+            <NavItem
+              icon={BookOpen}
+              label="Miejsca do nauki"
+              active={activeView === 'miejsca'}
+              onClick={onNavigateToMiejsca}
+              variant="sidebar"
+              title="Miejsca do nauki — live presence"
+            />
           </div>
 
           <div className="flex-1 min-h-2" />
