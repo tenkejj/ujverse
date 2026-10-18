@@ -134,10 +134,16 @@ export class BielikAdapter implements LLMProvider {
         'body:',
         text.slice(0, 500),
       )
-      throw new LLMServiceError(
-        text || `Chat endpoint returned ${res.status}`,
-        res.status,
-      )
+      let message = text || `Chat endpoint returned ${res.status}`
+      try {
+        const parsed = JSON.parse(text) as { error?: unknown }
+        if (typeof parsed.error === 'string' && parsed.error.trim()) {
+          message = parsed.error.trim()
+        }
+      } catch {
+        // body nie jest JSON — zostawiamy surowy tekst
+      }
+      throw new LLMServiceError(message, res.status)
     }
 
     if (!res.body) {

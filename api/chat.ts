@@ -110,7 +110,15 @@ export const config = {
 }
 
 const MAX_MESSAGES = 20
-const MAX_CONTENT_CHARS = 2500
+/**
+ * Limit jednej wiadomości. 2500 ucinało wklejone zarządzenia / PDF-y
+ * i kończyło się toastem „Asystent nie odpowiada". 16k ≈ typowe
+ * zarządzenie rektora po wklejeniu tekstu (~4k tokenów) — mieści się
+ * w kontekście modelu; historię i tak tnie `MAX_HISTORY_MESSAGES`.
+ */
+const MAX_CONTENT_CHARS = 16_000
+const CONTENT_TOO_LONG_USER_MESSAGE =
+  'Ta wiadomość jest za długa. Skróć tekst albo wklej najważniejszy fragment (do ok. 16 tys. znaków).'
 /**
  * Token Budgeting: twardy limit historii rozmowy wysyłanej do Groqa.
  * Gdy klient prześle > `MAX_HISTORY_MESSAGES` wiadomości, przycinamy do
@@ -1097,7 +1105,7 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonError(400, `Invalid role: ${m.role}`)
     }
     if (m.content.length > MAX_CONTENT_CHARS) {
-      return jsonError(413, `Message content exceeds ${MAX_CONTENT_CHARS} chars`)
+      return jsonError(413, CONTENT_TOO_LONG_USER_MESSAGE)
     }
     if (m.role === 'system') {
       inboundMessages.push({ role: 'system', content: m.content })

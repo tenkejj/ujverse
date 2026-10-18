@@ -125,7 +125,13 @@ export function useChatSend(): UseChatSendResult {
               ? err.message
               : 'Nieznany błąd asystenta.'
         useChatStore.getState().setError(message)
-        toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
+        // 413 (za długa wiadomość) ma konkretny tekst z API — nie zasłaniaj
+        // go ogólnym „Asystent nie odpowiada".
+        if (err instanceof LLMServiceError && err.status === 413) {
+          toast.error(message)
+        } else {
+          toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
+        }
       } finally {
         if (abortRef.current === controller) abortRef.current = null
         useChatStore.getState().setTyping(false)

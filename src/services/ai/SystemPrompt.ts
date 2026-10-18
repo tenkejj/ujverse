@@ -5,7 +5,7 @@
  * Cel: dostarczyć do modelu krótką, aktualną wiedzę o kluczowych zdarzeniach
  * akademickich (ogłoszenia ISI) i pulsie społeczności (najnowsze posty),
  * bez wpychania pełnych rekordów — oszczędność tokenów jest tu wymogiem
- * (api/chat.ts limituje `content` do 4000 znaków).
+ * (api/chat.ts limituje `content` jednej wiadomości; patrz MAX_CONTENT_CHARS).
  *
  * Funkcja czysta — żaden side-effect, żaden import Supabase / DataService.
  * Wejście: `UnifiedContent<...>` z fasady; wyjście: gotowy tekst PL z
