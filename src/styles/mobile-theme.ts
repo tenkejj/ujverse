@@ -29,13 +29,17 @@ export const HEADER_MOBILE = {
   rightSectionClass:
     'flex-shrink-0 flex items-center justify-end gap-2 md:gap-3 relative z-10 ml-auto min-w-0',
   /**
-   * Logo na osi okna. Kolumna treści zmienia szerokość między tabami, więc
-   * środek headera nie jest środkiem monitora. `fixed` musi wisieć na
-   * `document.body` — `backdrop-filter` headera inaczej łapie pozycjonowanie.
-   * Pudełko ma proporcje pliku, więc znak z PNG siedzi na tej osi.
+   * Logo nad środkową kolumną feedu. Na `lg+` oś to środek ramki feedu
+   * (`ml-[max(18rem,50%-40rem)]` + połowa `w-[min(80rem,100%-18rem)]` —
+   * ten sam wzór co `getAppFrameClass('feed')` w App.tsx). Na węższym
+   * desktopie środek okna i środek feedu się rozjeżdżają o pół sidebara;
+   * trzymamy oś feedu, żeby znak siedział nad postami. Między zakładkami
+   * pozycja nie skacze. `fixed` + portal na `document.body`, bo blur
+   * headera inaczej łapie pozycjonowanie.
    */
   logoAnchorClass:
-    'pointer-events-none fixed top-0 left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16',
+    'pointer-events-none fixed top-0 left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16 ' +
+    'lg:left-[calc(max(18rem,50%-40rem)+min(80rem,100%-18rem)/2)]',
   logoClass: 'h-[6.75rem] w-auto aspect-[728/1372]',
   themeToggleButtonClass:
     'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',
