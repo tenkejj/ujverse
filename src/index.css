@@ -157,34 +157,35 @@ html {
   /*
    * „Kolory UJ” — jak materiały SIW, nie jak przygaszony light mode.
    *   błękit Pantone 2945 C → #00519E  (belka, aktywna nawigacja, logo)
-   *   złoto Pantone 465 C  → #CDB590  (pasek pod headerem, krawędź menu)
-   *   papier                → #f4f0e6  (ciepła biel, nie szaro-błękitna)
-   * Tekst wpisów zostaje granatowy i ciemny, żeby błękit był kolorem
-   * uczelni, a nie kolorem każdego zdania.
+   *   złoto                 → #E8C97A / #D4B06A (tło, ramy, logo, pas belki)
+   *   papier złoty          → #F0DDB0
+   * Tekst wpisów zostaje ciemny. Błękit jest polem (belka, aktywne menu),
+   * złoto jest powierzchnią, którą widać od razu.
    */
   .theme-uj {
     --brand-ink: #00519e;
-    --logo-navy: #00519e;
-    --background: #f4f0e6;
-    --card: #ffffff;
-    --border: rgb(0 81 158 / 0.16);
-    --modal-bg: #ffffff;
-    --modal-border: rgb(0 81 158 / 0.18);
-    --brand-gold: #7a6236;
-    --brand-gold-bright: #cdb590;
+    /* Logo jako złoty znak na granatowej belce — tak jest na herbie. */
+    --logo-navy: #f0d78c;
+    --background: #f0ddb0;
+    --card: #fffdf8;
+    --border: #d4b06a;
+    --modal-bg: #fffdf8;
+    --modal-border: #d4b06a;
+    --brand-gold: #8a6424;
+    --brand-gold-bright: #e8c97a;
     --primary: #00519e;
     --bg-app: var(--background);
     --bg-card: var(--card);
     --border-app: var(--border);
     --text-primary: #1a2332;
-    --text-secondary: rgb(26 35 50 / 0.68);
-    --text-label: rgb(0 81 158 / 0.82);
+    --text-secondary: rgb(26 35 50 / 0.72);
+    --text-label: #8a6424;
     --zone-accent-strong: #00519e;
-    --zone-accent-muted: #7a6236;
-    --zone-list-bg: #ffffff;
-    --uj-deep-gold: #7a6236;
-    --accent-gold: #7a6236;
-    --accent-like: #7a6236;
+    --zone-accent-muted: #8a6424;
+    --zone-list-bg: #fffdf8;
+    --uj-deep-gold: #e8c97a;
+    --accent-gold: #8a6424;
+    --accent-like: #8a6424;
     --accent-interactive: #00519e;
     --accent-purple: #003d78;
   }
@@ -248,22 +249,71 @@ body {
 }
 
 /*
- * Kolory UJ: biała belka z pasem błękitu i złota (kolejność ze SIW)
- * oraz aktywna pozycja menu jako pełne pole #00519E.
+ * Kolory UJ: granatowa belka, gruby złoty pas, złote ramy kart.
+ * Błękit zostaje na logo-polu i aktywnej pozycji, złoto jest na tle,
+ * krawędziach i znaku.
  */
 html.theme-uj .uj-header-bar {
-  background-color: #ffffff;
-  box-shadow: 0 3px 0 #00519e, 0 6px 0 #cdb590;
+  background-color: #00519e;
+  color: #f8efd8;
+  box-shadow: inset 0 -8px 0 #e8c97a;
+}
+html.theme-uj .uj-header-bar > div button,
+html.theme-uj .uj-header-bar > div svg {
+  color: #f8efd8;
+}
+html.theme-uj .uj-header-bar button span {
+  color: #f8efd8;
+  border-color: #e8c97a;
+}
+html.theme-uj .uj-header-bar [role='menu'] {
+  color: #1a2332;
+  background: #fffdf8;
+  border-color: #d4b06a;
+}
+html.theme-uj .uj-header-bar [role='menu'] button,
+html.theme-uj .uj-header-bar [role='menu'] button span,
+html.theme-uj .uj-header-bar [role='menu'] svg {
+  color: #1a2332;
+  border-color: transparent;
+}
+html.theme-uj .uj-header-bar [role='menu'] .border-t button,
+html.theme-uj .uj-header-bar [role='menu'] .border-t svg {
+  color: #e11d48;
+}
+html.theme-uj .uj-header-bar :has(> input[name='ujverse-omni-search']) {
+  background: #fff8ea;
+  border-color: #e8c97a;
+  box-shadow: none;
+}
+html.theme-uj .uj-header-bar :has(> input[name='ujverse-omni-search']) svg {
+  color: #8a6424;
+}
+html.theme-uj .uj-header-bar input[name='ujverse-omni-search'] {
+  color: #1a2332;
+}
+html.theme-uj .uj-header-bar input[name='ujverse-omni-search']::placeholder {
+  color: #8a6424;
 }
 html.theme-uj aside[aria-label='Nawigacja główna'] > div > div {
-  background: #ffffff;
-  border-color: rgb(0 81 158 / 0.22);
-  box-shadow: inset 0 3px 0 #cdb590;
+  background: #fffdf8;
+  border: 2px solid #d4b06a;
+  box-shadow: inset 0 0 0 2px #00519e;
+}
+html.theme-uj aside[aria-label='Nawigacja główna'] p {
+  color: #8a6424;
+}
+html.theme-uj .border-zinc-200,
+html.theme-uj .border-zinc-200\/60,
+html.theme-uj .border-zinc-200\/70,
+html.theme-uj .border-zinc-200\/80 {
+  border-color: #d4b06a;
 }
 html.theme-uj [aria-current='page'] {
   background-color: #00519e;
   color: #ffffff;
-  border-color: #00519e;
+  border-color: #e8c97a;
+  box-shadow: 0 0 0 2px #e8c97a;
 }
 html.theme-uj [aria-current='page'] svg {
   color: #ffffff;

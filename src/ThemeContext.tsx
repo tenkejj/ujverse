@@ -25,7 +25,7 @@ export const THEME_META: Record<
   uj: {
     label: 'Kolory UJ',
     shortLabel: 'Kolory UJ',
-    hint: 'Biały papier, błękit UJ i złoty pasek.',
+    hint: 'Granatowa belka, złote logo i złote ramy.',
   },
   dark: {
     label: 'Ciemny',
