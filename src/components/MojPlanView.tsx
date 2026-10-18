@@ -409,11 +409,15 @@ function NowCard({
         )}
       </p>
       <p
-        className={`mt-2 font-mono text-[1.75rem] font-semibold tabular-nums leading-none ${
-          cancelled ? 'text-red-800 line-through dark:text-red-200' : 'text-zinc-950 dark:text-white'
+        className={`mt-2 font-mono text-[1.75rem] font-bold tabular-nums leading-none tracking-tight ${
+          cancelled
+            ? 'text-red-800 line-through dark:text-red-200'
+            : 'text-[#1e293b] dark:text-brand-gold-bright'
         }`}
       >
-        {fmtHM(item.startDate)}–{fmtHM(item.endDate)}
+        <span>{fmtHM(item.startDate)}</span>
+        <span className="mx-1 font-semibold opacity-45">–</span>
+        <span>{fmtHM(item.endDate)}</span>
       </p>
       <p
         className={`mt-3 text-xl font-semibold leading-snug ${
@@ -474,22 +478,28 @@ function PlanBlock({
           : undefined
       }
       className={[
-        large ? 'px-4 py-3.5' : 'rounded-lg px-2 py-2',
+        large ? 'px-4 py-3.5' : 'rounded-xl border px-2.5 py-2.5',
         isCancelled
-          ? 'cursor-pointer bg-red-50 dark:bg-red-500/[0.08]'
+          ? 'cursor-pointer border-red-200/80 bg-red-50 dark:border-red-500/25 dark:bg-red-500/[0.08]'
           : emphasized
-            ? 'border-l-2 border-[#1e293b] bg-[#1e293b]/[0.06] dark:border-brand-gold-bright dark:bg-brand-gold-bright/[0.08]'
-            : '',
+            ? 'border-[#1e293b]/30 bg-[#1e293b]/[0.06] dark:border-brand-gold-bright/40 dark:bg-brand-gold-bright/[0.10]'
+            : large
+              ? ''
+              : 'border-zinc-200/90 bg-zinc-50/90 dark:border-white/[0.08] dark:bg-white/[0.03]',
       ].join(' ')}
     >
       <p
         className={[
-          'font-mono font-semibold tabular-nums leading-none',
-          large ? 'text-[15px]' : 'text-[12px]',
-          isCancelled ? 'text-red-700 line-through dark:text-red-300' : 'text-zinc-950 dark:text-zinc-50',
+          'font-mono font-bold tabular-nums leading-none tracking-tight',
+          large ? 'text-[15px]' : 'text-[12.5px]',
+          isCancelled
+            ? 'text-red-700 line-through dark:text-red-300'
+            : 'text-[#1e293b] dark:text-brand-gold-bright',
         ].join(' ')}
       >
-        {fmtHM(start)}–{fmtHM(end)}
+        <span>{fmtHM(start)}</span>
+        <span className="mx-0.5 font-semibold opacity-45">–</span>
+        <span>{fmtHM(end)}</span>
       </p>
       <p
         className={[
@@ -497,7 +507,7 @@ function PlanBlock({
           large ? 'text-[16px]' : 'text-[13px]',
           isCancelled
             ? 'text-red-800 line-through dark:text-red-200'
-            : 'text-zinc-900 dark:text-zinc-50',
+            : 'text-zinc-900 dark:text-zinc-100',
         ].join(' ')}
       >
         {entry.summary}
@@ -508,12 +518,12 @@ function PlanBlock({
         </p>
       )}
       {entry.location && (
-        <p className={`mt-1 leading-snug ${large ? 'text-[13.5px]' : 'text-[12px]'} text-zinc-600 dark:text-zinc-300`}>
+        <p className={`mt-1 leading-snug ${large ? 'text-[13.5px]' : 'text-[12px]'} text-zinc-600 dark:text-zinc-400`}>
           {entry.location}
         </p>
       )}
       {large && entry.lecturer_name && (
-        <p className="mt-0.5 text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">
+        <p className="mt-0.5 text-[13px] leading-snug text-zinc-500 dark:text-zinc-500">
           {entry.lecturer_name}
         </p>
       )}
@@ -566,13 +576,27 @@ function WeekBoard({
                 'flex min-h-14 min-w-12 shrink-0 flex-col items-center justify-center rounded-xl px-2',
                 selected
                   ? 'bg-[#1e293b] text-white dark:bg-brand-gold-bright dark:text-zinc-950'
-                  : 'border border-zinc-200 bg-white text-zinc-700 dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-200',
+                  : 'border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-950/50',
               ].join(' ')}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-wide">
+              <span
+                className={[
+                  'text-[10px] font-bold uppercase tracking-wide',
+                  selected
+                    ? ''
+                    : 'text-[#1e293b] dark:text-brand-gold-bright',
+                ].join(' ')}
+              >
                 {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
               </span>
-              <span className="text-[15px] font-semibold tabular-nums leading-none">{date.getDate()}</span>
+              <span
+                className={[
+                  'text-[15px] font-semibold tabular-nums leading-none',
+                  selected ? '' : 'text-zinc-800 dark:text-zinc-100',
+                ].join(' ')}
+              >
+                {date.getDate()}
+              </span>
               <span
                 className={`mt-1 size-1 rounded-full ${
                   entries.length > 0 ? 'bg-current' : 'bg-transparent'
@@ -589,7 +613,10 @@ function WeekBoard({
             <p className="px-4 py-10 text-center text-[14px] text-zinc-500">Wolne</p>
           ) : (
             active.entries.map((entry, index) => (
-              <div key={entry.id} className={index > 0 ? 'border-t border-zinc-200 dark:border-white/10' : ''}>
+              <div
+                key={entry.id}
+                className={index > 0 ? 'border-t border-zinc-200/90 dark:border-white/10' : ''}
+              >
                 <PlanBlock
                   entry={entry}
                   large
@@ -618,15 +645,27 @@ function WeekBoard({
                   'border-b px-2 py-2.5 text-center',
                   isToday
                     ? 'border-[#1e293b]/20 bg-[#1e293b] text-white dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright dark:text-zinc-950'
-                    : 'border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-zinc-300',
+                    : 'border-zinc-200 bg-[#1e293b]/[0.04] dark:border-white/10 dark:bg-brand-gold-bright/[0.06]',
                 ].join(' ')}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-wide">
+                <p
+                  className={[
+                    'text-[11px] font-bold uppercase tracking-wide',
+                    isToday ? '' : 'text-[#1e293b] dark:text-brand-gold-bright',
+                  ].join(' ')}
+                >
                   {isToday ? 'Dziś' : DAY_NAMES_SHORT[date.getDay()]}
                 </p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums leading-none">{date.getDate()}</p>
+                <p
+                  className={[
+                    'mt-0.5 text-lg font-semibold tabular-nums leading-none',
+                    isToday ? '' : 'text-zinc-800 dark:text-zinc-100',
+                  ].join(' ')}
+                >
+                  {date.getDate()}
+                </p>
               </div>
-              <div className="flex min-h-28 flex-col gap-1 p-1.5">
+              <div className="flex min-h-28 flex-col gap-1.5 p-1.5">
                 {entries.length === 0 ? (
                   <p className="m-auto text-[12px] text-zinc-400">wolne</p>
                 ) : (
