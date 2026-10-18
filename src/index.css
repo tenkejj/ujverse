@@ -84,6 +84,46 @@ html {
   }
 }
 
+/*
+ * Łapka (wskazujący palec) na wszystkim, co da się kliknąć.
+ * Tailwind v4 ustawia przyciskom `cursor: default`, więc ikony w menu
+ * zostawały ze strzałką.
+ */
+@layer base {
+  :where(
+    a[href],
+    button:not(:disabled),
+    summary,
+    select:not(:disabled),
+    label[for],
+    input[type='button']:not(:disabled),
+    input[type='submit']:not(:disabled),
+    input[type='reset']:not(:disabled),
+    input[type='checkbox']:not(:disabled),
+    input[type='radio']:not(:disabled),
+    input[type='file']:not(:disabled),
+    [role='button']:not([aria-disabled='true']),
+    [role='link'],
+    [role='tab'],
+    [role='menuitem'],
+    [role='option'],
+    [role='switch'],
+    [role='checkbox'],
+    [role='radio']
+  ) {
+    cursor: pointer;
+  }
+
+  :where(
+    button:disabled,
+    select:disabled,
+    input:disabled,
+    [aria-disabled='true']
+  ) {
+    cursor: not-allowed;
+  }
+}
+
 @layer base {
   :root {
     /* Light: granat z logo (slate-800), bez pomarańczu na tekstach */
