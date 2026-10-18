@@ -155,38 +155,38 @@ html {
     --accent-purple: #1e2a4f;
   }
   /*
-   * „Kolory UJ” — hexy z Systemu Identyfikacji Wizualnej UJ / UJ CM:
-   *   błękit Pantone 2945 C → #00519E (RGB 0,81,158)
-   *   złoto/beż Pantone 465 C → #CDB590 (RGB 205,181,144)
-   * Atrament UI jest nieco pogłębiony (#0c4a86), tło chłodno-białe —
-   * żeby zachować czytelność bez jaskrawego „flagowego” błękitu na dużych
-   * płaszczyznach.
+   * „Kolory UJ” — jak materiały SIW, nie jak przygaszony light mode.
+   *   błękit Pantone 2945 C → #00519E  (belka, aktywna nawigacja, logo)
+   *   złoto Pantone 465 C  → #CDB590  (pasek pod headerem, krawędź menu)
+   *   papier                → #f4f0e6  (ciepła biel, nie szaro-błękitna)
+   * Tekst wpisów zostaje granatowy i ciemny, żeby błękit był kolorem
+   * uczelni, a nie kolorem każdego zdania.
    */
   .theme-uj {
-    --brand-ink: #0c4a86;
-    --logo-navy: #0c4a86;
-    --background: #f3f6fa;
-    --card: #fbfcfe;
-    --border: rgb(12 74 134 / 0.12);
-    --modal-bg: #fbfcfe;
-    --modal-border: rgb(12 74 134 / 0.14);
-    --brand-gold: #b89768;
+    --brand-ink: #00519e;
+    --logo-navy: #00519e;
+    --background: #f4f0e6;
+    --card: #ffffff;
+    --border: rgb(0 81 158 / 0.16);
+    --modal-bg: #ffffff;
+    --modal-border: rgb(0 81 158 / 0.18);
+    --brand-gold: #7a6236;
     --brand-gold-bright: #cdb590;
-    --primary: var(--brand-ink);
+    --primary: #00519e;
     --bg-app: var(--background);
     --bg-card: var(--card);
     --border-app: var(--border);
-    --text-primary: #0c4a86;
-    --text-secondary: rgb(12 74 134 / 0.62);
-    --text-label: rgb(12 74 134 / 0.72);
-    --zone-accent-strong: #0c4a86;
-    --zone-accent-muted: #b89768;
+    --text-primary: #1a2332;
+    --text-secondary: rgb(26 35 50 / 0.68);
+    --text-label: rgb(0 81 158 / 0.82);
+    --zone-accent-strong: #00519e;
+    --zone-accent-muted: #7a6236;
     --zone-list-bg: #ffffff;
-    --uj-deep-gold: #a8895a;
-    --accent-gold: var(--uj-deep-gold);
-    --accent-like: #b89768;
-    --accent-interactive: #0c4a86;
-    --accent-purple: #0a3a6b;
+    --uj-deep-gold: #7a6236;
+    --accent-gold: #7a6236;
+    --accent-like: #7a6236;
+    --accent-interactive: #00519e;
+    --accent-purple: #003d78;
   }
   .dark {
     /* brand-ink zostaje navy z :root — dark UI i tak używa dark:gold */
@@ -245,6 +245,28 @@ body {
     background: inherit;
     pointer-events: none;
   }
+}
+
+/*
+ * Kolory UJ: biała belka z pasem błękitu i złota (kolejność ze SIW)
+ * oraz aktywna pozycja menu jako pełne pole #00519E.
+ */
+html.theme-uj .uj-header-bar {
+  background-color: #ffffff;
+  box-shadow: 0 3px 0 #00519e, 0 6px 0 #cdb590;
+}
+html.theme-uj aside[aria-label='Nawigacja główna'] > div > div {
+  background: #ffffff;
+  border-color: rgb(0 81 158 / 0.22);
+  box-shadow: inset 0 3px 0 #cdb590;
+}
+html.theme-uj [aria-current='page'] {
+  background-color: #00519e;
+  color: #ffffff;
+  border-color: #00519e;
+}
+html.theme-uj [aria-current='page'] svg {
+  color: #ffffff;
 }
 
 #root {
