@@ -23,17 +23,23 @@ export default function VersuMark({
   variant = 'brand',
 }: Props) {
   const { theme } = useTheme()
-  const src = theme === 'dark' ? ASSETS.dark : ASSETS.light
+  // Kolory UJ to ciemny motyw — złota sowa (asset „dark”), nie granatowa z light.
+  const src = theme === 'light' ? ASSETS.light : ASSETS.dark
 
   let imgClass = 'h-full w-full object-contain object-center'
   if (variant === 'onAccent') {
-    imgClass += theme === 'dark' ? ' brightness-0' : ' invert'
+    imgClass += theme === 'light' ? ' invert' : ' brightness-0'
   }
+
+  const ujPlate =
+    theme === 'uj'
+      ? 'rounded-full bg-[#0b1220]/90 ring-1 ring-[#cdb590]/45 shadow-[0_0_0_1px_rgb(0_81_158/0.25)]'
+      : ''
 
   return (
     <span
       aria-hidden
-      className={`relative inline-block shrink-0 ${className}`}
+      className={`relative inline-flex shrink-0 items-center justify-center ${ujPlate} ${className}`}
       style={{ width: size, height: size }}
     >
       <img

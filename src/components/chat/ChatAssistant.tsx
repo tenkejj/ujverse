@@ -16,6 +16,7 @@ import type { Profile } from '../../types'
 import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { buildWelcomeOpener } from '../../lib/welcomeOpener'
 import { useChatStore } from '../../store/useChatStore'
+import { useTheme } from '../../ThemeContext'
 import VersuHeroCluster from './VersuHeroCluster'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -38,6 +39,15 @@ const itemVariants: Variants = {
   },
 }
 
+const itemVariantsCalm: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: EASE },
+  },
+}
+
 type Props = {
   myProfile?: Profile | null
   displayName?: string
@@ -50,6 +60,8 @@ export default function ChatAssistant({
 }: Props = {}) {
   const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
+  const { theme } = useTheme()
+  const calmUj = theme === 'uj'
   const hasConversation = useChatStore(
     (s) => s.messages.some((m) => m.role !== 'system'),
   )
@@ -60,6 +72,7 @@ export default function ChatAssistant({
   )
 
   const ctaLabel = hasConversation ? 'Kontynuuj rozmowę' : 'Porozmawiaj'
+  const motionItem = calmUj ? itemVariantsCalm : itemVariants
 
   return (
     <BaseCard
@@ -72,7 +85,7 @@ export default function ChatAssistant({
         animate="show"
         className="flex min-h-0 flex-col items-center justify-center gap-2 px-4 py-3 text-center"
       >
-        <motion.div variants={reducedMotion ? undefined : itemVariants}>
+        <motion.div variants={reducedMotion ? undefined : motionItem}>
           <VersuHeroCluster
             containerClass="size-16"
             iconWrapClass="size-11"
@@ -81,14 +94,14 @@ export default function ChatAssistant({
         </motion.div>
 
         <motion.h2
-          variants={reducedMotion ? undefined : itemVariants}
+          variants={reducedMotion ? undefined : motionItem}
           className="w-full text-balance text-[15px] font-semibold leading-snug tracking-tight text-brand-ink dark:text-white"
         >
           {welcome.headline}
         </motion.h2>
 
         <motion.p
-          variants={reducedMotion ? undefined : itemVariants}
+          variants={reducedMotion ? undefined : motionItem}
           className="w-full max-w-[16rem] text-balance text-[13px] leading-snug text-fg-secondary"
         >
           {welcome.subline}
@@ -96,9 +109,9 @@ export default function ChatAssistant({
 
         <motion.button
           type="button"
-          variants={reducedMotion ? undefined : itemVariants}
+          variants={reducedMotion ? undefined : motionItem}
           whileHover={
-            reducedMotion
+            reducedMotion || calmUj
               ? undefined
               : {
                   scale: 1.03,

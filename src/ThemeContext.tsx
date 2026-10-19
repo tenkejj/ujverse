@@ -25,7 +25,7 @@ export const THEME_META: Record<
   uj: {
     label: 'Kolory UJ',
     shortLabel: 'Kolory UJ',
-    hint: 'Ciemny motyw w błękicie i złocie UJ.',
+    hint: 'Ciemny motyw UJ — spokojny granat i złoto.',
   },
   dark: {
     label: 'Ciemny',

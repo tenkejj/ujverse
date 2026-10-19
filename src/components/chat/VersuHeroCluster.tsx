@@ -4,12 +4,17 @@
  */
 
 import { motion, useReducedMotion } from 'framer-motion'
+import { useTheme } from '../../ThemeContext'
 import AnimatedBot from './AnimatedBot'
 
 const SPOTLIGHT_CLS =
   'pointer-events-none absolute inset-0 rounded-full ' +
   'bg-[radial-gradient(circle,rgb(255_255_255/0.85)_0%,rgb(30_41_59/0.06)_50%,transparent_72%)] ' +
   'dark:bg-[radial-gradient(circle,rgb(201_162_57/0.28)_0%,rgb(201_162_57/0.1)_50%,transparent_72%)]'
+
+const SPOTLIGHT_UJ_CLS =
+  'pointer-events-none absolute inset-0 rounded-full ' +
+  'bg-[radial-gradient(circle,rgb(205_181_144/0.22)_0%,rgb(0_81_158/0.08)_55%,transparent_72%)]'
 
 type Props = {
   /** Rozmiar kontenera spotlightu (Tailwind, np. `size-32`). */
@@ -28,22 +33,26 @@ export default function VersuHeroCluster({
   className = '',
 }: Props) {
   const reducedMotion = useReducedMotion()
+  const { theme } = useTheme()
+  const calmUj = theme === 'uj'
+  const spotlightCls = calmUj ? SPOTLIGHT_UJ_CLS : SPOTLIGHT_CLS
+  const showRipples = !reducedMotion && !calmUj
 
   return (
     <div
       className={`relative flex shrink-0 items-center justify-center ${containerClass} ${className}`}
     >
-      {reducedMotion ? (
-        <div aria-hidden className={SPOTLIGHT_CLS} />
+      {reducedMotion || calmUj ? (
+        <div aria-hidden className={spotlightCls} />
       ) : (
         <motion.div
           aria-hidden
-          className={SPOTLIGHT_CLS}
+          className={spotlightCls}
           animate={{ scale: [0.92, 1.08, 0.92], opacity: [0.55, 1, 0.55] }}
           transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
         />
       )}
-      {!reducedMotion && (
+      {showRipples && (
         <>
           {[0, 1].map((i) => (
             <motion.span
