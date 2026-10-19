@@ -6,7 +6,7 @@
  *   decyduje `DEFAULT_GROQ_MODEL` (`openai/gpt-oss-120b`). Small-talk
  *   spoza gotowych odpowiedzi i zawężona lista narzędzi (router) idą
  *   przez `GROQ_SMALLTALK_MODEL` (`openai/gpt-oss-20b`). Fakty z narzędzi
- *   składamy na serwerze (`formatListedFacts`) — bez drugiego calla.
+ *   1 wynik → compact; 2–3 → synteza LLM; 4+ → lista (`formatListedFacts`).
  *   `MockProvider` z `llmService.ts` jest świadomie pominięty w tool-aware
  *   ścieżce — bez `GROQ_API_KEY` brakuje sensu uruchamiać Function Calling.
  * - **Persona**: `UJVERSE_SYSTEM_PROMPT` z `_lib/llmService.ts` injectowany
@@ -83,6 +83,7 @@ import {
   buildToolFacts,
   tryCompactSynthesis,
   formatListedFacts,
+  formatFactsFallback,
   streamAnswer,
   synthesizeAnswer,
   polishAssistantReply,
@@ -782,6 +783,7 @@ function streamSynthesizedAnswer(opts: {
           // Explicit narrow — TS gubi narrowing przez `ReadableStream.start`
           // callback (zmienna `facts` captured ze scope'u może być teoretycznie
           // reassignowana przed iteracją). Powtórzony check zwęża typ lokalnie.
+          void incrCounter('synthesis:llm')
           const streamStart = Date.now()
           const thinkGate = new StreamingThinkGate()
           const emitVisible = (content: string) => {
@@ -833,8 +835,12 @@ function streamSynthesizedAnswer(opts: {
         // user nie może dostać samego [DONE]. Kompakt lub surowe fakty.
         if (buffered.length === 0 && facts?.kind === 'synthesize') {
           const recovery = polishAssistantReply(
-            tryCompactSynthesis(userQuery, facts.facts, facts.hint) ??
-              factsToFallback(facts),
+            formatFactsFallback(
+              userQuery,
+              facts.facts,
+              facts.hint,
+              facts.topicHint,
+            ),
           )
           buffered = recovery
           if (!emittedAnything && recovery.length > 0) {
@@ -1019,7 +1025,7 @@ async function synthesizeFinalAnswer(
     }
     if (!synthesis.text) {
       console.warn('[synthesize] empty response — falling back to facts')
-      return factsToFallback(facts)
+      return factsToFallback(facts, userQuery)
     }
     return polishAssistantReply(synthesis.text)
   } catch (err) {
@@ -1027,16 +1033,21 @@ async function synthesizeFinalAnswer(
       '[synthesize] failed, falling back to facts:',
       err instanceof Error ? err.message : err,
     )
-    return factsToFallback(facts)
+    return factsToFallback(facts, userQuery)
   }
 }
 
 /** Fallback gdy Llama 8B się sypnęła — brzydki ale czytelny dump faktów. */
 function factsToFallback(
   facts: Extract<ToolFactsResult, { kind: 'synthesize' }>,
+  userQuery: string,
 ): string {
-  const tail = facts.hint ? `\n\n${facts.hint}.` : ''
-  return facts.facts + tail
+  return formatFactsFallback(
+    userQuery,
+    facts.facts,
+    facts.hint,
+    facts.topicHint,
+  )
 }
 
 
