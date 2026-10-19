@@ -4,7 +4,8 @@
  * Skupia się na realistycznym podzbiorze ICS który eksportuje USOS:
  *   - VEVENT bloki (bez VTODO/VFREEBUSY/VALARM — pomijane)
  *   - DTSTART/DTEND z `TZID=Europe/Warsaw` (USOS używa lokalnego czasu)
- *   - DTSTART/DTEND w UTC (`Z` suffix) jako fallback
+ *   - floating (bez TZID / bez Z) → Europe/Warsaw (NIE UTC — inaczej +1/+2 h)
+ *   - DTSTART/DTEND w UTC (`Z` suffix) gdy naprawdę UTC
  *   - SUMMARY / LOCATION / DESCRIPTION / UID / ORGANIZER;CN=...
  *
  * Świadomie NIE robi:
@@ -16,6 +17,12 @@
  * Zero zewnętrznych zależności — `ical.js` to ~150 KB gzip, dla naszego
  * podzbioru ICS overkill.
  */
+import {
+  WARSAW_TZ,
+  normalizeTimeZoneId,
+  tzOffsetMinutes,
+  warsawLocalToUtc,
+} from './warsawTime'
 
 export type IcsEvent = {
   /** Stabilny identyfikator z `UID:` lub syntetyczny fallback `<start>:<summary>`. */
@@ -132,42 +139,16 @@ function unescapeIcsText(value: string): string {
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/*  Czas — TZID=Europe/Warsaw vs UTC                                           */
+/*  Czas — TZID=Europe/Warsaw / floating / UTC                                 */
 /* ────────────────────────────────────────────────────────────────────────── */
-
-/**
- * Offset strefy względem UTC dla danej daty (w minutach, dodatni = na wschód).
- * Używa `Intl.DateTimeFormat` z `timeZoneName: 'longOffset'` — działa
- * w Node + browserach modernowych bez bibliotek tz.
- */
-function tzOffsetMinutes(timeZone: string, date: Date): number {
-  try {
-    const fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour: '2-digit',
-      hour12: false,
-      timeZoneName: 'longOffset',
-    })
-    const parts = fmt.formatToParts(date)
-    const tz = parts.find((p) => p.type === 'timeZoneName')?.value ?? ''
-    const m = /GMT([+-])(\d{1,2}):?(\d{2})?/.exec(tz)
-    if (!m) return 0
-    const sign = m[1] === '-' ? -1 : 1
-    const h = parseInt(m[2], 10) || 0
-    const min = m[3] ? parseInt(m[3], 10) : 0
-    return sign * (h * 60 + min)
-  } catch {
-    return 0
-  }
-}
 
 /**
  * Parsuje `YYYYMMDDTHHMMSS[Z]` + opcjonalny TZID na Date w UTC.
  *
- * - `Z` → traktujemy jako UTC bezpośrednio.
- * - TZID podany → wyliczamy offset Intl dla danej daty, korygujemy.
- * - Brak TZID i bez Z → traktujemy jako UTC (rzadko spotykane w USOS,
- *   ale niezdefiniowane zachowanie ICS — nasz bezpieczny domyślny).
+ * - `Z` → UTC bezpośrednio (RFC).
+ * - TZID podany → lokalny zegar w tej strefie (normalizujemy `/Europe/Warsaw` itd.).
+ * - Brak TZID i bez Z → floating wall-clock → Europe/Warsaw
+ *   (wcześniej mylnie Date.UTC → w CEST wyświetlane +2 h).
  */
 function parseIcsTime(rawValue: string, tzid: string | null): Date | null {
   const value = rawValue.trim()
@@ -184,13 +165,17 @@ function parseIcsTime(rawValue: string, tzid: string | null): Date | null {
   const sec = parseInt(m[6], 10)
   const isUtc = m[7] === 'Z'
 
-  if (isUtc || !tzid) {
+  if (isUtc) {
     return new Date(Date.UTC(year, month - 1, day, hour, min, sec))
   }
 
-  // Naiwne wyliczenie: traktuj komponenty jak UTC, potem cofnij o offset strefy.
+  const zone = normalizeTimeZoneId(tzid)
+  if (zone === WARSAW_TZ) {
+    return warsawLocalToUtc(year, month, day, hour, min, sec)
+  }
+
   const naiveUtc = new Date(Date.UTC(year, month - 1, day, hour, min, sec))
-  const offset = tzOffsetMinutes(tzid, naiveUtc)
+  const offset = tzOffsetMinutes(zone, naiveUtc)
   return new Date(naiveUtc.getTime() - offset * 60_000)
 }
 

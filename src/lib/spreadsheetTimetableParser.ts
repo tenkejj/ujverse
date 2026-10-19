@@ -11,6 +11,7 @@
  */
 import * as XLSX from 'xlsx'
 import type { IcsEvent, IcsParseResult } from './icsParser'
+import { warsawLocalToUtc } from './warsawTime'
 
 type ColumnMap = {
   summary: number
@@ -161,12 +162,44 @@ function cellText(row: unknown[], index: number | null): string | null {
   return String(raw).trim() || null
 }
 
-function excelSerialToDate(serial: number): Date | null {
+type ExcelWallParts = {
+  y: number
+  m: number
+  d: number
+  H: number
+  M: number
+  S: number
+}
+
+/** Excel serial → naiwne komponenty kalendarza (bez strefy). */
+function excelSerialToWallParts(serial: number): ExcelWallParts | null {
   if (!Number.isFinite(serial) || serial < 1) return null
   const parsed = XLSX.SSF.parse_date_code(serial)
   if (!parsed) return null
-  return new Date(
-    Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.H, parsed.M, Math.floor(parsed.S)),
+  return {
+    y: parsed.y,
+    m: parsed.m,
+    d: parsed.d,
+    H: parsed.H,
+    M: parsed.M,
+    S: parsed.S,
+  }
+}
+
+/**
+ * Excel serial = naiwny zegar lokalny (bez strefy). Wcześniej `Date.UTC(...)`
+ * zapisywał 11:30 jako 11:30Z → w Warszawie wyświetlane 13:30 (+2 h CEST).
+ */
+function excelSerialToDate(serial: number): Date | null {
+  const parsed = excelSerialToWallParts(serial)
+  if (!parsed) return null
+  return warsawLocalToUtc(
+    parsed.y,
+    parsed.m,
+    parsed.d,
+    parsed.H,
+    parsed.M,
+    Math.floor(parsed.S),
   )
 }
 
@@ -210,39 +243,6 @@ function parseTimeParts(text: string): { hour: number; minute: number } | null {
   return null
 }
 
-function warsawLocalToUtc(
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-): Date {
-  const naiveUtc = new Date(Date.UTC(year, month - 1, day, hour, minute, 0))
-  const offset = tzOffsetMinutes('Europe/Warsaw', naiveUtc)
-  return new Date(naiveUtc.getTime() - offset * 60_000)
-}
-
-function tzOffsetMinutes(timeZone: string, date: Date): number {
-  try {
-    const fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour: '2-digit',
-      hour12: false,
-      timeZoneName: 'longOffset',
-    })
-    const parts = fmt.formatToParts(date)
-    const tz = parts.find((p) => p.type === 'timeZoneName')?.value ?? ''
-    const m = /GMT([+-])(\d{1,2}):?(\d{2})?/.exec(tz)
-    if (!m) return 0
-    const sign = m[1] === '-' ? -1 : 1
-    const h = parseInt(m[2], 10) || 0
-    const min = m[3] ? parseInt(m[3], 10) : 0
-    return sign * (h * 60 + min)
-  } catch {
-    return 0
-  }
-}
-
 function parseDateTimeValue(raw: unknown): Date | null {
   if (raw == null || raw === '') return null
 
@@ -256,10 +256,24 @@ function parseDateTimeValue(raw: unknown): Date | null {
   const text = String(raw).trim()
   if (!text) return null
 
-  // ISO datetime
-  const iso = Date.parse(text)
-  if (!Number.isNaN(iso) && /[T\s]\d{1,2}:\d{2}/.test(text)) {
-    return new Date(iso)
+  // ISO z offsetem / Z — bierzemy absolutny moment.
+  if (/[Tt ]\d{1,2}:\d{2}/.test(text) && /(?:Z|[+-]\d{2}:?\d{2})$/.test(text)) {
+    const abs = Date.parse(text)
+    if (!Number.isNaN(abs)) return new Date(abs)
+  }
+
+  // ISO / „YYYY-MM-DD HH:MM" BEZ strefy → zegar Warszawy (nie lokalne TZ hosta).
+  const naiveIso =
+    /^(\d{4})-(\d{1,2})-(\d{1,2})[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(text)
+  if (naiveIso) {
+    return warsawLocalToUtc(
+      +naiveIso[1],
+      +naiveIso[2],
+      +naiveIso[3],
+      +naiveIso[4],
+      +naiveIso[5],
+      naiveIso[6] ? +naiveIso[6] : 0,
+    )
   }
 
   // "DD.MM.YYYY HH:MM" lub "DD/MM/YYYY HH:MM"
@@ -290,20 +304,22 @@ function parseDateTimeValue(raw: unknown): Date | null {
 
 function combineDateAndTime(dateRaw: unknown, timeRaw: unknown): Date | null {
   if (typeof dateRaw === 'number') {
-    const base = excelSerialToDate(dateRaw)
-    if (base && timeRaw != null && timeRaw !== '') {
+    const wall = excelSerialToWallParts(dateRaw)
+    if (wall && timeRaw != null && timeRaw !== '') {
       const timeParts = parseTimeParts(String(timeRaw))
       if (timeParts) {
         return warsawLocalToUtc(
-          base.getUTCFullYear(),
-          base.getUTCMonth() + 1,
-          base.getUTCDate(),
+          wall.y,
+          wall.m,
+          wall.d,
           timeParts.hour,
           timeParts.minute,
         )
       }
     }
-    if (base) return base
+    if (wall) {
+      return warsawLocalToUtc(wall.y, wall.m, wall.d, wall.H, wall.M, Math.floor(wall.S))
+    }
   }
 
   const dateText = dateRaw != null ? String(dateRaw).trim() : ''

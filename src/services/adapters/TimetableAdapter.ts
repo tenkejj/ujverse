@@ -15,6 +15,7 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '../../supabaseClient'
 import { parseIcs, type IcsEvent } from '../../lib/icsParser'
+import { reinterpretUtcWallAsWarsawLocal } from '../../lib/warsawTime'
 
 export type TimetableEntryRow = {
   id: number
@@ -91,7 +92,142 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out
 }
 
+/** Typowe godziny startu slotów USOS (minuty od północy, zegar Warszawy). */
+const USOS_SLOT_MINUTES = [
+  8 * 60,
+  8 * 60 + 30,
+  9 * 60 + 45,
+  10 * 60,
+  10 * 60 + 15,
+  11 * 60 + 30,
+  12 * 60,
+  12 * 60 + 15,
+  13 * 60 + 15,
+  14 * 60,
+  14 * 60 + 15,
+  15 * 60,
+  16 * 60,
+  16 * 60 + 45,
+  17 * 60,
+  18 * 60 + 30,
+  19 * 60,
+  19 * 60 + 15,
+  20 * 60,
+]
+
+function warsawMinutesOfDay(d: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d)
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0')
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0')
+  return hour * 60 + minute
+}
+
+function scoreAgainstUsosSlots(minutes: number[], shiftMinutes: number): number {
+  let score = 0
+  for (const m of minutes) {
+    const shifted = (m - shiftMinutes + 24 * 60) % (24 * 60)
+    if (USOS_SLOT_MINUTES.includes(shifted)) score += 1
+  }
+  return score
+}
+
+/**
+ * Czy zapisane czasy wyglądają jak lokalny zegar błędnie wrzucony w UTC
+ * (wyświetlane w Warszawie ≈ slot USOS + 1h lub +2h)?
+ */
+function looksLikeWallClockStoredAsUtc(starts: Date[]): boolean {
+  if (starts.length < 2) return false
+  const minutes = starts.map(warsawMinutesOfDay)
+  const asIs = scoreAgainstUsosSlots(minutes, 0)
+  const plus1 = scoreAgainstUsosSlots(minutes, 60)
+  const plus2 = scoreAgainstUsosSlots(minutes, 120)
+  const skewed = Math.max(plus1, plus2)
+  return skewed >= 2 && skewed > asIs
+}
+
+const TZ_REPAIR_STORAGE_PREFIX = 'ujverse:tt-tz-repair-v1:'
+
 class TimetableAdapterImpl {
+  /** Dedup napraw w obrębie jednej sesji JS (wiele hooków woła listę). */
+  private tzRepairInflight: Promise<void> | null = null
+
+  /**
+   * Jednorazowa naprawa istniejących wpisów: floating ICS / Excel serial
+   * zapisane jako UTC → reinterpretuj tarczę zegara jako Europe/Warsaw.
+   * Odpalane przed odczytem planu; skip gdy localStorage ma flagę albo
+   * heurystyka slotów USOS nie wskazuje na +1/+2 h.
+   */
+  async repairTimezoneSkewIfNeeded(userId: string): Promise<void> {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        if (localStorage.getItem(TZ_REPAIR_STORAGE_PREFIX + userId)) return
+      } catch {
+        // private mode — jedziemy bez flagi
+      }
+    }
+    if (this.tzRepairInflight) return this.tzRepairInflight
+
+    this.tzRepairInflight = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_timetable_entries')
+          .select('id, start_time, end_time')
+          .eq('user_id', userId)
+          .limit(400)
+        if (error || !Array.isArray(data) || data.length === 0) {
+          this.markTzRepaired(userId)
+          return
+        }
+
+        const rows = data as Array<{ id: number; start_time: string; end_time: string }>
+        const starts = rows
+          .map((r) => new Date(r.start_time))
+          .filter((d) => !Number.isNaN(d.getTime()))
+
+        if (!looksLikeWallClockStoredAsUtc(starts)) {
+          this.markTzRepaired(userId)
+          return
+        }
+
+        for (const batch of chunk(rows, 80)) {
+          await Promise.all(
+            batch.map((row) => {
+              const start = reinterpretUtcWallAsWarsawLocal(new Date(row.start_time))
+              const end = reinterpretUtcWallAsWarsawLocal(new Date(row.end_time))
+              return supabase
+                .from('user_timetable_entries')
+                .update({
+                  start_time: start.toISOString(),
+                  end_time: end.toISOString(),
+                })
+                .eq('id', row.id)
+                .eq('user_id', userId)
+            }),
+          )
+        }
+        this.markTzRepaired(userId)
+      } finally {
+        this.tzRepairInflight = null
+      }
+    })()
+
+    return this.tzRepairInflight
+  }
+
+  private markTzRepaired(userId: string): void {
+    if (typeof localStorage === 'undefined') return
+    try {
+      localStorage.setItem(TZ_REPAIR_STORAGE_PREFIX + userId, '1')
+    } catch {
+      // ignore
+    }
+  }
+
   private async importParsedEvents(
     userId: string,
     events: IcsEvent[],
@@ -224,6 +360,14 @@ class TimetableAdapterImpl {
     to: Date,
     announcementWindowHours = 168,
   ): Promise<TimetableEntryRow[]> {
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      const uid = userData.user?.id
+      if (uid) await this.repairTimezoneSkewIfNeeded(uid)
+    } catch {
+      // bez sesji — RPC i tak nic nie zwróci
+    }
+
     const { data, error } = await supabase.rpc('get_timetable_for_range', {
       p_from: from.toISOString(),
       p_to: to.toISOString(),
