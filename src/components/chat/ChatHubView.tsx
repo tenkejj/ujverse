@@ -265,7 +265,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-logo-navy/25 bg-transparent px-3 py-2 text-xs font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10 sm:px-3.5 sm:text-sm"
           >
             <Plus size={16} strokeWidth={2.25} aria-hidden />
-            <span className="sr-only sm:not-sr-only sm:inline">Nowa rozmowa</span>
+            <span className="inline">Nowa rozmowa</span>
           </button>
         </div>
       </header>
