@@ -36,7 +36,7 @@ export default function VersuMark({
   // ciemna płytka + czarna sowa = niewidoczna ikona — pomijamy.
   const ujPlate =
     theme === 'uj' && variant !== 'onAccent'
-      ? 'rounded-full bg-[#0b1220]/90 ring-1 ring-[#cdb590]/45 shadow-[0_0_0_1px_rgb(0_81_158/0.25)]'
+      ? 'rounded-full bg-[#0e1624]/90 ring-1 ring-[#cdb590]/45 shadow-[0_0_0_1px_rgb(0_81_158/0.25)]'
       : ''
 
   return (

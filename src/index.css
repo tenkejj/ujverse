@@ -194,13 +194,14 @@ html {
    *   --uj-sky / --zone-accent-muted = miękki błękit (atmosfera, nie na złocie)
    */
   .theme-uj {
-    --brand-ink: #0b1220;
+    /* Lekko podbity granat — mniej „czarna dziura”, wciąż ciemny akademicki. */
+    --brand-ink: #0e1624;
     --logo-navy: #e8c97a;
     --uj-sky: #6ea8e0;
-    --background: #050910;
-    --card: #0b1220;
-    --border: rgb(110 168 224 / 0.16);
-    --modal-bg: #0b1220;
+    --background: #0a121c;
+    --card: #121c2c;
+    --border: rgb(110 168 224 / 0.18);
+    --modal-bg: #121c2c;
     --modal-border: rgb(205 181 144 / 0.22);
     --brand-gold: #cdb590;
     --brand-gold-bright: #e8c97a;
@@ -230,23 +231,25 @@ body {
 }
 
 /*
- * iOS (viewport-fit=cover): przy scrollu sticky/fixed header potrafi
- * zjechać o wysokość paska statusu i zostawić prześwit z feedem.
- * Fałszywy pas NAD headerem domalowuje to samo tło, więc dziury nie widać.
+ * iOS (viewport-fit=cover): przy rubber-band / scrollu fixed header
+ * potrafi oderwać się od góry i zostawić prześwit z feedem.
+ * Pas ::before sięga wysoko nad pasek (safe-area + zapas) i wypełnia dziurę.
  */
 @media (max-width: 1023px) {
   .uj-header-bar {
-    background-color: color-mix(in srgb, var(--bg-app) 94%, transparent);
+    background-color: color-mix(in srgb, var(--bg-app) 88%, transparent);
   }
   .uj-header-bar::before {
     content: "";
     position: absolute;
     left: 0;
     right: 0;
-    top: -5rem;
-    height: 5rem;
-    background: inherit;
+    /* Bezpieczny zapas nad status barem — nie tylko fixed 5rem. */
+    top: calc(-1 * env(safe-area-inset-top, 0px) - 6rem);
+    height: calc(env(safe-area-inset-top, 0px) + 6rem);
+    background-color: var(--bg-app);
     pointer-events: none;
+    z-index: -1;
   }
 }
 
@@ -254,21 +257,36 @@ body {
  * Kolory UJ (ciemny): granatowa atmosfera + złote światło.
  * Klasa `.dark` jest też włączona, więc cały UI bierze ścieżkę dark:*.
  */
+html.theme-uj {
+  background-color: #0c1522;
+}
 html.theme-uj body {
-  background-color: #070b12;
+  background-color: #0c1522;
   background-image: linear-gradient(
     180deg,
-    rgb(0 81 158 / 0.12) 0%,
-    transparent 28%
+    rgb(0 81 158 / 0.14) 0%,
+    transparent 30%
   );
 }
+/*
+ * Header UJ: półprzezroczysty granat + blur (wcześniej ~92% opacity
+ * zabijało backdrop-filter i wyglądało jak czarna belka).
+ */
 html.theme-uj .uj-header-bar {
-  background-color: rgb(7 11 18 / 0.92);
+  background-color: rgb(12 21 34 / 0.72);
   border-bottom: 1px solid rgb(205 181 144 / 0.22);
   box-shadow: none;
+  -webkit-backdrop-filter: blur(16px) saturate(1.45);
+  backdrop-filter: blur(16px) saturate(1.45);
+}
+html.theme-uj .uj-header-bar::before {
+  /* Solid fill nad paskiem — bez blur, żeby dziura przy scrollu była zasłonięta. */
+  background-color: #0c1522;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 html.theme-uj aside[aria-label='Nawigacja główna'] > div > div {
-  background: rgb(11 18 32 / 0.92);
+  background: rgb(18 28 44 / 0.92);
   border-color: rgb(205 181 144 / 0.28);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
@@ -276,7 +294,7 @@ html.theme-uj aside[aria-label='Nawigacja główna'] p {
   color: #cdb590;
 }
 html.theme-uj [aria-current='page'] {
-  background-color: rgb(0 81 158 / 0.2);
+  background-color: rgb(0 81 158 / 0.22);
   color: #f4f0e6;
   border-color: rgb(205 181 144 / 0.35);
   box-shadow: inset 3px 0 0 #cdb590;
@@ -285,7 +303,7 @@ html.theme-uj [aria-current='page'] svg {
   color: #e8c97a;
 }
 html.theme-uj .uj-header-bar :has(> input[name='ujverse-omni-search']) {
-  background: rgb(11 18 32 / 0.95);
+  background: rgb(18 28 44 / 0.88);
   border-color: rgb(205 181 144 / 0.32);
   box-shadow: none;
 }
