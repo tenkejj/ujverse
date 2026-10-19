@@ -191,7 +191,7 @@ export const AUTH_MOBILE = {
       'dark:border-white/10 dark:bg-black/40 dark:shadow-none sm:mb-8',
     tabClass:
       'relative rounded-lg px-3 py-3 text-sm font-semibold transition-colors focus:outline-none min-h-[48px]',
-    tabActiveClass: 'text-white dark:text-brand-ink',
+    tabActiveClass: 'text-white dark:text-zinc-950',
     tabInactiveClass:
       'text-zinc-600 hover:text-zinc-900 dark:text-white/50 dark:hover:text-white/80',
     pillClass:
@@ -222,7 +222,7 @@ export const AUTH_MOBILE = {
       'bg-gradient-to-b from-[#2a3a52] to-brand-ink text-white ' +
       'shadow-[0_6px_22px_-8px_rgba(30,41,59,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1)] ' +
       'hover:from-[#32445f] hover:to-[#172033] active:scale-[0.99] ' +
-      'dark:bg-brand-gold-bright dark:from-brand-gold-bright dark:to-brand-gold-bright dark:text-brand-ink ' +
+      'dark:bg-brand-gold-bright dark:from-brand-gold-bright dark:to-brand-gold-bright dark:text-zinc-950 ' +
       'dark:shadow-[0_4px_20px_-6px_rgba(232,200,74,0.55)] dark:hover:from-[#f0d050] dark:hover:to-[#f0d050]',
     oauth:
       'group inline-flex w-full items-center justify-center gap-2.5 rounded-xl border py-3.5 ' +

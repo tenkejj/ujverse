@@ -107,12 +107,16 @@ export default function EventsHub({
                 strokeWidth={2.25}
                 aria-hidden
                 className={`relative z-[1] shrink-0 transition-colors ${
-                  active ? 'text-white dark:text-brand-ink' : 'text-fg-secondary'
+                  active
+                    ? 'text-white dark:text-zinc-950'
+                    : 'text-fg-secondary'
                 }`}
               />
               <span
                 className={`relative z-[1] transition-colors ${
-                  active ? 'text-white dark:text-brand-ink' : 'text-fg-secondary'
+                  active
+                    ? 'text-white dark:text-zinc-950'
+                    : 'text-fg-secondary'
                 }`}
               >
                 {label}
