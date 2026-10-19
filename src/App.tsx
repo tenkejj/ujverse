@@ -167,9 +167,8 @@ function getAppContentShellClass(view: AppShellView): string {
   ) {
     return 'mx-auto w-full max-w-7xl px-4 lg:px-6'
   }
-  // Ramka jest szeroka jak feed (header się nie składa). Karty zostają
-  // przy lewym menu, nie na środku kolumny.
-  if (view === 'settings') return 'w-full max-w-2xl px-4 lg:px-6'
+  // Ta sama szerokość co feed — karty ustawień rozkładają się w siatce.
+  if (view === 'settings') return 'mx-auto w-full max-w-7xl px-4 lg:px-6'
   return 'mx-auto w-full max-w-2xl px-4'
 }
 

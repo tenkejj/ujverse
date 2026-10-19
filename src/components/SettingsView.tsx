@@ -595,7 +595,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
         </div>
       </div>
 
-      <div className="space-y-4 pb-10">
+      <div className="grid grid-cols-1 gap-4 pb-10 lg:grid-cols-2 lg:items-start">
         {/* Konto ───────────────────────────────────────────────────────── */}
         <SectionCard
           title="Konto"
@@ -1086,7 +1086,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
           </div>
         </SectionCard>
 
-        <p className="pt-1 text-center text-[11px] text-zinc-500 dark:text-zinc-500">
+        <p className="pt-1 text-center text-[11px] text-zinc-500 dark:text-zinc-500 lg:col-span-2">
           UJverse · {APP_AUTHOR} · v1.0.0-alpha
         </p>
       </div>
