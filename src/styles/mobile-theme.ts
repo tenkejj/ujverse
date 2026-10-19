@@ -23,18 +23,17 @@ export const ICONS_MOBILE = {
 
 export const HEADER_MOBILE = {
   /**
-   * Na telefonie header jest `fixed` przy samej górze viewportu i ma
-   * `padding-top: env(safe-area-inset-top)`, żeby tło wchodziło pod pasek
-   * statusu. Inaczej `sticky` na iOS zostawia dziurę i feed prześwituje
-   * między zegarem a paskiem. Od `lg` wraca do kolumny (`sticky`).
+   * Mobile: header `fixed` tuż POD safe-area (nie przez padding w środku).
+   * Pas statusu maluje osobny portal `uj-header-status-mask` — dzięki temu
+   * między Dynamic Island a belką nie ma półprzezroczystej „dziury".
+   * Desktop (`lg+`): sticky w kolumnie, bez safe-area.
    */
   containerClass:
     'z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
-    'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 ' +
-    'h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] ' +
-    'md:h-[calc(4rem+env(safe-area-inset-top,0px))] ' +
-    'lg:sticky lg:top-0 lg:h-16 lg:pt-0',
-  /** Zajmuje w layoucie miejsce headera, który na `<lg` jest wyjęty z flow. */
+    'max-lg:fixed max-lg:inset-x-0 max-lg:top-[env(safe-area-inset-top,0px)] ' +
+    'h-14 md:h-16 ' +
+    'lg:sticky lg:top-0',
+  /** Zajmuje w layoucie miejsce headera + status mask (header jest fixed). */
   headerSpacerClass:
     'pointer-events-none h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:h-[calc(4rem+env(safe-area-inset-top,0px))] lg:hidden',
   sideSectionClass: 'min-w-0 justify-self-start',
@@ -47,17 +46,14 @@ export const HEADER_MOBILE = {
   rightSectionClass:
     'flex w-full min-w-0 items-center justify-end gap-2 md:gap-3 relative z-10 justify-self-end',
   /**
-   * Logo nad środkową kolumną feedu. Na `lg+` oś to środek ramki feedu
-   * (`ml-[max(18rem,50%-40rem)]` + połowa `w-[min(80rem,100%-18rem)]` —
-   * ten sam wzór co `getAppFrameClass('feed')` w App.tsx). Na węższym
-   * desktopie środek okna i środek feedu się rozjeżdżają o pół sidebara;
-   * trzymamy oś feedu, żeby znak siedział nad postami. Między zakładkami
-   * pozycja nie skacze. `fixed` + portal na `document.body`, bo blur
-   * headera inaczej łapie pozycjonowanie.
+   * Logo: mobile = środek viewportu; desktop = środek shella obok SideNav
+   * (`18rem + (100%-18rem)/2` = `50% + 9rem`). Shell to
+   * `lg:ml-[18rem] lg:w-[calc(100%-18rem)]` — main `max-w-7xl mx-auto`
+   * ma ten sam środek co shell.
    */
   logoAnchorClass:
     'pointer-events-none fixed top-[env(safe-area-inset-top,0px)] left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16 lg:top-0 ' +
-    'lg:left-[calc(max(18rem,50%-40rem)+min(80rem,100%-18rem)/2)]',
+    'lg:left-[calc(50%+9rem)]',
   logoClass: 'h-[6.75rem] w-auto aspect-[728/1372]',
   themeToggleButtonClass:
     'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',
