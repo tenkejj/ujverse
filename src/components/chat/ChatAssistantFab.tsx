@@ -14,11 +14,11 @@
  * spring `damping: 28, stiffness: 300`, backdrop blur, border-t.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Send, Square, X } from 'lucide-react'
+import { Plus, Send, Square, X } from 'lucide-react'
 import type { Profile } from '../../types'
 import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
@@ -91,6 +91,24 @@ export default function ChatAssistantFab({
   const handleClose = useCallback(() => {
     setOpen(false)
   }, [setOpen])
+
+  const hasMessages = useMemo(
+    () => messages.some((m) => m.role !== 'system'),
+    [messages],
+  )
+  const canClear = hasMessages || isTyping
+
+  const handleNewConversation = useCallback(
+    (e?: MouseEvent<HTMLButtonElement>) => {
+      e?.preventDefault()
+      e?.stopPropagation()
+      cancel()
+      useChatStore.getState().clearHistory()
+      setDraft('')
+      window.setTimeout(() => inputRef.current?.focus(), 50)
+    },
+    [cancel],
+  )
 
   const handleEditLastUser = useCallback(
     (text: string) => {
@@ -202,14 +220,27 @@ export default function ChatAssistantFab({
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{CHAT_MODEL_LABEL}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Zamknij asystenta"
-            className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
-          >
-            <X size={20} strokeWidth={2} />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={handleNewConversation}
+              disabled={!canClear}
+              title="Nowa rozmowa"
+              aria-label="Rozpocznij nową rozmowę z asystentem"
+              className="inline-flex items-center gap-1 rounded-full border border-logo-navy/25 bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10"
+            >
+              <Plus size={15} strokeWidth={2.25} aria-hidden />
+              <span>Nowa</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Zamknij asystenta"
+              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+            >
+              <X size={20} strokeWidth={2} />
+            </button>
+          </div>
         </header>
 
         <MessageList
