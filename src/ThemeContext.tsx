@@ -6,8 +6,8 @@ import { flushSync } from 'react-dom'
  * Motywy UJverse:
  * - `light` — kość słoniowa + granat logo
  * - `dark` — czarny + złoto
- * - `uj` — „Kolory UJ”: biały papier, błękit Pantone 2945 (#00519E)
- *   i złoty pasek Pantone 465 (#CDB590), jak w identyfikacji UJ
+ * - `uj` — „Kolory UJ”: ciepły papier, błękit Pantone 2945 (#00519E)
+ *   i złoto Pantone 465 (#CDB590) jako atrament i światło, bez belek
  */
 export type Theme = 'light' | 'dark' | 'uj'
 
@@ -25,7 +25,7 @@ export const THEME_META: Record<
   uj: {
     label: 'Kolory UJ',
     shortLabel: 'Kolory UJ',
-    hint: 'Granatowa belka, złote logo i złote ramy.',
+    hint: 'Ciepły papier, błękit UJ i złote akcenty.',
   },
   dark: {
     label: 'Ciemny',
