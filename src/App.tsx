@@ -109,39 +109,12 @@ function isResetPasswordPath(pathname: string): boolean {
 }
 
 /**
- * Kolumna treści na desktopie. Na szerokim oknie siedzi na środku, a sidebar
- * wisi w lewym marginesie i styka się z nią. Gdy margines jest węższy niż
- * 18rem, kolumna dosuwa się do menu zamiast chować się pod nim.
+ * Powłoka obok SideNav: header i bannery idą na pełną szerokość do prawej
+ * krawędzi okna. Wąskość feedu (max-w-7xl) ustawia tylko `<main>` przez
+ * `getAppContentShellClass` — wcześniej cała ramka 80rem ucinała header.
  */
-function getAppFrameClass(view: AppShellView): string {
-  // Na lg kolumna ma szerokość treści i jest na środku okna, ale nigdy
-  // nie wchodzi pod sidebar (18rem). Menu wisi tuż po jej lewej stronie.
-  if (view === 'chat' || view === 'aula') {
-    return 'w-full lg:ml-[18rem] lg:w-[calc(100%-18rem)]'
-  }
-  if (view === 'events' || view === 'miejsca' || view === 'notifications') {
-    return 'w-full lg:ml-[max(18rem,calc(50%-900px))] lg:w-[min(1800px,calc(100%-18rem))]'
-  }
-  if (view === 'mojPlan') {
-    return 'w-full lg:ml-[max(18rem,calc(50%-800px))] lg:w-[min(1600px,calc(100%-18rem))]'
-  }
-  if (
-    view === 'feed' ||
-    view === 'profile' ||
-    view === 'userProfile' ||
-    view === 'search' ||
-    view === 'group' ||
-    view === 'sale' ||
-    view === 'znizki' ||
-    view === 'usos' ||
-    view === 'adminDiag' ||
-    view === 'adminReports'
-  ) {
-    return 'w-full lg:ml-[max(18rem,calc(50%-40rem))] lg:w-[min(80rem,calc(100%-18rem))]'
-  }
-  // Ustawienia i wąski post: ta sama oś co feed. Kolumna 42rem mieściła
-  // karty, ale header (logo na środku + szukajka) składał się na siebie na 2K.
-  return 'w-full lg:ml-[max(18rem,calc(50%-40rem))] lg:w-[min(80rem,calc(100%-18rem))]'
+function getAppShellClass(_view: AppShellView): string {
+  return 'w-full lg:ml-[18rem] lg:w-[calc(100%-18rem)]'
 }
 
 /** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */
@@ -1420,7 +1393,7 @@ function App() {
       : navActiveView
 
   const contentShellClass = getAppContentShellClass(effectiveActiveView)
-  const appFrameClass = getAppFrameClass(effectiveActiveView)
+  const appShellClass = getAppShellClass(effectiveActiveView)
   const mainLayoutClass = getMainLayoutClass(effectiveActiveView)
 
   const sharedPostProps = {
@@ -1744,7 +1717,7 @@ function App() {
       </AnimatePresence>
 
       <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
-        <div className={`relative min-h-dvh ${appFrameClass}`}>
+        <div className={`relative min-h-dvh ${appShellClass}`}>
         <SideNav
           activeView={navActiveView}
           unreadCount={unreadCount}
