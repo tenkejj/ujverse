@@ -23,17 +23,17 @@ export const ICONS_MOBILE = {
 
 export const HEADER_MOBILE = {
   /**
-   * Mobile: header `fixed` tuż POD safe-area (nie przez padding w środku).
-   * Pas statusu maluje osobny portal `uj-header-status-mask` — dzięki temu
-   * między Dynamic Island a belką nie ma półprzezroczystej „dziury".
-   * Desktop (`lg+`): sticky w kolumnie, bez safe-area.
+   * Mobile: jedna nieprzezroczysta belka `fixed` od `top: 0` z
+   * `padding-top: safe-area`. Pozycję Y dogrywa `useVisualViewportOffset`
+   * (iOS Safari gap przy zwijaniu chrome). Desktop: sticky.
    */
   containerClass:
     'z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
-    'max-lg:fixed max-lg:inset-x-0 max-lg:top-[env(safe-area-inset-top,0px)] ' +
-    'h-14 md:h-16 ' +
-    'lg:sticky lg:top-0',
-  /** Zajmuje w layoucie miejsce headera + status mask (header jest fixed). */
+    'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 ' +
+    'h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] ' +
+    'md:h-[calc(4rem+env(safe-area-inset-top,0px))] ' +
+    'lg:sticky lg:top-0 lg:h-16 lg:pt-0',
+  /** Zajmuje w layoucie miejsce headera (fixed na `<lg`). */
   headerSpacerClass:
     'pointer-events-none h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:h-[calc(4rem+env(safe-area-inset-top,0px))] lg:hidden',
   sideSectionClass: 'min-w-0 justify-self-start',
@@ -46,14 +46,13 @@ export const HEADER_MOBILE = {
   rightSectionClass:
     'flex w-full min-w-0 items-center justify-end gap-2 md:gap-3 relative z-10 justify-self-end',
   /**
-   * Logo: mobile = środek viewportu; desktop = środek shella obok SideNav
-   * (`18rem + (100%-18rem)/2` = `50% + 9rem`). Shell to
-   * `lg:ml-[18rem] lg:w-[calc(100%-18rem)]` — main `max-w-7xl mx-auto`
-   * ma ten sam środek co shell.
+   * Logo: mobile = środek viewportu w pasie belki (pod safe-area);
+   * desktop = środek shella (`50% + 9rem`). `translateY(visualViewport)`
+   * jest dokładany w `Header.tsx`.
    */
   logoAnchorClass:
-    'pointer-events-none fixed top-[env(safe-area-inset-top,0px)] left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16 lg:top-0 ' +
-    'lg:left-[calc(50%+9rem)]',
+    'pointer-events-none fixed top-[env(safe-area-inset-top,0px)] left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16 ' +
+    'lg:top-0 lg:left-[calc(50%+9rem)]',
   logoClass: 'h-[6.75rem] w-auto aspect-[728/1372]',
   themeToggleButtonClass:
     'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',

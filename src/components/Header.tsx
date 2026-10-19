@@ -21,6 +21,7 @@ import OmniSearchHub from './OmniSearchHub'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
+import { useVisualViewportOffset } from '../hooks/useVisualViewportOffset'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
@@ -82,10 +83,14 @@ export default function Header({
 }: Props) {
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
+  const vvOffset = useVisualViewportOffset()
   const menuRef = useRef<HTMLDivElement | null>(null)
   const { theme: colorMode, cycleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
+  /** iOS Safari: dograj fixed elementy do visualViewport (dziura pod status barem). */
+  const vvTransform =
+    vvOffset > 0 ? ({ transform: `translateY(${vvOffset}px)` } as const) : undefined
 
   useEffect(() => {
     if (bellRingTick === 0) return
@@ -120,7 +125,7 @@ export default function Header({
   }, [notificationsPanelOpen, onCloseNotificationsPanel])
 
   const logo = (
-    <div className={HEADER_MOBILE.logoAnchorClass}>
+    <div className={HEADER_MOBILE.logoAnchorClass} style={vvTransform}>
       <motion.button
         type="button"
         whileTap={{ scale: 0.95 }}
@@ -150,17 +155,11 @@ export default function Header({
     </div>
   )
 
-  const statusMask = (
-    <div
-      aria-hidden
-      className="uj-header-status-mask pointer-events-none fixed inset-x-0 top-0 z-[55] lg:hidden"
-    />
-  )
-
   return (
     <>
     <div aria-hidden className={HEADER_MOBILE.headerSpacerClass} />
     <header
+      style={vvTransform}
       className={`uj-header-bar relative ${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
@@ -367,7 +366,6 @@ export default function Header({
         </div>
       </div>
     </header>
-    {createPortal(statusMask, document.body)}
     {createPortal(logo, document.body)}
     </>
   )
