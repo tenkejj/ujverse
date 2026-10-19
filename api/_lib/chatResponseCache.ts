@@ -5,7 +5,11 @@
 import { buildToolCacheKey } from './cache.js'
 import { tryFastPath } from './fastPath.js'
 import { isPersonalTool } from './personalTools.js'
-import { buildToolFacts, tryCompactSynthesis } from './synthesizer.js'
+import {
+  buildToolFacts,
+  formatListedFacts,
+  tryCompactSynthesis,
+} from './synthesizer.js'
 
 /** Organiczne odpowiedzi Groq / small-talk — krótki TTL. */
 export const RESPONSE_CACHE_TTL_SECONDS = 30
@@ -49,6 +53,9 @@ export function formatToolResultForCache(
   }
   const compact = tryCompactSynthesis(userQuery, facts.facts, facts.hint)
   if (compact) return compact
+  const listed = formatListedFacts(facts.facts, facts.hint, facts.topicHint)
+  if (listed) return listed
+  // 2–3 wyniki — prewarm bez LLM; surowe fakty + hint (cache organic ≠ prewarm).
   const tail = facts.hint ? `\n\n${facts.hint}` : ''
   const text = (facts.facts + tail).trim()
   return text.length > 0 ? text : null

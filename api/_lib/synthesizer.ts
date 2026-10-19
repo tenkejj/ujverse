@@ -78,10 +78,75 @@ export function polishAssistantReply(text: string): string {
   return softenTranslationese(text)
 }
 
+/** 1 wynik → compact (bez LLM). 2–3 → synteza LLM. 4+ → lista markdown. */
+export const LLM_SYNTHESIS_MIN_LINES = 2
+export const LLM_SYNTHESIS_MAX_LINES = 3
+export const LIST_FORMAT_MIN_LINES = 4
+
+export function countFactLines(facts: string): number {
+  return facts
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0).length
+}
+
+export function shouldUseLlmSynthesis(facts: string): boolean {
+  const n = countFactLines(facts)
+  return n >= LLM_SYNTHESIS_MIN_LINES && n <= LLM_SYNTHESIS_MAX_LINES
+}
+
+export function shouldFormatAsBulletList(facts: string): boolean {
+  return countFactLines(facts) >= LIST_FORMAT_MIN_LINES
+}
+
+function polishItemCount(n: number): string {
+  if (n === 1) return '1 pozycję'
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+    return `${n} pozycje`
+  }
+  return `${n} pozycji`
+}
+
+function lowerFirst(s: string): string {
+  if (!s) return s
+  return s.charAt(0).toLowerCase() + s.slice(1)
+}
+
+function conversationalListLead(topicHint: string, lineCount: number): string {
+  const ctx = topicHint.trim().replace(/\.+$/, '')
+  const nPhrase = polishItemCount(lineCount)
+  const templates: readonly ((c: string, n: string) => string)[] = [
+    (c, n) => `${c} — poniżej ${n}:`,
+    (c, n) => `Patrz, ${lowerFirst(c)} — ${n}:`,
+    (c, n) => `Masz ${n} (${lowerFirst(c)}):`,
+  ]
+  const idx = lineCount % templates.length
+  return templates[idx]!(ctx, nPhrase)
+}
+
+function formatListClosingHint(
+  hint: string | null,
+  lineCount: number,
+): string {
+  if (hint) {
+    const h = hint.trim().replace(/\.+$/, '')
+    if (/^jeszcze/i.test(h) || /^w bazie/i.test(h)) {
+      return `\n${h.charAt(0).toUpperCase()}${h.slice(1)} — doprecyzuj pytanie albo zajrzyj w apce po resztę.`
+    }
+    return `\n${h}.`
+  }
+  if (lineCount >= 5) {
+    return '\nTo skrót — reszta siedzi w apce, jak chcesz zawęzić, dopisz np. dzielnicę albo datę.'
+  }
+  return ''
+}
+
 /**
- * Lista faktów bez drugiego wywołania modelu. Linie są już po polsku
- * (tytuł, data, miejsce, link). Przepisanie ich przez GPT-OSS zjadało
- * kilka–kilkanaście sekund na ukryty reasoning i gubiło szczegóły.
+ * Lista faktów bez drugiego wywołania modelu (4+ wyników). Linie są już po
+ * polsku (tytuł, data, miejsce, link). Przy 2–3 wynikach zwraca `null`, żeby
+ * caller poszedł w syntezę LLM — krótsza proza brzmi naturalniej niż bullet.
  */
 export function formatListedFacts(
   facts: string,
@@ -93,12 +158,60 @@ export function formatListedFacts(
     .map((l) => l.trim())
     .filter((l) => l.length > 0)
   if (lines.length === 0) return null
-  const lead = topicHint.trim().replace(/\.+$/, '')
+  if (!shouldFormatAsBulletList(facts)) return null
+
+  const lead = conversationalListLead(topicHint, lines.length)
   const bullets = lines
     .map((line) => (line.startsWith('- ') ? line : `- ${line}`))
     .join('\n')
-  const tail = hint ? `\n${hint.trim().replace(/\.+$/, '')}.` : ''
-  return `${lead}:\n${bullets}${tail}`
+  const tail = formatListClosingHint(hint, lines.length)
+  return `${lead}\n${bullets}${tail}`
+}
+
+/** Fallback bez LLM: compact → lista → surowe fakty + hint. */
+export function formatFactsFallback(
+  userQuery: string,
+  facts: string,
+  hint: string | null,
+  topicHint: string,
+): string {
+  return (
+    tryCompactSynthesis(userQuery, facts, hint) ??
+    formatListedFacts(facts, hint, topicHint) ??
+    (hint ? `${facts}\n\n${hint}` : facts)
+  )
+}
+
+function buildSynthesisUserContent(opts: SynthesisOptions): string {
+  const { userQuery, facts, hint, topicHint, recentOpeners } = opts
+  const lineCount = countFactLines(facts)
+
+  const userParts: string[] = [
+    `Pytanie usera: ${userQuery}`,
+    `Kontekst: ${topicHint}`,
+    'Fakty (każda linia = jeden wynik):',
+    facts,
+  ]
+  if (hint) {
+    userParts.push(`Wskazówka na koniec (opcjonalna): ${hint}`)
+  }
+  if (lineCount >= LLM_SYNTHESIS_MIN_LINES && lineCount <= LLM_SYNTHESIS_MAX_LINES) {
+    userParts.push(
+      `Masz ${lineCount} wyniki — ułóż je w 2–4 zdaniach prozą (bez bullet listy). ` +
+        'Echo temat pytania; możesz **pogrubiać** nazwy lokali/wydarzeń. Zachowaj linki markdown z faktów.',
+    )
+  }
+  if (recentOpeners && recentOpeners.length > 0) {
+    const quoted = recentOpeners
+      .slice(0, 3)
+      .map((o) => `"${o}"`)
+      .join(', ')
+    userParts.push(
+      `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
+    )
+  }
+  userParts.push(SYNTHESIS_USER_INSTRUCTION)
+  return userParts.join('\n')
 }
 
 export type SynthesisOptions = {
@@ -148,35 +261,12 @@ export async function synthesizeAnswer(
     return { text: listed, usage: null }
   }
 
-  // Compose user message: kontekst + pytanie + fakty + ewentualna wskazówka.
-  // Format zwięzły (LLM-friendly), nie ozdobny — model nie ma tego echo'wać.
-  const userParts: string[] = [
-    `Pytanie usera: ${userQuery}`,
-    `Kontekst: ${topicHint}`,
-    'Fakty (każda linia = jeden wynik):',
-    facts,
-  ]
-  if (hint) {
-    userParts.push(`Wskazówka na koniec (opcjonalna): ${hint}`)
-  }
-  // Anti-repetition guard: jeśli mamy 1-3 ostatnich openerów Versusia,
-  // wstrzykujemy negatywną instrukcję. Model widzi „NIE zaczynaj od X" i
-  // wybiera inny lead. Ważne: trzymamy się 1 zdania, krótko — to czyste
-  // antypowtórzenie, nie wykład.
-  if (recentOpeners && recentOpeners.length > 0) {
-    const quoted = recentOpeners
-      .slice(0, 3)
-      .map((o) => `"${o}"`)
-      .join(', ')
-    userParts.push(
-      `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
-    )
-  }
-  userParts.push(SYNTHESIS_USER_INSTRUCTION)
-
   const messages: GroqMessage[] = [
     { role: 'system', content: SYNTHESIS_SYSTEM_PROMPT },
-    { role: 'user', content: userParts.join('\n') },
+    {
+      role: 'user',
+      content: buildSynthesisUserContent(opts),
+    },
   ]
 
   // `withGroqRetry`: 3 próby z exp. backoff dla 429/5xx. Llama 8B free tier
@@ -227,31 +317,11 @@ export async function synthesizeAnswer(
 export async function* streamAnswer(
   opts: SynthesisOptions,
 ): AsyncGenerator<GroqStreamChunk, void, void> {
-  const { userQuery, facts, hint, topicHint, provider, recentOpeners } = opts
-
-  const userParts: string[] = [
-    `Pytanie usera: ${userQuery}`,
-    `Kontekst: ${topicHint}`,
-    'Fakty (każda linia = jeden wynik):',
-    facts,
-  ]
-  if (hint) {
-    userParts.push(`Wskazówka na koniec (opcjonalna): ${hint}`)
-  }
-  if (recentOpeners && recentOpeners.length > 0) {
-    const quoted = recentOpeners
-      .slice(0, 3)
-      .map((o) => `"${o}"`)
-      .join(', ')
-    userParts.push(
-      `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
-    )
-  }
-  userParts.push(SYNTHESIS_USER_INSTRUCTION)
+  const { provider } = opts
 
   const messages: GroqMessage[] = [
     { role: 'system', content: SYNTHESIS_SYSTEM_PROMPT },
-    { role: 'user', content: userParts.join('\n') },
+    { role: 'user', content: buildSynthesisUserContent(opts) },
   ]
 
   yield* provider.streamCompletion(messages, [], {
@@ -393,7 +463,8 @@ function buildDiscountsFacts(result: unknown): ToolFactsResult {
       remaining > 0
         ? `w bazie jest jeszcze ${remaining} miejsc, więcej w zakładce Zniżki`
         : 'więcej opcji w zakładce Zniżki',
-    topicHint: 'Zniżki studenckie w Krakowie z bazy UJverse.',
+    topicHint:
+      'Zniżki studenckie w Krakowie (baza UJverse) — user pyta co gdzie taniej.',
   }
 }
 
@@ -474,7 +545,8 @@ function buildSearchEventsFacts(result: unknown): ToolFactsResult {
       remaining > 0
         ? `jeszcze ${remaining} w bazie, zerknij na zakładkę Wydarzenia`
         : null,
-    topicHint: 'Wydarzenia akademickie i studenckie w Krakowie.',
+    topicHint:
+      'Wydarzenia w Krakowie (UJ + studenckie) — data, miejsce, link w faktach.',
   }
 }
 
@@ -628,7 +700,8 @@ function buildPostsFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint: remaining > 0 ? `jeszcze parę wpisów na feedzie` : null,
-    topicHint: 'Wpisy z feeda UJverse (społeczność).',
+    topicHint:
+      'Feed społeczności UJverse — krótkie cytaty wpisów, ton luźny.',
   }
 }
 
