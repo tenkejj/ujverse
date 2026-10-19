@@ -10,12 +10,11 @@
  * Stany wizualne:
  *   - default
  *   - `taken` (myUsedIds.has(id)) — green check + dim CTA
- *   - `verified` (verified_at != null) — checkmark badge
+ *   - provenance badge: Samorząd / Od studentów / Nieoficjalne
  *   - `nearby` (distanceMeters !== null && < 500) — pill "≈ 320m"
  */
 import { memo } from 'react'
 import {
-  BadgeCheck,
   BookOpen,
   Bus,
   Check,
@@ -35,6 +34,7 @@ import BaseCard from '../ui/BaseCard'
 import { theme } from '../../styles/theme'
 import { DISCOUNT_CATEGORY_META } from '../../types/discounts'
 import type { DiscountWithDistance } from '../../types/discounts'
+import DiscountProvenanceBadge from './DiscountProvenanceBadge'
 
 type Props = {
   discount: DiscountWithDistance
@@ -67,7 +67,6 @@ function DiscountCardImpl({ discount, taken, onOpenDetail, onMarkUse }: Props) {
   const Icon = ICON_MAP[meta.icon]
   const distanceLabel = fmtDistance(discount.distanceMeters)
   const isNearby = discount.distanceMeters !== null && discount.distanceMeters < 500
-  const isVerified = Boolean(discount.verified_at)
 
   return (
     <BaseCard
@@ -86,15 +85,7 @@ function DiscountCardImpl({ discount, taken, onOpenDetail, onMarkUse }: Props) {
           <Icon size={11} strokeWidth={2.3} />
           {meta.label}
         </span>
-        {isVerified && (
-          <span
-            className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
-            title="Zweryfikowane przez admina"
-          >
-            <BadgeCheck size={13} strokeWidth={2.2} />
-            potwierdzone
-          </span>
-        )}
+        <DiscountProvenanceBadge discount={discount} />
       </div>
 
       <h3 className={`relative z-10 line-clamp-2 text-[15px] font-bold leading-tight ${theme.text.primary}`}>

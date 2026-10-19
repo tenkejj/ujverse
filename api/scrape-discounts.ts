@@ -1,33 +1,25 @@
 /**
- * Vercel serverless cron — pobiera nowe zniżki studenckie z zewnętrznych
- * źródeł (Samorząd UJ, ewentualnie inne agregatorzy) i upsertuje do
- * `public.student_discounts`. Drugi tryb `?op=expire` ukrywa zniżki, których
- * `valid_until < CURRENT_DATE` (soft-delete przez `hidden_at`).
+ * Vercel serverless cron — pobiera zniżki studenckie z Samorządu UJ
+ * (i ewentualnych kolejnych źródeł) i **upsertuje** do
+ * `public.student_discounts`. Drugi tryb `?op=expire` soft-hide'uje
+ * wpisy z `valid_until < CURRENT_DATE`.
  *
  * Auth: `?token=${CRON_SECRET}` lub `Authorization: Bearer ${CRON_SECRET}`.
  *
  * Tryby:
- *   - default (bez query) lub `?op=scrape` → fetch + upsert
- *   - `?op=expire`                         → soft-delete wygasłych
+ *   - default / `?op=scrape` → fetch + upsert (insert nowych + refresh istniejących)
+ *   - `?op=expire`          → soft-delete wygasłych
  *
- * Idempotentność:
- *   - Scraper używa partial unique index `uniq_student_discounts_business_seed`
- *     z migracji 20260625100100, ale TYLKO dla `created_by IS NULL`. Scraper
- *     też wstawia z `created_by = NULL`, więc unique działa. ON CONFLICT DO
- *     NOTHING — istniejące wpisy są pomijane (nie nadpisujemy ręcznie
- *     edytowanych). Limit `MAX_NEW_PER_RUN`.
- *   - Expire: idempotent UPDATE.
+ * Upsert (tylko `created_by IS NULL` — community nie ruszamy):
+ *   - match po `lower(trim(business_name))`
+ *   - UPDATE: headline, description, category, website, source_url,
+ *     `verified_at = now()` → UI badge „Samorząd"
+ *   - INSERT: to samo + `created_by = null`
+ *   - Limit `MAX_UPSERT_PER_RUN` chroni przed wybuchowym HTML-em
  *
  * Defensive:
- *   - 404 / pusty HTML źródła → log warn, return `{ok:true, fetched:0}`.
- *   - Każde źródło scrapowane niezależnie (porażka jednego nie blokuje innych).
- *   - Wpisy bez `business_name` lub `discount_headline` są odrzucane.
- *
- * Verified flow:
- *   - Wpisy z scrapera dostają `verified_at = NULL` (czeka na admin review).
- *   - UI pokazuje takie zniżki bez badge'a "potwierdzone".
- *   - Admin zatwierdza ręcznie przez `verified_at = now(), verified_by = ...`
- *     w panelu (lub bezpośrednio w SQL na razie).
+ *   - 404 / pusty HTML → log warn, `{ok:true, scanned:0}`
+ *   - źródła niezależne; brak business_name / headline → drop
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import axios from 'axios'
@@ -38,8 +30,14 @@ const BROWSER_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
-/** Maks. liczba nowych wpisów do upsertu w jednym uruchomieniu cron-a. */
-const MAX_NEW_PER_RUN = 30
+/** Maks. liczba ofert do upsertu w jednym uruchomieniu cron-a. */
+const MAX_UPSERT_PER_RUN = 80
+
+const SAMORZAD_HOST_RE = /samorzad\.uj\.edu\.pl/i
+
+function normalizeBusinessKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ')
+}
 
 const ALLOWED_CATEGORIES = [
   'jedzenie',
@@ -315,11 +313,12 @@ async function runExpire(supabase: SupabaseLikeClient): Promise<{
 }
 
 /**
- * Tryb `scrape` — fetch wszystkich źródeł, dedup, upsert ON CONFLICT DO
- * NOTHING. Zwraca diagnostykę + liczbę nowych wpisów.
+ * Tryb `scrape` — fetch źródeł, dedup, upsert (insert + refresh istniejących
+ * seed/scraper rows). Community (`created_by` set) nigdy nie nadpisujemy.
  */
 async function runScrape(supabase: SupabaseLikeClient): Promise<{
   inserted: number
+  updated: number
   scanned: number
   diagnostics: ScrapeOutcome[]
   error: string | null
@@ -328,37 +327,36 @@ async function runScrape(supabase: SupabaseLikeClient): Promise<{
   const diagnostics = outcomes.map((o) => o.diag)
   const allItems = outcomes.flatMap((o) => o.items)
 
-  // Dedup cross-source po lowercase business_name (gdy wiele źródeł
-  // ma tę samą firmę — zostaje pierwsze trafienie).
   const seen = new Set<string>()
   const deduped: ScrapedDiscount[] = []
   for (const it of allItems) {
-    const key = it.business_name.toLowerCase()
-    if (seen.has(key)) continue
+    const key = normalizeBusinessKey(it.business_name)
+    if (!key || seen.has(key)) continue
     seen.add(key)
     deduped.push(it)
-    if (deduped.length >= MAX_NEW_PER_RUN) break
+    if (deduped.length >= MAX_UPSERT_PER_RUN) break
   }
 
   if (deduped.length === 0) {
     return {
       inserted: 0,
+      updated: 0,
       scanned: allItems.length,
       diagnostics,
       error: null,
     }
   }
 
-  // Fetch wszystkich istniejących seed-businessów (`created_by IS NULL`),
-  // żeby zfiltrować duplikaty po lowercase nazwie. Partial unique index
-  // `uniq_student_discounts_business_seed` na `(lower(business_name)) WHERE
-  // created_by IS NULL` z migracji 20260625100100 nie jest niestety
-  // bezpośrednio konsumowalny przez PostgREST `onConflict` (na wyrażenie
-  // `lower(...)` zamiast czystej kolumny). Robimy więc app-level dedup —
-  // taniej i prościej dla < 1000 wpisów.
+  type ExistingRow = {
+    id: string
+    business_name: string
+    address: string | null
+    website_url: string | null
+  }
+
   const { data: existingData, error: existingErr } = await supabase
     .from('student_discounts')
-    .select('business_name')
+    .select('id, business_name, address, website_url')
     .is('created_by', null)
 
   if (existingErr) {
@@ -367,58 +365,88 @@ async function runScrape(supabase: SupabaseLikeClient): Promise<{
       existingErr.message,
     )
   }
-  const existingLower = new Set<string>()
+
+  const existingByKey = new Map<string, ExistingRow>()
   if (Array.isArray(existingData)) {
-    for (const row of existingData) {
-      const name = (row as { business_name?: string }).business_name
-      if (typeof name === 'string') existingLower.add(name.toLowerCase())
+    for (const raw of existingData) {
+      const row = raw as ExistingRow
+      if (typeof row.business_name !== 'string' || typeof row.id !== 'string') {
+        continue
+      }
+      existingByKey.set(normalizeBusinessKey(row.business_name), row)
     }
   }
 
-  const newOnly = deduped.filter(
-    (it) => !existingLower.has(it.business_name.toLowerCase()),
-  )
-
-  if (newOnly.length === 0) {
-    return {
-      inserted: 0,
-      scanned: allItems.length,
-      diagnostics,
-      error: null,
-    }
-  }
-
-  const rows = newOnly.map((it) => ({
-    created_by: null,
-    business_name: it.business_name,
-    discount_headline: it.discount_headline,
-    description: it.description,
-    category: it.category,
-    address: it.address,
-    city: 'Kraków',
-    website_url: it.website_url,
-    source_url: it.source_url,
-    requires_uj_id: true,
-    // verified_at: NULL → wpisy z scrapera czekają na admin review.
-    // Dopóki nie są zweryfikowane, UI nie pokaże "potwierdzone" badge'a.
-  }))
-
-  // Batch insert — partial unique index zadziała jako safety net przy
-  // race-condition między scrapem a manualną edycją; w takim razie insert
-  // wybuchnie i pomijamy ten rząd.
+  const verifiedAt = new Date().toISOString()
   let inserted = 0
+  let updated = 0
   let lastError: string | null = null
-  for (const row of rows) {
-    const { error } = await supabase.from('student_discounts').insert(row)
+
+  for (const it of deduped) {
+    const key = normalizeBusinessKey(it.business_name)
+    const existing = existingByKey.get(key)
+    const sourceUrl =
+      it.source_url && SAMORZAD_HOST_RE.test(it.source_url)
+        ? it.source_url
+        : 'https://samorzad.uj.edu.pl/znizki'
+
+    if (existing) {
+      const { error } = await supabase
+        .from('student_discounts')
+        .update({
+          discount_headline: it.discount_headline,
+          description: it.description,
+          category: it.category,
+          address: it.address ?? existing.address,
+          website_url: it.website_url ?? existing.website_url,
+          source_url: sourceUrl,
+          verified_at: verifiedAt,
+          verified_by: null,
+          // Odświeżenie ze źródła — jeśli wpis był soft-hidden jako expired
+          // a Samorząd nadal go listuje, zostawiamy hidden (expire cron
+          // jest źródłem prawdy dla dat). Nie czyścimy hidden_at.
+          updated_at: verifiedAt,
+        })
+        .eq('id', existing.id)
+        .is('created_by', null)
+
+      if (error) {
+        console.warn(
+          '[scrape-discounts] update failed for',
+          it.business_name,
+          '—',
+          error.message,
+        )
+        lastError = error.message
+        continue
+      }
+      updated++
+      continue
+    }
+
+    const { error } = await supabase.from('student_discounts').insert({
+      created_by: null,
+      business_name: it.business_name,
+      discount_headline: it.discount_headline,
+      description: it.description,
+      category: it.category,
+      address: it.address,
+      city: 'Kraków',
+      website_url: it.website_url,
+      source_url: sourceUrl,
+      requires_uj_id: true,
+      verified_at: verifiedAt,
+      verified_by: null,
+    })
+
     if (error) {
-      // Błąd unique-violation oznacza tylko wyścig z innym uruchomieniem
-      // lub manualną edycją — to nie jest fatal, traktujemy jak skip.
       if (error.code === '23505') {
+        // Race z innym scrapem — spróbuj update po nazwie w kolejnym runie.
         continue
       }
       console.warn(
         '[scrape-discounts] insert failed for',
-        row.business_name,
+        it.business_name,
         '—',
         error.message,
       )
@@ -430,6 +458,7 @@ async function runScrape(supabase: SupabaseLikeClient): Promise<{
 
   return {
     inserted,
+    updated,
     scanned: allItems.length,
     diagnostics,
     error: lastError,
@@ -499,6 +528,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ok: true,
       op: 'scrape',
       inserted: result.inserted,
+      updated: result.updated,
       scanned: result.scanned,
       diagnostics: result.diagnostics,
       lastError: result.error,

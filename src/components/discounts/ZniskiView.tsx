@@ -11,7 +11,7 @@
  *   1. (opcjonalny) Hero — pominięty świadomie; "Trending w 7 dni" pełni
  *      rolę spotlightu i lepiej skaluje się przy małej liczbie wpisów.
  *   2. Static toolbar — pills filtru rodzaju ("Wszystko/Trending/Wokół mnie"
- *      + "potwierdzone") + actions (search, sort, "Dodaj zniżkę").
+ *      + "Samorząd") + actions (search, sort, "Dodaj zniżkę").
  *   3. Sekcja "Trending w 7 dni" — `HorizontalPillScroller` z kartami trendingu.
  *   4. Sekcja "Kategorie" — `HorizontalPillScroller` pigułek kategorii
  *      (zastępuje natywny `overflow-x-auto` na przeglądarkach z paskiem).
@@ -150,15 +150,15 @@ export default function ZniskiView({ userId }: Props) {
       {/* ── Toolbar (filter actions + search + CTA) ────────────────────── */}
       <div className={EVENTS_HUB.toolbar.stickyWrapClass}>
         <div className={EVENTS_HUB.toolbar.rowClass}>
-          {/* Lewa strona — pigułki "typu" filtra (potwierdzone, wokół mnie) */}
+          {/* Lewa strona — pigułki "typu" filtra (Samorząd, wokół mnie) */}
           <div className={EVENTS_HUB.toolbar.pillsWrapClass}>
             <button
               type="button"
               onClick={() => setFilter((f) => ({ ...f, verifiedOnly: !f.verifiedOnly }))}
               className={`${FILTER_PILL.base} ${filter.verifiedOnly ? FILTER_PILL.active : FILTER_PILL.inactive}`}
-              title="Pokaż tylko zniżki zweryfikowane przez admina"
+              title="Pokaż tylko oferty z oficjalnej listy Samorządu Studentów UJ"
             >
-              Potwierdzone
+              Samorząd
             </button>
             <button
               type="button"
