@@ -72,7 +72,7 @@
             window.matchMedia('(prefers-color-scheme: dark)').matches
           var root = document.documentElement
           root.classList.remove('dark', 'theme-uj')
-          if (stored === 'uj') root.classList.add('theme-uj')
+          if (stored === 'uj') root.classList.add('dark', 'theme-uj')
           else if (stored === 'dark' || (!stored && prefersDark)) root.classList.add('dark')
         } catch (e) {}
       })()
@@ -98,8 +98,8 @@
         color: #f8fafc;
       }
       html.theme-uj, html.theme-uj body {
-        background: #f6f1e6;
-        color: #1c2738;
+        background: #050910;
+        color: #f4f0e6;
       }
 
       #ujverse-splash {
@@ -132,7 +132,7 @@
         background-color: #e8c84a;
       }
       html.theme-uj #ujverse-splash .logo {
-        background-color: #00519e;
+        background-color: #e8c97a;
       }
 
       #ujverse-splash .spin {
@@ -144,8 +144,8 @@
         animation: ujverse-splash-spin 0.85s linear infinite;
       }
       html.theme-uj #ujverse-splash .spin {
-        border-color: rgba(205, 181, 144, 0.4);
-        border-top-color: #00519e;
+        border-color: rgba(110, 168, 224, 0.25);
+        border-top-color: #e8c97a;
       }
       html.dark #ujverse-splash .spin {
         border-color: rgba(255, 255, 255, 0.08);

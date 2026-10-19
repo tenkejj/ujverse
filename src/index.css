@@ -154,39 +154,6 @@ html {
     --accent-interactive: var(--uj-deep-gold);
     --accent-purple: #1e2a4f;
   }
-  /*
-   * „Kolory UJ” — spokojny akademicki papier, bez belek i ramek.
-   *   błękit Pantone 2945 → #00519E  (logo, atrament UI, aktywny stan)
-   *   złoto Pantone 465   → #CDB590  (ciepłe akcenty, etykiety, hover)
-   *   papier              → #F6F1E6  (ciepła kość słoniowa)
-   * Błękit i złoto grają jako atrament i światło, nie jako pasy na belce.
-   */
-  .theme-uj {
-    --brand-ink: #00519e;
-    --logo-navy: #00519e;
-    --background: #f6f1e6;
-    --card: #fffcf7;
-    --border: rgb(0 81 158 / 0.1);
-    --modal-bg: #fffcf7;
-    --modal-border: rgb(0 81 158 / 0.12);
-    --brand-gold: #9a7a45;
-    --brand-gold-bright: #cdb590;
-    --primary: #00519e;
-    --bg-app: var(--background);
-    --bg-card: var(--card);
-    --border-app: var(--border);
-    --text-primary: #1c2738;
-    --text-secondary: rgb(28 39 56 / 0.64);
-    --text-label: #9a7a45;
-    --zone-accent-strong: #00519e;
-    --zone-accent-muted: #9a7a45;
-    --zone-list-bg: #fffcf7;
-    --uj-deep-gold: #9a7a45;
-    --accent-gold: #9a7a45;
-    --accent-like: #9a7a45;
-    --accent-interactive: #00519e;
-    --accent-purple: #003d78;
-  }
   .dark {
     /* brand-ink zostaje navy z :root — dark UI i tak używa dark:gold */
     --brand-ink: #1e293b;
@@ -215,6 +182,38 @@ html {
     --accent-like: #f0d060;
     --accent-interactive: var(--brand-gold-bright);
     --accent-purple: #1e2a4f;
+  }
+  /*
+   * „Kolory UJ” — CIEMNY motyw akademicki (też dostaje klasę `.dark`).
+   * Ludzie i tak siedzą w dark mode; tu czarne tło dostaje oddech
+   * błękitu Pantone 2945 (#00519E) i złota Pantone 465 (#CDB590).
+   * Logo i akcenty są złote; błękit siedzi w atmosferze i aktywnym menu.
+   */
+  .theme-uj {
+    --brand-ink: #6ea8e0;
+    --logo-navy: #e8c97a;
+    --background: #050910;
+    --card: #0b1220;
+    --border: rgb(110 168 224 / 0.16);
+    --modal-bg: #0b1220;
+    --modal-border: rgb(205 181 144 / 0.22);
+    --brand-gold: #cdb590;
+    --brand-gold-bright: #e8c97a;
+    --primary: var(--brand-gold-bright);
+    --bg-app: var(--background);
+    --bg-card: var(--card);
+    --border-app: var(--border);
+    --text-primary: #f4f0e6;
+    --text-secondary: rgb(244 240 230 / 0.62);
+    --text-label: #cdb590;
+    --zone-accent-strong: #e8c97a;
+    --zone-accent-muted: #6ea8e0;
+    --zone-list-bg: transparent;
+    --uj-deep-gold: #cdb590;
+    --accent-gold: #e8c97a;
+    --accent-like: #e8c97a;
+    --accent-interactive: #e8c97a;
+    --accent-purple: #0a3a6b;
   }
 }
 
@@ -247,50 +246,43 @@ body {
 }
 
 /*
- * Kolory UJ — atmosfera, nie belki:
- * ciepły papier pod całą stroną, miękki aktywny stan w menu,
- * złoto tylko na etykietach i cienkiej kresce aktywnej pozycji.
+ * Kolory UJ (ciemny): granatowa atmosfera + złote światło.
+ * Klasa `.dark` jest też włączona, więc cały UI bierze ścieżkę dark:*.
  */
 html.theme-uj body {
-  background-color: #f6f1e6;
+  background-color: #050910;
   background-image:
-    radial-gradient(ellipse 90% 55% at 12% -8%, rgb(205 181 144 / 0.45), transparent 58%),
-    radial-gradient(ellipse 70% 45% at 92% 0%, rgb(0 81 158 / 0.08), transparent 55%);
+    radial-gradient(ellipse 85% 50% at 8% -10%, rgb(0 81 158 / 0.38), transparent 58%),
+    radial-gradient(ellipse 70% 45% at 95% 0%, rgb(205 181 144 / 0.14), transparent 52%);
 }
 html.theme-uj .uj-header-bar {
-  background-color: rgb(255 252 247 / 0.82);
-  border-bottom: 1px solid rgb(205 181 144 / 0.45);
-  box-shadow: 0 10px 30px -24px rgb(0 81 158 / 0.28);
+  background-color: rgb(5 9 16 / 0.82);
+  border-bottom: 1px solid rgb(110 168 224 / 0.18);
+  box-shadow: 0 12px 32px -28px rgb(0 81 158 / 0.55);
 }
 html.theme-uj aside[aria-label='Nawigacja główna'] > div > div {
-  background: rgb(255 252 247 / 0.88);
-  border-color: rgb(205 181 144 / 0.55);
+  background: rgb(11 18 32 / 0.88);
+  border-color: rgb(110 168 224 / 0.22);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 18px 40px -28px rgb(0 81 158 / 0.28);
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 20px 44px -30px rgb(0 81 158 / 0.55);
 }
 html.theme-uj aside[aria-label='Nawigacja główna'] p {
-  color: #9a7a45;
+  color: #cdb590;
 }
 html.theme-uj [aria-current='page'] {
-  background-color: rgb(0 81 158 / 0.08);
-  color: #00519e;
-  border-color: transparent;
+  background-color: rgb(0 81 158 / 0.28);
+  color: #e8c97a;
+  border-color: rgb(205 181 144 / 0.35);
   box-shadow: inset 3px 0 0 #cdb590;
 }
 html.theme-uj [aria-current='page'] svg {
-  color: #00519e;
-}
-html.theme-uj .border-zinc-200,
-html.theme-uj .border-zinc-200\/60,
-html.theme-uj .border-zinc-200\/70,
-html.theme-uj .border-zinc-200\/80 {
-  border-color: rgb(205 181 144 / 0.55);
+  color: #e8c97a;
 }
 html.theme-uj .uj-header-bar :has(> input[name='ujverse-omni-search']) {
-  background: rgb(255 252 247 / 0.92);
-  border-color: rgb(205 181 144 / 0.65);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85);
+  background: rgb(11 18 32 / 0.9);
+  border-color: rgb(110 168 224 / 0.28);
+  box-shadow: none;
 }
 
 #root {

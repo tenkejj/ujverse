@@ -6,8 +6,8 @@ import { flushSync } from 'react-dom'
  * Motywy UJverse:
  * - `light` — kość słoniowa + granat logo
  * - `dark` — czarny + złoto
- * - `uj` — „Kolory UJ”: ciepły papier, błękit Pantone 2945 (#00519E)
- *   i złoto Pantone 465 (#CDB590) jako atrament i światło, bez belek
+ * - `uj` — „Kolory UJ”: CIEMNY motyw z błękitem Pantone 2945 (#00519E)
+ *   i złotem Pantone 465 (#CDB590); w HTML dostaje też klasę `dark`
  */
 export type Theme = 'light' | 'dark' | 'uj'
 
@@ -25,7 +25,7 @@ export const THEME_META: Record<
   uj: {
     label: 'Kolory UJ',
     shortLabel: 'Kolory UJ',
-    hint: 'Ciepły papier, błękit UJ i złote akcenty.',
+    hint: 'Ciemny motyw w błękicie i złocie UJ.',
   },
   dark: {
     label: 'Ciemny',
@@ -58,7 +58,8 @@ function applyThemeClass(next: Theme) {
   const root = document.documentElement
   root.classList.remove('dark', 'theme-uj')
   if (next === 'dark') root.classList.add('dark')
-  if (next === 'uj') root.classList.add('theme-uj')
+  // Kolory UJ siedzą na ścieżce dark:* (ludzie nie chcą jasnego UI).
+  if (next === 'uj') root.classList.add('dark', 'theme-uj')
 }
 
 function readInitialTheme(): Theme {
