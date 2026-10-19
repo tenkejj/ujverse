@@ -23,24 +23,29 @@ export const ICONS_MOBILE = {
 
 export const HEADER_MOBILE = {
   /**
-   * Sticky na WSZYSTKICH breakpointach (nie `fixed`).
-   * iOS Safari z `position:fixed` + zwijany chrome zostawia dziurę nad belką —
-   * sticky tego nie robi. Safe-area przez padding-top; tło nieprzezroczyste
-   * na mobile (patrz `index.css`).
+   * Mobile: `fixed` + spacer w flow (sticky psuł layout — logo/filtry
+   * nachodziły na siebie). Tło w `index.css` jest 100% opaque, żeby feed
+   * nie prześwitywał w safe-area. Desktop: sticky w kolumnie.
    */
   containerClass:
-    'sticky top-0 z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
-    'h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] ' +
-    'md:h-[calc(4rem+env(safe-area-inset-top,0px))] ' +
-    'lg:h-16 lg:pt-0',
-  /** Nieużywane — header znów jest w flow (sticky). Zostawione dla kompat. */
-  headerSpacerClass: 'hidden',
+    'z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
+    'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 ' +
+    'h-[calc(3.5rem+env(safe-area-inset-top,0px))] min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] ' +
+    'pt-[env(safe-area-inset-top,0px)] ' +
+    'md:h-[calc(4rem+env(safe-area-inset-top,0px))] md:min-h-[calc(4rem+env(safe-area-inset-top,0px))] ' +
+    'lg:sticky lg:top-0 lg:h-16 lg:min-h-16 lg:pt-0',
+  /** Rezerwuje miejsce pod fixed header na `<lg`. */
+  headerSpacerClass:
+    'pointer-events-none h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:h-[calc(4rem+env(safe-area-inset-top,0px))] lg:hidden',
   sideSectionClass: 'min-w-0 justify-self-start',
   /**
    * Desktop: pusty pas pod portalowane logo.
-   * Mobile: logo siedzi w flow w tej komórce (bez fixed).
+   * Mobile: logo w flow w tej komórce (wewnątrz fixed belki).
    */
-  logoLaneClass: 'relative z-10 flex w-[8.5rem] shrink-0 items-center justify-center',
+  /** Overflow clip na mobile — logo jest wyższe niż belka; bez clipu nachodzi na filtry. */
+  logoLaneClass:
+    'relative z-10 flex h-14 w-[8.5rem] shrink-0 items-center justify-center overflow-hidden ' +
+    'md:h-16 lg:h-auto lg:overflow-visible',
   rightSectionClass:
     'flex w-full min-w-0 items-center justify-end gap-2 md:gap-3 relative z-10 justify-self-end',
   /**

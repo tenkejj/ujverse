@@ -232,14 +232,16 @@ body {
 }
 
 /*
- * Mobile header = sticky + pełne krycie. Bez position:fixed — iOS Safari
- * przy zwijaniu chrome nie robi już dziury nad belką.
+ * Mobile header = fixed + 100% opaque. Sticky psuł layout (filtry na logo).
+ * Cień w górę maluje pas pod status barem / rubber-band, żeby nie było
+ * prześwitu feedu (wcześniejsza „dziura").
  */
 @media (max-width: 1023px) {
   .uj-header-bar {
     background-color: var(--bg-app) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+    box-shadow: 0 -40vh 0 40vh var(--bg-app) !important;
   }
 }
 
@@ -272,6 +274,7 @@ html.theme-uj .uj-header-bar {
 @media (max-width: 1023px) {
   html.theme-uj .uj-header-bar {
     background-color: #0c1522 !important;
+    box-shadow: 0 -40vh 0 40vh #0c1522 !important;
   }
 }
 @media (min-width: 1024px) {

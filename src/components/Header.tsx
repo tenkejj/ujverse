@@ -154,11 +154,12 @@ export default function Header({
 
   return (
     <>
+    <div aria-hidden className={HEADER_MOBILE.headerSpacerClass} />
     <header
-      className={`uj-header-bar relative ${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 shadow-none ${
+      className={`uj-header-bar relative ${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 ${
         isScrolled
-          ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
-          : 'bg-bg-app/80 backdrop-blur-md backdrop-saturate-150 dark:bg-black/20 dark:backdrop-blur-md dark:backdrop-saturate-150'
+          ? 'bg-white backdrop-blur-none dark:bg-zinc-950 lg:bg-white/80 lg:backdrop-blur-md lg:backdrop-saturate-150 lg:dark:bg-zinc-950/50'
+          : 'bg-bg-app backdrop-blur-none dark:bg-bg-app lg:bg-bg-app/80 lg:backdrop-blur-md lg:backdrop-saturate-150 lg:dark:bg-black/20'
       }`}
     >
       <div className={`${HEADER_MOBILE.sideSectionClass} flex items-center justify-start relative z-10`}>

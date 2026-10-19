@@ -27,7 +27,7 @@ type Props = {
 
 const STICKY_MOBILE_CLS =
   'sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-40 -mx-4 px-4 py-1.5 ' +
-  'bg-bg-app/95 dark:bg-black/90 backdrop-blur-md backdrop-saturate-150 ' +
+  'bg-bg-app dark:bg-bg-app backdrop-blur-none ' +
   'border-b border-zinc-200/60 dark:border-white/5 ' +
   'md:static md:top-auto md:z-auto md:mx-0 md:px-0 md:py-0 ' +
   'md:bg-transparent md:backdrop-blur-none md:border-0 dark:md:bg-transparent'
