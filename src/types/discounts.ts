@@ -121,7 +121,7 @@ export type DiscountFilter = {
   search: string
   /** `'use'` = popularność, `'created'` = najnowsze, `'rating'` = najlepiej oceniane. */
   sort: 'use' | 'created' | 'rating'
-  /** Tylko zweryfikowane (admin lub źródło oficjalne). */
+  /** Tylko oferty z oficjalnej listy Samorządu UJ (scraper). */
   verifiedOnly: boolean
 }
 

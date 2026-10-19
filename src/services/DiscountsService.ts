@@ -44,7 +44,10 @@ class DiscountsServiceImpl {
       q = q.eq('category', filter.category)
     }
     if (filter.verifiedOnly) {
-      q = q.not('verified_at', 'is', null)
+      // Oficjalna lista Samorządu — scraper ustawia source_url + created_by null.
+      q = q
+        .is('created_by', null)
+        .ilike('source_url', '%samorzad.uj.edu.pl%')
     }
     if (filter.search.trim()) {
       const term = `%${filter.search.trim()}%`

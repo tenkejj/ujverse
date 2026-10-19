@@ -16,7 +16,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
-  BadgeCheck,
   Calendar,
   Check,
   ExternalLink,
@@ -37,6 +36,8 @@ import {
   type StudentDiscount,
 } from '../../types/discounts'
 import { DiscountsService } from '../../services/DiscountsService'
+import DiscountProvenanceBadge from './DiscountProvenanceBadge'
+import { isSamorzadSourceUrl } from '../../lib/discountProvenance'
 
 type Props = {
   discount: StudentDiscount
@@ -212,16 +213,11 @@ export default function DiscountDetailModal({
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-white/10">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${meta.tint}`}>
                 {meta.label}
               </span>
-              {discount.verified_at && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-                  <BadgeCheck size={13} strokeWidth={2.2} />
-                  potwierdzone
-                </span>
-              )}
+              <DiscountProvenanceBadge discount={discount} size="detail" />
             </div>
             <h2 className={`mt-1 truncate text-xl font-bold ${theme.text.primary}`}>{discount.business_name}</h2>
             <p className={`mt-0.5 text-[14px] font-semibold leading-snug text-brand-gold dark:text-brand-gold-bright`}>
@@ -294,17 +290,29 @@ export default function DiscountDetailModal({
             </div>
           )}
 
-          {/* Website */}
-          {discount.website_url && (
-            <a
-              href={discount.website_url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className={`mt-3 inline-flex items-center gap-2 text-[12.5px] font-medium text-brand-gold underline-offset-2 hover:underline dark:text-brand-gold-bright`}
-            >
-              <Globe size={13} /> Strona biznesu
-            </a>
-          )}
+          {/* Website + źródło Samorządu */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {discount.website_url && (
+              <a
+                href={discount.website_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-2 text-[12.5px] font-medium text-brand-gold underline-offset-2 hover:underline dark:text-brand-gold-bright"
+              >
+                <Globe size={13} /> Strona biznesu
+              </a>
+            )}
+            {isSamorzadSourceUrl(discount.source_url) && discount.source_url && (
+              <a
+                href={discount.source_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-2 text-[12.5px] font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+              >
+                <ExternalLink size={13} /> Lista Samorządu UJ
+              </a>
+            )}
+          </div>
 
           {/* Reviews */}
           <div className="mt-6">
