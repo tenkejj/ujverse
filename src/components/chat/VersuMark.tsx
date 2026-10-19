@@ -28,11 +28,14 @@ export default function VersuMark({
 
   let imgClass = 'h-full w-full object-contain object-center'
   if (variant === 'onAccent') {
+    // Na złotym FAB / akcencie: czarna sylwetka (jasne tło → invert).
     imgClass += theme === 'light' ? ' invert' : ' brightness-0'
   }
 
+  // Plate tylko dla wariantu „brand” na ciemnym tle. Na `onAccent` (złoty FAB)
+  // ciemna płytka + czarna sowa = niewidoczna ikona — pomijamy.
   const ujPlate =
-    theme === 'uj'
+    theme === 'uj' && variant !== 'onAccent'
       ? 'rounded-full bg-[#0b1220]/90 ring-1 ring-[#cdb590]/45 shadow-[0_0_0_1px_rgb(0_81_158/0.25)]'
       : ''
 

@@ -146,7 +146,7 @@ export default function ChatAssistantFab({
       type="button"
       onClick={() => setOpen(true)}
       aria-label="Otwórz Versusia"
-      className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-brand-ink text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950"
+      className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-brand-ink text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-2 ring-white/25 transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950 dark:ring-[#0b1220]/55 dark:shadow-[0_12px_36px_rgba(0,0,0,0.55),0_0_0_1px_rgba(232,201,122,0.35)]"
       style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}

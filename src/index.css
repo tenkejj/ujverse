@@ -37,7 +37,7 @@ html {
   --color-uj-orange: #FF9900;
   --color-brand-gold: var(--brand-gold);
   --color-brand-gold-bright: var(--brand-gold-bright);
-  /* Główny atrament UI — w light granat logo, w „Kolory UJ” błękit SIW */
+  /* Atrament na jasnych/złotych wypełnieniach (zawsze ciemny — nie mylić z błękitem UJ) */
   --color-brand-ink: var(--brand-ink);
   --color-app-bg:    #000000;
   --color-card-bg:   #09090b;
@@ -185,13 +185,18 @@ html {
   }
   /*
    * „Kolory UJ” — CIEMNY motyw akademicki (też dostaje klasę `.dark`).
-   * Ludzie i tak siedzą w dark mode; tu czarne tło dostaje oddech
-   * błękitu Pantone 2945 (#00519E) i złota Pantone 465 (#CDB590).
-   * Logo i akcenty są złote; błękit siedzi w atmosferze i aktywnym menu.
+   * Błękit Pantone 2945 w atmosferze; złoto Pantone 465 jako akcent.
+   * Semantyka (żeby złoto i tekst się nie zjadały):
+   *   --brand-ink = ciemny atrament na ZŁOTYCH wypełnieniach
+   *                 (`dark:text-brand-ink` na złotej kapsułce).
+   *                 NIE jasny błękit — to psuje kontrast (Wydarzenia…).
+   *   --logo-navy = złoty akcent logo na ciemnym tle
+   *   --uj-sky / --zone-accent-muted = miękki błękit (atmosfera, nie na złocie)
    */
   .theme-uj {
-    --brand-ink: #6ea8e0;
+    --brand-ink: #0b1220;
     --logo-navy: #e8c97a;
+    --uj-sky: #6ea8e0;
     --background: #050910;
     --card: #0b1220;
     --border: rgb(110 168 224 / 0.16);
@@ -204,10 +209,10 @@ html {
     --bg-card: var(--card);
     --border-app: var(--border);
     --text-primary: #f4f0e6;
-    --text-secondary: rgb(244 240 230 / 0.62);
+    --text-secondary: rgb(244 240 230 / 0.72);
     --text-label: #cdb590;
     --zone-accent-strong: #e8c97a;
-    --zone-accent-muted: #6ea8e0;
+    --zone-accent-muted: var(--uj-sky);
     --zone-list-bg: transparent;
     --uj-deep-gold: #cdb590;
     --accent-gold: #e8c97a;
