@@ -231,25 +231,17 @@ body {
 }
 
 /*
- * iOS (viewport-fit=cover): przy rubber-band / scrollu fixed header
- * potrafi oderwać się od góry i zostawić prześwit z feedem.
- * Pas ::before sięga wysoko nad pasek (safe-area + zapas) i wypełnia dziurę.
+ * iOS mobile header — tło belki. Wypełnienie dziury pod status barem /
+ * rubber-band jest w `Header.tsx` (solidne dzieci), nie w ::before —
+ * backdrop-filter + z-index:-1 chowało filler i zostawiało prześwit.
  */
 @media (max-width: 1023px) {
   .uj-header-bar {
     background-color: color-mix(in srgb, var(--bg-app) 88%, transparent);
   }
-  .uj-header-bar::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    /* Bezpieczny zapas nad status barem — nie tylko fixed 5rem. */
-    top: calc(-1 * env(safe-area-inset-top, 0px) - 6rem);
-    height: calc(env(safe-area-inset-top, 0px) + 6rem);
+  /* Solidny filler (safe-area + pas nad viewportem) — zawsze nieprzezroczysty. */
+  .uj-header-safe-fill {
     background-color: var(--bg-app);
-    pointer-events: none;
-    z-index: -1;
   }
 }
 
@@ -273,17 +265,14 @@ html.theme-uj body {
  * zabijało backdrop-filter i wyglądało jak czarna belka).
  */
 html.theme-uj .uj-header-bar {
-  background-color: rgb(12 21 34 / 0.72);
+  background-color: rgb(12 21 34 / 0.78);
   border-bottom: 1px solid rgb(205 181 144 / 0.22);
   box-shadow: none;
   -webkit-backdrop-filter: blur(16px) saturate(1.45);
   backdrop-filter: blur(16px) saturate(1.45);
 }
-html.theme-uj .uj-header-bar::before {
-  /* Solid fill nad paskiem — bez blur, żeby dziura przy scrollu była zasłonięta. */
+html.theme-uj .uj-header-safe-fill {
   background-color: #0c1522;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
 }
 html.theme-uj aside[aria-label='Nawigacja główna'] > div > div {
   background: rgb(18 28 44 / 0.92);

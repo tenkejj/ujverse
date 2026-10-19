@@ -154,12 +154,28 @@ export default function Header({
     <>
     <div aria-hidden className={HEADER_MOBILE.headerSpacerClass} />
     <header
-      className={`uj-header-bar ${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 shadow-none ${
+      className={`uj-header-bar relative ${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
           : 'bg-bg-app/80 backdrop-blur-md backdrop-saturate-150 dark:bg-black/20 dark:backdrop-blur-md dark:backdrop-saturate-150'
       }`}
     >
+      {/*
+        iOS: półprzezroczysty header + backdrop-filter tworzą stacking context,
+        w którym ::before z z-index:-1 znika — przy scrollu widać „dziurę”
+        między Dynamic Island a belką. Dwa solidne pasy (dzieci headera)
+        poruszają się razem z fixed headerem i zasłaniają prześwit.
+      */}
+      <div
+        aria-hidden
+        className="uj-header-safe-fill pointer-events-none absolute inset-x-0 top-0 z-0 lg:hidden"
+        style={{ height: 'env(safe-area-inset-top, 0px)' }}
+      />
+      <div
+        aria-hidden
+        className="uj-header-safe-fill pointer-events-none absolute inset-x-0 top-0 z-0 -translate-y-full lg:hidden"
+        style={{ height: '50vh' }}
+      />
       <div className={`${HEADER_MOBILE.sideSectionClass} flex items-center justify-start relative z-10`}>
         {/* Burger otwiera `MobileDrawer` z pełną listą sekcji + szukajką. Widoczny
          *  na `<lg`, bo od `lg` lewy `SideNav` przejmuje rolę nawigacji. */}
