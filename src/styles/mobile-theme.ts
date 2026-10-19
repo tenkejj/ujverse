@@ -23,36 +23,32 @@ export const ICONS_MOBILE = {
 
 export const HEADER_MOBILE = {
   /**
-   * Mobile: jedna nieprzezroczysta belka `fixed` od `top: 0` z
-   * `padding-top: safe-area`. Pozycję Y dogrywa `useVisualViewportOffset`
-   * (iOS Safari gap przy zwijaniu chrome). Desktop: sticky.
+   * Sticky na WSZYSTKICH breakpointach (nie `fixed`).
+   * iOS Safari z `position:fixed` + zwijany chrome zostawia dziurę nad belką —
+   * sticky tego nie robi. Safe-area przez padding-top; tło nieprzezroczyste
+   * na mobile (patrz `index.css`).
    */
   containerClass:
-    'z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
-    'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 ' +
+    'sticky top-0 z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
     'h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] ' +
     'md:h-[calc(4rem+env(safe-area-inset-top,0px))] ' +
-    'lg:sticky lg:top-0 lg:h-16 lg:pt-0',
-  /** Zajmuje w layoucie miejsce headera (fixed na `<lg`). */
-  headerSpacerClass:
-    'pointer-events-none h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:h-[calc(4rem+env(safe-area-inset-top,0px))] lg:hidden',
+    'lg:h-16 lg:pt-0',
+  /** Nieużywane — header znów jest w flow (sticky). Zostawione dla kompat. */
+  headerSpacerClass: 'hidden',
   sideSectionClass: 'min-w-0 justify-self-start',
   /**
-   * Pusty pas na środku headera, równy szerokości logo z zapasem.
-   * Logo jest `fixed` na osi kolumny; bez tego pasa pasek szukania
-   * (prawa komórka) dochodzi do znaku na 2K, gdzie kolumna ma 80rem.
+   * Desktop: pusty pas pod portalowane logo.
+   * Mobile: logo siedzi w flow w tej komórce (bez fixed).
    */
-  logoLaneClass: 'w-[8.5rem] shrink-0',
+  logoLaneClass: 'relative z-10 flex w-[8.5rem] shrink-0 items-center justify-center',
   rightSectionClass:
     'flex w-full min-w-0 items-center justify-end gap-2 md:gap-3 relative z-10 justify-self-end',
   /**
-   * Logo: mobile = środek viewportu w pasie belki (pod safe-area);
-   * desktop = środek shella (`50% + 9rem`). `translateY(visualViewport)`
-   * jest dokładany w `Header.tsx`.
+   * Tylko desktop (portal). Mobile logo jest w `logoLaneClass`.
+   * Oś = środek shella feedu: `50% + 9rem`.
    */
   logoAnchorClass:
-    'pointer-events-none fixed top-[env(safe-area-inset-top,0px)] left-1/2 z-[60] flex h-14 w-max -translate-x-1/2 items-center justify-center md:h-16 ' +
-    'lg:top-0 lg:left-[calc(50%+9rem)]',
+    'pointer-events-none fixed top-0 left-[calc(50%+9rem)] z-[60] hidden h-16 w-max -translate-x-1/2 items-center justify-center lg:flex',
   logoClass: 'h-[6.75rem] w-auto aspect-[728/1372]',
   themeToggleButtonClass:
     'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',

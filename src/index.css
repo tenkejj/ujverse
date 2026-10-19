@@ -232,15 +232,14 @@ body {
 }
 
 /*
- * Mobile header: pełne krycie + cień w górę (rubber-band). Pozycję Y przy
- * zwijaniu Safari chrome dogrywa `useVisualViewportOffset` w Header.tsx.
+ * Mobile header = sticky + pełne krycie. Bez position:fixed — iOS Safari
+ * przy zwijaniu chrome nie robi już dziury nad belką.
  */
 @media (max-width: 1023px) {
   .uj-header-bar {
     background-color: var(--bg-app) !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
-    box-shadow: 0 -40vh 0 40vh var(--bg-app) !important;
   }
 }
 
@@ -273,7 +272,6 @@ html.theme-uj .uj-header-bar {
 @media (max-width: 1023px) {
   html.theme-uj .uj-header-bar {
     background-color: #0c1522 !important;
-    box-shadow: 0 -40vh 0 40vh #0c1522 !important;
   }
 }
 @media (min-width: 1024px) {

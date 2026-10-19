@@ -21,7 +21,6 @@ import OmniSearchHub from './OmniSearchHub'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
-import { useVisualViewportOffset } from '../hooks/useVisualViewportOffset'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
@@ -83,14 +82,10 @@ export default function Header({
 }: Props) {
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
-  const vvOffset = useVisualViewportOffset()
   const menuRef = useRef<HTMLDivElement | null>(null)
   const { theme: colorMode, cycleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
-  /** iOS Safari: dograj fixed elementy do visualViewport (dziura pod status barem). */
-  const vvTransform =
-    vvOffset > 0 ? ({ transform: `translateY(${vvOffset}px)` } as const) : undefined
 
   useEffect(() => {
     if (bellRingTick === 0) return
@@ -124,42 +119,42 @@ export default function Header({
     return () => window.removeEventListener('keydown', onKey)
   }, [notificationsPanelOpen, onCloseNotificationsPanel])
 
-  const logo = (
-    <div className={HEADER_MOBILE.logoAnchorClass} style={vvTransform}>
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.95 }}
-        onClick={() => {
-          onNavigateToFeed()
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-          onRefreshPosts()
+  const logoButton = (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.95 }}
+      onClick={() => {
+        onNavigateToFeed()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        onRefreshPosts()
+      }}
+      className="pointer-events-auto inline-flex items-center justify-center overflow-visible rounded-xl border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40"
+      aria-label="Strona główna"
+    >
+      <div
+        aria-hidden
+        style={{
+          maskImage: 'url(/logo.png)',
+          WebkitMaskImage: 'url(/logo.png)',
+          maskSize: 'contain',
+          WebkitMaskSize: 'contain',
+          maskRepeat: 'no-repeat',
+          WebkitMaskRepeat: 'no-repeat',
+          maskPosition: 'center',
+          WebkitMaskPosition: 'center',
         }}
-        className="pointer-events-auto overflow-visible rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 inline-flex items-center justify-center border-0"
-        aria-label="Strona główna"
-      >
-        <div
-          aria-hidden
-          style={{
-            maskImage: 'url(/logo.png)',
-            WebkitMaskImage: 'url(/logo.png)',
-            maskSize: 'contain',
-            WebkitMaskSize: 'contain',
-            maskRepeat: 'no-repeat',
-            WebkitMaskRepeat: 'no-repeat',
-            maskPosition: 'center',
-            WebkitMaskPosition: 'center',
-          }}
-          className={`mx-auto ${HEADER_MOBILE.logoClass} transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright bg-logo-navy`}
-        />
-      </motion.button>
-    </div>
+        className={`mx-auto ${HEADER_MOBILE.logoClass} bg-logo-navy transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright`}
+      />
+    </motion.button>
+  )
+
+  const desktopLogo = (
+    <div className={HEADER_MOBILE.logoAnchorClass}>{logoButton}</div>
   )
 
   return (
     <>
-    <div aria-hidden className={HEADER_MOBILE.headerSpacerClass} />
     <header
-      style={vvTransform}
       className={`uj-header-bar relative ${HEADER_MOBILE.containerClass} overflow-visible border-t-0 outline-none ring-0 shadow-none ${
         isScrolled
           ? 'bg-white/80 backdrop-blur-md backdrop-saturate-150 dark:bg-zinc-950/50 dark:backdrop-blur-md dark:backdrop-saturate-150'
@@ -189,7 +184,9 @@ export default function Header({
         </div>
       </div>
 
-      <div aria-hidden className={HEADER_MOBILE.logoLaneClass} />
+      <div className={HEADER_MOBILE.logoLaneClass}>
+        <div className="lg:hidden">{logoButton}</div>
+      </div>
 
       <div className={HEADER_MOBILE.rightSectionClass}>
         <div className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5">
@@ -366,7 +363,7 @@ export default function Header({
         </div>
       </div>
     </header>
-    {createPortal(logo, document.body)}
+    {createPortal(desktopLogo, document.body)}
     </>
   )
 }
