@@ -10,7 +10,7 @@ import {
   warsawDayDiff,
   warsawDayKey,
 } from '../src/lib/info/time.ts'
-import { warsawLocalToUtc } from '../src/lib/warsawTime.ts'
+import { warsawLocalStringToUtcIso, warsawLocalToUtc } from '../src/lib/warsawTime.ts'
 
 describe('warsawDayKey', () => {
   it('uses the Warsaw calendar day, not UTC', () => {
@@ -121,5 +121,13 @@ describe('warsawLocalToUtc (used by the USOS scraper)', () => {
   it('uses +01:00 after the autumn change', () => {
     assert.equal(warsawLocalToUtc(2026, 10, 20, 9, 0).toISOString(), '2026-10-20T07:00:00.000Z')
     assert.equal(warsawLocalToUtc(2026, 10, 27, 9, 0).toISOString(), '2026-10-27T08:00:00.000Z')
+  })
+
+  it('parses USOSweb <local-time> strings (the old month heuristic was 1 h off here)', () => {
+    assert.equal(warsawLocalStringToUtcIso('2027-03-15 09:00:00'), '2027-03-15T08:00:00.000Z')
+    assert.equal(warsawLocalStringToUtcIso('2026-10-29 08:30'), '2026-10-29T07:30:00.000Z')
+    assert.equal(warsawLocalStringToUtcIso('2026-09-23 17:00:00'), '2026-09-23T15:00:00.000Z')
+    assert.equal(warsawLocalStringToUtcIso('2027-02-12 10:00:00'), '2027-02-12T09:00:00.000Z')
+    assert.throws(() => warsawLocalStringToUtcIso('23.09.2026 17:00'))
   })
 })
