@@ -2,6 +2,7 @@ import { BookOpen, ClipboardList, GraduationCap, Link2 as LinkIcon, Mail, type L
 import { useNavigate } from 'react-router-dom'
 import BaseCard from './ui/BaseCard'
 import { sectionTitleCls, sidePanelHoverFocus, widgetGoldCls } from '../lib/sidePanelStyles'
+import { UJ_LINKS } from '../lib/info/resources'
 
 /**
  * Niezbędnik UJ — desktopowa karta w prawym sidebarze feedu.
@@ -22,9 +23,9 @@ type NiezbednikLink = {
 }
 
 export const NIEZBEDNIK_LINKS: ReadonlyArray<NiezbednikLink> = [
-  { label: 'USOSweb', shortLabel: 'USOS', href: 'https://usosweb.uj.edu.pl', Icon: GraduationCap, tag: 'Studia' },
-  { label: 'Platforma PEGAZ', shortLabel: 'PEGAZ', href: 'https://pegaz.uj.edu.pl', Icon: BookOpen, tag: 'E-learning' },
-  { label: 'Poczta studencka', shortLabel: 'POCZTA', href: 'https://outlook.office.com/mail/', Icon: Mail, tag: 'Poczta' },
+  { label: 'USOSweb', shortLabel: 'USOS', href: UJ_LINKS.usosweb, Icon: GraduationCap, tag: 'Studia' },
+  { label: 'Platforma PEGAZ', shortLabel: 'PEGAZ', href: UJ_LINKS.pegaz, Icon: BookOpen, tag: 'E-learning' },
+  { label: 'Poczta studencka', shortLabel: 'POCZTA', href: UJ_LINKS.studentMail, Icon: Mail, tag: 'Poczta' },
 ] as const
 
 type Props = {

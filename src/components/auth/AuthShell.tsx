@@ -20,9 +20,11 @@ const LOGO_MASK_STYLE = {
  */
 type Props = {
   children: ReactNode
+  /** Treść pod formularzem (np. link „Przeglądaj bez konta"). */
+  footerSlot?: ReactNode
 }
 
-export default function AuthShell({ children }: Props) {
+export default function AuthShell({ children, footerSlot }: Props) {
   const { theme, cycleTheme } = useTheme()
   const reducedMotion = useReducedMotion()
 
@@ -74,8 +76,10 @@ export default function AuthShell({ children }: Props) {
 
         {children}
 
+        {footerSlot}
+
         <p className={AUTH_MOBILE.footer.primaryClass}>
-          UJverse · nieoficjalna platforma społeczności UJ
+          UJverse · niezależny serwis dla studentów UJ (nieoficjalny)
         </p>
         <p className={AUTH_MOBILE.footer.secondaryClass}>
           Stworzone przez Franciszek Dranka

@@ -1,102 +1,57 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  AlarmClock,
-  BookOpen,
-  Bell,
-  CalendarDays,
-  ClipboardList,
-  GraduationCap,
-  Home,
-  LogOut,
-  Moon,
-  Search,
-  Settings,
-  Sun,
-  Tag,
-  User,
-  X,
-} from 'lucide-react'
+import { GraduationCap, LogIn, LogOut, Moon, Search, Settings, Sun, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
 import { THEME_META, useTheme } from '../ThemeContext'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
 import NavItem from './nav/NavItem'
+import { ACCOUNT_NAV, PRIMARY_NAV, navTargetForView, type NavTarget } from './nav/navModel'
 import { MOBILE_DRAWER } from '../styles/mobile-theme'
 import { getDeptAbbreviation } from '../lib/departments'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
+import { normalizeSearchQuery } from '../lib/info/search'
 import { NIEZBEDNIK_LINKS } from './Niezbednik'
-import { OFFICIAL_TAG_META, TAG_ICONS, getZones } from '../services/TagService'
-import { groupPathForSlug } from '../lib/groupPaths'
-
-type ActiveView =
-  | 'feed'
-  | 'profile'
-  | 'notifications'
-  | 'events'
-  | 'aula'
-  | 'mojPlan'
-  | 'znizki'
-  | 'usos'
-  | 'miejsca'
 
 type Props = {
   open: boolean
   onClose: () => void
+  isAuthenticated: boolean
   myProfile: Profile | null
   displayName: string
-  activeView: ActiveView
+  activeView: string
   unreadCount: number
   aulaHasUnread?: boolean
-  onNavigateToFeed: () => void
-  onNavigateToEvents: () => void
-  onNavigateToAula: () => void
-  onNavigateToNotifications: () => void
-  onNavigateToProfile: () => void
-  onNavigateToMojPlan: () => void
-  onNavigateToZnizki: () => void
-  onNavigateToUsos: () => void
-  onNavigateToMiejsca: () => void
-  onNavigateToSettings: () => void
-  onNavigateToSearch: (query?: string) => void
+  onNavigate: (target: NavTarget) => void
+  onSignOut: () => void
+  loginHref: string
 }
 
 /**
- * Slide-in drawer dla `<lg`. Otwierany burgerem w `Header.tsx`.
- * Zawiera: avatar/header (klik → profil), search input (Enter →
- * `onNavigateToSearch`), grupy sekcji (Główne, Strefa studenta, Konto)
- * oraz bottom row (theme + wyloguj). Zamykany backdrop-click,
- * Escape lub kliknięciem w pozycję — każda nawigacja sama zamyka
- * drawer (zasada: jeden klik = przejście).
+ * Slide-in drawer dla `<lg`. Ta sama architektura informacji co `SideNav`
+ * (`nav/navModel.ts`): najpierw informacje, potem konto. Każda nawigacja
+ * zamyka drawer (jeden klik = przejście); Esc i klik w tło też zamykają.
  */
 export default function MobileDrawer({
   open,
   onClose,
+  isAuthenticated,
   myProfile,
   displayName,
   activeView,
   unreadCount,
   aulaHasUnread,
-  onNavigateToFeed,
-  onNavigateToEvents,
-  onNavigateToAula,
-  onNavigateToNotifications,
-  onNavigateToProfile,
-  onNavigateToMojPlan,
-  onNavigateToZnizki,
-  onNavigateToUsos,
-  onNavigateToMiejsca,
-  onNavigateToSettings,
-  onNavigateToSearch,
+  onNavigate,
+  onSignOut,
+  loginHref,
 }: Props) {
   const { theme: colorMode, cycleTheme } = useTheme()
   const ThemeIcon = colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
   const navigate = useNavigate()
   const [searchValue, setSearchValue] = useState('')
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const zoneSlugs = getZones(3)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const active = navTargetForView(activeView)
 
   useEffect(() => {
     if (!open) return
@@ -111,21 +66,27 @@ export default function MobileDrawer({
     if (!open) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const timer = window.setTimeout(() => panelRef.current?.focus({ preventScroll: true }), 0)
     return () => {
+      window.clearTimeout(timer)
       document.body.style.overflow = previousOverflow
+      previouslyFocused?.focus({ preventScroll: true })
     }
   }, [open])
 
-  const wrap = (callback: () => void) => () => {
+  const go = (target: NavTarget) => () => {
     onClose()
-    callback()
+    onNavigate(target)
   }
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const query = searchValue.trim()
+    const query = normalizeSearchQuery(searchValue)
     onClose()
-    onNavigateToSearch(query || undefined)
+    navigate(query ? `/szukaj?q=${encodeURIComponent(query)}` : '/szukaj', {
+      state: { searchNonce: Date.now() },
+    })
     setSearchValue('')
   }
 
@@ -137,7 +98,6 @@ export default function MobileDrawer({
         <motion.div
           key="mobile-drawer-root"
           className={MOBILE_DRAWER.rootClass}
-          aria-hidden={!open}
           role="dialog"
           aria-modal="true"
           aria-label="Menu nawigacji"
@@ -147,40 +107,54 @@ export default function MobileDrawer({
             className={MOBILE_DRAWER.backdropClass}
             onClick={onClose}
             aria-label="Zamknij menu"
+            tabIndex={-1}
             initial={MOBILE_DRAWER.motion.backdropInitial}
             animate={MOBILE_DRAWER.motion.backdropAnimate}
             exit={MOBILE_DRAWER.motion.backdropExit}
             transition={MOBILE_DRAWER.motion.backdropTransition}
           />
           <motion.div
-            className={MOBILE_DRAWER.panelClass}
+            ref={panelRef}
+            tabIndex={-1}
+            className={`${MOBILE_DRAWER.panelClass} outline-none`}
             initial={MOBILE_DRAWER.motion.panelInitial}
             animate={MOBILE_DRAWER.motion.panelAnimate}
             exit={MOBILE_DRAWER.motion.panelExit}
             transition={MOBILE_DRAWER.motion.panelTransition}
           >
             <div className={MOBILE_DRAWER.headerClass}>
-              <button
-                type="button"
-                onClick={wrap(onNavigateToProfile)}
-                className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/30 dark:focus-visible:ring-brand-gold/40"
-                aria-label="Otwórz profil"
-              >
-                <UserAvatar
-                  profile={myProfile}
-                  name={displayName}
-                  className="h-11 w-11 ring-1 ring-zinc-900/10 dark:ring-white/10"
-                  textSize="text-base"
-                />
-              </button>
-              <div className={MOBILE_DRAWER.headerNameClass}>
-                <span className={MOBILE_DRAWER.headerNamePrimaryClass}>{displayName}</span>
-                {myProfile?.department && (
-                  <span className={`${DEPT_BADGE_SPAN_CLASS} mt-1 self-start`}>
-                    {getDeptAbbreviation(myProfile.department)}
+              {isAuthenticated ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={go('profile')}
+                    className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/30 dark:focus-visible:ring-brand-gold/40"
+                    aria-label="Otwórz profil"
+                  >
+                    <UserAvatar
+                      profile={myProfile}
+                      name={displayName}
+                      className="h-11 w-11 ring-1 ring-zinc-900/10 dark:ring-white/10"
+                      textSize="text-base"
+                    />
+                  </button>
+                  <div className={MOBILE_DRAWER.headerNameClass}>
+                    <span className={MOBILE_DRAWER.headerNamePrimaryClass}>{displayName}</span>
+                    {myProfile?.department && (
+                      <span className={`${DEPT_BADGE_SPAN_CLASS} mt-1 self-start`}>
+                        {getDeptAbbreviation(myProfile.department)}
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className={MOBILE_DRAWER.headerNameClass}>
+                  <span className={MOBILE_DRAWER.headerNamePrimaryClass}>UJverse</span>
+                  <span className={MOBILE_DRAWER.headerNameSecondaryClass}>
+                    Informacje dla studentów UJ · nieoficjalnie
                   </span>
-                )}
-              </div>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={onClose}
@@ -191,124 +165,61 @@ export default function MobileDrawer({
               </button>
             </div>
 
-            <form onSubmit={handleSearchSubmit} className={MOBILE_DRAWER.searchWrapperClass}>
+            <form onSubmit={handleSearchSubmit} className={MOBILE_DRAWER.searchWrapperClass} role="search">
               <div className="relative">
-                <Search size={18} strokeWidth={2} className={MOBILE_DRAWER.searchIconClass} />
+                <Search size={18} strokeWidth={2} className={MOBILE_DRAWER.searchIconClass} aria-hidden />
                 <input
-                  ref={inputRef}
                   type="search"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
-                  placeholder="Szukaj w UJverse"
+                  placeholder="Szukaj komunikatów, rejestracji…"
                   className={MOBILE_DRAWER.searchInputClass}
-                  aria-label="Szukaj"
+                  aria-label="Szukaj informacji"
+                  enterKeyHint="search"
                 />
               </div>
             </form>
 
-            <div className={MOBILE_DRAWER.scrollAreaClass}>
+            <nav className={MOBILE_DRAWER.scrollAreaClass} aria-label="Sekcje UJverse">
               <div className={MOBILE_DRAWER.sectionClass}>
-                <p className={MOBILE_DRAWER.sectionLabelClass}>Główne</p>
-                <NavItem
-                  icon={Home}
-                  label="Strona główna"
-                  active={activeView === 'feed'}
-                  onClick={wrap(onNavigateToFeed)}
-                  variant="drawer"
-                />
-                <NavItem
-                  icon={CalendarDays}
-                  label="Wydarzenia"
-                  active={activeView === 'events'}
-                  onClick={wrap(onNavigateToEvents)}
-                  variant="drawer"
-                />
-                <NavItem
-                  icon={GraduationCap}
-                  label="Aula"
-                  active={activeView === 'aula'}
-                  onClick={wrap(onNavigateToAula)}
-                  variant="drawer"
-                  hasUnread={aulaHasUnread}
-                />
-                <NavItem
-                  icon={Bell}
-                  label="Powiadomienia"
-                  active={activeView === 'notifications'}
-                  onClick={wrap(onNavigateToNotifications)}
-                  variant="drawer"
-                  badgeCount={unreadCount}
-                />
-                <NavItem
-                  icon={User}
-                  label="Profil"
-                  active={activeView === 'profile'}
-                  onClick={wrap(onNavigateToProfile)}
-                  variant="drawer"
-                />
+                <p className={MOBILE_DRAWER.sectionLabelClass}>Informacje</p>
+                {PRIMARY_NAV.filter((entry) => entry.target !== 'szukaj').map((entry) => (
+                  <NavItem
+                    key={entry.target}
+                    icon={entry.icon}
+                    label={entry.label}
+                    active={active === entry.target}
+                    onClick={go(entry.target)}
+                    variant="drawer"
+                  />
+                ))}
               </div>
 
-              <div className={MOBILE_DRAWER.sectionDividerClass} aria-hidden />
-
-              <div className={MOBILE_DRAWER.sectionClass}>
-                <p className={MOBILE_DRAWER.sectionLabelClass}>Strefa studenta</p>
-                <NavItem
-                  icon={ClipboardList}
-                  label="Mój Plan"
-                  active={activeView === 'mojPlan'}
-                  onClick={wrap(onNavigateToMojPlan)}
-                  variant="drawer"
-                />
-                <NavItem
-                  icon={Tag}
-                  label="Couponek UJ"
-                  active={activeView === 'znizki'}
-                  onClick={wrap(onNavigateToZnizki)}
-                  variant="drawer"
-                />
-                <NavItem
-                  icon={AlarmClock}
-                  label="Rejestracje USOS"
-                  active={activeView === 'usos'}
-                  onClick={wrap(onNavigateToUsos)}
-                  variant="drawer"
-                />
-                <NavItem
-                  icon={BookOpen}
-                  label="Miejsca do nauki"
-                  active={activeView === 'miejsca'}
-                  onClick={wrap(onNavigateToMiejsca)}
-                  variant="drawer"
-                />
-              </div>
-
-              <div className={MOBILE_DRAWER.sectionDividerClass} aria-hidden />
+              {isAuthenticated ? (
+                <>
+                  <div className={MOBILE_DRAWER.sectionDividerClass} aria-hidden />
+                  <div className={MOBILE_DRAWER.sectionClass}>
+                    <p className={MOBILE_DRAWER.sectionLabelClass}>Twoje konto</p>
+                    {ACCOUNT_NAV.map((entry) => (
+                      <NavItem
+                        key={entry.target}
+                        icon={entry.icon}
+                        label={entry.label}
+                        active={active === entry.target}
+                        onClick={go(entry.target)}
+                        variant="drawer"
+                        hasUnread={entry.target === 'aula' ? aulaHasUnread : undefined}
+                        badgeCount={entry.target === 'notifications' ? unreadCount : undefined}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : null}
 
               <div className={MOBILE_DRAWER.sectionDividerClass} aria-hidden />
 
               <div className={MOBILE_DRAWER.sectionClass}>
-                <p className={MOBILE_DRAWER.sectionLabelClass}>Strefy</p>
-                {zoneSlugs.map((slug) => {
-                  const meta = OFFICIAL_TAG_META[slug]
-                  const Icon = TAG_ICONS[slug]
-                  return (
-                    <NavItem
-                      key={slug}
-                      icon={Icon}
-                      label={meta.name}
-                      active={false}
-                      onClick={wrap(() => navigate(groupPathForSlug(slug)))}
-                      variant="drawer"
-                      title={meta.name}
-                    />
-                  )
-                })}
-              </div>
-
-              <div className={MOBILE_DRAWER.sectionDividerClass} aria-hidden />
-
-              <div className={MOBILE_DRAWER.sectionClass}>
-                <p className={MOBILE_DRAWER.sectionLabelClass}>Linki UJ</p>
+                <p className={MOBILE_DRAWER.sectionLabelClass}>Serwisy UJ</p>
                 {NIEZBEDNIK_LINKS.map(({ label, href, Icon }) => (
                   <NavItem
                     key={label}
@@ -326,37 +237,53 @@ export default function MobileDrawer({
               <div className={MOBILE_DRAWER.sectionDividerClass} aria-hidden />
 
               <div className={MOBILE_DRAWER.sectionClass}>
-                <p className={MOBILE_DRAWER.sectionLabelClass}>Konto</p>
-                <NavItem
-                  icon={Settings}
-                  label="Ustawienia"
-                  active={false}
-                  onClick={wrap(onNavigateToSettings)}
-                  variant="drawer"
-                />
+                {isAuthenticated ? (
+                  <NavItem
+                    icon={Settings}
+                    label="Ustawienia"
+                    active={active === 'settings'}
+                    onClick={go('settings')}
+                    variant="drawer"
+                  />
+                ) : null}
                 <NavItem
                   icon={ThemeIcon}
                   label={THEME_META[colorMode].shortLabel}
-                  active={colorMode === 'uj'}
+                  active={false}
                   onClick={cycleTheme}
                   variant="drawer"
                   title="Zmień motyw: Jasny → Kolory UJ → Ciemny"
                 />
               </div>
-            </div>
+            </nav>
 
             <div className={MOBILE_DRAWER.bottomRowClass}>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose()
-                  void supabase.auth.signOut()
-                }}
-                className={MOBILE_DRAWER.logoutItemClass}
-              >
-                <LogOut size={20} strokeWidth={2} className="shrink-0" />
-                Wyloguj się
-              </button>
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose()
+                    onSignOut()
+                  }}
+                  className={MOBILE_DRAWER.logoutItemClass}
+                >
+                  <LogOut size={20} strokeWidth={2} className="shrink-0" />
+                  Wyloguj się
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose()
+                    navigate(loginHref)
+                  }}
+                  className="group flex w-full items-center gap-3 rounded-xl pl-4 pr-3 py-3 text-[14px] font-semibold text-brand-ink transition-colors hover:bg-brand-ink/5 dark:text-brand-gold-bright dark:hover:bg-white/5"
+                >
+                  <LogIn size={20} strokeWidth={2} className="shrink-0" />
+                  Zaloguj się
+                  <span className="ml-auto text-[11px] font-medium text-zinc-500 dark:text-zinc-400">plan, Aula</span>
+                </button>
+              )}
             </div>
           </motion.div>
         </motion.div>

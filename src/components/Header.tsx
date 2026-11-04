@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Bell,
   ChevronDown,
   GraduationCap,
+  LogIn,
   LogOut,
   Menu,
   Moon,
@@ -14,48 +16,45 @@ import {
   User,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { supabase } from '../supabaseClient'
 import type { Profile } from '../types'
 import UserAvatar from './UserAvatar'
-import OmniSearchHub from './OmniSearchHub'
+import HeaderSearch from './info/HeaderSearch'
+import FacultyPicker from './info/FacultyPicker'
+import type { FacultyPreference } from '../hooks/useInfoPreferences'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { getDeptAbbreviation } from '../lib/departments'
 import { useScrollY } from '../hooks/useScrollY'
 import { HEADER_MOBILE, ICONS_MOBILE } from '../styles/mobile-theme'
 import { DEPT_BADGE_SPAN_CLASS } from '../lib/interactionBar'
 
-type ActiveView = 'feed' | 'profile' | 'notifications' | 'events' | 'aula' | 'mojPlan' | 'znizki' | 'usos' | 'miejsca'
-
 type Props = {
+  isAuthenticated: boolean
   myProfile: Profile | null
   displayName: string
   menuOpen: boolean
   setMenuOpen: (v: boolean | ((prev: boolean) => boolean)) => void
-  activeView: ActiveView
+  activeView: string
   unreadCount: number
   bellRingTick: number
   notificationsPanelOpen: boolean
   notificationsAnchorRef?: RefObject<HTMLButtonElement | null>
   onToggleNotificationsPanel: () => void
   onCloseNotificationsPanel: () => void
-  onNavigateToFeed: () => void
+  /** Logo → strona startowa (dashboard informacyjny). */
+  onNavigateHome: () => void
   onNavigateToProfile: () => void
-  onNavigateToEvents: (openEventId?: string) => void
-  onNavigateToSearch: (query?: string) => void
-  onNavigateToUser: (userId: string) => void
-  onNavigateToPost: (postId: string) => void
-  /** Klik w wynik Auli z `OmniSearchHub` — deep-link `/aula?message=<id>`. */
-  onNavigateToAulaMessage?: (messageId: number) => void
-  /** Cohort zalogowanego usera — przekazany do `OmniSearchHub` jako sekcja Aula. */
-  cohortId?: string | null
   onOpenProfileModal: () => void
   onNavigateToSettings: () => void
-  onRefreshPosts: () => void
+  onSignOut: () => void
+  /** Dokąd prowadzi „Zaloguj się" (z `?next=` bieżącej strony). */
+  loginHref: string
+  faculty: FacultyPreference
   /** Otwiera mobilny drawer z pełną listą sekcji (`<lg`). */
   onOpenMobileDrawer: () => void
 }
 
 export default function Header({
+  isAuthenticated,
   myProfile,
   displayName,
   menuOpen,
@@ -67,17 +66,13 @@ export default function Header({
   notificationsAnchorRef,
   onToggleNotificationsPanel,
   onCloseNotificationsPanel,
-  onNavigateToFeed,
+  onNavigateHome,
   onNavigateToProfile,
-  onNavigateToEvents,
-  onNavigateToSearch,
-  onNavigateToUser,
-  onNavigateToPost,
-  onNavigateToAulaMessage,
-  cohortId,
   onOpenProfileModal,
   onNavigateToSettings,
-  onRefreshPosts,
+  onSignOut,
+  loginHref,
+  faculty,
   onOpenMobileDrawer,
 }: Props) {
   const scrollY = useScrollY()
@@ -124,12 +119,11 @@ export default function Header({
       type="button"
       whileTap={{ scale: 0.95 }}
       onClick={() => {
-        onNavigateToFeed()
+        onNavigateHome()
         window.scrollTo({ top: 0, behavior: 'smooth' })
-        onRefreshPosts()
       }}
       className="pointer-events-auto inline-flex items-center justify-center overflow-visible rounded-xl border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40"
-      aria-label="Strona główna"
+      aria-label="UJverse — strona startowa"
     >
       <div
         aria-hidden
@@ -173,15 +167,27 @@ export default function Header({
               onCloseNotificationsPanel()
               onOpenMobileDrawer()
             }}
-            aria-label="Otwórz menu"
-            className="w-14 h-14 flex items-center justify-center rounded-full text-brand-ink dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40"
+            aria-label={isAuthenticated && unreadCount > 0 ? `Otwórz menu (${unreadCount} nowych powiadomień)` : 'Otwórz menu'}
+            className="relative w-14 h-14 flex items-center justify-center rounded-full text-brand-ink dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40"
           >
             <Menu
               size={ICONS_MOBILE.bottomNavIconSize}
               strokeWidth={ICONS_MOBILE.bottomNavInactiveStrokeWidth}
               className="shrink-0"
             />
+            {isAuthenticated && unreadCount > 0 ? (
+              <span aria-hidden className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-brand-ink ring-2 ring-bg-app dark:bg-brand-gold-bright" />
+            ) : null}
           </button>
+        </div>
+        <div className="hidden min-w-0 lg:flex">
+          <FacultyPicker
+            variant="header"
+            faculty={faculty.faculty}
+            source={faculty.source}
+            persistent={faculty.persistent}
+            onChange={faculty.setFaculty}
+          />
         </div>
       </div>
 
@@ -191,14 +197,7 @@ export default function Header({
 
       <div className={HEADER_MOBILE.rightSectionClass}>
         <div className="hidden md:flex min-w-0 flex-1 items-center justify-end gap-1.5">
-          <OmniSearchHub
-            cohortId={cohortId}
-            onNavigateToUser={onNavigateToUser}
-            onNavigateToPost={onNavigateToPost}
-            onNavigateToEvents={onNavigateToEvents}
-            onNavigateToSearch={onNavigateToSearch}
-            onNavigateToAulaMessage={onNavigateToAulaMessage}
-          />
+          <HeaderSearch />
           <button
             type="button"
             onClick={cycleTheme}
@@ -215,6 +214,7 @@ export default function Header({
             )}
           </button>
 
+          {isAuthenticated ? (
           <div className="relative shrink-0">
             <button
               ref={notificationsAnchorRef}
@@ -259,9 +259,20 @@ export default function Header({
               )}
             </button>
           </div>
+          ) : null}
 
         </div>
 
+        {!isAuthenticated ? (
+          <Link
+            to={loginHref}
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-brand-ink transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 dark:text-brand-gold-bright dark:hover:bg-white/10"
+            aria-label="Zaloguj się"
+          >
+            <LogIn size={18} strokeWidth={2} className="shrink-0" aria-hidden />
+            <span className="hidden sm:inline">Zaloguj się</span>
+          </Link>
+        ) : (
         <div className="relative shrink-0 min-w-0 block" ref={menuRef}>
           <button
             type="button"
@@ -351,7 +362,10 @@ export default function Header({
                 <div className="border-t border-zinc-200 px-2 py-2 dark:border-white/10">
                   <button
                     role="menuitem"
-                    onClick={() => void supabase.auth.signOut()}
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onSignOut()
+                    }}
                     className="group flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-rose-500/85 transition-colors hover:bg-rose-500/8 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30 dark:text-rose-400/85 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
                   >
                     <LogOut size={16} strokeWidth={2} className="shrink-0 text-rose-500/85 transition-colors group-hover:text-rose-600 dark:text-rose-400/85 dark:group-hover:text-rose-300" />
@@ -362,6 +376,7 @@ export default function Header({
             )}
           </AnimatePresence>
         </div>
+        )}
       </div>
     </header>
     {createPortal(desktopLogo, document.body)}
