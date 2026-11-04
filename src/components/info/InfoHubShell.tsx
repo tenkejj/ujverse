@@ -280,7 +280,10 @@ export function InfoHubRailFilters({
   )
 }
 
-/** Spotlight w stylu EventsHero — bez plakatu, z dużym akcentem po lewej. */
+/**
+ * Spotlight w języku EventsHero, ale bez pustego plakatu —
+ * kompaktowa karta z eyebrow + tytułem (komunikaty / rejestracje / Start).
+ */
 export function InfoHubSpotlight({
   eyebrow,
   title,
@@ -294,11 +297,15 @@ export function InfoHubSpotlight({
 }) {
   return (
     <motion.section variants={H.motion.fadeUp} className={H.hero.cardClass} aria-label={eyebrow}>
-      <div className="grid grid-cols-1 items-stretch md:grid-cols-5 xl:grid-cols-12">
-        <div className={`${H.hero.posterFallbackClass} md:col-span-2 xl:col-span-4`}>
-          <span className={H.hero.eyebrowFloatClass}>{eyebrow}</span>
-        </div>
-        <div className={`${H.hero.metaWrapClass} md:col-span-3 xl:col-span-8`}>
+      <div className="relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-brand-ink via-brand-ink/70 to-brand-ink/30 dark:from-brand-gold-bright dark:via-brand-gold-bright/70 dark:to-brand-gold-bright/20"
+          aria-hidden
+        />
+        <div className="flex flex-col gap-4 p-5 pl-6 sm:p-6 sm:pl-7 md:p-7 md:pl-8">
+          <span className="inline-flex w-fit items-center rounded-full border border-zinc-200/90 bg-zinc-100/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-700 dark:border-white/15 dark:bg-white/[0.06] dark:text-zinc-200">
+            {eyebrow}
+          </span>
           <h2 className={H.hero.titleClass}>{title}</h2>
           {meta ? <div className="space-y-1.5 text-sm text-zinc-600 dark:text-zinc-300">{meta}</div> : null}
           {actions ? <div className={H.hero.actionsRowClass}>{actions}</div> : null}

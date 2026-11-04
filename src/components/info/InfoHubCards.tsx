@@ -8,12 +8,16 @@ import {
   registrationTiming,
 } from '../../lib/info/relevance'
 import {
+  dayKeyToDate,
   formatDateTime,
+  formatDayLabel,
+  formatDayOfMonth,
   formatDurationShort,
+  formatMonthShort,
   formatRelativePast,
   parseIsoDate,
 } from '../../lib/info/time'
-import type { InfoAnnouncement, InfoRegistration } from '../../lib/info/types'
+import type { InfoAnnouncement, InfoEvent, InfoRegistration } from '../../lib/info/types'
 import type { InfoResource } from '../../lib/info/resources'
 import { REGISTRATION_KIND_META } from '../../types/usosRegistrations'
 import {
@@ -141,6 +145,47 @@ export function RegistrationHubCard({
         </div>
         <div className="mt-auto pt-1">
           <ExternalSourceLink href={item.url}>Otwórz w USOSweb</ExternalSourceLink>
+        </div>
+      </div>
+    </BaseCard>
+  )
+}
+
+export function EventHubCard({ item, now }: { item: InfoEvent; now: Date }) {
+  const day = dayKeyToDate(item.dayKey)
+  return (
+    <BaseCard as="article" variant="default" className="relative flex h-full flex-col overflow-hidden p-0">
+      <div className="absolute right-2 top-2 z-[2]">
+        <SaveToggle item={item} />
+      </div>
+      <div className="flex flex-1 gap-3 p-4 pr-12">
+        <div
+          className="flex w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-ink/[0.06] dark:bg-brand-gold-bright/10"
+          aria-hidden
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-brand-ink dark:text-brand-gold-bright">
+            {formatMonthShort(day)}
+          </span>
+          <span className="text-lg font-extrabold leading-none text-brand-ink dark:text-brand-gold-bright">
+            {formatDayOfMonth(day)}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <time dateTime={item.dayKey}>{formatDayLabel(item.dayKey, now)}</time>
+          </p>
+          <h3 className="line-clamp-3 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+            {item.title}
+          </h3>
+          {item.location ? (
+            <p className="flex items-start gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <MapPin size={12} className="mt-0.5 shrink-0" aria-hidden />
+              <span className="line-clamp-2">{item.location}</span>
+            </p>
+          ) : null}
+          <div className="pt-1">
+            <ExternalSourceLink href={item.url}>Szczegóły</ExternalSourceLink>
+          </div>
         </div>
       </div>
     </BaseCard>

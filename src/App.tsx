@@ -201,6 +201,7 @@ function getAppShellClass(_view: AppShellView): string {
 function getAppContentShellClass(view: AppShellView): string {
   if (view === 'chat' || view === 'aula') return 'w-full px-4 lg:px-6'
   if (
+    view === 'home' ||
     view === 'events' ||
     view === 'wydarzenia' ||
     view === 'komunikaty' ||
@@ -215,7 +216,6 @@ function getAppContentShellClass(view: AppShellView): string {
     return 'mx-auto w-full max-w-[1600px] px-4 lg:px-8 xl:px-12'
   }
   if (
-    view === 'home' ||
     view === 'szukaj' ||
     view === 'feed' ||
     view === 'profile' ||
