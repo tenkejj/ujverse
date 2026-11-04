@@ -138,6 +138,7 @@ export function upcomingEventsSorted(events: readonly InfoEvent[], now: Date): I
 
 export type PriorityItem =
   | {
+      kind: 'registration'
       key: string
       score: number
       at: number
@@ -145,6 +146,7 @@ export type PriorityItem =
       item: InfoRegistration
     }
   | {
+      kind: 'announcement'
       key: string
       score: number
       at: number
@@ -181,6 +183,7 @@ export function buildPriorityItems(input: {
     const timing = registrationTiming(reg, now)
     if (timing.urgency === 'closing-critical' || timing.urgency === 'closing-soon') {
       out.push({
+        kind: 'registration',
         key: `registration:${reg.id}`,
         score: timing.urgency === 'closing-critical' ? 100 : 85,
         at: Date.parse(reg.closesAt ?? reg.opensAt),
@@ -189,6 +192,7 @@ export function buildPriorityItems(input: {
       })
     } else if (timing.urgency === 'opening-soon') {
       out.push({
+        kind: 'registration',
         key: `registration:${reg.id}`,
         score: 70,
         at: Date.parse(reg.opensAt),
@@ -205,6 +209,7 @@ export function buildPriorityItems(input: {
     const age = t - added
     if (Number.isNaN(added) || age < 0 || age > PRIORITY_ANNOUNCEMENT_WINDOW_MS) continue
     out.push({
+      kind: 'announcement',
       key: `announcement:${ann.id}`,
       score: ann.status === 'cancelled' ? 90 : 75,
       at: added,
@@ -215,8 +220,7 @@ export function buildPriorityItems(input: {
 
   out.sort((a, b) => {
     if (a.score !== b.score) return b.score - a.score
-    const isReg = a.reason === 'registration-closing' || a.reason === 'registration-opening'
-    const byTime = isReg ? a.at - b.at : b.at - a.at
+    const byTime = a.kind === 'registration' ? a.at - b.at : b.at - a.at
     return byTime !== 0 ? byTime : a.key.localeCompare(b.key)
   })
   return out.slice(0, input.limit ?? PRIORITY_LIMIT)

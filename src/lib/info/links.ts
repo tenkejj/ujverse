@@ -38,7 +38,9 @@ export function sanitizeNextPath(raw: string | null | undefined): string | null 
   const value = raw.trim()
   if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return null
   if (value.length > 512) return null
-  if (/[\u0000-\u001f]/.test(value)) return null
+  for (let i = 0; i < value.length; i++) {
+    if (value.charCodeAt(i) < 0x20) return null
+  }
   let parsed: URL
   try {
     parsed = new URL(value, 'https://ujverse.invalid')
