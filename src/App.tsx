@@ -49,7 +49,6 @@ import type { NavTarget } from './components/nav/navModel'
 import InfoDashboard from './components/info/InfoDashboard'
 import AnnouncementsPage from './components/info/AnnouncementsPage'
 import RegistrationsPage from './components/info/RegistrationsPage'
-import OfficialEventsPage from './components/info/OfficialEventsPage'
 import ToolsPage from './components/info/ToolsPage'
 import InfoSearchPage from './components/info/InfoSearchPage'
 import AuthRequired from './components/info/AuthRequired'
@@ -131,6 +130,7 @@ const PUBLIC_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
 const EVENTS_CONTEXT_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
   'feed',
   'events',
+  'wydarzenia',
   'profile',
   'userProfile',
 ])
@@ -200,7 +200,7 @@ function getAppShellClass(_view: AppShellView): string {
 /** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */
 function getAppContentShellClass(view: AppShellView): string {
   if (view === 'chat' || view === 'aula') return 'w-full px-4 lg:px-6'
-  if (view === 'events' || view === 'miejsca' || view === 'notifications') {
+  if (view === 'events' || view === 'wydarzenia' || view === 'miejsca' || view === 'notifications') {
     return 'mx-auto w-full max-w-[1800px] px-4 lg:px-6 xl:px-8'
   }
   if (view === 'mojPlan') {
@@ -210,7 +210,6 @@ function getAppContentShellClass(view: AppShellView): string {
     view === 'home' ||
     view === 'komunikaty' ||
     view === 'rejestracje' ||
-    view === 'wydarzenia' ||
     view === 'szukaj' ||
     view === 'niezbednik' ||
     view === 'feed' ||
@@ -241,18 +240,18 @@ function getMainLayoutClass(view: AppShellView): string {
     'home',
     'komunikaty',
     'rejestracje',
-    'wydarzenia',
     'szukaj',
     'niezbednik',
     'feed',
     'search',
     'group',
+    'wydarzenia',
+    'events',
     'sale',
     'znizki',
     'usos',
     'adminDiag',
     'adminReports',
-    'events',
     'miejsca',
     'notifications',
     'mojPlan',
@@ -1529,7 +1528,17 @@ function App() {
       case 'rejestracje':
         return <RegistrationsPage faculty={facultyPreference} isAuthenticated={isAuthenticated} />
       case 'wydarzenia':
-        return <OfficialEventsPage isAuthenticated={isAuthenticated} />
+        return (
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <Suspense fallback={viewFallback}>
+              <EventsHub
+                currentUserId={session?.user.id ?? ''}
+                guestMode={!session}
+                onNavigateToProfileHandle={navigateToProfileByHandle}
+              />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
       case 'szukaj':
         // Nowe wyszukiwanie z nagłówka/menu niesie `searchNonce` — zmiana klucza
         // resetuje pole do frazy z URL bez synchronizacji w efekcie.
@@ -1924,7 +1933,8 @@ function App() {
           ) : null}
 
           <main id="tresc" tabIndex={-1} className={`${contentShellClass} ${mainLayoutClass} outline-none`}>
-            {session && EVENTS_CONTEXT_VIEWS.has(effectiveActiveView) ? (
+            {EVENTS_CONTEXT_VIEWS.has(effectiveActiveView) &&
+            (session || effectiveActiveView === 'wydarzenia') ? (
               <EventsProvider>{animatedMain}</EventsProvider>
             ) : (
               animatedMain

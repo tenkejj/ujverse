@@ -89,16 +89,16 @@ const noOverflow = async (page) =>
   record('N2 browser forward returns to search', true)
 
   // Sidebar navigation
-  for (const [label, path, h1] of [
-    ['Komunikaty', '/komunikaty', 'Komunikaty'],
-    ['Rejestracje', '/rejestracje', 'Rejestracje USOS'],
-    ['Wydarzenia', '/wydarzenia', 'Wydarzenia na UJ'],
-    ['Niezbędnik', '/niezbednik', 'Niezbędnik studenta'],
-    ['Start', '/', 'Wszystko, co ważne na UJ, w jednym miejscu'],
+  for (const [label, path, assert] of [
+    ['Komunikaty', '/komunikaty', async (p) => p.getByRole('heading', { level: 1, name: 'Komunikaty' }).waitFor()],
+    ['Rejestracje', '/rejestracje', async (p) => p.getByRole('heading', { level: 1, name: 'Rejestracje USOS' }).waitFor()],
+    ['Wydarzenia', '/wydarzenia', async (p) => p.getByRole('tablist', { name: 'Widoki strony Wydarzenia' }).waitFor()],
+    ['Niezbędnik', '/niezbednik', async (p) => p.getByRole('heading', { level: 1, name: 'Niezbędnik studenta' }).waitFor()],
+    ['Start', '/', async (p) => p.getByRole('heading', { level: 1, name: 'Wszystko, co ważne na UJ, w jednym miejscu' }).waitFor()],
   ]) {
     await page.getByRole('navigation', { name: 'Sekcje UJverse' }).getByRole('button', { name: label, exact: true }).click()
     await page.waitForURL(`${BASE}${path}`)
-    await page.getByRole('heading', { level: 1, name: h1 }).waitFor()
+    await assert(page)
     record(`N3 sidebar → ${path}`, true)
   }
   await context.close()
