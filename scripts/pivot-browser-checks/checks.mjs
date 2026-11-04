@@ -46,8 +46,9 @@ const noOverflow = async (page) =>
   await page.getByRole('heading', { level: 1, name: /Wszystko, co ważne na UJ/ }).waitFor()
   record('A1 dashboard H1 visible at / without login', true)
   record('A2 no login form on /', (await page.locator('#auth-username').count()) === 0)
-  await page.locator('article').first().waitFor({ timeout: 15000 })
-  const annCount = await page.getByRole('heading', { name: 'Najnowsze komunikaty' }).locator('xpath=ancestor::section').locator('article').count()
+  const annSection = page.getByRole('heading', { name: 'Najnowsze komunikaty' }).locator('xpath=ancestor::section')
+  await annSection.locator('article').first().waitFor({ timeout: 20000 })
+  const annCount = await annSection.locator('article').count()
   record('A3 real announcements rendered for anon', annCount > 0, `${annCount} items`)
   const sourceLinks = await page.getByRole('link', { name: /Sprawdź w źródle|Lista komunikatów wydziału/ }).count()
   record('D1 announcements link to sources', sourceLinks > 0, `${sourceLinks} links`)
@@ -55,8 +56,15 @@ const noOverflow = async (page) =>
   record('D2 source link is an https UJ URL', /^https:\/\/[^/]*uj\.edu\.pl/.test(firstHref ?? ''), firstHref ?? '')
   const addedLabel = await page.locator('time', { hasText: 'dodano' }).first().getAttribute('title')
   record('J1 announcement date labelled as "added to UJverse"', /Dodano do UJverse/.test(addedLabel ?? ''), addedLabel ?? '')
+  // Po migracji anon SELECT: widać karty USOSweb. Bez niej: jeden komunikat „niedostępne”.
+  await page.waitForTimeout(1200)
   const unavailable = await page.getByText('Dane o rejestracjach z USOSweb są chwilowo niedostępne.').count()
-  record('J2 registrations without anon access shown as unavailable, not empty', unavailable === 1)
+  const usosLinks = await page.getByRole('link', { name: 'Otwórz w USOSweb' }).count()
+  record(
+    'J2 registrations: live USOSweb rows or honest unavailable notice',
+    unavailable === 1 || usosLinks > 0,
+    unavailable === 1 ? 'unavailable' : `${usosLinks} USOSweb links`,
+  )
 
   // Ctrl+K focuses header search
   await page.keyboard.press('Control+k')
@@ -82,16 +90,16 @@ const noOverflow = async (page) =>
   record('N2 browser forward returns to search', true)
 
   // Sidebar navigation
-  for (const [label, path, h1] of [
-    ['Komunikaty', '/komunikaty', 'Komunikaty'],
-    ['Rejestracje', '/rejestracje', 'Rejestracje USOS'],
-    ['Wydarzenia', '/wydarzenia', 'Wydarzenia na UJ'],
-    ['Niezbędnik', '/niezbednik', 'Niezbędnik studenta'],
-    ['Start', '/', 'Wszystko, co ważne na UJ, w jednym miejscu'],
+  for (const [label, path, assert] of [
+    ['Komunikaty', '/komunikaty', async (p) => p.getByRole('heading', { level: 1, name: 'Komunikaty' }).waitFor()],
+    ['Rejestracje', '/rejestracje', async (p) => p.getByRole('heading', { level: 1, name: 'Rejestracje USOS' }).waitFor()],
+    ['Wydarzenia', '/wydarzenia', async (p) => p.getByRole('tablist', { name: 'Widoki strony Wydarzenia' }).waitFor()],
+    ['Niezbędnik', '/niezbednik', async (p) => p.getByRole('heading', { level: 1, name: 'Niezbędnik studenta' }).waitFor()],
+    ['Start', '/', async (p) => p.getByRole('heading', { level: 1, name: 'Wszystko, co ważne na UJ, w jednym miejscu' }).waitFor()],
   ]) {
     await page.getByRole('navigation', { name: 'Sekcje UJverse' }).getByRole('button', { name: label, exact: true }).click()
     await page.waitForURL(`${BASE}${path}`)
-    await page.getByRole('heading', { level: 1, name: h1 }).waitFor()
+    await assert(page)
     record(`N3 sidebar → ${path}`, true)
   }
   await context.close()

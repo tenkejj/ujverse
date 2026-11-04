@@ -29,6 +29,7 @@ import {
   AnnouncementStatusPill,
   ExternalSourceLink,
   FOCUS_RING,
+  INFO_FEED_ROW_CLS,
   INFO_META_CLS,
   INFO_TEXT_CLS,
   INFO_TITLE_CLS,
@@ -62,7 +63,8 @@ export function AnnouncementItem({
 }: {
   item: InfoAnnouncement
   now: Date
-  variant?: 'compact' | 'full'
+  /** `feed` = wiersz na Start (bez karty i bez excerptu). */
+  variant?: 'compact' | 'full' | 'feed'
   headingLevel?: 'h2' | 'h3'
 }) {
   const Heading = headingLevel
@@ -71,7 +73,7 @@ export function AnnouncementItem({
   const [loadingBody, setLoadingBody] = useState(false)
   const [bodyError, setBodyError] = useState(false)
 
-  const showExcerpt = item.excerpt.length > 0 && !sameText(item.excerpt, item.title)
+  const showExcerpt = variant === 'compact' && item.excerpt.length > 0 && !sameText(item.excerpt, item.title)
   const body = fullBody ?? item.body
   const canExpand = variant === 'full' && (item.body.length > item.excerpt.length || item.mayHaveFullBody)
 
@@ -90,6 +92,35 @@ export function AnnouncementItem({
   }
 
   const meta = [item.facultyShort ?? null, item.sourceLabel].filter(Boolean).join(' · ')
+  const sourceLabel = item.sourceIsListing ? 'Lista komunikatów wydziału' : 'Sprawdź w źródle'
+  const sourceTitle = item.sourceIsListing
+    ? 'Ten komunikat nie ma osobnego adresu — otwieramy listę komunikatów wydziału'
+    : undefined
+
+  if (variant === 'feed') {
+    return (
+      <article className={INFO_FEED_ROW_CLS}>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <AnnouncementStatusPill status={item.status} />
+              {meta ? <span className={INFO_META_CLS}>{meta}</span> : null}
+              <span className={INFO_META_CLS}>
+                <TimeStamp iso={item.addedAt} prefix="dodano" meaning={ADDED_MEANING} now={now} />
+              </span>
+            </div>
+            <Heading className={`${INFO_TITLE_CLS} line-clamp-2 break-words`}>{item.title}</Heading>
+            <div className="mt-1.5">
+              <ExternalSourceLink href={item.sourceUrl} title={sourceTitle}>
+                {sourceLabel}
+              </ExternalSourceLink>
+            </div>
+          </div>
+          <SaveToggle item={item} />
+        </div>
+      </article>
+    )
+  }
 
   return (
     <BaseCard as="article" variant="inner" className="m-0 p-3">
@@ -107,7 +138,7 @@ export function AnnouncementItem({
             </div>
           ) : null}
 
-          {variant === 'compact' && showExcerpt ? (
+          {showExcerpt ? (
             <p className={`${INFO_TEXT_CLS} mt-1 line-clamp-2 break-words`}>{item.excerpt}</p>
           ) : null}
 
@@ -123,11 +154,8 @@ export function AnnouncementItem({
             <span className={INFO_META_CLS}>
               <TimeStamp iso={item.addedAt} prefix="dodano" meaning={ADDED_MEANING} now={now} />
             </span>
-            <ExternalSourceLink
-              href={item.sourceUrl}
-              title={item.sourceIsListing ? 'Ten komunikat nie ma osobnego adresu — otwieramy listę komunikatów wydziału' : undefined}
-            >
-              {item.sourceIsListing ? 'Lista komunikatów wydziału' : 'Sprawdź w źródle'}
+            <ExternalSourceLink href={item.sourceUrl} title={sourceTitle}>
+              {sourceLabel}
             </ExternalSourceLink>
             {canExpand ? (
               <button
@@ -166,7 +194,7 @@ export function RegistrationItem({
   item: InfoRegistration
   now: Date
   latestVerifiedAt: string | null
-  variant?: 'compact' | 'full'
+  variant?: 'compact' | 'full' | 'feed'
   headingLevel?: 'h2' | 'h3' | 'h4'
   showUnit?: boolean
 }) {
@@ -193,14 +221,18 @@ export function RegistrationItem({
     if (!closes) {
       deadline = 'Bez podanego terminu zamknięcia'
     } else if (countdown && timing.msUntilClose !== null) {
-      deadline = `Zamyka się za ${formatDurationShort(timing.msUntilClose)} · ${formatDateTime(closes, now)}`
+      deadline = variant === 'feed'
+        ? `Zamyka się za ${formatDurationShort(timing.msUntilClose)}`
+        : `Zamyka się za ${formatDurationShort(timing.msUntilClose)} · ${formatDateTime(closes, now)}`
       if (timing.urgency === 'closing-critical') deadlineTone = 'text-rose-700 dark:text-rose-300 font-semibold'
       else if (timing.urgency === 'closing-soon') deadlineTone = 'text-amber-800 dark:text-amber-300 font-semibold'
     } else {
       deadline = `Otwarta do ${formatDateTime(closes, now)}`
     }
   } else if (countdown) {
-    deadline = `Otwiera się za ${formatDurationShort(timing.msUntilOpen)} · ${formatDateTime(opens, now)}`
+    deadline = variant === 'feed'
+      ? `Otwiera się za ${formatDurationShort(timing.msUntilOpen)}`
+      : `Otwiera się za ${formatDurationShort(timing.msUntilOpen)} · ${formatDateTime(opens, now)}`
     if (timing.urgency === 'opening-soon') deadlineTone = 'text-sky-800 dark:text-sky-300 font-semibold'
   } else {
     deadline = `Otwarcie ${formatDateTime(opens, now)}${closes ? ` · do ${formatDate(closes, now)}` : ''}`
@@ -209,17 +241,44 @@ export function RegistrationItem({
   const kindLabel = item.registrationKind !== 'inne' ? REGISTRATION_KIND_META[item.registrationKind].label : null
   const unitLine = [showUnit ? item.unitName : null, item.facultyShort].filter(Boolean).join(' · ')
   const verifiedDate = parseIsoDate(item.verifiedAt)
+  const phasePill = (
+    <span
+      className={`inline-flex items-center rounded-full border bg-transparent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${phaseCls}`}
+    >
+      {phaseLabel}
+    </span>
+  )
+
+  if (variant === 'feed') {
+    return (
+      <article className={INFO_FEED_ROW_CLS}>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {phasePill}
+              {kindLabel ? <span className={INFO_META_CLS}>{kindLabel}</span> : null}
+            </div>
+            <Heading className={`${INFO_TITLE_CLS} line-clamp-2 break-words`}>{item.title}</Heading>
+            <p className={`mt-1 text-xs ${deadlineTone}`}>
+              <time dateTime={(timing.phase === 'open' ? closes ?? opens : opens).toISOString()}>{deadline}</time>
+              {unitLine ? <span className={` ${INFO_META_CLS}`}> · {unitLine}</span> : null}
+            </p>
+            <div className="mt-1.5">
+              <ExternalSourceLink href={item.url}>Otwórz w USOSweb</ExternalSourceLink>
+            </div>
+          </div>
+          <SaveToggle item={item} />
+        </div>
+      </article>
+    )
+  }
 
   return (
     <BaseCard as="article" variant="inner" className="m-0 p-3">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span
-              className={`inline-flex items-center rounded-full border bg-transparent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${phaseCls}`}
-            >
-              {phaseLabel}
-            </span>
+            {phasePill}
             {kindLabel ? <span className={INFO_META_CLS}>{kindLabel}</span> : null}
             {unitLine ? <span className={`${INFO_META_CLS} min-w-0 break-words`}>{unitLine}</span> : null}
           </div>
@@ -261,7 +320,7 @@ export function EventItem({
 }: {
   item: InfoEvent
   now: Date
-  variant?: 'compact' | 'full'
+  variant?: 'compact' | 'full' | 'feed'
   headingLevel?: 'h2' | 'h3'
 }) {
   const Heading = headingLevel
@@ -269,21 +328,44 @@ export function EventItem({
   const dayLabel = formatDayLabel(item.dayKey, now)
   const host = hostLabel(item.url)
   const isPast = item.dayKey < warsawDayKey(now)
+  const dateBlock = (
+    <div
+      className="flex w-11 shrink-0 flex-col items-center rounded-lg border border-brand-ink/20 bg-brand-ink/[0.04] py-1 dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/[0.07]"
+      aria-hidden
+    >
+      <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand-ink dark:text-brand-gold-bright">
+        {formatMonthShort(day)}
+      </span>
+      <span className="text-base font-extrabold leading-none text-brand-ink dark:text-brand-gold-bright">
+        {formatDayOfMonth(day)}
+      </span>
+    </div>
+  )
+
+  if (variant === 'feed') {
+    return (
+      <article className={INFO_FEED_ROW_CLS}>
+        <div className="flex items-start gap-3">
+          {dateBlock}
+          <div className="min-w-0 flex-1">
+            <p className={INFO_META_CLS}>
+              <time dateTime={item.dayKey}>{isPast ? `Minione · ${dayLabel}` : dayLabel}</time>
+            </p>
+            <Heading className={`${INFO_TITLE_CLS} mt-0.5 line-clamp-2 break-words`}>{item.title}</Heading>
+            <div className="mt-1.5">
+              <ExternalSourceLink href={item.url}>Szczegóły{host ? ` na ${host}` : ''}</ExternalSourceLink>
+            </div>
+          </div>
+          <SaveToggle item={item} />
+        </div>
+      </article>
+    )
+  }
 
   return (
     <BaseCard as="article" variant="inner" className="m-0 p-3">
       <div className="flex items-start gap-3">
-        <div
-          className="flex w-12 shrink-0 flex-col items-center rounded-xl border border-brand-ink/25 bg-brand-ink/[0.05] py-1.5 dark:border-brand-gold-bright/35 dark:bg-brand-gold-bright/[0.08]"
-          aria-hidden
-        >
-          <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-brand-ink dark:text-brand-gold-bright">
-            {formatMonthShort(day)}
-          </span>
-          <span className="text-lg font-extrabold leading-none text-brand-ink dark:text-brand-gold-bright">
-            {formatDayOfMonth(day)}
-          </span>
-        </div>
+        {dateBlock}
         <div className="min-w-0 flex-1">
           <p className={INFO_META_CLS}>
             <time dateTime={item.dayKey}>{isPast ? `Minione · ${dayLabel}` : dayLabel}</time>
@@ -317,7 +399,15 @@ const SAVED_KIND_LABEL: Record<SavedItem['kind'], string> = {
   event: 'Wydarzenie',
 }
 
-export function SavedItemRow({ item, now }: { item: SavedItem; now: Date }) {
+export function SavedItemRow({
+  item,
+  now,
+  variant = 'compact',
+}: {
+  item: SavedItem
+  now: Date
+  variant?: 'compact' | 'feed'
+}) {
   let due: string | null = null
   if (item.dueAt) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(item.dueAt)) {
@@ -327,13 +417,13 @@ export function SavedItemRow({ item, now }: { item: SavedItem; now: Date }) {
       if (date) due = date.getTime() < now.getTime() ? `termin minął ${formatDate(date, now)}` : `do ${formatDateTime(date, now)}`
     }
   }
-  return (
-    <BaseCard as="article" variant="inner" className="m-0 flex items-start gap-2 p-3">
+  const body = (
+    <>
       <div className="min-w-0 flex-1">
         <p className={INFO_META_CLS}>
           {[SAVED_KIND_LABEL[item.kind], item.context, due].filter(Boolean).join(' · ')}
         </p>
-        <h3 className={`${INFO_TITLE_CLS} mt-0.5 break-words`}>{item.title}</h3>
+        <h3 className={`${INFO_TITLE_CLS} mt-0.5 line-clamp-2 break-words`}>{item.title}</h3>
         <div className="mt-1.5">
           <ExternalSourceLink href={item.url}>Otwórz źródło</ExternalSourceLink>
         </div>
@@ -347,6 +437,14 @@ export function SavedItemRow({ item, now }: { item: SavedItem; now: Date }) {
       >
         <Trash2 size={15} aria-hidden />
       </button>
+    </>
+  )
+  if (variant === 'feed') {
+    return <article className={`${INFO_FEED_ROW_CLS} flex items-start gap-2`}>{body}</article>
+  }
+  return (
+    <BaseCard as="article" variant="inner" className="m-0 flex items-start gap-2 p-3">
+      {body}
     </BaseCard>
   )
 }

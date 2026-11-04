@@ -5,7 +5,6 @@ import {
   AlarmClock,
   ArrowUpRight,
   BookOpen,
-  Bookmark,
   CalendarDays,
   ClipboardList,
   DoorOpen,
@@ -44,7 +43,6 @@ import {
   FOCUS_RING,
   INFO_ACTION_LINK_CLS,
   INFO_META_CLS,
-  INFO_TEXT_CLS,
   INFO_TITLE_CLS,
   InfoSection,
   TimeStamp,
@@ -81,21 +79,15 @@ function priorityLink(entry: PriorityItem): string | null {
 
 function PriorityDetails({ entry, now }: { entry: PriorityItem; now: Date }) {
   if (entry.kind === 'announcement') {
-    const ann = entry.item
     return (
-      <>
-        {ann.excerpt && ann.excerpt !== ann.title ? (
-          <p className={`${INFO_TEXT_CLS} mt-1 line-clamp-2 break-words`}>{ann.excerpt}</p>
-        ) : null}
-        <p className={`${INFO_META_CLS} mt-1`}>
-          <TimeStamp
-            iso={ann.addedAt}
-            prefix="dodano"
-            meaning="Dodano do UJverse (moment pobrania ze strony wydziału)"
-            now={now}
-          />
-        </p>
-      </>
+      <p className={`${INFO_META_CLS} mt-1`}>
+        <TimeStamp
+          iso={entry.item.addedAt}
+          prefix="dodano"
+          meaning="Dodano do UJverse (moment pobrania ze strony wydziału)"
+          now={now}
+        />
+      </p>
     )
   }
   const reg = entry.item
@@ -121,27 +113,23 @@ export function PrioritySection({
 }) {
   if (items.length === 0) return null
   return (
-    <InfoSection
-      icon={Zap}
-      title="Ważne teraz"
-      subtitle={`Terminy i zmiany dla: ${facultyLabel}`}
-    >
-      <ul className="grid gap-2.5 sm:grid-cols-2" role="list">
+    <InfoSection variant="feed" icon={Zap} title="Ważne teraz" subtitle={facultyLabel}>
+      <ul className="divide-y divide-zinc-200/80 dark:divide-white/10" role="list">
         {items.map((entry) => {
           const label = priorityLabel(entry, now)
           const isRegistration = entry.kind === 'registration'
           return (
             <li key={entry.key} className="min-w-0">
-              <BaseCard as="article" variant="inner" className="m-0 h-full p-3">
+              <article className="py-3.5 first:pt-2">
                 <p className={`text-[11px] font-bold uppercase tracking-wide ${label.tone}`}>{label.text}</p>
-                <h3 className={`${INFO_TITLE_CLS} mt-1 break-words`}>{entry.item.title}</h3>
+                <h3 className={`${INFO_TITLE_CLS} mt-1 line-clamp-2 break-words`}>{entry.item.title}</h3>
                 <PriorityDetails entry={entry} now={now} />
-                <div className="mt-2">
+                <div className="mt-1.5">
                   <ExternalSourceLink href={priorityLink(entry)}>
                     {isRegistration ? 'Otwórz w USOSweb' : 'Sprawdź w źródle'}
                   </ExternalSourceLink>
                 </div>
-              </BaseCard>
+              </article>
             </li>
           )
         })}
@@ -222,31 +210,72 @@ export function ResourceGrid({
   )
 }
 
+/** Kompaktowy pasek linków na Start — bez kafelek z opisami. */
+export function ResourceStrip({
+  resources,
+  isAuthenticated,
+}: {
+  resources: readonly InfoResource[]
+  isAuthenticated: boolean
+}) {
+  return (
+    <ul className="flex flex-wrap gap-x-1 gap-y-1" role="list">
+      {resources.map((resource) => {
+        const locked = resource.requiresAccount && !isAuthenticated
+        const cls = `inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold text-brand-ink transition-colors hover:bg-black/[0.04] dark:text-brand-gold-bright dark:hover:bg-white/[0.05] ${FOCUS_RING}`
+        const label = (
+          <>
+            {resource.label}
+            {resource.external ? <ArrowUpRight size={12} className="opacity-60" aria-hidden /> : null}
+            {locked ? <Lock size={11} className="opacity-60" aria-hidden /> : null}
+          </>
+        )
+        return (
+          <li key={resource.id}>
+            {resource.external ? (
+              <a href={resource.href} target="_blank" rel="noopener noreferrer" className={cls}>
+                {label}
+                <span className="sr-only">(otwiera się w nowej karcie)</span>
+              </a>
+            ) : (
+              <Link to={resource.href} className={cls}>
+                {label}
+              </Link>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 /* ─────────────────────────── Zapisane ─────────────────────────── */
 
 export function SavedSection({ items, now }: { items: SavedItem[]; now: Date }) {
   const [showAll, setShowAll] = useState(false)
   if (items.length === 0) return null
-  const visible = showAll ? items : items.slice(0, 4)
+  const visible = showAll ? items : items.slice(0, 3)
   return (
-    <InfoSection
-      icon={Bookmark}
-      title="Zapisane"
-      subtitle="Zapisane na tym urządzeniu — bez konta i bez synchronizacji."
-    >
-      <ul className="grid gap-2.5 md:grid-cols-2" role="list">
+    <section aria-labelledby="board-saved-heading" className="min-w-0">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <h2 id="board-saved-heading" className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Zapisane
+        </h2>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Na tym urządzeniu</p>
+      </div>
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
         {visible.map((item) => (
           <li key={`${item.kind}:${item.id}`} className="min-w-0">
             <SavedItemRow item={item} now={now} />
           </li>
         ))}
       </ul>
-      {items.length > 4 ? (
-        <button type="button" onClick={() => setShowAll((v) => !v)} className={`${INFO_ACTION_LINK_CLS} self-start`}>
+      {items.length > 3 ? (
+        <button type="button" onClick={() => setShowAll((v) => !v)} className={`${INFO_ACTION_LINK_CLS} mt-3`}>
           {showAll ? 'Pokaż mniej' : `Pokaż wszystkie (${items.length})`}
         </button>
       ) : null}
-    </InfoSection>
+    </section>
   )
 }
 
@@ -276,39 +305,24 @@ export function SourcesNote({
   now: Date
 }) {
   return (
-    <footer className="rounded-2xl border border-zinc-200/80 bg-white/50 p-4 text-xs text-zinc-600 backdrop-blur-md dark:border-white/10 dark:bg-white/[0.02] dark:text-zinc-400">
-      <p className="flex items-start gap-2">
+    <footer className="border-t border-zinc-200/80 pt-8 text-sm text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+      <p className="flex items-start gap-2 max-w-3xl">
         <ShieldCheck size={15} className={`mt-0.5 shrink-0 ${widgetGoldCls}`} aria-hidden />
         <span>
-          <strong className="font-semibold text-zinc-800 dark:text-zinc-200">Informacje z oficjalnych źródeł UJ.</strong>{' '}
-          Komunikaty pobieramy automatycznie z {ANNOUNCEMENT_SOURCE_COUNT} stron wydziałów, rejestracje z publicznego
-          katalogu USOSweb, a wydarzenia z kalendarza uj.edu.pl. Dane są regularnie aktualizowane, ale nie na żywo —
-          w sprawach ważnych zawsze sprawdź w źródle.
+          Dane z {ANNOUNCEMENT_SOURCE_COUNT} stron wydziałów, USOSweb i uj.edu.pl. Nie aktualizujemy ich na żywo —
+          w ważnych sprawach sprawdź źródło. UJverse to nieoficjalny projekt studencki.
         </span>
       </p>
-      <dl className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-3">
-        <div>
-          <dt className={INFO_META_CLS}>Najnowszy komunikat dodany</dt>
-          <dd className="font-medium text-zinc-800 dark:text-zinc-200">
-            <FreshnessValue iso={announcementsLatest} meaning="Najnowszy komunikat dodany do UJverse" now={now} />
-          </dd>
-        </div>
-        <div>
-          <dt className={INFO_META_CLS}>Rejestracje potwierdzone w USOSweb</dt>
-          <dd className={`font-medium ${registrationsStale && registrationsLatest ? 'text-amber-800 dark:text-amber-300' : 'text-zinc-800 dark:text-zinc-200'}`}>
-            <FreshnessValue iso={registrationsLatest} meaning="Ostatnia aktualizacja z USOSweb" now={now} />
-            {registrationsStale && registrationsLatest ? ' · mogą być nieaktualne' : null}
-          </dd>
-        </div>
-        <div>
-          <dt className={INFO_META_CLS}>Wydarzenia sprawdzone na uj.edu.pl</dt>
-          <dd className="font-medium text-zinc-800 dark:text-zinc-200">
-            <FreshnessValue iso={eventsLatest} meaning="Ostatnie pobranie kalendarza uj.edu.pl" now={now} />
-          </dd>
-        </div>
-      </dl>
-      <p className={`mt-3 ${sideMutedCls}`}>
-        UJverse to niezależny projekt studencki — nie jest oficjalnym serwisem Uniwersytetu Jagiellońskiego.
+      <p className={`mt-3 text-xs ${sideMutedCls}`}>
+        Aktualność: komunikaty{' '}
+        <FreshnessValue iso={announcementsLatest} meaning="Najnowszy komunikat dodany do UJverse" now={now} />
+        {' · '}rejestracje{' '}
+        <span className={registrationsStale && registrationsLatest ? 'text-amber-800 dark:text-amber-300' : undefined}>
+          <FreshnessValue iso={registrationsLatest} meaning="Ostatnia aktualizacja z USOSweb" now={now} />
+          {registrationsStale && registrationsLatest ? ' (mogą być nieaktualne)' : null}
+        </span>
+        {' · '}wydarzenia{' '}
+        <FreshnessValue iso={eventsLatest} meaning="Ostatnie pobranie kalendarza uj.edu.pl" now={now} />
       </p>
     </footer>
   )
