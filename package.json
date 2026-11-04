@@ -21,6 +21,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "tsc -p tsconfig.test.json && node --import tsx --test \"tests/**/*.test.ts\"",
     "preview": "vite preview",
     "deploy:prod": "npx vercel build --prod && npx vercel deploy --prebuilt --prod --force --yes",
     "search:resync": "tsx scripts/force-resync.ts",
