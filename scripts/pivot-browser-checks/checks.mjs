@@ -55,9 +55,15 @@ const noOverflow = async (page) =>
   record('D2 source link is an https UJ URL', /^https:\/\/[^/]*uj\.edu\.pl/.test(firstHref ?? ''), firstHref ?? '')
   const addedLabel = await page.locator('time', { hasText: 'dodano' }).first().getAttribute('title')
   record('J1 announcement date labelled as "added to UJverse"', /Dodano do UJverse/.test(addedLabel ?? ''), addedLabel ?? '')
-  await page.getByText('Dane o rejestracjach z USOSweb są chwilowo niedostępne.').waitFor({ timeout: 15000 })
+  // Po migracji anon SELECT: widać karty USOSweb. Bez niej: jeden komunikat „niedostępne”.
+  await page.waitForTimeout(1200)
   const unavailable = await page.getByText('Dane o rejestracjach z USOSweb są chwilowo niedostępne.').count()
-  record('J2 registrations without anon access shown as unavailable, not empty', unavailable === 1)
+  const usosLinks = await page.getByRole('link', { name: 'Otwórz w USOSweb' }).count()
+  record(
+    'J2 registrations: live USOSweb rows or honest unavailable notice',
+    unavailable === 1 || usosLinks > 0,
+    unavailable === 1 ? 'unavailable' : `${usosLinks} USOSweb links`,
+  )
 
   // Ctrl+K focuses header search
   await page.keyboard.press('Control+k')
