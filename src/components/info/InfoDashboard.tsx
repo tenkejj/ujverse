@@ -68,6 +68,30 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
   const tools = INFO_RESOURCES.filter((r) => DASHBOARD_TOOL_IDS.includes(r.id))
   const announcementsTitle = selected ? 'Komunikaty z Twojego wydziału' : 'Najnowsze komunikaty'
 
+  const regsUnavailable = registrationsQ.isSuccess && latestRegistrationRun === null
+  const eventsUnavailable = eventsQ.isSuccess && eventsQ.data.freshness.latest === null
+  const showRegistrations = !hidden.has('registrations')
+  const showEvents = !hidden.has('events')
+  // Pusta szyna (brak dostępu anon) nie zabiera szerokości — komunikaty dostają pełny board.
+  const railHasSignal =
+    (showRegistrations &&
+      (registrationsQ.isPending ||
+        registrationsQ.isError ||
+        (!regsUnavailable && registrations.length > 0) ||
+        (!regsUnavailable && registrations.length === 0 && otherRegistrationsCount > 0))) ||
+    (showEvents &&
+      (eventsQ.isPending || eventsQ.isError || (!eventsUnavailable && events.length > 0)))
+  const showRail = showRegistrations || showEvents
+  // Nadal renderujemy cichy status „niedostępne”, ale w jednej wąskiej stopce pod boardem —
+  // nie jako pustą kolumnę.
+  const unavailableNotes: string[] = []
+  if (showRegistrations && regsUnavailable) {
+    unavailableNotes.push('Dane o rejestracjach z USOSweb są chwilowo niedostępne.')
+  }
+  if (showEvents && eventsUnavailable) {
+    unavailableNotes.push('Dane o wydarzeniach z uj.edu.pl są chwilowo niedostępne.')
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-4">
       <header className="flex flex-col gap-5 border-b border-zinc-200/80 pb-6 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
@@ -93,7 +117,11 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
 
       {selectedShort ? <BoardSpotlight items={priority} facultyLabel={selectedShort} now={now} /> : null}
 
-      <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,0.85fr)]">
+      <div
+        className={`grid items-start gap-10 ${
+          showRail && railHasSignal ? 'xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,0.85fr)]' : ''
+        }`}
+      >
         <div className="flex min-w-0 flex-col gap-10">
           {!hidden.has('announcements') ? (
             <BoardAnnouncements
@@ -127,6 +155,12 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
             />
           ) : null}
 
+          {unavailableNotes.length > 0 && !railHasSignal ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400" role="status">
+              {unavailableNotes.join(' ')}
+            </p>
+          ) : null}
+
           <SavedSection items={saved} now={now} />
 
           {!hidden.has('tools') ? (
@@ -148,40 +182,42 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
           ) : null}
         </div>
 
-        <BoardRail
-          registrations={registrations}
-          events={events}
-          now={now}
-          latestRegistrationRun={latestRegistrationRun}
-          registrationsPending={registrationsQ.isPending}
-          registrationsError={registrationsQ.isError}
-          registrationsUnavailable={registrationsQ.isSuccess && latestRegistrationRun === null}
-          registrationsStale={registrationsStale}
-          onRetryRegistrations={() => void registrationsQ.refetch()}
-          registrationsEmpty={
-            <DomainEmpty
-              tone="quiet"
-              action={
-                selected && otherRegistrationsCount > 0 ? (
-                  <Link to="/rejestracje" className={`${INFO_ACTION_LINK_CLS} -ml-2`}>
-                    Zobacz {otherRegistrationsCount} w innych jednostkach UJ
-                  </Link>
-                ) : undefined
-              }
-            >
-              {selected
-                ? `Brak aktywnych rejestracji dla ${selectedShort}.`
-                : 'Brak aktywnych rejestracji w katalogu USOSweb.'}
-            </DomainEmpty>
-          }
-          eventsPending={eventsQ.isPending}
-          eventsError={eventsQ.isError}
-          eventsUnavailable={eventsQ.isSuccess && eventsQ.data.freshness.latest === null}
-          eventsEmpty={<DomainEmpty tone="quiet">Brak zapowiedzianych wydarzeń w kalendarzu UJ.</DomainEmpty>}
-          onRetryEvents={() => void eventsQ.refetch()}
-          hideRegistrations={hidden.has('registrations')}
-          hideEvents={hidden.has('events')}
-        />
+        {showRail && railHasSignal ? (
+          <BoardRail
+            registrations={registrations}
+            events={events}
+            now={now}
+            latestRegistrationRun={latestRegistrationRun}
+            registrationsPending={registrationsQ.isPending}
+            registrationsError={registrationsQ.isError}
+            registrationsUnavailable={regsUnavailable}
+            registrationsStale={registrationsStale}
+            onRetryRegistrations={() => void registrationsQ.refetch()}
+            registrationsEmpty={
+              <DomainEmpty
+                tone="quiet"
+                action={
+                  selected && otherRegistrationsCount > 0 ? (
+                    <Link to="/rejestracje" className={`${INFO_ACTION_LINK_CLS} -ml-2`}>
+                      Zobacz {otherRegistrationsCount} w innych jednostkach UJ
+                    </Link>
+                  ) : undefined
+                }
+              >
+                {selected
+                  ? `Brak aktywnych rejestracji dla ${selectedShort}.`
+                  : 'Brak aktywnych rejestracji w katalogu USOSweb.'}
+              </DomainEmpty>
+            }
+            eventsPending={eventsQ.isPending}
+            eventsError={eventsQ.isError}
+            eventsUnavailable={eventsUnavailable}
+            eventsEmpty={<DomainEmpty tone="quiet">Brak zapowiedzianych wydarzeń w kalendarzu UJ.</DomainEmpty>}
+            onRetryEvents={() => void eventsQ.refetch()}
+            hideRegistrations={!showRegistrations}
+            hideEvents={!showEvents}
+          />
+        ) : null}
       </div>
 
       <SourcesNote
