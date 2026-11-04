@@ -16,24 +16,25 @@ export type HubStat = { value: string | number; label: string }
 export function InfoHubShell({
   children,
   rail,
+  contentClassName = 'min-w-0 space-y-6',
+  frameClassName,
 }: {
   children: ReactNode
   rail?: ReactNode
+  /** Override głównej kolumny — np. większe `space-y` na Start. */
+  contentClassName?: string
+  frameClassName?: string
 }) {
   return (
     <div
       className={
-        rail
-          ? 'grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]'
-          : 'min-w-0'
+        frameClassName ??
+        (rail
+          ? 'grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 2xl:grid-cols-[minmax(0,1fr)_320px]'
+          : 'min-w-0')
       }
     >
-      <motion.div
-        variants={H.motion.page}
-        initial="hidden"
-        animate="show"
-        className="min-w-0 space-y-6"
-      >
+      <motion.div variants={H.motion.page} initial="hidden" animate="show" className={contentClassName}>
         {children}
       </motion.div>
       {rail ? (

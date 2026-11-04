@@ -34,26 +34,35 @@ const goldMuted = theme.text.goldMuted
 export function AnnouncementHubCard({
   item,
   now,
+  compact = false,
 }: {
   item: InfoAnnouncement
   now: Date
+  /** Start / overview — bez excerptu, mniej tekstu. */
+  compact?: boolean
 }) {
   const added = parseIsoDate(item.addedAt)
-  const meta = [item.facultyShort, item.sourceLabel].filter(Boolean).join(' · ')
+  const meta = compact
+    ? item.facultyShort || item.sourceLabel || null
+    : [item.facultyShort, item.sourceLabel].filter(Boolean).join(' · ')
   return (
     <BaseCard as="article" variant="default" className="relative flex h-full flex-col overflow-hidden p-0">
       <div className="absolute right-2 top-2 z-[2]">
         <SaveToggle item={item} />
       </div>
-      <div className="flex flex-1 flex-col gap-3 p-4 pr-12">
+      <div className={`flex flex-1 flex-col pr-12 ${compact ? 'gap-2.5 p-4' : 'gap-3 p-4'}`}>
         <div className="flex flex-wrap items-center gap-2">
           <AnnouncementStatusPill status={item.status} />
           {meta ? <span className="text-xs text-zinc-500 dark:text-zinc-400">{meta}</span> : null}
         </div>
-        <h3 className="line-clamp-3 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+        <h3
+          className={`font-semibold leading-snug text-zinc-900 dark:text-zinc-50 ${
+            compact ? 'line-clamp-2 text-[15px]' : 'line-clamp-3 text-[15px]'
+          }`}
+        >
           {item.title}
         </h3>
-        {item.excerpt && item.excerpt !== item.title ? (
+        {!compact && item.excerpt && item.excerpt !== item.title ? (
           <p className="line-clamp-2 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">{item.excerpt}</p>
         ) : null}
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1">
@@ -86,10 +95,13 @@ export function RegistrationHubCard({
   item,
   now,
   latestVerifiedAt,
+  compact = false,
 }: {
   item: InfoRegistration
   now: Date
   latestVerifiedAt: string | null
+  /** Start — tytuł + termin, bez jednostki. */
+  compact?: boolean
 }) {
   const timing = registrationTiming(item, now)
   const countdown = canShowCountdown(item, timing, now, latestVerifiedAt)
@@ -118,32 +130,38 @@ export function RegistrationHubCard({
       <div className="absolute right-2 top-2 z-[2]">
         <SaveToggle item={item} />
       </div>
-      <div className="flex flex-1 flex-col gap-3 p-4 pr-12">
+      <div className={`flex flex-1 flex-col pr-12 ${compact ? 'gap-2 p-4' : 'gap-3 p-4'}`}>
         <div className="flex items-start gap-3">
           <div className="min-w-[44px] shrink-0 text-center">
             <span className={`block text-[10px] font-bold uppercase tracking-wide ${goldMuted}`}>
               {timing.phase === 'open' ? 'Trwa' : 'Wkrótce'}
             </span>
-            <span className="mt-0.5 block text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              {kindLabel ?? 'USOS'}
-            </span>
+            {!compact ? (
+              <span className="mt-0.5 block text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                {kindLabel ?? 'USOS'}
+              </span>
+            ) : null}
           </div>
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <h3 className="line-clamp-3 text-[15px] font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+          <div className={`min-w-0 flex-1 ${compact ? 'space-y-1' : 'space-y-1.5'}`}>
+            <h3
+              className={`font-semibold leading-snug text-zinc-900 dark:text-zinc-50 ${
+                compact ? 'line-clamp-2 text-[15px]' : 'line-clamp-3 text-[15px]'
+              }`}
+            >
               {item.title}
             </h3>
-            {(item.unitName || item.facultyShort) && (
+            {!compact && (item.unitName || item.facultyShort) ? (
               <p className="flex items-start gap-1 text-xs text-zinc-500 dark:text-zinc-400">
                 <MapPin size={12} className="mt-0.5 shrink-0" aria-hidden />
                 <span className="line-clamp-2">{[item.unitName, item.facultyShort].filter(Boolean).join(' · ')}</span>
               </p>
-            )}
+            ) : null}
             <p className={`text-sm ${tone}`}>
               <time dateTime={(timing.phase === 'open' ? closes ?? opens : opens).toISOString()}>{deadline}</time>
             </p>
           </div>
         </div>
-        <div className="mt-auto pt-1">
+        <div className="mt-auto pt-0.5">
           <ExternalSourceLink href={item.url}>Otwórz w USOSweb</ExternalSourceLink>
         </div>
       </div>
