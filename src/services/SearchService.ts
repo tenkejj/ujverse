@@ -92,6 +92,53 @@ class SearchServiceImpl {
     return content
   }
 
+  /**
+   * Publiczna wyszukiwarka informacji: wyłącznie komunikaty z `ujverse_content`
+   * (`type = "komunikat"`), bez postów, profili i Auli. Zwraca id komunikatów
+   * w kolejności rankingu; treść dociąga się z Supabase. Rzuca, gdy Meili
+   * jest niedostępne — wywołujący przechodzi wtedy na zapytanie do bazy.
+   */
+  async searchAnnouncementIds(
+    query: string,
+    opts?: SearchOpts & { departments?: readonly string[] },
+  ): Promise<string[]> {
+    const q = query.trim()
+    if (q.length < 2) return []
+    const escape = (v: string) => v.replaceAll('\\', '\\\\').replaceAll('"', '\\"')
+    const filters = ['type = "komunikat"']
+    if (opts?.departments && opts.departments.length > 0) {
+      filters.push(`department IN [${opts.departments.map((d) => `"${escape(d)}"`).join(', ')}]`)
+    }
+    const response = await meiliSearchInstance.multiSearch(
+      {
+        queries: [
+          {
+            indexUid: readContentIndexName(),
+            q,
+            limit: opts?.limit ?? 20,
+            filter: filters.join(' AND '),
+            attributesToRetrieve: ['id', 'sourceId', 'type'],
+          },
+        ],
+      },
+      opts?.signal ? { signal: opts.signal } : undefined,
+    )
+    const hits = response.results[0]?.hits ?? []
+    const ids: string[] = []
+    for (const hit of hits) {
+      const record = hit as Record<string, unknown>
+      if (record.type !== 'komunikat') continue
+      const sourceId =
+        typeof record.sourceId === 'string'
+          ? record.sourceId
+          : typeof record.id === 'string'
+            ? record.id.replace(/^announcement-/, '')
+            : null
+      if (sourceId) ids.push(sourceId)
+    }
+    return ids
+  }
+
   async searchUsers(query: string, opts?: SearchOpts & { department?: string }): Promise<SearchUserHit[]> {
     const { users } = await this.searchUnified(query, {
       ...opts,

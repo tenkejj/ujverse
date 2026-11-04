@@ -2,6 +2,9 @@
  * UJverse — root application component (session, routing, feed orchestration).
  * Copyright © 2026 Franciszek Dranka. All rights reserved.
  * License: Proprietary — see LICENSE in repo root.
+ *
+ * Widoki informacyjne (`PUBLIC_VIEWS`) działają bez konta; pozostałe wymagają
+ * sesji i bez niej pokazują `AuthRequired` zamiast pełnoekranowego logowania.
  */
 import {
   lazy,
@@ -15,26 +18,17 @@ import {
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { PenSquare } from 'lucide-react'
 import { toast } from './lib/appToast'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase } from './supabaseClient'
-import Auth from './Auth'
 import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import SideNav from './components/SideNav'
 import MobileDrawer from './components/MobileDrawer'
-import ProfileModal from './components/ProfileModal'
-import FeedView from './components/FeedView'
-import EventsHub from './components/EventsHub'
 import { EventsProvider } from './hooks/useEvents'
-import ProfilePage from './pages/Profile'
 import ResetPassword from './pages/ResetPassword'
 import BottomNav from './components/BottomNav'
-import NotificationsView from './components/NotificationsView'
-import SinglePostView from './components/SinglePostView'
-import ComposeBox from './components/ComposeBox'
-import SettingsView from './components/SettingsView'
-import NotificationPopup from './components/notifications/NotificationPopup'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
 import { extractPostTags } from './lib/postTags'
@@ -46,19 +40,44 @@ import { useFeedMutations } from './hooks/useFeedMutations'
 import { useAulaUnread } from './hooks/useAulaUnread'
 import { useMyCohort } from './hooks/useMyCohort'
 import { playNotificationPing } from './lib/notificationSound'
-import SearchPageView from './components/SearchPageView'
-import GroupView from './components/GroupView'
-import GroupsIndexView from './components/GroupsIndexView'
-import MojPlanView from './components/MojPlanView'
-import AdminDiagView from './components/admin/AdminDiagView'
-import AdminReportsView from './components/admin/AdminReportsView'
 import { LecturerSubscriptionsProvider } from './lib/lecturerSubscriptionsContext'
 import { useOnboarding } from './hooks/useOnboarding'
+import { useFacultyPreference } from './hooks/useInfoPreferences'
+import { consumePostAuthPath, loginPathFor } from './lib/info/postAuth'
+import { sanitizeNextPath } from './lib/info/links'
+import type { NavTarget } from './components/nav/navModel'
+import InfoDashboard from './components/info/InfoDashboard'
+import AnnouncementsPage from './components/info/AnnouncementsPage'
+import RegistrationsPage from './components/info/RegistrationsPage'
+import OfficialEventsPage from './components/info/OfficialEventsPage'
+import ToolsPage from './components/info/ToolsPage'
+import InfoSearchPage from './components/info/InfoSearchPage'
+import AuthRequired from './components/info/AuthRequired'
+import { PROTECTED_FEATURES } from './components/info/protectedFeatures'
+import { RowSkeletons } from './components/info/infoUi'
 import {
   isGroupIndexPath,
   slugFromGroupPath,
 } from './lib/groupPaths'
 
+// Widoki konta i społeczności ładowane dopiero przy wejściu — strona startowa
+// nie pobiera kodu feedu, profili ani powiadomień.
+const Auth = lazy(() => import('./Auth'))
+const FeedView = lazy(() => import('./components/FeedView'))
+const EventsHub = lazy(() => import('./components/EventsHub'))
+const ProfilePage = lazy(() => import('./pages/Profile'))
+const NotificationsView = lazy(() => import('./components/NotificationsView'))
+const SinglePostView = lazy(() => import('./components/SinglePostView'))
+const ComposeBox = lazy(() => import('./components/ComposeBox'))
+const SettingsView = lazy(() => import('./components/SettingsView'))
+const NotificationPopup = lazy(() => import('./components/notifications/NotificationPopup'))
+const ProfileModal = lazy(() => import('./components/ProfileModal'))
+const SearchPageView = lazy(() => import('./components/SearchPageView'))
+const GroupView = lazy(() => import('./components/GroupView'))
+const GroupsIndexView = lazy(() => import('./components/GroupsIndexView'))
+const MojPlanView = lazy(() => import('./components/MojPlanView'))
+const AdminDiagView = lazy(() => import('./components/admin/AdminDiagView'))
+const AdminReportsView = lazy(() => import('./components/admin/AdminReportsView'))
 const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 const AulaView = lazy(() => import('./components/aula/AulaView'))
@@ -70,6 +89,13 @@ const MiejscaNaukiView = lazy(() => import('./components/study-spots/MiejscaNauk
 const OnboardingTour = lazy(() => import('./components/onboarding/OnboardingTour'))
 
 type AppShellView =
+  | 'home'
+  | 'komunikaty'
+  | 'rejestracje'
+  | 'wydarzenia'
+  | 'szukaj'
+  | 'niezbednik'
+  | 'login'
   | 'feed'
   | 'profile'
   | 'notifications'
@@ -88,6 +114,60 @@ type AppShellView =
   | 'miejsca'
   | 'adminDiag'
   | 'adminReports'
+
+/** Widoki dostępne bez konta — wyłącznie informacje publiczne i wyszukiwarka sal. */
+const PUBLIC_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
+  'home',
+  'komunikaty',
+  'rejestracje',
+  'wydarzenia',
+  'szukaj',
+  'niezbednik',
+  'sale',
+  'login',
+])
+
+/** Widoki korzystające z kontekstu wydarzeń społeczności (`useEvents`). */
+const EVENTS_CONTEXT_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
+  'feed',
+  'events',
+  'profile',
+  'userProfile',
+])
+
+/** Widoki renderujące posty — tylko tu pobieramy feed. */
+const POST_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
+  'feed',
+  'profile',
+  'userProfile',
+  'search',
+  'group',
+  'post',
+])
+
+/** Kanoniczne ścieżki widoków bez parametrów (aliasy obsługuje `parseAppRoute`). */
+const VIEW_PATHS: Partial<Record<AppShellView, string>> = {
+  home: '/',
+  komunikaty: '/komunikaty',
+  rejestracje: '/rejestracje',
+  wydarzenia: '/wydarzenia',
+  szukaj: '/szukaj',
+  niezbednik: '/niezbednik',
+  login: '/logowanie',
+  feed: '/spolecznosc',
+  profile: '/profile',
+  events: '/events',
+  notifications: '/notifications',
+  search: '/search',
+  chat: '/chat',
+  aula: '/aula',
+  mojPlan: '/moj-plan',
+  sale: '/sale',
+  znizki: '/znizki',
+  usos: '/usos',
+  miejsca: '/miejsca',
+  settings: '/settings',
+}
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -127,6 +207,12 @@ function getAppContentShellClass(view: AppShellView): string {
     return 'mx-auto w-full max-w-[1600px] px-4 lg:px-8 xl:px-12'
   }
   if (
+    view === 'home' ||
+    view === 'komunikaty' ||
+    view === 'rejestracje' ||
+    view === 'wydarzenia' ||
+    view === 'szukaj' ||
+    view === 'niezbednik' ||
     view === 'feed' ||
     view === 'profile' ||
     view === 'userProfile' ||
@@ -152,6 +238,12 @@ function getMainLayoutClass(view: AppShellView): string {
   if (view === 'profile' || view === 'userProfile') return `${base} space-y-4`
   // Wąskie widoki (post, thread itd.) — jak dawniej `max-w-2xl space-y-3`.
   const shellWideViews: AppShellView[] = [
+    'home',
+    'komunikaty',
+    'rejestracje',
+    'wydarzenia',
+    'szukaj',
+    'niezbednik',
     'feed',
     'search',
     'group',
@@ -180,6 +272,17 @@ type RouteParseUnknown = { kind: 'unknown' }
 
 /** Single place that maps pathname → shell view + mirrored state (listener + effectiveActiveView). */
 function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown {
+  const simple = (view: AppShellView): RouteParseOk => ({ kind: 'ok', view, profileHandle: null, postId: null })
+  // Warstwa informacyjna (publiczna).
+  if (normalizedPath === '/') return simple('home')
+  if (normalizedPath === '/komunikaty') return simple('komunikaty')
+  if (normalizedPath === '/rejestracje') return simple('rejestracje')
+  if (normalizedPath === '/wydarzenia') return simple('wydarzenia')
+  if (normalizedPath === '/szukaj') return simple('szukaj')
+  if (normalizedPath === '/niezbednik') return simple('niezbednik')
+  if (normalizedPath === '/logowanie') return simple('login')
+  // Feed społeczności — dawniej pod `/`.
+  if (normalizedPath === '/spolecznosc') return simple('feed')
   if (normalizedPath === '/settings') {
     return { kind: 'ok', view: 'settings', profileHandle: null, postId: null }
   }
@@ -228,7 +331,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   if (normalizedPath === '/znizki') {
     return { kind: 'ok', view: 'znizki', profileHandle: null, postId: null }
   }
-  if (normalizedPath === '/usos' || normalizedPath === '/rejestracje') {
+  // Alarmy i wpisy społeczności (wymaga konta). `/rejestracje` to od pivotu
+  // publiczna lista z USOSweb (wyżej).
+  if (normalizedPath === '/usos') {
     return { kind: 'ok', view: 'usos', profileHandle: null, postId: null }
   }
   if (normalizedPath === '/miejsca' || normalizedPath === '/sale-nauki') {
@@ -259,9 +364,6 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   if (groupSlug) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
   }
-  if (normalizedPath === '/') {
-    return { kind: 'ok', view: 'feed', profileHandle: null, postId: null }
-  }
   return { kind: 'unknown' }
 }
 
@@ -269,7 +371,13 @@ function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const [session, setSession] = useState<Session | null>(null)
+  /** `false` dopóki `getSession()` nie odpowie — widoki publiczne nie czekają, chronione pokazują szkielet. */
+  const [authReady, setAuthReady] = useState(false)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
+  const facultyPreference = useFacultyPreference({
+    sessionUserId: session?.user?.id ?? null,
+    profileDepartment: myProfile?.department ?? null,
+  })
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
@@ -288,9 +396,19 @@ function App() {
   const [bellRingTick, setBellRingTick] = useState(0)
   const notificationsAnchorRef = useRef<HTMLButtonElement | null>(null)
 
+  const normalizedPath = useMemo(() => normalizePathname(location.pathname), [location.pathname])
+  const routeSnapshot = useMemo(() => parseAppRoute(normalizedPath), [normalizedPath])
+  const effectiveActiveView: AppShellView = useMemo(() => {
+    if (routeSnapshot.kind === 'unknown') return 'home'
+    return routeSnapshot.view
+  }, [routeSnapshot])
+
   // Posts — single React Query cache `['feed', viewerId]` (patrz `useFeedQuery`).
   // Wszystko (lista, likes, comments count) idzie z jednego RPC `get_feed_snapshot`.
-  const feedQuery = useFeedQuery(session?.user?.id ?? null)
+  // Pobierane tylko na widokach z postami — strona startowa ich nie potrzebuje.
+  const feedQuery = useFeedQuery(
+    POST_VIEWS.has(effectiveActiveView) ? (session?.user?.id ?? null) : null,
+  )
   const feedMutations = useFeedMutations(session?.user?.id ?? null)
   const posts = feedQuery.posts as Post[]
   const postsLoading = feedQuery.isLoading
@@ -390,7 +508,6 @@ function App() {
     () => notifications.filter((n) => !n.is_read).length,
     [notifications],
   )
-  const normalizedPath = useMemo(() => normalizePathname(location.pathname), [location.pathname])
   const routeProfileHandle = useMemo(() => {
     const h = profileHandleFromPath(normalizedPath)
     return h ? h.toLowerCase() : null
@@ -400,12 +517,6 @@ function App() {
     () => slugFromGroupPath(normalizedPath),
     [normalizedPath],
   )
-  const routeSnapshot = useMemo(() => parseAppRoute(normalizedPath), [normalizedPath])
-  const effectiveActiveView: AppShellView = useMemo(() => {
-    if (routeSnapshot.kind === 'unknown') return 'feed'
-    return routeSnapshot.view
-  }, [routeSnapshot])
-
   // Unread badge dla Auli — lekka subskrypcja cohort_messages (poza widokiem
   // Auli; gdy user na niej jest, hook się sam wycisza i marker się resetuje).
   const { hasUnread: aulaHasUnread, markSeen: markAulaSeen } = useAulaUnread({
@@ -447,7 +558,6 @@ function App() {
   /** Keep navigation-related state aligned with the URL (hybrid shell). */
   useEffect(() => {
     if (isResetPasswordPath(location.pathname)) return
-    if (!session) return
     const parsed = parseAppRoute(normalizedPath)
     if (parsed.kind === 'unknown') {
       navigate('/', { replace: true })
@@ -462,7 +572,7 @@ function App() {
       const next = postId
       return prev === next ? prev : next
     })
-  }, [normalizedPath, navigate, session])
+  }, [location.pathname, normalizedPath, navigate])
 
   const fetchProfileHandleByUserId = useCallback(
     async (userId: string): Promise<string | null> => {
@@ -628,17 +738,58 @@ function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => setSession(s))
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: s } }) => setSession(s))
+      .catch((err) => console.warn('[auth] getSession failed', err))
+      .finally(() => setAuthReady(true))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
+      setAuthReady(true)
       if (event === 'PASSWORD_RECOVERY') {
         const p = (window.location.pathname || '/').replace(/\/+$/, '') || '/'
         if (p !== '/reset-password') {
           navigate('/reset-password', { replace: true })
         }
+        return
+      }
+      // Powrót tam, skąd użytkownik przyszedł do logowania (także po OAuth,
+      // który wraca na `/`). Cel jest zapisywany tylko przez stronę `/logowanie`.
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && s) {
+        const next = consumePostAuthPath()
+        if (next) navigate(next, { replace: true })
       }
     })
     return () => subscription.unsubscribe()
+  }, [navigate])
+
+  // Zalogowany użytkownik na `/logowanie` (np. zaraz po zalogowaniu hasłem)
+  // wraca pod `?next=` albo na stronę startową.
+  useEffect(() => {
+    if (!authReady || !session || normalizedPath !== '/logowanie') return
+    const next = sanitizeNextPath(new URLSearchParams(location.search).get('next'))
+    navigate(next ?? '/', { replace: true })
+  }, [authReady, session, normalizedPath, location.search, navigate])
+
+  // Po wylogowaniu (lub wygaśnięciu sesji) czyścimy stan konta — widoki
+  // publiczne działają dalej, chronione pokażą `AuthRequired`.
+  useEffect(() => {
+    if (session) return
+    setMyProfile(null)
+    setNotifications([])
+    setNotificationsPanelOpen(false)
+    setMenuOpen(false)
+    setProfileModalOpen(false)
+    setIsMobileComposeOpen(false)
+  }, [session])
+
+  const handleSignOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      toast.error('Nie udało się wylogować. Spróbuj ponownie.')
+      return
+    }
+    navigate('/')
   }, [navigate])
 
   /**
@@ -760,56 +911,9 @@ function App() {
     view: AppShellView,
   ) => {
     const p = normalizePathname(location.pathname)
-    if (view === 'profile') {
-      if (p !== '/profile') navigate('/profile')
-      return
-    }
-    if (view === 'feed') {
-      if (p !== '/') navigate('/')
-      return
-    }
-    if (view === 'events') {
-      if (p !== '/events') navigate('/events')
-      return
-    }
-    if (view === 'notifications') {
-      if (p !== '/notifications') navigate('/notifications')
-      return
-    }
-    if (view === 'search') {
-      if (p !== '/search') navigate('/search')
-      return
-    }
-    if (view === 'chat') {
-      if (p !== '/chat') navigate('/chat')
-      return
-    }
-    if (view === 'aula') {
-      if (p !== '/aula') navigate('/aula')
-      return
-    }
-    if (view === 'mojPlan') {
-      if (p !== '/moj-plan') navigate('/moj-plan')
-      return
-    }
-    if (view === 'sale') {
-      if (p !== '/sale') navigate('/sale')
-      return
-    }
-    if (view === 'znizki') {
-      if (p !== '/znizki') navigate('/znizki')
-      return
-    }
-    if (view === 'usos') {
-      if (p !== '/usos') navigate('/usos')
-      return
-    }
-    if (view === 'miejsca') {
-      if (p !== '/miejsca') navigate('/miejsca')
-      return
-    }
-    if (view === 'settings') {
-      if (p !== '/settings') navigate('/settings')
+    const simplePath = VIEW_PATHS[view]
+    if (simplePath) {
+      if (p !== simplePath) navigate(simplePath)
       return
     }
     const currentHandle = activeProfileHandle ?? routeProfileHandle
@@ -952,13 +1056,6 @@ function App() {
   const closeNotificationsPanel = useCallback(() => {
     setNotificationsPanelOpen(false)
   }, [])
-
-  const openNotificationsPanel = useCallback(() => {
-    setMenuOpen(false)
-    setNotificationsPanelOpen(true)
-    void fetchNotifications()
-  }, [fetchNotifications])
-
 
   // ── Likes ─────────────────────────────────────────────────────────────────
 
@@ -1350,47 +1447,30 @@ function App() {
 
   useEffect(() => () => { if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current) }, [])
 
-  // ── Auth guard ────────────────────────────────────────────────────────────
+  // ── Widoki: publiczne vs wymagające konta ─────────────────────────────────
 
   if (isResetPasswordPath(location.pathname)) {
     return <ResetPassword />
   }
 
-  if (!session) return <Auth />
+  if (effectiveActiveView === 'login') {
+    // Zalogowanego przenosi efekt `/logowanie` wyżej — formularza nie montujemy,
+    // żeby nie zapisać zbędnego celu powrotu.
+    if (!authReady || session) return null
+    return (
+      <Suspense fallback={null}>
+        <Auth />
+      </Suspense>
+    )
+  }
 
-  const displayName = myProfile?.full_name || session.user.email?.split('@')[0] || 'Użytkownik'
+  const isAuthenticated = Boolean(session)
+  const sessionUserId = session?.user?.id ?? null
+  const displayName = myProfile?.full_name || session?.user?.email?.split('@')[0] || 'Użytkownik'
+  const firstName = myProfile?.full_name?.trim().split(/\s+/)[0] || null
   const viewedHandle = routeProfileHandle ?? activeProfileHandle
-
-  // SideNav i Header dostają ten sam `navActiveView`. `aula` zostaje (SideNav
-  // ma pozycję „Aula" — chcemy ją podświetlać). Tylko widoki techniczne
-  // (post/userProfile/search/group/chat/sale) mapujemy na 'feed', a
-  // 'settings' i 'adminDiag' na 'profile' (avatar w headerze podświetlony —
-  // admin-diag dashboard nie ma reprezentacji w nawigacji, więc pada pod
-  // tę samą bramkę co settings).
-  const navActiveView =
-    effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
-      ? 'feed'
-      : effectiveActiveView === 'search' ||
-          effectiveActiveView === 'group' ||
-          effectiveActiveView === 'chat' ||
-          effectiveActiveView === 'sale'
-        ? 'feed'
-      : effectiveActiveView === 'settings' || effectiveActiveView === 'adminDiag' || effectiveActiveView === 'adminReports'
-        ? 'profile'
-        : effectiveActiveView
-
-  // BottomNav (mobile) ma 5 slotów: Strona, Plan, +, Alerty, Profil.
-  // Sekcje, dla których nie ma dedykowanego taba (Wydarzenia, Aula,
-  // Zniżki, USOS, Miejsca), żyją w MobileDrawer i podświetlają „Strona".
-  // `mojPlan` ma własny tab — NIE mapujemy go na `feed`.
-  const bottomNavActiveView =
-    navActiveView === 'znizki' ||
-    navActiveView === 'usos' ||
-    navActiveView === 'miejsca' ||
-    navActiveView === 'aula' ||
-    navActiveView === 'events'
-      ? 'feed'
-      : navActiveView
+  const currentPathWithQuery = `${location.pathname}${location.search}`
+  const loginHref = loginPathFor(currentPathWithQuery)
 
   const contentShellClass = getAppContentShellClass(effectiveActiveView)
   const appShellClass = getAppShellClass(effectiveActiveView)
@@ -1399,7 +1479,7 @@ function App() {
   const sharedPostProps = {
     myProfile,
     displayName,
-    currentUserId: session.user.id,
+    currentUserId: sessionUserId ?? '',
     likesCountByPost,
     likedPostIds,
     heartPopPostId,
@@ -1423,49 +1503,112 @@ function App() {
     onDeleteComment: handleDeleteComment,
   }
 
-  const mainViewContent: ReactNode = (() => {
+  const navigateToTarget = (target: NavTarget) => navigateToMainView(target)
+  const recoverHome = () => navigateToMainView('home')
+  const openMobileCompose = () => {
+    setCreateError(null)
+    setCreateBody('')
+    setCreateImageFile(null)
+    setIsMobileComposeOpen(true)
+  }
+
+  const viewFallback = (
+    <div className="mx-auto w-full max-w-3xl" aria-busy="true">
+      <RowSkeletons count={3} />
+    </div>
+  )
+
+  const renderPublicView = (): ReactNode => {
+    switch (effectiveActiveView) {
+      case 'home':
+        return (
+          <InfoDashboard faculty={facultyPreference} isAuthenticated={isAuthenticated} firstName={firstName} />
+        )
+      case 'komunikaty':
+        return <AnnouncementsPage faculty={facultyPreference} />
+      case 'rejestracje':
+        return <RegistrationsPage faculty={facultyPreference} isAuthenticated={isAuthenticated} />
+      case 'wydarzenia':
+        return <OfficialEventsPage isAuthenticated={isAuthenticated} />
+      case 'szukaj':
+        // Nowe wyszukiwanie z nagłówka/menu niesie `searchNonce` — zmiana klucza
+        // resetuje pole do frazy z URL bez synchronizacji w efekcie.
+        return (
+          <InfoSearchPage
+            key={String((location.state as { searchNonce?: number } | null)?.searchNonce ?? 'szukaj')}
+            faculty={facultyPreference}
+            isAuthenticated={isAuthenticated}
+          />
+        )
+      case 'niezbednik':
+        return <ToolsPage isAuthenticated={isAuthenticated} />
+      case 'sale':
+        return (
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <Suspense fallback={viewFallback}>
+              <SaleFinderView onBack={goBackInHistory} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
+      default:
+        return null
+    }
+  }
+
+  const renderProtectedView = (s: Session): ReactNode => {
     switch (effectiveActiveView) {
       case 'feed':
         return (
-          <FeedView
-            {...sharedPostProps}
-            posts={
-              selectedDepartment
-                ? posts.filter(
-                    (p) =>
-                      canonicalDepartment(p.profiles?.department) ===
-                      canonicalDepartment(selectedDepartment),
-                  )
-                : posts
-            }
-            postsLoading={postsLoading}
-            postsError={postsError}
-            hasNextPage={feedQuery.hasNextPage}
-            isFetchingNextPage={feedQuery.isFetchingNextPage}
-            onFetchNextPage={feedQuery.fetchNextPage}
-            selectedDepartment={selectedDepartment}
-            onDepartmentChange={setSelectedDepartment}
-            isComposing={isComposing}
-            createBody={createBody}
-            createImageFile={createImageFile}
-            createImagePreview={createImagePreview}
-            createLoading={createLoading}
-            createError={createError}
-            onBodyChange={setCreateBody}
-            onImageFileChange={setCreateImageFile}
-            onComposeOpen={() => { setCreateError(null); setIsComposing(true) }}
-            onComposeReset={resetCompose}
-            onCreatePost={handleCreatePost}
-            onNavigateToPost={navigateToPost}
-            onNavigateToUser={navigateToUser}
-            onNavigateToEvents={() => navigateToMainView('events')}
-            onNavigateToProfileHandle={navigateToProfileByHandle}
-          />
+          <>
+            <FeedView
+              {...sharedPostProps}
+              posts={
+                selectedDepartment
+                  ? posts.filter(
+                      (p) =>
+                        canonicalDepartment(p.profiles?.department) ===
+                        canonicalDepartment(selectedDepartment),
+                    )
+                  : posts
+              }
+              postsLoading={postsLoading}
+              postsError={postsError}
+              hasNextPage={feedQuery.hasNextPage}
+              isFetchingNextPage={feedQuery.isFetchingNextPage}
+              onFetchNextPage={feedQuery.fetchNextPage}
+              selectedDepartment={selectedDepartment}
+              onDepartmentChange={setSelectedDepartment}
+              isComposing={isComposing}
+              createBody={createBody}
+              createImageFile={createImageFile}
+              createImagePreview={createImagePreview}
+              createLoading={createLoading}
+              createError={createError}
+              onBodyChange={setCreateBody}
+              onImageFileChange={setCreateImageFile}
+              onComposeOpen={() => { setCreateError(null); setIsComposing(true) }}
+              onComposeReset={resetCompose}
+              onCreatePost={handleCreatePost}
+              onNavigateToPost={navigateToPost}
+              onNavigateToUser={navigateToUser}
+              onNavigateToEvents={() => navigateToMainView('events')}
+              onNavigateToProfileHandle={navigateToProfileByHandle}
+            />
+            {/* Pisanie wpisu na telefonie — dawniej środkowy przycisk dolnego paska. */}
+            <button
+              type="button"
+              onClick={openMobileCompose}
+              className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white shadow-lg transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 md:hidden dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-zinc-900"
+            >
+              <PenSquare size={18} strokeWidth={2.25} aria-hidden />
+              Nowy wpis
+            </button>
+          </>
         )
       case 'events':
         return (
           <EventsHub
-            currentUserId={session.user.id}
+            currentUserId={s.user.id}
             onNavigateToProfileHandle={navigateToProfileByHandle}
           />
         )
@@ -1482,8 +1625,8 @@ function App() {
             viewedHandle={effectiveActiveView === 'userProfile' ? viewedHandle! : null}
             onNavigateToPost={navigateToPost}
             joinedAtLabel={
-              session.user.created_at
-                ? new Date(session.user.created_at).toLocaleDateString('pl-PL', {
+              s.user.created_at
+                ? new Date(s.user.created_at).toLocaleDateString('pl-PL', {
                     month: 'long',
                     year: 'numeric',
                   })
@@ -1552,9 +1695,9 @@ function App() {
         )
       case 'settings':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+          <ViewErrorBoundary onRecover={recoverHome}>
             <SettingsView
-              email={session.user?.email ?? undefined}
+              email={s.user?.email ?? undefined}
               myProfile={myProfile}
               onProfilePatch={(patch) =>
                 setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
@@ -1564,116 +1707,133 @@ function App() {
           </ViewErrorBoundary>
         )
       case 'chat':
-        return (
-          <Suspense fallback={null}>
-            <ChatHubView displayName={displayName} myProfile={myProfile} />
-          </Suspense>
-        )
+        return <ChatHubView displayName={displayName} myProfile={myProfile} />
       case 'aula':
         return (
-          <Suspense fallback={null}>
-            <AulaView
-              currentUserId={session.user.id}
-              myProfile={myProfile}
-              onProfilePatch={(patch) =>
-                setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
-              }
-              onAulaSeen={markAulaSeen}
-            />
-          </Suspense>
+          <AulaView
+            currentUserId={s.user.id}
+            myProfile={myProfile}
+            onProfilePatch={(patch) =>
+              setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
+            }
+            onAulaSeen={markAulaSeen}
+          />
         )
       case 'mojPlan':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+          <ViewErrorBoundary onRecover={recoverHome}>
             <MojPlanView
-              userId={session.user.id}
+              userId={s.user.id}
               myProfile={myProfile}
               cohort={myCohort}
             />
           </ViewErrorBoundary>
         )
-      case 'sale':
-        return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <SaleFinderView onBack={goBackInHistory} />
-            </Suspense>
-          </ViewErrorBoundary>
-        )
       case 'znizki':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <ZniskiView userId={session.user.id} />
-            </Suspense>
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <ZniskiView userId={s.user.id} />
           </ViewErrorBoundary>
         )
       case 'usos':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <UsosRegistrationsView
-                userId={session.user.id}
-                studyProgram={myProfile?.study_program ?? null}
-                yearStarted={myProfile?.year_started ?? null}
-              />
-            </Suspense>
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <UsosRegistrationsView
+              userId={s.user.id}
+              studyProgram={myProfile?.study_program ?? null}
+              yearStarted={myProfile?.year_started ?? null}
+            />
           </ViewErrorBoundary>
         )
       case 'miejsca':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <MiejscaNaukiView
-                session={session}
-                onNavigateToProfile={navigateToProfileByHandle}
-              />
-            </Suspense>
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <MiejscaNaukiView
+              session={s}
+              onNavigateToProfile={navigateToProfileByHandle}
+            />
           </ViewErrorBoundary>
         )
       case 'adminDiag':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+          <ViewErrorBoundary onRecover={recoverHome}>
             <AdminDiagView />
           </ViewErrorBoundary>
         )
       case 'adminReports':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+          <ViewErrorBoundary onRecover={recoverHome}>
             <AdminReportsView myProfile={myProfile} onBack={goBackInHistory} />
           </ViewErrorBoundary>
         )
       default:
         return null
     }
+  }
+
+  const mainViewContent: ReactNode = (() => {
+    if (PUBLIC_VIEWS.has(effectiveActiveView)) return renderPublicView()
+    // Sesja jeszcze nieznana — szkielet zamiast mignięcia ekranu logowania.
+    if (!authReady) return viewFallback
+    if (!session) {
+      const copy = PROTECTED_FEATURES[effectiveActiveView] ?? {
+        feature: 'Ta część UJverse',
+        reason: 'Ta funkcja jest dostępna po zalogowaniu.',
+      }
+      return <AuthRequired copy={copy} nextPath={currentPathWithQuery} />
+    }
+    return <Suspense fallback={viewFallback}>{renderProtectedView(session)}</Suspense>
   })()
 
+  const animatedMain = (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={`${effectiveActiveView}:${viewedHandle ?? ''}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+      >
+        {mainViewContent}
+      </motion.div>
+    </AnimatePresence>
+  )
+
   return (
-    <EventsProvider>
-    <LecturerSubscriptionsProvider userId={session.user.id}>
+    <LecturerSubscriptionsProvider userId={sessionUserId}>
     <>
       <Analytics />
-      <AppOnboardingGate
-        userId={session.user.id}
-        myProfile={myProfile}
-        onProfilePatch={(patch) =>
-          setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
-        }
-      />
-      {profileModalOpen && (
-        <ProfileModal
-          session={session}
-          profile={myProfile}
-          onClose={() => setProfileModalOpen(false)}
-          onSaved={(u) => { setMyProfile(u); feedMutations.invalidateFeed() }}
-          onAvatarUpdate={(url) =>
-            setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
+      <a
+        href="#tresc"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[500] focus:rounded-xl focus:bg-bg-app focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-brand-ink focus:shadow-lg dark:focus:text-brand-gold-bright"
+      >
+        Przejdź do treści
+      </a>
+      {session ? (
+        <AppOnboardingGate
+          userId={session.user.id}
+          myProfile={myProfile}
+          onProfilePatch={(patch) =>
+            setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
           }
         />
-      )}
+      ) : null}
+      {session && profileModalOpen ? (
+        <Suspense fallback={null}>
+          <ProfileModal
+            session={session}
+            profile={myProfile}
+            onClose={() => setProfileModalOpen(false)}
+            onSaved={(u) => { setMyProfile(u); feedMutations.invalidateFeed() }}
+            onAvatarUpdate={(url) =>
+              setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
+            }
+          />
+        </Suspense>
+      ) : null}
 
       <AnimatePresence>
-        {isMobileComposeOpen && (
+        {session && isMobileComposeOpen && (
           <motion.div
             key="mobile-compose-overlay"
             className="fixed inset-0 z-320 md:hidden flex flex-col justify-end"
@@ -1695,22 +1855,24 @@ function App() {
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             >
               <div className="mx-auto mb-2 h-1.5 w-12 shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-              <ComposeBox
-                sheetMode
-                myProfile={myProfile}
-                displayName={displayName}
-                isComposing={true}
-                body={createBody}
-                imageFile={createImageFile}
-                imagePreview={createImagePreview}
-                isLoading={createLoading}
-                error={createError}
-                onBodyChange={setCreateBody}
-                onImageFileChange={setCreateImageFile}
-                onOpen={() => { setCreateError(null) }}
-                onReset={resetCompose}
-                onSubmit={async () => { await handleCreatePost(); setIsMobileComposeOpen(false) }}
-              />
+              <Suspense fallback={null}>
+                <ComposeBox
+                  sheetMode
+                  myProfile={myProfile}
+                  displayName={displayName}
+                  isComposing={true}
+                  body={createBody}
+                  imageFile={createImageFile}
+                  imagePreview={createImagePreview}
+                  isLoading={createLoading}
+                  error={createError}
+                  onBodyChange={setCreateBody}
+                  onImageFileChange={setCreateImageFile}
+                  onOpen={() => { setCreateError(null) }}
+                  onReset={resetCompose}
+                  onSubmit={async () => { await handleCreatePost(); setIsMobileComposeOpen(false) }}
+                />
+              </Suspense>
             </motion.div>
           </motion.div>
         )}
@@ -1719,95 +1881,57 @@ function App() {
       <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
         <div className={`relative min-h-dvh ${appShellClass}`}>
         <SideNav
-          activeView={navActiveView}
+          activeView={effectiveActiveView}
+          isAuthenticated={isAuthenticated}
           unreadCount={unreadCount}
           aulaHasUnread={aulaHasUnread}
-          onNavigateToFeed={() => navigateToMainView('feed')}
-          onNavigateToEvents={() => navigateToMainView('events')}
-          onNavigateToAula={() => navigateToMainView('aula')}
-          onNavigateToNotifications={() => navigateToMainView('notifications')}
-          onNavigateToProfile={() => navigateToMainView('profile')}
-          onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
-          onNavigateToZnizki={() => navigateToMainView('znizki')}
-          onNavigateToUsos={() => navigateToMainView('usos')}
-          onNavigateToMiejsca={() => navigateToMainView('miejsca')}
-          onNavigateToSettings={openSettings}
+          onNavigate={navigateToTarget}
+          onSignOut={() => void handleSignOut()}
+          loginHref={loginHref}
         />
 
         <div className="min-w-0 w-full flex-1">
           <Header
+            isAuthenticated={isAuthenticated}
             myProfile={myProfile}
             displayName={displayName}
             menuOpen={menuOpen}
             setMenuOpen={setMenuOpen}
-            activeView={navActiveView}
+            activeView={effectiveActiveView}
             unreadCount={unreadCount}
             bellRingTick={bellRingTick}
             notificationsPanelOpen={notificationsPanelOpen}
             notificationsAnchorRef={notificationsAnchorRef}
             onToggleNotificationsPanel={toggleNotificationsPanel}
             onCloseNotificationsPanel={closeNotificationsPanel}
-            onNavigateToFeed={() => navigateToMainView('feed')}
+            onNavigateHome={() => navigateToMainView('home')}
             onNavigateToProfile={() => navigateToMainView('profile')}
-            onNavigateToEvents={(openEventId) => {
-              if (openEventId) {
-                navigate('/events', { state: { openEventId } })
-                return
-              }
-              navigateToMainView('events')
-            }}
-            onNavigateToSearch={(query) => {
-              const normalized = (query ?? '').trim()
-              if (!normalized) {
-                navigate('/search')
-                return
-              }
-              navigate(`/search?q=${encodeURIComponent(normalized)}`)
-            }}
-            onNavigateToUser={navigateToUser}
-            onNavigateToPost={navigateToPost}
-            onNavigateToAulaMessage={navigateToAulaMessage}
-            cohortId={myCohortId}
             onOpenProfileModal={() => setProfileModalOpen(true)}
             onNavigateToSettings={openSettings}
-            onRefreshPosts={() => feedMutations.invalidateFeed()}
+            onSignOut={() => void handleSignOut()}
+            loginHref={loginHref}
+            faculty={facultyPreference}
             onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
           />
 
-          <Suspense fallback={null}>
-            <UsosAlarmBanner
-              userId={session.user.id}
-              onNavigateToUsos={() => navigateToMainView('usos' as AppShellView)}
-            />
-          </Suspense>
+          {session ? (
+            <Suspense fallback={null}>
+              <UsosAlarmBanner
+                userId={session.user.id}
+                onNavigateToUsos={() => navigateToMainView('usos')}
+              />
+            </Suspense>
+          ) : null}
 
-          <main className={`${contentShellClass} ${mainLayoutClass}`}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${effectiveActiveView}:${viewedHandle ?? ''}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-            >
-              {mainViewContent}
-            </motion.div>
-          </AnimatePresence>
-        </main>
+          <main id="tresc" tabIndex={-1} className={`${contentShellClass} ${mainLayoutClass} outline-none`}>
+            {session && EVENTS_CONTEXT_VIEWS.has(effectiveActiveView) ? (
+              <EventsProvider>{animatedMain}</EventsProvider>
+            ) : (
+              animatedMain
+            )}
+          </main>
 
-          <BottomNav
-            activeView={bottomNavActiveView}
-            setActiveView={(v) => navigateToMainView(v)}
-            unreadCount={unreadCount}
-            onOpenNotifications={openNotificationsPanel}
-            onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
-            onOpenCompose={() => {
-              setCreateError(null)
-              setCreateBody('')
-              setCreateImageFile(null)
-              setIsMobileComposeOpen(true)
-            }}
-          />
+          <BottomNav activeView={effectiveActiveView} onNavigate={navigateToTarget} />
         </div>
         </div>
       </div>
@@ -1815,60 +1939,51 @@ function App() {
       <MobileDrawer
         open={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
+        isAuthenticated={isAuthenticated}
         myProfile={myProfile}
         displayName={displayName}
-        activeView={navActiveView}
+        activeView={effectiveActiveView}
         unreadCount={unreadCount}
         aulaHasUnread={aulaHasUnread}
-        onNavigateToFeed={() => navigateToMainView('feed')}
-        onNavigateToEvents={() => navigateToMainView('events')}
-        onNavigateToAula={() => navigateToMainView('aula')}
-        onNavigateToNotifications={() => navigateToMainView('notifications')}
-        onNavigateToProfile={() => navigateToMainView('profile')}
-        onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
-        onNavigateToZnizki={() => navigateToMainView('znizki')}
-        onNavigateToUsos={() => navigateToMainView('usos')}
-        onNavigateToMiejsca={() => navigateToMainView('miejsca')}
-        onNavigateToSettings={openSettings}
-        onNavigateToSearch={(query) => {
-          const normalized = (query ?? '').trim()
-          if (!normalized) {
-            navigate('/search')
-            return
-          }
-          navigate(`/search?q=${encodeURIComponent(normalized)}`)
-        }}
+        onNavigate={navigateToTarget}
+        onSignOut={() => void handleSignOut()}
+        loginHref={loginHref}
       />
 
-      <NotificationPopup
-        open={notificationsPanelOpen}
-        onClose={closeNotificationsPanel}
-        notifications={notifications}
-        loading={notificationsLoading}
-        onMarkRead={markNotificationRead}
-        onClearAll={() => void clearAllNotifications()}
-        onNavigateToPost={navigateToPostFromNotificationsPanel}
-        onNavigateToUser={navigateToUserFromNotificationsPanel}
-        anchorRef={notificationsAnchorRef}
-      />
+      {session ? (
+        <Suspense fallback={null}>
+          <NotificationPopup
+            open={notificationsPanelOpen}
+            onClose={closeNotificationsPanel}
+            notifications={notifications}
+            loading={notificationsLoading}
+            onMarkRead={markNotificationRead}
+            onClearAll={() => void clearAllNotifications()}
+            onNavigateToPost={navigateToPostFromNotificationsPanel}
+            onNavigateToUser={navigateToUserFromNotificationsPanel}
+            anchorRef={notificationsAnchorRef}
+          />
+        </Suspense>
+      ) : null}
 
-      <Suspense fallback={null}>
-        <ChatAssistantFab
-          hidden={
-            isMobileComposeOpen ||
-            profileModalOpen ||
-            notificationsPanelOpen ||
-            menuOpen ||
-            effectiveActiveView === 'chat' ||
-            effectiveActiveView === 'aula'
-          }
-          myProfile={myProfile}
-          displayName={displayName}
-        />
-      </Suspense>
+      {session ? (
+        <Suspense fallback={null}>
+          <ChatAssistantFab
+            hidden={
+              isMobileComposeOpen ||
+              profileModalOpen ||
+              notificationsPanelOpen ||
+              menuOpen ||
+              effectiveActiveView === 'chat' ||
+              effectiveActiveView === 'aula'
+            }
+            myProfile={myProfile}
+            displayName={displayName}
+          />
+        </Suspense>
+      ) : null}
     </>
     </LecturerSubscriptionsProvider>
-    </EventsProvider>
   )
 }
 

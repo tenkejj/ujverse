@@ -28,16 +28,16 @@ const titleByView: Record<AuthView, string> = {
 }
 
 const subtitleByView: Record<AuthView, string> = {
-  login: 'Zaloguj się, żeby wrócić do społeczności UJ',
-  signup: 'Dołącz do społeczności UJverse w kilka sekund',
+  login: 'Konto daje dostęp do Mojego planu, Auli i społeczności',
+  signup: 'Do czytania informacji konto nie jest potrzebne — przyda się do planu zajęć i Auli',
   forgot: 'Wyślemy Ci link do zmiany hasła',
 }
 
-export default function Login() {
+export default function Login({ initialView = 'login' }: { initialView?: 'login' | 'signup' } = {}) {
   const reducedMotion = useReducedMotion()
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState(false)
-  const [view, setView] = useState<AuthView>('login')
+  const [view, setView] = useState<AuthView>(initialView)
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')

@@ -25,6 +25,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { load, type CheerioAPI } from 'cheerio'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { warsawLocalStringToUtcIso } from '../src/lib/warsawTime.js'
 
 const USOSWEB_BASE = 'https://www.usosweb.uj.edu.pl'
 const REGISTRATION_INDEX_URL = `${USOSWEB_BASE}/kontroler.php?_action=news/rejestracje/index`
@@ -232,25 +233,13 @@ function classifyKind(rejestracjaName: string): AllowedKind {
 }
 
 /**
- * Konwertuje "2026-09-23 17:00:00" (USOSweb local time, brak TZ) na ISO
- * z explicit timezone Europa/Warszawa. Heurystyka DST: marzec-październik = +02:00, inaczej +01:00.
- *
- * Note: USOSweb używa CEST/CET, czyli +02:00 (DST od ostatniej niedzieli marca
- * do ostatniej niedzieli października) lub +01:00 reszta roku. Naszą heurystyką
- * jest przybliżenie miesięcznym progiem — błąd rzędu 1h przez ~2 tygodnie/rok
- * jest akceptowalny (alarm i tak ticka co minutę).
+ * Konwertuje "2026-09-23 17:00:00" (USOSweb local time, brak TZ) na ISO UTC
+ * według reguł strefy Europe/Warsaw (CET/CEST ze zmianą w ostatnie niedziele
+ * marca i października). Wcześniejsza heurystyka „marzec–październik = +02:00"
+ * myliła się o godzinę na przełomie miesięcy zmiany czasu.
  */
 function localToIso(local: string): string {
-  // local: "2026-09-23 17:00:00" lub "2026-09-23 17:00"
-  const trimmed = local.trim()
-  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/)
-  if (!match) throw new Error(`Invalid datetime: ${local}`)
-  const [, year, month, day, hh, mm, ss] = match
-  const monthNum = parseInt(month, 10)
-  // Marzec-październik (3-10) traktujemy jako DST (+02:00). Granice (marzec 1-31,
-  // październik 1-31) są nieperfekcyjne, ale dla naszego use case OK.
-  const tz = monthNum >= 3 && monthNum <= 10 ? '+02:00' : '+01:00'
-  return `${year}-${month}-${day}T${hh}:${mm}:${ss ?? '00'}${tz}`
+  return warsawLocalStringToUtcIso(local)
 }
 
 /**

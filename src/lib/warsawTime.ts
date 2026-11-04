@@ -116,6 +116,25 @@ export function warsawLocalToUtc(
 }
 
 /**
+ * Tekst czasu lokalnego Warszawy (`YYYY-MM-DD HH:MM[:SS]`, np. atrybut
+ * `<local-time datetime>` z USOSweb) → ISO UTC z poprawną obsługą zmiany czasu.
+ * Rzuca przy niepoprawnym formacie.
+ */
+export function warsawLocalStringToUtcIso(local: string): string {
+  const match = local.trim().match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/)
+  if (!match) throw new Error(`Invalid datetime: ${local}`)
+  const [, y, mo, d, h, mi, s] = match
+  return warsawLocalToUtc(
+    Number(y),
+    Number(mo),
+    Number(d),
+    Number(h),
+    Number(mi),
+    s ? Number(s) : 0,
+  ).toISOString()
+}
+
+/**
  * Naprawia błędnie zapisany czas: komponenty UTC były w rzeczywistości
  * lokalnym zegarem Warszawy (klasyczny bug `Date.UTC(localParts)` /
  * floating ICS jako UTC).

@@ -352,7 +352,7 @@ export default function SearchPageView({
       navigate(`/thread/${encodeURIComponent(result.sourceId)}`)
       return
     }
-    navigate('/')
+    navigate('/komunikaty')
   }, [navigate])
 
   const handleOpenEvent = useCallback(
