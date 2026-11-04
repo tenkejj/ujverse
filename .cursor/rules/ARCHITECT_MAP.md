@@ -10,6 +10,7 @@ Operational memory for subagents working in this repo. **Before changing auth, p
 - [Workspace layout](#workspace-layout)
 - [Routing model](#routing-model)
 - [Auth (client)](#auth-client)
+- [Information layer (pivot 2026-11)](#information-layer-pivot-2026-11)
 - [Profile system](#profile-system)
 - [Follow system](#follow-system)
 - [Supabase schema from migrations](#supabase-schema-from-migrations)
@@ -36,7 +37,7 @@ Operational memory for subagents working in this repo. **Before changing auth, p
 
 ## Project overview
 
-UJverse is a Vite + React SPA using Supabase (Auth + Postgres + Realtime + Storage) for a university-themed social feed: posts, comments (threaded), likes, notifications, department-scoped announcements, events UI, and rich profiles with follows. Most application state for the feed lives in [src/App.tsx](src/App.tsx); feature views are composed under [src/components/](src/components/) and [src/pages/](src/pages/).
+UJverse is a Vite + React SPA using Supabase (Auth + Postgres + Realtime + Storage). Since the **information-first pivot (2026-11)** the product is a student information hub: `/` is a public dashboard of faculty announcements, USOSweb registrations and UJ events (see [Information layer](#information-layer-pivot-2026-11) and [docs/pivot/](docs/pivot/)). The social feed (posts, threaded comments, likes, notifications, profiles with follows), Aula and other account features are preserved as secondary, sign-in-only views. Session and feed state still live in [src/App.tsx](src/App.tsx); feature views are composed under [src/components/](src/components/) and [src/pages/](src/pages/).
 
 ---
 
@@ -57,37 +58,95 @@ UJverse is a Vite + React SPA using Supabase (Auth + Postgres + Realtime + Stora
 
 | Path | Role |
 |------|------|
-| [src/App.tsx](src/App.tsx) | Session, `myProfile`, feed/post/comment state, navigation helpers, auth guard, main view switcher |
+| [src/App.tsx](src/App.tsx) | Session, `myProfile`, feed/post/comment state, navigation helpers, public vs protected access map, main view switcher |
 | [src/main.tsx](src/main.tsx) | React root, `BrowserRouter`, `ThemeProvider`, global Toaster, [src/index.css](src/index.css) |
-| [src/components/](src/components/) | Feature UI: feed, profile, events, modals, `ui/BaseCard`, auth shell, etc. |
+| [src/components/](src/components/) | Feature UI: `info/` hub, feed, profile, events, modals, `ui/BaseCard`, auth shell, etc. |
+| [src/components/info/](src/components/info/) | Information hub: dashboard, pages, faculty picker, search, `AuthRequired` |
 | [src/pages/](src/pages/) | Full-page or route-shaped pages: [Profile.tsx](src/pages/Profile.tsx), [ResetPassword.tsx](src/pages/ResetPassword.tsx) |
-| [src/hooks/](src/hooks/) | e.g. [useProfileData.ts](src/hooks/useProfileData.ts), [useProfileSocialData.ts](src/hooks/useProfileSocialData.ts), [useEvents.ts](src/hooks/useEvents.ts), [useContent.ts](src/hooks/useContent.ts) |
-| [src/services/](src/services/) | [DataService.ts](src/services/DataService.ts) + [ad/](src/services/adapters/) per content domain (not one file per DB table) |
+| [src/hooks/](src/hooks/) | e.g. [usePublicInfo.ts](src/hooks/usePublicInfo.ts), [useInfoPreferences.ts](src/hooks/useInfoPreferences.ts), [useProfileData.ts](src/hooks/useProfileData.ts), [useProfileSocialData.ts](src/hooks/useProfileSocialData.ts) |
+| [src/services/](src/services/) | [DataService.ts](src/services/DataService.ts) + [adapters/](src/services/adapters/) per content domain (not one file per DB table) |
+| [src/lib/info/](src/lib/info/) | Pure information-layer modules (types, Warsaw time, faculty, normalize, relevance, prefs, search) |
 | [src/types/](src/types/) | [index.ts](src/types/index.ts), [content.ts](src/types/content.ts), [database.ts](src/types/database.ts) |
 | [src/lib/](src/lib/) | Utilities: departments, sanitizer, toast, formatters, Leaflet helpers |
 | [src/styles/](src/styles/) | [theme.ts](src/styles/theme.ts) tokens, [mobile-theme.ts](src/styles/mobile-theme.ts) (`PROFILE_MOBILE`, nav, search) |
 | [src/data/](src/data/) | Static / fallback data (clubs, mock events) — UI should go through DataService when required |
-| [api/](api/) | Vercel functions (scraper) |
+| [api/](api/) | Vercel functions (scrapers) |
+| [docs/pivot/](docs/pivot/) | Information-hub pivot spec, plan, tasks, verification |
 | [supabase/migrations/](supabase/migrations/) | Versioned SQL; **authoritative** for what the repo records as schema evolution |
 
 ---
 
 ## Routing model
 
-- **Path + state hybrid** in [src/App.tsx](src/App.tsx): `activeView` and related state (e.g. `activePostId`, `activeProfileHandle`) combine with `location.pathname` into `effectiveActiveView` (see `effectiveActiveView` / `routeProfileHandle` / `routeThreadPostId`).
+- **Path + state hybrid** in [src/App.tsx](src/App.tsx): `activeView` and related state (e.g. `activePostId`, `activeProfileHandle`) combine with `location.pathname` into `effectiveActiveView` (see `effectiveActiveView` / `routeProfileHandle` / `routeThreadPostId`). `parseAppRoute` is the single path → view map; `VIEW_PATHS` is the reverse map used by `navigateToMainView`.
 - **No `<Routes>` in App** — only `useLocation` / `useNavigate`. [`BrowserRouter`](src/main.tsx) wraps the tree.
+- **Access map**: `PUBLIC_VIEWS` (`home`, `komunikaty`, `rejestracje`, `wydarzenia`, `szukaj`, `niezbednik`, `sale`, `login`) render without a session. Every other view goes through `renderProtectedView(session)`; without a session it renders [`AuthRequired`](src/components/info/AuthRequired.tsx) (copy per view in [`protectedFeatures.ts`](src/components/info/protectedFeatures.ts)) and keeps the URL.
 - **Key path helpers** (same file): `profileHandleFromPath`, `threadPostIdFromPath`, `isResetPasswordPath`.
-- **Deep links**: `/profile/:handle` → `userProfile`; `/thread/:postId` → `post`; `/profile` → own profile; `/reset-password` → password reset without session.
+- **Deep links**: `/` → information dashboard; `/spolecznosc` → social feed (was `/`); `/rejestracje` → public USOSweb list (alarms stay at `/usos`); `/profile/:handle` → `userProfile`; `/thread/:postId` → `post`; `/profile` → own profile; `/logowanie?next=` → sign-in outside the shell; `/reset-password` → password reset without session. Unknown paths redirect to `/`.
+- **Lazy views**: feed, profile, notifications, settings, search, groups, admin and other account views are `React.lazy`; the dashboard and info pages are in the main chunk. `useFeedQuery` is enabled only for `POST_VIEWS`; `EventsProvider` wraps `<main>` only for `EVENTS_CONTEXT_VIEWS`.
+- **Navigation**: [`nav/navModel.ts`](src/components/nav/navModel.ts) defines `PRIMARY_NAV` (Informacje) and `ACCOUNT_NAV` (Twoje konto) for both `SideNav` and `MobileDrawer`; `navTargetForView` maps views to highlighted items. `BottomNav` (mobile): Start · Komunikaty · Szukaj · Rejestracje · Wydarzenia.
 
 ---
 
 ## Auth (client)
 
-- **Session** — `useState` + `supabase.auth.getSession()` and `onAuthStateChange` in [src/App.tsx](src/App.tsx). `PASSWORD_RECOVERY` redirects to `/reset-password` when needed.
-- **Login** — [src/components/auth/Login.tsx](src/components/auth/Login.tsx) uses **synthetic email** `{username}@ujverse.test` for `signInWithPassword` / `signUp`.
-- **Auth shell** — [src/Auth.tsx](src/Auth.tsx) is a styled layout wrapping `Login` only.
+- **Session** — `useState` + `supabase.auth.getSession()` and `onAuthStateChange` in [src/App.tsx](src/App.tsx). `authReady` flips once the session is known; public views never wait for it, protected views show a skeleton until then. `PASSWORD_RECOVERY` redirects to `/reset-password` when needed.
+- **No global login gate** — anonymous visitors use the full information layer. Session-only effects (profile, notifications, realtime, onboarding, alarm banner, chat FAB) stay guarded by `session`. When the session becomes `null` the account state is cleared; explicit logout (`handleSignOut`) navigates to `/`, passive expiry keeps the URL (protected views then show `AuthRequired`).
+- **Return after sign-in** — `/logowanie?next=` (validated by `sanitizeNextPath`, internal paths only) stores the target via [`postAuth.ts`](src/lib/info/postAuth.ts) in sessionStorage (30 min TTL) because OAuth returns to `/`; `SIGNED_IN` / `INITIAL_SESSION` consume it.
+- **Login** — [src/components/auth/Login.tsx](src/components/auth/Login.tsx) uses **synthetic email** `{username}@ujverse.test` for `signInWithPassword` / `signUp` (optional `initialView`).
+- **Auth shell** — [src/Auth.tsx](src/Auth.tsx) is the `/logowanie` page: `AuthShell` + `Login` + „Przeglądaj bez konta" link.
 - **No AuthContext** — session is local to `App`; there is a separate [src/ThemeContext.tsx](src/ThemeContext.tsx) for light/dark.
 - **`myProfile`** — loaded in `App`, passed down as props (e.g. `sharedPostProps`, `Header`, `ProfileModal`, compose).
+
+---
+
+## Information layer (pivot 2026-11)
+
+Product contract: [docs/pivot/spec.md](docs/pivot/spec.md). Verification: [docs/pivot/verification.md](docs/pivot/verification.md).
+
+### Pure modules — [src/lib/info/](src/lib/info/)
+
+| Module | Role |
+|--------|------|
+| `types.ts` | `InfoItem` discriminated unions + `DomainResult` |
+| `time.ts` | Europe/Warsaw formatters, Warsaw calendar-day math, freshness labels |
+| `faculty.ts` | USOS `source_unit_code` → faculty via second segment; wraps `departments.ts` |
+| `links.ts` | Safe external HTTPS check; `sanitizeNextPath` for `/logowanie?next=` |
+| `normalize.ts` | DB rows → `InfoItem`, dedup rules |
+| `relevance.ts` | Registration phases, „Ważne teraz” scoring, list sorts, countdown gating |
+| `preferences.ts` / `saved.ts` | Versioned `localStorage` schemas (`ujverse.infoPrefs.v1`, saved items) |
+| `resources.ts` / `search.ts` | Static tools + public search matching |
+| `postAuth.ts` | sessionStorage hand-off after OAuth (30 min TTL) |
+
+Unit tests: `npm test` (Node built-in runner + `tsx`, `tsconfig.test.json`).
+
+### Data path
+
+- **[PublicInfoAdapter](src/services/adapters/PublicInfoAdapter.ts)** — bounded anon-safe `SELECT`s (explicit columns + limits) for announcements, USOS scraper registrations, `official_events`, freshness timestamps.
+- **[DataService](src/services/DataService.ts)** — public facade methods; do not bypass for hub reads.
+- **[usePublicInfo](src/hooks/usePublicInfo.ts)** — TanStack Query, faculty-scoped keys, per-domain error/empty/loading.
+- **[useInfoPreferences](src/hooks/useInfoPreferences.ts)** — external store for faculty, hidden sections, saved items (cross-tab `storage` events).
+- **Search** — [SearchService.searchAnnouncementIds](src/services/SearchService.ts) (Meili) with DB fallback; UI must show the honest fallback notice when Meili is down.
+
+### UI — [src/components/info/](src/components/info/)
+
+- `InfoDashboard` at `/`; list pages `AnnouncementsPage` / `RegistrationsPage` / `OfficialEventsPage` / `ToolsPage`; `InfoSearchPage` at `/szukaj`.
+- `FacultyPicker`, `HeaderSearch`, shared cards/blocks in `InfoItems` / `InfoBlocks` / `infoUi`.
+- `AuthRequired` + `protectedFeatures.ts` for session-only views (keep URL; CTA to `/logowanie?next=`).
+
+### RLS — [20261104120000_public_information_read_access.sql](supabase/migrations/20261104120000_public_information_read_access.sql)
+
+- `anon` **SELECT only** on `announcements`, `official_events`, and `usos_registrations` where `source_usos_tura_id IS NOT NULL`.
+- No writes; social / cohorts / timetables / storage / discounts subscriptions unchanged.
+- **Ops**: migration must be applied manually on the remote project before anonymous registrations/events work in production (see verification).
+
+### Invariants
+
+1. Prefer extending `src/lib/info/*` + `PublicInfoAdapter` over new ad-hoc Supabase calls in hub UI.
+2. Never present closed registrations (`closes_at <= now`) as active; never mix `public.events` into `/wydarzenia`.
+3. Faculty choice never writes `profiles.department`.
+4. All user-facing hub dates use `Europe/Warsaw`.
+5. Do not apply the public-read migration or deploy scrapers without explicit authorization.
 
 ---
 
@@ -329,6 +388,7 @@ Module **Aula** = live chat per study-year cohort. **Independent** from `groups`
 - **`handle_new_user` evolution**: [20260411140000_profiles_username.sql](supabase/migrations/20260411140000_profiles_username.sql) (username from metadata/email) → [20260423100000_manual_username_on_signup.sql](supabase/migrations/20260423100000_manual_username_on_signup.sql) (username **`null`**). Trigger attachment lives in [supabase_setup.sql](supabase_setup.sql) (`on_auth_user_created`), not in migrations.
 - **`is_profile_admin()`**: [20260512120000_admin_moderation_rls.sql](supabase/migrations/20260512120000_admin_moderation_rls.sql); uses **`profiles.role`**.
 - **Profiles SELECT**: migration [20260512140000_profiles_public_select.sql](supabase/migrations/20260512140000_profiles_public_select.sql) restricts policy to **`authenticated`** (not anonymous). Legacy [supabase_setup.sql](supabase_setup.sql) used `using (true)` without role — **drift** if both were applied differently.
+- **Public information SELECT (anon)**: [20261104120000_public_information_read_access.sql](supabase/migrations/20261104120000_public_information_read_access.sql) — see [Information layer](#information-layer-pivot-2026-11). Production may already have a manual public-read policy on `announcements`; the migration records the same intent without widening writes.
 
 ---
 
@@ -501,6 +561,8 @@ Community-driven katalog miejsc do nauki: biblioteki UJ (BJ, czytelnie wydziało
 - **Channel rename/archive/kind-change doesn't re-index existing messages** — `channelName` / `channelSlug` / **`channelKind`** w `ujverse_aula` documents są snapshotami z czasu message-upsertu. Renaming / kind-change kanału przez `updateChannel` NIE kaskaduje do indeksu — search hits pokażą starą wartość pilla aż user napisze nową wiadomość w sali (która re-indexuje). To samo z archiwizacją (badge i tak żyje, `channelId` zostaje OK do filtrowania). Phase 2 = trigger na `cohort_channels AFTER UPDATE` z bulk re-index affected messages. Current workaround: any edit/new message in the channel refreshes that single document.
 - **Existing messages need a re-index after migrations `20260613100000` / `20260613110000`** — old `cohort_messages` rows have `channel_id IS NULL` (i ich `ujverse_aula` documents predate field `channelId` / `channelKind`). UI gracefully treats missing `channelId` as Sala główna (filter uses `channelId IS NULL OR channelId NOT EXISTS`), legacy `channelKind` brakuje → klient pillem fallback do `'inne'` (przez `CHANNEL_KINDS.includes` guard w `asChannelKind`). Hot path stays correct; only a forced re-index (touch every row, e.g. `UPDATE cohort_messages SET content = content`) would backfill `channelId: null` + `channelKind: null` everywhere. Acceptable for MVP — Sala główna i tak nie ma `kind` (NULL), więc backfill głównie pomoże sub-channelom z legacy.
 - **Meili filterable attributes on remote**: [lib/meilisearchIndexSettings.ts](lib/meilisearchIndexSettings.ts) sets them lazily from [api/sync-search.ts](api/sync-search.ts) on first cold start. Existing remote indexes provisioned before this code shipped need either a cold restart with traffic, or a one-off `scripts/resync-search-final.ts` run, to gain `tags` in `filterableAttributes`.
+- **Public info anon policies**: migration `20261104120000` may not yet be applied on the remote project. Until it is, anonymous `/rejestracje` and `/wydarzenia` (and dashboard sections) correctly show unavailable/error — announcements may already be readable via a Dashboard-only policy not present in older migrations.
+- **USOS scraper TZ**: [api/scrape-usos-registrations.ts](api/scrape-usos-registrations.ts) now uses real Europe/Warsaw conversion; rows scraped before deploy may still carry the old ±1 h heuristic until the next scrape run.
 
 ---
 
@@ -515,10 +577,10 @@ Community-driven katalog miejsc do nauki: biblioteki UJ (BJ, czytelnie wydziało
 
 ## Services & adapters
 
-- **[src/services/DataService.ts](src/services/DataService.ts)** — Facade: clubs, announcements (+ realtime subscribe), unified posts mapping, events adapter, **no raw `App` imports**.
-- **Adapters** — [AnnouncementsAdapter.ts](src/services/adapters/AnnouncementsAdapter.ts), [PostsAdapter.ts](src/services/adapters/PostsAdapter.ts), [EventsAdapter.ts](src/services/adapters/EventsAdapter.ts), [ClubsAdapter.ts](src/services/adapters/ClubsAdapter.ts); common patterns in [BaseAdapter.ts](src/services/adapters/BaseAdapter.ts).
+- **[src/services/DataService.ts](src/services/DataService.ts)** — Facade: **public information hub**, clubs, announcements (+ realtime subscribe), unified posts mapping, events adapter, **no raw `App` imports**.
+- **Adapters** — [PublicInfoAdapter.ts](src/services/adapters/PublicInfoAdapter.ts) (anon hub reads), [AnnouncementsAdapter.ts](src/services/adapters/AnnouncementsAdapter.ts), [PostsAdapter.ts](src/services/adapters/PostsAdapter.ts), [EventsAdapter.ts](src/services/adapters/EventsAdapter.ts), [ClubsAdapter.ts](src/services/adapters/ClubsAdapter.ts); common patterns in [BaseAdapter.ts](src/services/adapters/BaseAdapter.ts).
   - **[PostsAdapter.toUnified](src/services/adapters/PostsAdapter.ts)** — type-guarded mapping of `raw.tags` into `metadata.tags` (`filter((tag): tag is string => typeof tag === 'string' && tag.length > 0)`); no lowercase here — DB layer already normalises.
-- **[src/services/SearchService.ts](src/services/SearchService.ts)** — Meilisearch facade (`searchUnified` / `searchContent` / `searchUsers` / `searchProfiles`). `UnifiedSearchOpts.tag?: string` triggers content-only filter `tags = "${escapedTag}"` and forces `includeUsers: false`. Falls back to [parseTagSearchQuery](src/lib/postTags.ts) on raw `q` when `opts.tag` not provided.
+- **[src/services/SearchService.ts](src/services/SearchService.ts)** — Meilisearch facade (`searchUnified` / `searchContent` / `searchUsers` / `searchProfiles` / **`searchAnnouncementIds`** for the public hub). `UnifiedSearchOpts.tag?: string` triggers content-only filter `tags = "${escapedTag}"` and forces `includeUsers: false`. Falls back to [parseTagSearchQuery](src/lib/postTags.ts) on raw `q` when `opts.tag` not provided. Public search falls back to Postgres when Meili is unavailable.
 - **[src/services/EventIngestor.ts](src/services/EventIngestor.ts)** — separate ingestion path for events data.
 
 ---
@@ -598,13 +660,15 @@ flowchart LR
 
 | Component | Role |
 |-----------|------|
+| [InfoDashboard](src/components/info/InfoDashboard.tsx) | `/` hub composition; faculty + preferences + domain sections. |
+| [AuthRequired](src/components/info/AuthRequired.tsx) | Inline gate for protected views; keeps URL; links to `/logowanie?next=`. |
 | [BaseCard](src/components/ui/BaseCard.tsx) | All card shells; token-driven variants (`default` / `inner` / `premium`). |
 | [UserAvatar](src/components/UserAvatar.tsx) | Shared avatar discipline across feed, profile, modals. |
 | [PostCard](src/components/PostCard.tsx) | Post layout + interaction bar contract with App-owned state; **owns** tag-pill navigation via `useNavigate` (no `onTagClick` prop). |
-| [FeedView](src/components/FeedView.tsx) | Feed composition, compose, department filter. |
-| [SearchPageView](src/components/SearchPageView.tsx) | `/search` view; parses `?q=` (text or `#tag`), drives `useContentSearch`, renders filter chips + full `PostCard` for post hits. |
+| [FeedView](src/components/FeedView.tsx) | Feed composition, compose, department filter (`/spolecznosc`). |
+| [SearchPageView](src/components/SearchPageView.tsx) | Authenticated `/search` view; parses `?q=` (text or `#tag`), drives `useContentSearch`, renders filter chips + full `PostCard` for post hits. Public info search is `/szukaj` ([InfoSearchPage](src/components/info/InfoSearchPage.tsx)). |
 | [Profile page](src/pages/Profile.tsx) | Profile orchestration; uses `useProfileData`, `useProfileSocialData`, `FollowListsModal`. |
-| [Header](src/components/Header.tsx) / [BottomNav](src/components/BottomNav.tsx) | Global navigation; `myProfile` / view callbacks. |
+| [Header](src/components/Header.tsx) / [BottomNav](src/components/BottomNav.tsx) / [SideNav](src/components/SideNav.tsx) | Global navigation; info-first IA; `myProfile` / view callbacks. |
 | [ComposeBox](src/components/ComposeBox.tsx) | Create post; storage upload path from App. |
 | [CommentThread](src/components/CommentThread.tsx) / [CommentItem](src/components/CommentItem.tsx) | Threaded comments + likes. |
 

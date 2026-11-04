@@ -9,7 +9,7 @@
 <h1 align="center">UJverse</h1>
 
 <p align="center">
-  An unofficial social platform for students and staff at Jagiellonian University.
+  Everything that matters at UJ, in one place.
 </p>
 
 <p align="center">
@@ -22,77 +22,96 @@
 
 ---
 
-UJverse bundles a feed, events, faculty announcements, and student tools in one app — no algorithms, no noise from mainstream social media. Chronological feed, data from USOSweb and official UJ sources, full-text search across all content.
+UJverse is an independent information hub for students of Jagiellonian University. It aggregates faculty announcements, USOSweb registrations and university events from official sources, lets you pick your faculty and search across it all — **without creating an account**. An account is only needed for personal features (timetable, Aula, community).
 
-This project is not affiliated with, endorsed by, or sponsored by Jagiellonian University.
+This project is not affiliated with, endorsed by, or sponsored by Jagiellonian University. Data is collected automatically from public UJ websites — always check the source for anything important.
 
-## What's inside
+## Available without an account
 
-**Feed** — posts, comments, likes, `#faculty` tags, department filter, media in Supabase Storage, deep links at `/thread/:id` and `/profile/:handle`.
+**Start** (`/`) — overview: "Ważne teraz" (registration deadlines and recently cancelled / remote classes for your faculty), latest announcements, upcoming registrations, UJ events, student essentials, saved items, and a note on sources and data freshness.
 
-**Events** — user-created events plus official ones from `uj.edu.pl` (cron, scraper in [`api/scrape-uj-events.ts`](api/scrape-uj-events.ts)). RSVP, map (Leaflet), create-event modal.
+**Faculty selection** — takes seconds, no sign-up; stored in the browser (`localStorage`, key `ujverse.infoPrefs.v1`). Signed-in users get their profile faculty by default; a device-level choice never changes the profile.
 
-**Faculty announcements** — scraper for 16 faculties + Collegium Medicum ([`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts)), 3 HTML adapters, status badges (cancelled classes, remote teaching, office hours, etc.).
+**Announcements** (`/komunikaty`) — posts from 16 official faculty websites (last 30 days), type filters (cancelled classes, remote, office hours, events), full text on demand and a link to the original. AI summaries are labelled as AI.
 
-**My Plan** (`/moj-plan`) — timetable from USOSweb (ICS import), day and week views, upcoming exams, weekly briefing, updates from subscribed lecturers.
+**Registrations** (`/rejestracje`) — open and upcoming rounds from the public USOSweb catalogue, grouped by faculty (derived from the USOS unit code), times in Europe/Warsaw. Closed registrations are never shown as active.
 
-**USOS registrations** — live scraper of the public USOSweb UJ registration catalog ([`api/scrape-usos-registrations.ts`](api/scrape-usos-registrations.ts)), alerts before rounds close.
+**Events** (`/wydarzenia`) — university-wide events from the uj.edu.pl calendar (dates; times and venues in the source).
 
-**Aula** — cohort chat (year/faculty): channels, realtime messages, reactions, polls, attachments, group notes and tasks.
+**Search** (`/szukaj`, Ctrl/Cmd+K) — announcements (Meilisearch with a safe database fallback), registrations, events and tools. Public search does not query profiles, posts or Aula.
 
-**Search** — Meilisearch + InstantSearch, Ctrl/Cmd+K palette, index over users/posts/events/announcements, Supabase webhooks, `npm run search:resync`.
+**Essentials** (`/niezbednik`) — USOSweb, PEGAZ, email, registration catalogue, UJ calendar and UJverse tools (the room finder works without an account).
 
-**Assistant** — [`api/chat.ts`](api/chat.ts) on Vercel Edge (Groq), function calling over events/announcements/posts, KV cache, rate limiting.
+**Save for later** — bookmark announcements, registrations and events; the list lives on this device only.
 
-**Faculties & zones** — groups at `/wydzialy/:slug`, `/strefy/:slug`, auto-routing posts by tags.
+## With a UJverse account
 
-**Room finder** — search UJ buildings and rooms, walking directions to Google Maps.
+**My Plan** (`/moj-plan`), **Aula** (`/aula`), **registration alarms** (`/usos`), **assistant** (`/chat`), **discounts** (`/znizki`) and **study spots** (`/miejsca`). Visiting them without a session shows why an account is needed and a sign-in button; after signing in you return to the same page.
 
-**Study spots** — catalog of libraries, cafés, and workspaces in Kraków, community check-ins.
+## Community (kept, secondary)
 
-**Couponek UJ** (`/zniski`) — student discount catalog, scraping plus user submissions ([`api/scrape-discounts.ts`](api/scrape-discounts.ts)).
+The feed moved from `/` to `/spolecznosc` and lives in the "Twoje konto" navigation group. Profiles, follows, `/thread/:id`, `/profile/:handle`, zones (`/wydzialy/:slug`, `/strefy/:slug`), community events with RSVP and calendar (`/events`), community search (`/search`) and notifications work as before. No data or tables were removed.
 
-**Profiles** — follow, activity badges, tabs (posts, replies, media, events), privacy settings.
+## Anonymous access and security
 
-**Essentials** — quick links to USOSweb, PEGAZ, student email.
+- Public views read only data copied by scrapers from public websites: `announcements`, `official_events`, and the `usos_registrations` rows that come from USOSweb (`source_usos_tura_id IS NOT NULL`). Community and seed rows remain visible to signed-in users only.
+- Profiles, posts, comments, Aula messages, timetables, subscriptions and files stay behind RLS for authenticated users. The `anon` role gets no write access.
+- The browser only ever uses the publishable/anon key; the service-role key stays in the API.
+
+> **Required manual step before deploying:** apply
+> [`supabase/migrations/20261104120000_public_information_read_access.sql`](supabase/migrations/20261104120000_public_information_read_access.sql)
+> (Supabase SQL editor or `supabase db push`). Without it, visitors see announcements (public read already exists in production as a manual policy) but **registrations and events show as "temporarily unavailable"**. The migration is additive and idempotent; local policy test: `bash scripts/pivot-rls-check/run.sh`.
+
+## Data sources and freshness
+
+| Data | Source | Schedule (cron) | Meaning of the date in the UI |
+| --- | --- | --- | --- |
+| Announcements | 16 faculty websites ([`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts)) | 3× daily | "dodano" = first ingested by UJverse, not the publication date |
+| Registrations | public USOSweb catalogue ([`api/scrape-usos-registrations.ts`](api/scrape-usos-registrations.ts)) | 2× daily | dates from USOSweb; "potwierdzone w USOSweb" = last scraper run |
+| Events | uj.edu.pl calendar ([`api/scrape-uj-events.ts`](api/scrape-uj-events.ts)) | daily | event day; "sprawdzone" = last fetch |
+
+Data is not real-time. If the registration scraper has not refreshed data for more than 36 h, the UI warns that it may be outdated and hides countdowns.
 
 ## Stack
 
 | Layer | Technologies |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS v4, Framer Motion, React Router 7 |
+| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS v4, Framer Motion, React Router 7, TanStack Query |
 | Backend | Supabase (Postgres + RLS, Auth, Storage, Realtime) |
-| API | Vercel serverless / Edge — chat, scrapers, search sync |
+| API | Vercel serverless / Edge — scrapers, chat, search sync |
 | Search | Meilisearch |
-| AI | Groq (`llama-3.1-8b-instant`), Vercel KV (cache + rate limit) |
+| AI | Groq, Vercel KV (cache + rate limit) |
 
-UI data flows through [`DataService`](src/services/DataService.ts) and adapters. Database schema: [`supabase/migrations/`](supabase/migrations/).
+UI data flows through [`DataService`](src/services/DataService.ts) and adapters; the information layer is [`PublicInfoAdapter`](src/services/adapters/PublicInfoAdapter.ts) plus pure modules in [`src/lib/info/`](src/lib/info/). Schema: [`supabase/migrations/`](supabase/migrations/). Pivot docs: [`docs/pivot/`](docs/pivot/).
 
 ## Local development
 
 ```bash
 npm install
-cp .env.example .env.local   # if you have a template; otherwise fill in manually
+cp .env.example .env.local   # set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
 npm run dev
 ```
 
 ```bash
-npm run build          # production build
+npm run build          # tsc (strict) + production build
 npm run lint
+npm test               # information-layer unit tests (node:test + tsx)
 npm run search:resync  # rebuild Meilisearch index
 npm run chat:prewarm   # prewarm assistant cache
+bash scripts/pivot-rls-check/run.sh            # local RLS policy test (needs PostgreSQL)
+node scripts/pivot-browser-checks/checks.mjs   # browser acceptance checks (see file header)
 ```
 
 ### Environment variables
 
 | Variable | Where | Purpose |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | client | Supabase |
-| `VITE_MEILI_HOST` / `VITE_MEILI_SEARCH_KEY` | client | search (read) |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` (alias `VITE_SUPABASE_ANON_KEY`) | client | Supabase |
+| `VITE_MEILISEARCH_HOST` / `VITE_MEILISEARCH_SEARCH_KEY` / `VITE_MEILISEARCH_INDEX` | client | search (search-only key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | API | scrapers, AI tools |
 | `GROQ_API_KEY` | Edge | `/api/chat` |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Edge | cache + rate limit |
-| `MEILI_HOST` / `MEILI_ADMIN_KEY` | serverless | sync + resync |
+| `MEILI_HOST` / `MEILI_MASTER_KEY` | serverless | sync + resync |
 | `CRON_SECRET` | cron | job authorization |
 
 ## Deploy
@@ -105,7 +124,7 @@ Production runs on Vercel as a **prebuilt artifact** — remote `vercel build` s
 npm run deploy:prod
 ```
 
-Disable git auto-deploy in Vercel project settings so pushes don't overwrite manual deploys.
+Disable git auto-deploy in Vercel project settings so pushes don't overwrite manual deploys. Apply the migration above before deploying this version.
 
 ### Crons ([`vercel.json`](vercel.json))
 
@@ -120,10 +139,9 @@ Disable git auto-deploy in Vercel project settings so pushes don't overwrite man
 
 ## Roadmap
 
-- Cursor-based feed pagination
-- 1:1 DMs
-- Bookmarks / save for later
-- Token-by-token assistant streaming
+- Sync saved items and faculty choice across devices (signed-in users)
+- Meilisearch key restricted to the information index (see `docs/pivot/verification.md`)
+- Event times from UJ calendar detail pages
 - Web Push on top of existing notifications
 
 ## Author

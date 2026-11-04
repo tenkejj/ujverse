@@ -9,7 +9,7 @@
 <h1 align="center">UJverse</h1>
 
 <p align="center">
-  Nieoficjalna platforma społecznościowa dla studentów i pracowników Uniwersytetu Jagiellońskiego.
+  Wszystko, co ważne na UJ, w jednym miejscu.
 </p>
 
 <p align="center">
@@ -22,78 +22,119 @@
 
 ---
 
-UJverse to feed, wydarzenia, komunikaty wydziałowe i narzędzia studenckie w jednej aplikacji — bez algorytmów i bez szumu z ogólnopolskich sociali. Chronologiczny feed, dane z USOSweb i oficjalnych stron UJ, wyszukiwarka po całej treści.
+UJverse to niezależny serwis informacyjny dla studentów Uniwersytetu Jagiellońskiego. Zbiera komunikaty wydziałów, rejestracje z USOSweb i wydarzenia uczelni z oficjalnych źródeł, pozwala wybrać swój wydział i znaleźć to, czego potrzebujesz — **bez zakładania konta**. Konto przydaje się dopiero do funkcji osobistych (plan zajęć, Aula, społeczność).
 
-Projekt nie jest powiązany z UJ, sponsorowany ani zatwierdzony przez uczelnię.
+Projekt nie jest powiązany z UJ, sponsorowany ani zatwierdzony przez uczelnię. Informacje pobieramy automatycznie z publicznych stron UJ — w sprawach ważnych zawsze sprawdź w źródle.
 
-## Co jest w środku
+## Dostępne bez konta
 
-**Feed** — posty, komentarze, lajki, tagi `#wydział`, filtr po wydziale, media w Supabase Storage, deep-linki `/thread/:id` i `/profile/:handle`.
+**Start** (`/`) — przegląd najważniejszych informacji: „Ważne teraz" (terminy rejestracji i odwołane / zdalne zajęcia Twojego wydziału z ostatnich dni), najnowsze komunikaty, nadchodzące rejestracje, wydarzenia na UJ, Niezbędnik studenta, zapisane elementy i informacja o źródłach oraz aktualności danych.
 
-**Wydarzenia** — wydarzenia użytkowników + oficjalne z `uj.edu.pl` (cron, scraper w [`api/scrape-uj-events.ts`](api/scrape-uj-events.ts)). RSVP, mapa (Leaflet), modal tworzenia.
+**Wybór wydziału** — w kilka sekund, bez rejestracji; zapisuje się w przeglądarce (`localStorage`, klucz `ujverse.infoPrefs.v1`). Zalogowanym domyślnie podpowiadamy wydział z profilu, a wybór na urządzeniu nigdy nie zmienia profilu.
 
-**Komunikaty wydziałowe** — scraper 16 wydziałów + CM ([`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts)), 3 adaptery HTML, statusy (odwołane zajęcia, zdalnie, dyżury itd.).
+**Komunikaty** (`/komunikaty`) — ogłoszenia z 16 oficjalnych stron wydziałów (ostatnie 30 dni), filtry rodzaju (odwołane zajęcia, zdalnie, dyżury, wydarzenia), pełna treść na żądanie i link do oryginału. Streszczenia AI są oznaczone jako AI.
 
-**Mój Plan** (`/moj-plan`) — plan z USOSweb (import ICS), widok dnia i tygodnia, najbliższe egzaminy, tygodniowy briefing, komunikaty od subskrybowanych wykładowców.
+**Rejestracje** (`/rejestracje`) — trwające i nadchodzące tury z publicznego katalogu USOSweb, pogrupowane po wydziałach (na podstawie kodu jednostki USOS), z terminami w czasie warszawskim. Zakończone rejestracje nie są pokazywane jako aktywne.
 
-**Rejestracje USOS** — live scraper publicznego katalogu rejestracji USOSweb UJ ([`api/scrape-usos-registrations.ts`](api/scrape-usos-registrations.ts)), alarmy przed końcem tur.
+**Wydarzenia** (`/wydarzenia`) — wydarzenia ogólnouczelniane z kalendarza uj.edu.pl (daty; godziny i miejsce w źródle).
 
-**Aula** — czaty kohortowe (rocznik/wydział): kanały, wiadomości realtime, reakcje, ankiety, załączniki, notatki i taski grupowe.
+**Szukaj** (`/szukaj`, Ctrl/Cmd+K) — komunikaty (Meilisearch z bezpiecznym zapasem w bazie), rejestracje, wydarzenia i narzędzia. Wyszukiwarka publiczna nie przeszukuje profili, wpisów ani Auli.
 
-**Wyszukiwarka** — Meilisearch + InstantSearch, paleta Ctrl/Cmd+K, indeks users/posts/events/announcements, webhooki z Supabase, `npm run search:resync`.
+**Niezbędnik** (`/niezbednik`) — USOSweb, PEGAZ, poczta, katalog rejestracji, kalendarz UJ oraz narzędzia UJverse (Znajdź salę działa bez konta).
 
-**Asystent** — [`api/chat.ts`](api/chat.ts) na Vercel Edge (Groq), function calling po wydarzeniach/komunikatach/postach, cache KV, rate limiting.
+**Zapisz na później** — zakładka przy każdym komunikacie, rejestracji i wydarzeniu; lista żyje tylko na tym urządzeniu.
 
-**Wydziały i strefy** — grupy `/wydzialy/:slug`, `/strefy/:slug`, auto-routing postów po tagach.
+## Z kontem UJverse
 
-**Znajdź salę** — przeszukiwanie budynków i sal UJ, trasy piesze do Google Maps.
+**Mój Plan** (`/moj-plan`) — plan z USOSweb (import ICS), widok dnia i tygodnia, egzaminy, tygodniowy briefing, komunikaty subskrybowanych wykładowców.
 
-**Miejsca nauki** — katalog bibliotek, kawiarni i miejsc do pracy w Krakowie, check-iny społeczności.
+**Aula** (`/aula`) — czaty roczników: kanały, wiadomości realtime, reakcje, ankiety, załączniki, notatki i zadania.
 
-**Couponek UJ** (`/zniski`) — katalog zniżek studenckich, scraping + wpisy od użytkowników ([`api/scrape-discounts.ts`](api/scrape-discounts.ts)).
+**Alarmy rejestracji** (`/usos`) — przypomnienia przed turami i wpisy społeczności (dawny widok „Rejestracje USOS").
 
-**Profile** — follow, badge'e z aktywności, zakładki (posty, odpowiedzi, media, wydarzenia), ustawienia prywatności.
+**Asystent** (`/chat`) — [`api/chat.ts`](api/chat.ts) na Vercel Edge (Groq), function calling po wydarzeniach/komunikatach/planie.
 
-**Niezbędnik** — skróty do USOSweb, PEGAZ, poczty studenckiej.
+**Couponek UJ** (`/znizki`), **Miejsca do nauki** (`/miejsca`) — zniżki i miejsca nauki współtworzone przez studentów.
+
+Wejście na te strony bez sesji pokazuje krótkie wyjaśnienie, dlaczego potrzebne jest konto, i przycisk logowania; po zalogowaniu wracasz na tę samą stronę.
+
+## Społeczność (funkcje zachowane, drugoplanowe)
+
+Feed z wpisami, komentarzami i polubieniami jest teraz pod `/spolecznosc` (dawniej `/`), a w nawigacji w grupie „Twoje konto". Bez zmian działają profile i obserwowanie, wpisy `/thread/:id`, profile `/profile/:handle`, strefy `/wydzialy/:slug` i `/strefy/:slug`, wydarzenia społeczności z RSVP i kalendarzem (`/events`), wyszukiwarka społeczności (`/search`) i powiadomienia. Żadne dane ani tabele nie zostały usunięte.
+
+## Dostęp bez logowania i bezpieczeństwo
+
+- Widoki publiczne czytają wyłącznie dane przepisane przez scrapery z publicznych stron: `announcements`, `official_events` i te wiersze `usos_registrations`, które pochodzą z katalogu USOSweb (`source_usos_tura_id IS NOT NULL`). Wpisy społeczności i przykładowe dane (seed) widzą tylko zalogowani.
+- Profile, wpisy, komentarze, wiadomości Auli, plany zajęć, subskrypcje i pliki pozostają za RLS dla zalogowanych. Rola `anon` nie dostaje żadnych uprawnień zapisu.
+- W przeglądarce działa wyłącznie klucz publiczny (publishable/anon); klucz service-role zostaje po stronie API.
+
+> **Wymagany krok ręczny przed wdrożeniem:** zastosuj migrację
+> [`supabase/migrations/20261104120000_public_information_read_access.sql`](supabase/migrations/20261104120000_public_information_read_access.sql)
+> (SQL Editor w Supabase lub `supabase db push`). Bez niej goście zobaczą komunikaty (odczyt publiczny jest już ustawiony na produkcji ręcznie), ale **rejestracje i wydarzenia będą dla nich „chwilowo niedostępne"**. Migracja jest addytywna i idempotentna; lokalny test polityk: `bash scripts/pivot-rls-check/run.sh`.
+
+## Skąd pochodzą dane i jak są świeże
+
+| Dane | Źródło | Harmonogram (cron) | Co oznacza data w UI |
+| --- | --- | --- | --- |
+| Komunikaty | 16 stron wydziałów ([`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts)) | 3× dziennie | „dodano" = pierwsze pobranie przez UJverse, nie data publikacji |
+| Rejestracje | publiczny katalog USOSweb ([`api/scrape-usos-registrations.ts`](api/scrape-usos-registrations.ts)) | 2× dziennie | terminy z USOSweb; „potwierdzone w USOSweb" = ostatni przebieg scrapera |
+| Wydarzenia | kalendarz uj.edu.pl ([`api/scrape-uj-events.ts`](api/scrape-uj-events.ts)) | codziennie | dzień wydarzenia; „sprawdzone" = ostatnie pobranie |
+
+Dane nie są „na żywo". Jeśli scraper rejestracji nie zaktualizował danych przez ponad 36 h, UI ostrzega, że mogą być nieaktualne, i nie pokazuje odliczania.
+
+## Trasy
+
+| Ścieżka | Widok | Konto |
+| --- | --- | --- |
+| `/` | Start (informacje) | nie |
+| `/komunikaty`, `/rejestracje`, `/wydarzenia`, `/szukaj`, `/niezbednik`, `/sale` | strony informacyjne, Znajdź salę | nie |
+| `/logowanie` | logowanie / rejestracja (`?next=` = powrót) | — |
+| `/spolecznosc`, `/thread/:id`, `/profile`, `/profile/:handle`, `/events`, `/search`, `/notifications` | społeczność | tak |
+| `/moj-plan` (`/dzis`, `/briefing`), `/aula`, `/usos`, `/chat`, `/znizki`, `/miejsca`, `/settings`, `/admin/*` | funkcje konta | tak |
 
 ## Stack
 
 | Warstwa | Technologie |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS v4, Framer Motion, React Router 7 |
+| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS v4, Framer Motion, React Router 7, TanStack Query |
 | Backend | Supabase (Postgres + RLS, Auth, Storage, Realtime) |
-| API | Vercel serverless / Edge — chat, scrapery, sync wyszukiwarki |
+| API | Vercel serverless / Edge — scrapery, chat, sync wyszukiwarki |
 | Search | Meilisearch |
-| AI | Groq (`llama-3.1-8b-instant`), Vercel KV (cache + rate limit) |
+| AI | Groq, Vercel KV (cache + rate limit) |
 
-Dane w UI idą przez [`DataService`](src/services/DataService.ts) i adaptery. Schemat bazy: [`supabase/migrations/`](supabase/migrations/).
+Dane w UI idą przez [`DataService`](src/services/DataService.ts) i adaptery; warstwa informacyjna to [`PublicInfoAdapter`](src/services/adapters/PublicInfoAdapter.ts) + czyste moduły w [`src/lib/info/`](src/lib/info/). Schemat bazy: [`supabase/migrations/`](supabase/migrations/). Dokumentacja pivotu: [`docs/pivot/`](docs/pivot/).
 
 ## Uruchomienie lokalne
 
 ```bash
 npm install
-cp .env.example .env.local   # jeśli masz szablon; inaczej uzupełnij ręcznie
+cp .env.example .env.local   # uzupełnij VITE_SUPABASE_URL i VITE_SUPABASE_PUBLISHABLE_KEY
 npm run dev
 ```
 
 ```bash
-npm run build          # produkcyjny build
+npm run build          # tsc (strict) + produkcyjny build
 npm run lint
+npm test               # testy jednostkowe warstwy informacyjnej (node:test + tsx)
 npm run search:resync  # przebudowa indeksu Meilisearch
-npm run chat:prewarm     # prewarm cache asystenta
+npm run chat:prewarm   # prewarm cache asystenta
+bash scripts/pivot-rls-check/run.sh            # lokalny test polityk RLS (wymaga PostgreSQL)
+node scripts/pivot-browser-checks/checks.mjs   # testy przeglądarkowe (instrukcja w pliku)
 ```
 
 ### Zmienne środowiskowe
 
 | Zmienna | Gdzie | Po co |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | klient | Supabase |
-| `VITE_MEILI_HOST` / `VITE_MEILI_SEARCH_KEY` | klient | wyszukiwarka (read) |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` (alias `VITE_SUPABASE_ANON_KEY`) | klient | Supabase |
+| `VITE_MEILISEARCH_HOST` / `VITE_MEILISEARCH_SEARCH_KEY` / `VITE_MEILISEARCH_INDEX` | klient | wyszukiwarka (tylko klucz do wyszukiwania) |
 | `SUPABASE_SERVICE_ROLE_KEY` | API | scrapery, narzędzia AI |
 | `GROQ_API_KEY` | Edge | `/api/chat` |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Edge | cache + rate limit |
-| `MEILI_HOST` / `MEILI_ADMIN_KEY` | serverless | sync + resync |
+| `MEILI_HOST` / `MEILI_MASTER_KEY` | serverless | sync + resync |
 | `CRON_SECRET` | cron | autoryzacja jobów |
+
+Bez działającego Meilisearch wyszukiwarka komunikatów przechodzi na proste wyszukiwanie w bazie i informuje o tym użytkownika.
 
 ## Deploy
 
@@ -105,7 +146,7 @@ Produkcja idzie na Vercel jako **prebuilt artifact** — zdalny `vercel build` c
 npm run deploy:prod
 ```
 
-Wyłącz auto-deploy z gita w ustawieniach projektu Vercel, żeby push nie nadpisał ręcznego deployu.
+Wyłącz auto-deploy z gita w ustawieniach projektu Vercel, żeby push nie nadpisał ręcznego deployu. Przed deployem tej wersji zastosuj migrację opisaną w sekcji „Dostęp bez logowania".
 
 ### Crony ([`vercel.json`](vercel.json))
 
@@ -120,10 +161,9 @@ Wyłącz auto-deploy z gita w ustawieniach projektu Vercel, żeby push nie nadpi
 
 ## Roadmap
 
-- Paginacja kursorowa feedu
-- DM 1:1
-- Zakładki / „zapisz na później"
-- Streaming odpowiedzi asystenta token po tokenie
+- Synchronizacja zapisanych elementów i wyboru wydziału między urządzeniami (dla zalogowanych)
+- Klucz Meilisearch ograniczony do indeksu informacyjnego (patrz `docs/pivot/verification.md`)
+- Godziny wydarzeń z podstron kalendarza UJ
 - Web Push na bazie istniejących notyfikacji
 
 ## Autor
