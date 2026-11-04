@@ -1,28 +1,38 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlarmClock, Bell, Building2 } from 'lucide-react'
-import { FILTER_PILL } from '../../styles/mobile-theme'
+import { Bell } from 'lucide-react'
 import { usePublicRegistrations } from '../../hooks/usePublicInfo'
 import type { FacultyPreference } from '../../hooks/useInfoPreferences'
 import { useNow } from '../../hooks/useNow'
-import { canonicalDepartment, UJ_DEPARTMENTS } from '../../lib/departments'
 import { facultyShortLabel, matchesFaculty, USOS_REGISTRATION_CATALOG_URL } from '../../lib/info/faculty'
 import {
   activeRegistrationsSorted,
+  canShowCountdown,
   isRegistrationDataStale,
   registrationTiming,
+  type RegistrationTiming,
 } from '../../lib/info/relevance'
-import { formatFull, formatRelativePast, parseIsoDate } from '../../lib/info/time'
 import type { InfoRegistration } from '../../lib/info/types'
+import { formatDateTime, formatDurationShort, formatFull, formatRelativePast, parseIsoDate } from '../../lib/info/time'
+import { theme } from '../../styles/theme'
 import FacultyPicker from './FacultyPicker'
-import { RegistrationItem } from './InfoItems'
+import { RegistrationHubCard } from './InfoHubCards'
+import {
+  InfoHubCardGrid,
+  InfoHubRailFilters,
+  InfoHubRailStats,
+  InfoHubRailStatus,
+  InfoHubSection,
+  InfoHubShell,
+  InfoHubSpotlight,
+  InfoHubTitle,
+  InfoHubToolbar,
+} from './InfoHubShell'
 import {
   DomainEmpty,
   DomainError,
   ExternalSourceLink,
   INFO_ACTION_LINK_CLS,
-  InfoSection,
-  PageIntro,
   RowSkeletons,
 } from './infoUi'
 
@@ -34,28 +44,6 @@ const PHASE_FILTERS: Array<{ id: PhaseFilter; label: string }> = [
   { id: 'upcoming', label: 'Nadchodzące' },
 ]
 
-const OTHER_UNITS = '__other__'
-
-type Group = { key: string; title: string; items: InfoRegistration[] }
-
-function groupByFaculty(items: InfoRegistration[]): Group[] {
-  const map = new Map<string, InfoRegistration[]>()
-  for (const item of items) {
-    const key = canonicalDepartment(item.faculty) ?? OTHER_UNITS
-    const list = map.get(key) ?? []
-    list.push(item)
-    map.set(key, list)
-  }
-  const order = [...UJ_DEPARTMENTS, OTHER_UNITS] as string[]
-  return [...map.entries()]
-    .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
-    .map(([key, list]) => ({
-      key,
-      title: key === OTHER_UNITS ? 'Jednostki ogólnouczelniane i inne' : key,
-      items: list,
-    }))
-}
-
 export default function RegistrationsPage({
   faculty,
   isAuthenticated,
@@ -65,156 +53,183 @@ export default function RegistrationsPage({
 }) {
   const now = useNow()
   const [phase, setPhase] = useState<PhaseFilter>('all')
-  const [showOthers, setShowOthers] = useState(false)
   const selected = faculty.faculty
   const query = usePublicRegistrations()
   const latestRun = query.data?.freshness.latest ?? null
   const stale = query.isSuccess && isRegistrationDataStale(latestRun, now)
-
-  const active = useMemo(() => activeRegistrationsSorted(query.data?.items ?? [], now), [query.data, now])
-  const byPhase = active.filter((item) => phase === 'all' || registrationTiming(item, now).phase === phase)
-  const mine = selected ? byPhase.filter((item) => matchesFaculty(item.faculty, selected)) : []
-  const others = selected ? byPhase.filter((item) => !matchesFaculty(item.faculty, selected)) : byPhase
-  const groups = groupByFaculty(others)
   const latestDate = parseIsoDate(latestRun)
 
-  const renderList = (items: InfoRegistration[], showUnit = true) => (
-    <ul className="space-y-2.5" role="list">
-      {items.map((item) => (
-        <li key={item.id}>
-          <RegistrationItem
-            item={item}
-            now={now}
-            latestVerifiedAt={latestRun}
-            variant="full"
-            headingLevel="h4"
-            showUnit={showUnit}
-          />
-        </li>
-      ))}
-    </ul>
-  )
+  const active = useMemo(() => activeRegistrationsSorted(query.data?.items ?? [], now), [query.data, now])
+  const scoped = selected ? active.filter((item) => matchesFaculty(item.faculty, selected)) : active
+  const othersCount = selected ? active.length - scoped.length : 0
+
+  const byPhase = scoped.filter((item) => phase === 'all' || registrationTiming(item, now).phase === phase)
+  const openCount = scoped.filter((item) => registrationTiming(item, now).phase === 'open').length
+  const upcomingCount = scoped.filter((item) => registrationTiming(item, now).phase === 'upcoming').length
+
+  const filters = PHASE_FILTERS.map((f) => ({
+    key: f.id,
+    label: f.label,
+    count: f.id === 'all' ? scoped.length : f.id === 'open' ? openCount : upcomingCount,
+  }))
+
+  const showSpotlight = phase === 'all' && byPhase.length > 0
+  const hero = byPhase[0] ?? null
+  const gridItems = showSpotlight && hero ? byPhase.filter((item) => item.id !== hero.id) : byPhase
+  const short = selected ? facultyShortLabel(selected) ?? selected : null
+
+  const heroTiming = hero ? registrationTiming(hero, now) : null
+  const heroCountdown =
+    hero && heroTiming ? formatHeroCountdown(hero, heroTiming, now, latestRun) : null
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-      <PageIntro
+    <InfoHubShell
+      rail={
+        <>
+          <InfoHubRailStatus
+            live={Boolean(latestRun) && !stale}
+            label={
+              !latestRun
+                ? 'Dane chwilowo niedostępne'
+                : stale
+                  ? 'Katalog może być nieaktualny'
+                  : latestDate
+                    ? `USOSweb · ${formatRelativePast(latestDate, now)}`
+                    : 'Katalog USOSweb'
+            }
+          />
+          <InfoHubRailStats
+            stats={[
+              { value: scoped.length, label: short ? short : 'Aktywne' },
+              { value: openCount, label: 'Trwają' },
+              { value: upcomingCount, label: 'Wkrótce' },
+            ]}
+          />
+          <InfoHubRailFilters filters={filters} activeKey={phase} onFilterChange={(k) => setPhase(k as PhaseFilter)} />
+          <div className="rounded-2xl border border-zinc-200/70 bg-white/75 p-4 text-xs text-zinc-600 backdrop-blur-xl dark:border-white/[0.06] dark:bg-zinc-950/45 dark:text-zinc-400">
+            <p className="flex items-start gap-2">
+              <Bell size={14} className="mt-0.5 shrink-0 text-brand-ink dark:text-brand-gold-bright" aria-hidden />
+              <span>
+                {isAuthenticated ? 'Alarmy i wpisy społeczności:' : 'Przypomnienia wymagają konta:'}{' '}
+                <Link to="/usos" className="font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright">
+                  Alarmy rejestracji
+                </Link>
+              </span>
+            </p>
+          </div>
+        </>
+      }
+    >
+      <InfoHubTitle
         title="Rejestracje USOS"
-        description="Trwające i nadchodzące rejestracje z publicznego katalogu USOSweb UJ. UJverse tylko je zbiera — zapisujesz się zawsze w USOSweb."
-      >
-        <FacultyPicker
-          faculty={selected}
-          source={faculty.source}
-          persistent={faculty.persistent}
-          onChange={faculty.setFaculty}
-          className="lg:hidden"
-        />
-      </PageIntro>
+        description="Trwające i nadchodzące tury z publicznego katalogu USOSweb. Zapisujesz się zawsze w USOSweb."
+        actions={
+          <FacultyPicker
+            faculty={selected}
+            source={faculty.source}
+            persistent={faculty.persistent}
+            onChange={faculty.setFaculty}
+            className="lg:hidden"
+          />
+        }
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Etap rejestracji">
-          {PHASE_FILTERS.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              aria-pressed={phase === filter.id}
-              onClick={() => setPhase(filter.id)}
-              className={`${FILTER_PILL.base} ${phase === filter.id ? FILTER_PILL.active : FILTER_PILL.inactive}`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-        <p className={`text-xs ${stale ? 'text-amber-800 dark:text-amber-300' : 'text-zinc-500 dark:text-zinc-400'}`} role="status">
-          {latestDate ? (
-            <>
-              Katalog USOSweb sprawdzony{' '}
-              <time dateTime={latestDate.toISOString()} title={formatFull(latestDate)}>
-                {formatRelativePast(latestDate, now)}
-              </time>
-              {stale ? ' — dane mogą być nieaktualne' : ''}
-            </>
-          ) : query.isSuccess ? (
-            'Brak informacji o ostatniej aktualizacji'
-          ) : null}
-        </p>
-      </div>
+      <InfoHubToolbar
+        filters={filters}
+        activeKey={phase}
+        onFilterChange={(k) => setPhase(k as PhaseFilter)}
+        live={{
+          on: Boolean(latestRun) && !stale,
+          label: latestDate ? `Sprawdzono ${formatFull(latestDate)}` : 'USOSweb',
+        }}
+        trailing={
+          <a
+            href={USOS_REGISTRATION_CATALOG_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${theme.button.primary} min-h-9 rounded-full px-3 text-xs`}
+          >
+            Katalog USOSweb
+          </a>
+        }
+      />
 
       {query.isPending ? (
-        <InfoSection icon={AlarmClock} title="Rejestracje" busy>
-          <RowSkeletons count={4} />
-        </InfoSection>
+        <RowSkeletons count={4} />
       ) : query.isError ? (
-        <InfoSection icon={AlarmClock} title="Rejestracje">
-          <DomainError what="rejestracje z USOSweb" onRetry={() => void query.refetch()} />
-        </InfoSection>
+        <DomainError what="rejestracje z USOSweb" onRetry={() => void query.refetch()} />
       ) : latestRun === null ? (
-        <InfoSection icon={AlarmClock} title="Rejestracje">
-          <DomainEmpty>Dane o rejestracjach z USOSweb są chwilowo niedostępne.</DomainEmpty>
-        </InfoSection>
+        <DomainEmpty>Dane o rejestracjach z USOSweb są chwilowo niedostępne.</DomainEmpty>
+      ) : byPhase.length === 0 ? (
+        <DomainEmpty
+          action={
+            selected && othersCount > 0 ? (
+              <button type="button" onClick={() => faculty.setFaculty(null)} className={`${INFO_ACTION_LINK_CLS} -ml-2`}>
+                Pokaż cały UJ ({othersCount} poza {short})
+              </button>
+            ) : undefined
+          }
+        >
+          {selected
+            ? `Brak ${phase === 'open' ? 'trwających' : phase === 'upcoming' ? 'nadchodzących' : 'aktywnych'} rejestracji dla ${short}.`
+            : 'Brak rejestracji spełniających wybrane kryteria.'}
+        </DomainEmpty>
       ) : (
         <>
-          {selected ? (
-            <InfoSection
-              icon={AlarmClock}
-              title={`Twój wydział: ${facultyShortLabel(selected) ?? selected}`}
-              subtitle={selected}
-              busy={query.isFetching}
-            >
-              {mine.length === 0 ? (
-                <DomainEmpty>
-                  Brak {phase === 'open' ? 'trwających' : phase === 'upcoming' ? 'nadchodzących' : 'trwających ani zapowiedzianych'} rejestracji
-                  dla tego wydziału w katalogu USOSweb.
-                </DomainEmpty>
-              ) : (
-                renderList(mine)
-              )}
-            </InfoSection>
+          {showSpotlight && hero && heroTiming ? (
+            <InfoHubSpotlight
+              eyebrow={heroTiming.phase === 'open' ? 'Trwa rejestracja' : 'Nadchodząca rejestracja'}
+              title={hero.title}
+              meta={
+                <>
+                  <p>{[hero.unitName, hero.facultyShort].filter(Boolean).join(' · ') || 'USOSweb'}</p>
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">
+                    {heroCountdown ??
+                      (heroTiming.phase === 'open' && hero.closesAt
+                        ? `Do ${formatDateTime(new Date(hero.closesAt), now)}`
+                        : `Od ${formatDateTime(new Date(hero.opensAt), now)}`)}
+                  </p>
+                </>
+              }
+              actions={<ExternalSourceLink href={hero.url}>Otwórz w USOSweb</ExternalSourceLink>}
+            />
           ) : null}
 
-          {groups.length > 0 && (!selected || showOthers) ? (
-            groups.map((group) => (
-              <InfoSection key={group.key} icon={Building2} title={group.title}>
-                {renderList(group.items)}
-              </InfoSection>
-            ))
+          {gridItems.length > 0 ? (
+            <InfoHubSection title={short ? `Rejestracje · ${short}` : 'Katalog USOSweb'} count={gridItems.length}>
+              <InfoHubCardGrid>
+                {gridItems.map((item) => (
+                  <li key={item.id} className="min-w-0">
+                    <RegistrationHubCard item={item} now={now} latestVerifiedAt={latestRun} />
+                  </li>
+                ))}
+              </InfoHubCardGrid>
+            </InfoHubSection>
           ) : null}
 
-          {selected && others.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowOthers((v) => !v)}
-              aria-expanded={showOthers}
-              className={`${INFO_ACTION_LINK_CLS} self-start`}
-            >
-              {showOthers ? 'Ukryj inne jednostki UJ' : `Pokaż rejestracje w innych jednostkach UJ (${others.length})`}
+          {selected && othersCount > 0 ? (
+            <button type="button" onClick={() => faculty.setFaculty(null)} className={`${INFO_ACTION_LINK_CLS} self-start`}>
+              Pokaż też {othersCount} rejestracji w innych jednostkach UJ
             </button>
-          ) : null}
-
-          {!selected && byPhase.length === 0 ? (
-            <InfoSection icon={AlarmClock} title="Rejestracje">
-              <DomainEmpty>Brak rejestracji spełniających wybrane kryteria w katalogu USOSweb.</DomainEmpty>
-            </InfoSection>
           ) : null}
         </>
       )}
-
-      <div className="flex flex-col gap-2 rounded-2xl border border-zinc-200/80 p-4 text-xs text-zinc-600 dark:border-white/10 dark:text-zinc-400">
-        <p className="flex items-start gap-2">
-          <Bell size={14} className="mt-0.5 shrink-0 text-brand-ink dark:text-brand-gold-bright" aria-hidden />
-          <span>
-            {isAuthenticated
-              ? 'Chcesz przypomnienia przed startem tury albo wpisy dodane przez innych studentów?'
-              : 'Przypomnienia przed startem tury i wpisy społeczności wymagają konta.'}{' '}
-            <Link to="/usos" className="font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright">
-              Alarmy rejestracji
-            </Link>
-          </span>
-        </p>
-        <p>
-          Pełny, oficjalny katalog:{' '}
-          <ExternalSourceLink href={USOS_REGISTRATION_CATALOG_URL}>Rejestracje w USOSweb</ExternalSourceLink>
-        </p>
-      </div>
-    </div>
+    </InfoHubShell>
   )
+}
+
+function formatHeroCountdown(
+  item: InfoRegistration,
+  timing: RegistrationTiming,
+  now: Date,
+  latestVerifiedAt: string | null,
+): string | null {
+  if (!canShowCountdown(item, timing, now, latestVerifiedAt)) return null
+  if (timing.phase === 'open' && timing.msUntilClose != null) {
+    return `Zamyka się za ${formatDurationShort(timing.msUntilClose)}`
+  }
+  if (timing.phase === 'upcoming') {
+    return `Otwiera się za ${formatDurationShort(timing.msUntilOpen)}`
+  }
+  return null
 }

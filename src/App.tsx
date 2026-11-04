@@ -200,7 +200,15 @@ function getAppShellClass(_view: AppShellView): string {
 /** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */
 function getAppContentShellClass(view: AppShellView): string {
   if (view === 'chat' || view === 'aula') return 'w-full px-4 lg:px-6'
-  if (view === 'events' || view === 'wydarzenia' || view === 'miejsca' || view === 'notifications') {
+  if (
+    view === 'events' ||
+    view === 'wydarzenia' ||
+    view === 'komunikaty' ||
+    view === 'rejestracje' ||
+    view === 'niezbednik' ||
+    view === 'miejsca' ||
+    view === 'notifications'
+  ) {
     return 'mx-auto w-full max-w-[1800px] px-4 lg:px-6 xl:px-8'
   }
   if (view === 'mojPlan') {
@@ -208,10 +216,7 @@ function getAppContentShellClass(view: AppShellView): string {
   }
   if (
     view === 'home' ||
-    view === 'komunikaty' ||
-    view === 'rejestracje' ||
     view === 'szukaj' ||
-    view === 'niezbednik' ||
     view === 'feed' ||
     view === 'profile' ||
     view === 'userProfile' ||
