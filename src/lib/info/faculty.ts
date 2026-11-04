@@ -5,6 +5,7 @@
 import { FACULTY_SOURCES } from '../../../api/_lib/scrapers/sources'
 import {
   DEPT_SHORT,
+  LEGACY_TO_CANONICAL,
   UJ_DEPARTMENTS,
   canonicalDepartment,
   departmentGroup,
@@ -70,6 +71,19 @@ export function matchesFaculty(
   const item = canonicalDepartment(itemFaculty)
   if (!item) return false
   return departmentGroup(selectedFaculty).includes(item)
+}
+
+/**
+ * Wartości `announcements.department` pasujące do wydziału: kanoniczne nazwy
+ * z grupy aliasów + starsze zapisy (np. `WZiKS`) mapowane na te nazwy.
+ */
+export function facultyDbValues(faculty: string | null | undefined): string[] {
+  const group = departmentGroup(faculty)
+  if (group.length === 0) return []
+  const legacy = Object.entries(LEGACY_TO_CANONICAL)
+    .filter(([, canon]) => group.includes(canon))
+    .map(([legacyName]) => legacyName)
+  return [...new Set([...group, ...legacy])]
 }
 
 const LISTING_BY_FACULTY: ReadonlyMap<string, { url: string; label: string }> = (() => {

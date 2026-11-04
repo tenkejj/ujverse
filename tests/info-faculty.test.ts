@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  facultyDbValues,
   facultyFromUsosUnitCode,
   facultyListingSource,
   facultyShortLabel,
@@ -54,6 +55,19 @@ describe('faculty aliases', () => {
   it('treats "no selection" as all-university and missing item faculty as non-matching', () => {
     assert.equal(matchesFaculty('Wydział Chemii', null), true)
     assert.equal(matchesFaculty(null, 'Wydział Chemii'), false)
+  })
+
+  it('includes legacy alias values when querying announcements', () => {
+    assert.deepEqual(facultyDbValues('Wydział Zarządzania i Komunikacji Społecznej').sort(), [
+      'WZiKS',
+      'Wydział Zarządzania i Komunikacji Społecznej',
+    ])
+    assert.deepEqual(facultyDbValues('Wydział Lekarsko-Stomatologiczny').sort(), [
+      'Collegium Medicum – Wydział Lekarski',
+      'Wydział Lekarski',
+      'Wydział Lekarsko-Stomatologiczny',
+    ])
+    assert.deepEqual(facultyDbValues(null), [])
   })
 
   it('returns short labels', () => {
