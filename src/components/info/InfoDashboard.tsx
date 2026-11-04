@@ -1,12 +1,8 @@
 /**
- * Strona startowa UJverse (`/`) — informacje zamiast feedu.
- *
- * Jedna kolumna list (bez zagnieżdżonych kafelek): komunikaty, rejestracje,
- * wydarzenia. Każde źródło ma własny stan ładowania / błędu / pustki.
+ * Strona startowa UJverse (`/`) — board informacyjny (nie lista / nie siatka tabel).
  */
-import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { AlarmClock, CalendarDays, Link2, Megaphone } from 'lucide-react'
+import { Link2 } from 'lucide-react'
 import { usePublicAnnouncements, usePublicOfficialEvents, usePublicRegistrations } from '../../hooks/usePublicInfo'
 import { useInfoStore, type FacultyPreference } from '../../hooks/useInfoPreferences'
 import { useNow } from '../../hooks/useNow'
@@ -20,50 +16,25 @@ import {
 } from '../../lib/info/relevance'
 import { INFO_RESOURCES } from '../../lib/info/resources'
 import FacultyPicker from './FacultyPicker'
-import { AnnouncementItem, EventItem, RegistrationItem } from './InfoItems'
+import {
+  BoardAnnouncements,
+  BoardRail,
+  BoardSpotlight,
+} from './InfoBoard'
 import {
   CustomizeButton,
-  PrioritySection,
   ResourceStrip,
   SavedSection,
   SourcesNote,
 } from './InfoBlocks'
-import {
-  DomainEmpty,
-  DomainError,
-  INFO_ACTION_LINK_CLS,
-  InfoSection,
-  RowSkeletons,
-} from './infoUi'
+import { DomainEmpty, INFO_ACTION_LINK_CLS } from './infoUi'
 
-const DASHBOARD_ANNOUNCEMENTS = 5
-const DASHBOARD_REGISTRATIONS = 3
-const DASHBOARD_EVENTS = 3
 const DASHBOARD_TOOL_IDS = ['usosweb', 'pegaz', 'poczta', 'sale', 'moj-plan', 'miejsca']
 
 type Props = {
   faculty: FacultyPreference
   isAuthenticated: boolean
   firstName: string | null
-}
-
-function SeeAll({ to, label }: { to: string; label: string }) {
-  return (
-    <Link to={to} className={INFO_ACTION_LINK_CLS} aria-label={label}>
-      Wszystkie →
-    </Link>
-  )
-}
-
-function FeedList({ children, dimmed = false }: { children: ReactNode; dimmed?: boolean }) {
-  return (
-    <ul
-      className={`divide-y divide-zinc-200/80 dark:divide-white/10 ${dimmed ? 'opacity-60' : ''}`}
-      role="list"
-    >
-      {children}
-    </ul>
-  )
 }
 
 export default function InfoDashboard({ faculty, isAuthenticated, firstName }: Props) {
@@ -77,7 +48,7 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
   const registrationsQ = usePublicRegistrations()
   const eventsQ = usePublicOfficialEvents()
 
-  const announcements = sortAnnouncementsNewestFirst(announcementsQ.data?.items ?? [])
+  const announcements = sortAnnouncementsNewestFirst(announcementsQ.data?.items ?? []).slice(0, 3)
   const registrationsAll = registrationsQ.data?.items ?? []
   const latestRegistrationRun = registrationsQ.data?.freshness.latest ?? null
   const activeRegistrations = activeRegistrationsSorted(registrationsAll, now)
@@ -88,22 +59,23 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
 
   const priority = buildPriorityItems({
     faculty: selected,
-    announcements,
+    announcements: sortAnnouncementsNewestFirst(announcementsQ.data?.items ?? []),
     registrations: registrationsAll,
     now,
     latestRegistrationVerifiedAt: latestRegistrationRun,
   })
 
   const tools = INFO_RESOURCES.filter((r) => DASHBOARD_TOOL_IDS.includes(r.id))
+  const announcementsTitle = selected ? 'Komunikaty z Twojego wydziału' : 'Najnowsze komunikaty'
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-2">
-      <header className="flex flex-col gap-3 px-1 pt-1">
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-ink dark:text-brand-gold-bright">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-4">
+      <header className="flex flex-col gap-5 border-b border-zinc-200/80 pb-6 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0 max-w-2xl">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-brand-ink dark:text-brand-gold-bright">
             {firstName ? `Cześć, ${firstName}` : 'UJverse'}
           </p>
-          <h1 className="mt-1 text-xl font-extrabold leading-tight tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
+          <h1 className="mt-2 text-[1.65rem] font-extrabold leading-[1.15] tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
             Wszystko, co ważne na UJ, w jednym miejscu
           </h1>
         </div>
@@ -117,162 +89,100 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
           />
           <CustomizeButton hidden={prefs.hiddenSections} />
         </div>
-        {!selected ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Widok całego UJ — wybierz wydział, żeby zawęzić komunikaty i terminy.
-          </p>
-        ) : null}
       </header>
 
-      {selectedShort ? <PrioritySection items={priority} facultyLabel={selectedShort} now={now} /> : null}
+      {selectedShort ? <BoardSpotlight items={priority} facultyLabel={selectedShort} now={now} /> : null}
 
-      {!hidden.has('announcements') ? (
-        <InfoSection
-          variant="feed"
-          icon={Megaphone}
-          title={selected ? 'Komunikaty z Twojego wydziału' : 'Najnowsze komunikaty'}
-          action={<SeeAll to="/komunikaty" label="Wszystkie komunikaty" />}
-          busy={announcementsQ.isFetching}
-        >
-          {announcementsQ.isPending ? (
-            <RowSkeletons count={4} variant="feed" />
-          ) : announcementsQ.isError && announcements.length === 0 ? (
-            <div className="pt-3">
-              <DomainError what="komunikaty" onRetry={() => void announcementsQ.refetch()} />
-            </div>
-          ) : announcements.length === 0 ? (
-            <div className="pt-3">
-              <DomainEmpty
-                tone="quiet"
-                action={
-                  selected ? (
-                    <button type="button" onClick={() => faculty.setFaculty(null)} className={`${INFO_ACTION_LINK_CLS} -ml-2`}>
-                      Pokaż komunikaty z całego UJ
-                    </button>
-                  ) : undefined
-                }
-              >
-                {selected
-                  ? `Brak nowych komunikatów z wydziału ${selectedShort} w ostatnich 30 dniach.`
-                  : 'Brak nowych komunikatów w ostatnich 30 dniach.'}
-              </DomainEmpty>
-            </div>
-          ) : (
-            <FeedList dimmed={announcementsQ.isPlaceholderData}>
-              {announcements.slice(0, DASHBOARD_ANNOUNCEMENTS).map((item) => (
-                <li key={item.id}>
-                  <AnnouncementItem item={item} now={now} variant="feed" />
-                </li>
-              ))}
-            </FeedList>
-          )}
-        </InfoSection>
-      ) : null}
+      <div className="grid items-start gap-10 xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,0.85fr)]">
+        <div className="flex min-w-0 flex-col gap-10">
+          {!hidden.has('announcements') ? (
+            <BoardAnnouncements
+              title={announcementsTitle}
+              items={announcements}
+              now={now}
+              pending={announcementsQ.isPending}
+              error={announcementsQ.isError}
+              onRetry={() => void announcementsQ.refetch()}
+              dimmed={announcementsQ.isPlaceholderData}
+              empty={
+                <DomainEmpty
+                  tone="quiet"
+                  action={
+                    selected ? (
+                      <button
+                        type="button"
+                        onClick={() => faculty.setFaculty(null)}
+                        className={`${INFO_ACTION_LINK_CLS} -ml-2`}
+                      >
+                        Pokaż komunikaty z całego UJ
+                      </button>
+                    ) : undefined
+                  }
+                >
+                  {selected
+                    ? `Brak nowych komunikatów z wydziału ${selectedShort} w ostatnich 30 dniach.`
+                    : 'Brak nowych komunikatów w ostatnich 30 dniach.'}
+                </DomainEmpty>
+              }
+            />
+          ) : null}
 
-      {!hidden.has('registrations') ? (
-        <InfoSection
-          variant="feed"
-          icon={AlarmClock}
-          title="Nadchodzące rejestracje"
-          action={<SeeAll to="/rejestracje" label="Wszystkie rejestracje" />}
-          busy={registrationsQ.isFetching}
-        >
-          {registrationsQ.isPending ? (
-            <RowSkeletons count={2} variant="feed" />
-          ) : registrationsQ.isError ? (
-            <div className="pt-3">
-              <DomainError what="rejestracje z USOSweb" onRetry={() => void registrationsQ.refetch()} />
-            </div>
-          ) : latestRegistrationRun === null ? (
-            <div className="pt-3">
-              <DomainEmpty tone="quiet">Dane o rejestracjach z USOSweb są chwilowo niedostępne.</DomainEmpty>
-            </div>
-          ) : (
-            <>
-              {registrationsStale ? (
-                <p role="status" className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-                  Dane z USOSweb mogą być nieaktualne — sprawdź terminy w źródle.
-                </p>
-              ) : null}
-              {registrations.length === 0 ? (
-                <div className="pt-3">
-                  <DomainEmpty
-                    tone="quiet"
-                    action={
-                      selected && otherRegistrationsCount > 0 ? (
-                        <Link to="/rejestracje" className={`${INFO_ACTION_LINK_CLS} -ml-2`}>
-                          Zobacz {otherRegistrationsCount} w innych jednostkach UJ
-                        </Link>
-                      ) : undefined
-                    }
-                  >
-                    {selected
-                      ? `Brak aktywnych rejestracji dla ${selectedShort}.`
-                      : 'Brak aktywnych rejestracji w katalogu USOSweb.'}
-                  </DomainEmpty>
-                </div>
-              ) : (
-                <FeedList>
-                  {registrations.slice(0, DASHBOARD_REGISTRATIONS).map((item) => (
-                    <li key={item.id}>
-                      <RegistrationItem item={item} now={now} latestVerifiedAt={latestRegistrationRun} variant="feed" />
-                    </li>
-                  ))}
-                </FeedList>
-              )}
-            </>
-          )}
-        </InfoSection>
-      ) : null}
+          <SavedSection items={saved} now={now} />
 
-      {!hidden.has('events') ? (
-        <InfoSection
-          variant="feed"
-          icon={CalendarDays}
-          title="Wydarzenia na UJ"
-          action={<SeeAll to="/wydarzenia" label="Wszystkie wydarzenia" />}
-          busy={eventsQ.isFetching}
-        >
-          {eventsQ.isPending ? (
-            <RowSkeletons count={2} variant="feed" />
-          ) : eventsQ.isError ? (
-            <div className="pt-3">
-              <DomainError what="wydarzenia" onRetry={() => void eventsQ.refetch()} />
-            </div>
-          ) : eventsQ.data.freshness.latest === null ? (
-            <div className="pt-3">
-              <DomainEmpty tone="quiet">Dane o wydarzeniach z uj.edu.pl są chwilowo niedostępne.</DomainEmpty>
-            </div>
-          ) : events.length === 0 ? (
-            <div className="pt-3">
-              <DomainEmpty tone="quiet">Brak zapowiedzianych wydarzeń w kalendarzu UJ.</DomainEmpty>
-            </div>
-          ) : (
-            <FeedList>
-              {events.slice(0, DASHBOARD_EVENTS).map((item) => (
-                <li key={item.id}>
-                  <EventItem item={item} now={now} variant="feed" />
-                </li>
-              ))}
-            </FeedList>
-          )}
-        </InfoSection>
-      ) : null}
+          {!hidden.has('tools') ? (
+            <section className="min-w-0" aria-labelledby="board-tools-heading">
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <h2
+                  id="board-tools-heading"
+                  className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400"
+                >
+                  <Link2 size={13} aria-hidden />
+                  Niezbędnik studenta
+                </h2>
+                <Link to="/niezbednik" className={INFO_ACTION_LINK_CLS} aria-label="Wszystkie narzędzia">
+                  Wszystkie →
+                </Link>
+              </div>
+              <ResourceStrip resources={tools} isAuthenticated={isAuthenticated} />
+            </section>
+          ) : null}
+        </div>
 
-      <SavedSection items={saved} now={now} />
-
-      {!hidden.has('tools') ? (
-        <InfoSection
-          variant="feed"
-          icon={Link2}
-          title="Niezbędnik studenta"
-          action={<SeeAll to="/niezbednik" label="Wszystkie narzędzia" />}
-        >
-          <div className="pt-3">
-            <ResourceStrip resources={tools} isAuthenticated={isAuthenticated} />
-          </div>
-        </InfoSection>
-      ) : null}
+        <BoardRail
+          registrations={registrations}
+          events={events}
+          now={now}
+          latestRegistrationRun={latestRegistrationRun}
+          registrationsPending={registrationsQ.isPending}
+          registrationsError={registrationsQ.isError}
+          registrationsUnavailable={registrationsQ.isSuccess && latestRegistrationRun === null}
+          registrationsStale={registrationsStale}
+          onRetryRegistrations={() => void registrationsQ.refetch()}
+          registrationsEmpty={
+            <DomainEmpty
+              tone="quiet"
+              action={
+                selected && otherRegistrationsCount > 0 ? (
+                  <Link to="/rejestracje" className={`${INFO_ACTION_LINK_CLS} -ml-2`}>
+                    Zobacz {otherRegistrationsCount} w innych jednostkach UJ
+                  </Link>
+                ) : undefined
+              }
+            >
+              {selected
+                ? `Brak aktywnych rejestracji dla ${selectedShort}.`
+                : 'Brak aktywnych rejestracji w katalogu USOSweb.'}
+            </DomainEmpty>
+          }
+          eventsPending={eventsQ.isPending}
+          eventsError={eventsQ.isError}
+          eventsUnavailable={eventsQ.isSuccess && eventsQ.data.freshness.latest === null}
+          eventsEmpty={<DomainEmpty tone="quiet">Brak zapowiedzianych wydarzeń w kalendarzu UJ.</DomainEmpty>}
+          onRetryEvents={() => void eventsQ.refetch()}
+          hideRegistrations={hidden.has('registrations')}
+          hideEvents={hidden.has('events')}
+        />
+      </div>
 
       <SourcesNote
         announcementsLatest={announcementsQ.data?.freshness.latest ?? null}
