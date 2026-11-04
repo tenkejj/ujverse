@@ -35,6 +35,10 @@ export const INFO_ACTION_LINK_CLS =
 
 export const INFO_ROW_CLS = 'm-0 min-w-0 p-3'
 
+/** Wiersz listy na Start — bez zagnieżdżonej karty. */
+export const INFO_FEED_ROW_CLS =
+  'group relative m-0 min-w-0 py-3.5 first:pt-1 last:pb-1'
+
 export function InfoSection({
   icon: SectionIcon,
   title,
@@ -43,6 +47,8 @@ export function InfoSection({
   children,
   className = '',
   busy = false,
+  /** `panel` = klasyczna karta; `feed` = nagłówek + lista z separatorami (Start). */
+  variant = 'panel',
 }: {
   icon: Icon
   title: string
@@ -51,18 +57,31 @@ export function InfoSection({
   children: ReactNode
   className?: string
   busy?: boolean
+  variant?: 'panel' | 'feed'
 }) {
   const headingId = useId()
+  const header = (
+    <div className="flex min-w-0 items-baseline gap-2">
+      <SectionIcon size={14} strokeWidth={2} className={`${widgetGoldCls} mt-0.5 shrink-0`} aria-hidden />
+      <h2 id={headingId} className={`${sectionTitleCls} min-w-0 flex-1 break-words leading-snug`}>
+        {title}
+      </h2>
+      {action}
+    </div>
+  )
+  if (variant === 'feed') {
+    return (
+      <section aria-labelledby={headingId} aria-busy={busy || undefined} className={`min-w-0 ${className}`}>
+        {header}
+        {subtitle ? <div className={`mt-1 pl-[1.375rem] text-xs ${sideMutedCls}`}>{subtitle}</div> : null}
+        <div className="mt-1 border-t border-zinc-200/80 pt-1 dark:border-white/10">{children}</div>
+      </section>
+    )
+  }
   return (
     <section aria-labelledby={headingId} aria-busy={busy || undefined} className={`min-w-0 ${className}`}>
       <BaseCard variant="default" className="flex h-full min-w-0 flex-col gap-3 p-4 sm:p-5">
-        <div className="flex min-w-0 items-center gap-2">
-          <SectionIcon size={14} strokeWidth={2} className={`${widgetGoldCls} shrink-0`} aria-hidden />
-          <h2 id={headingId} className={`${sectionTitleCls} min-w-0 flex-1 break-words leading-snug`}>
-            {title}
-          </h2>
-          {action}
-        </div>
+        {header}
         {subtitle ? <div className={`-mt-1 text-xs ${sideMutedCls}`}>{subtitle}</div> : null}
         {children}
       </BaseCard>
@@ -70,7 +89,19 @@ export function InfoSection({
   )
 }
 
-export function RowSkeletons({ count = 3 }: { count?: number }) {
+export function RowSkeletons({ count = 3, variant = 'panel' }: { count?: number; variant?: 'panel' | 'feed' }) {
+  if (variant === 'feed') {
+    return (
+      <div className="divide-y divide-zinc-200/80 dark:divide-white/10" aria-hidden>
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i} className="space-y-2 py-3.5">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-4 w-4/5" />
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <div className="space-y-2.5" aria-hidden>
       {Array.from({ length: count }, (_, i) => (
@@ -118,7 +149,24 @@ export function DomainError({
   )
 }
 
-export function DomainEmpty({ children, action }: { children: ReactNode; action?: ReactNode }) {
+export function DomainEmpty({
+  children,
+  action,
+  tone = 'box',
+}: {
+  children: ReactNode
+  action?: ReactNode
+  /** `quiet` = jedna linia na Start; `box` = ramka na stronach list. */
+  tone?: 'box' | 'quiet'
+}) {
+  if (tone === 'quiet') {
+    return (
+      <div className="space-y-2 py-3">
+        <p className={`${INFO_TEXT_CLS} ${sideMutedCls}`}>{children}</p>
+        {action}
+      </div>
+    )
+  }
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-dashed border-zinc-200 p-3 dark:border-white/10">
       <Inbox size={16} className={`mt-0.5 shrink-0 ${sideMutedCls}`} aria-hidden />
