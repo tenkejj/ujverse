@@ -1,6 +1,6 @@
 /**
- * Strona startowa UJverse (`/`) — spokojny przegląd, nie gęsta lista.
- * Mało kart, krótkie teksty, wyraźne strefy z oddechem.
+ * Strona startowa UJverse (`/`) — landing z wyraźnym wyborem wydziału
+ * i spokojnymi wejściami do hubów, zamiast gęstej listy treści.
  */
 import { Link } from 'react-router-dom'
 import {
@@ -14,6 +14,7 @@ import {
   Library,
   Lock,
   Mail,
+  Megaphone,
   Sparkles,
   Tag,
   type LucideIcon,
@@ -32,16 +33,10 @@ import {
 } from '../../lib/info/relevance'
 import { INFO_RESOURCES, type InfoResourceIcon } from '../../lib/info/resources'
 import { formatDurationShort } from '../../lib/info/time'
+import { EVENTS_HUB } from '../../styles/mobile-theme'
 import FacultyPicker from './FacultyPicker'
 import { AnnouncementHubCard, EventHubCard, RegistrationHubCard } from './InfoHubCards'
-import {
-  InfoHubRailStats,
-  InfoHubRailStatus,
-  InfoHubSection,
-  InfoHubShell,
-  InfoHubSpotlight,
-  InfoHubTitle,
-} from './InfoHubShell'
+import { InfoHubSection, InfoHubSpotlight } from './InfoHubShell'
 import { CustomizeButton, SavedSection, SourcesNote } from './InfoBlocks'
 import {
   AnnouncementStatusPill,
@@ -68,6 +63,18 @@ const TOOL_ICONS: Record<InfoResourceIcon, LucideIcon> = {
   assistant: Sparkles,
 }
 
+const DOORS: Array<{
+  to: string
+  label: string
+  blurb: string
+  icon: LucideIcon
+}> = [
+  { to: '/komunikaty', label: 'Komunikaty', blurb: 'Ogłoszenia z wydziałów', icon: Megaphone },
+  { to: '/rejestracje', label: 'Rejestracje', blurb: 'Terminy z USOSweb', icon: AlarmClock },
+  { to: '/wydarzenia', label: 'Wydarzenia', blurb: 'Kalendarz UJ', icon: CalendarDays },
+  { to: '/niezbednik', label: 'Niezbędnik', blurb: 'USOS, PEGAZ, narzędzia', icon: BookOpen },
+]
+
 type Props = {
   faculty: FacultyPreference
   isAuthenticated: boolean
@@ -89,16 +96,6 @@ function priorityEyebrow(entry: PriorityItem, now: Date): string {
     case 'remote':
       return 'Zajęcia zdalne'
   }
-}
-
-function SectionMore({ to, label }: { to: string; label: string }) {
-  return (
-    <div className="pt-1">
-      <Link to={to} className={INFO_ACTION_LINK_CLS} aria-label={label}>
-        {label} →
-      </Link>
-    </div>
-  )
 }
 
 export default function InfoDashboard({ faculty, isAuthenticated, firstName }: Props) {
@@ -143,53 +140,69 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
   const showTools = !hidden.has('tools')
 
   const heroPriority = selectedShort && priority.length > 0 ? priority[0] : null
-  const live =
-    (announcementsQ.isSuccess && !announcementsQ.isError) ||
-    (registrationsQ.isSuccess && !registrationsQ.isError) ||
-    (eventsQ.isSuccess && !eventsQ.isError)
+  const needsFaculty = !selected && faculty.source === 'none'
 
   return (
-    <InfoHubShell
-      contentClassName="min-w-0 space-y-12 md:space-y-14"
-      frameClassName="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-12 2xl:grid-cols-[minmax(0,1fr)_300px]"
-      rail={
-        <>
-          <InfoHubRailStatus
-            live={live}
-            label={live ? 'Wydziały · USOSweb · uj.edu.pl' : 'Część źródeł niedostępna'}
-          />
-          <InfoHubRailStats
-            stats={[
-              { value: announcementsAll.length, label: 'Komunikaty' },
-              {
-                value: regsUnavailable ? '—' : facultyRegs.length,
-                label: 'Rejestracje',
-              },
-              {
-                value: eventsUnavailable ? '—' : eventsQ.data?.items.length ?? 0,
-                label: 'Wydarzenia',
-              },
-            ]}
-          />
-        </>
-      }
-    >
-      <InfoHubTitle
-        title="Wszystko, co ważne na UJ, w jednym miejscu"
-        description={firstName ? `Cześć, ${firstName}` : undefined}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <FacultyPicker
-              faculty={selected}
-              source={faculty.source}
-              persistent={faculty.persistent}
-              onChange={faculty.setFaculty}
-              className="lg:hidden"
-            />
-            <CustomizeButton hidden={prefs.hiddenSections} />
+    <div className="mx-auto w-full max-w-5xl space-y-14 pb-8 md:space-y-16">
+      <header className="space-y-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0 max-w-2xl">
+            {firstName ? (
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Cześć, {firstName}</p>
+            ) : null}
+            <h1 className="mt-1 text-[1.85rem] font-extrabold leading-[1.15] tracking-tight text-zinc-900 sm:text-[2.15rem] dark:text-zinc-50">
+              Wszystko, co ważne na UJ, w jednym miejscu
+            </h1>
           </div>
-        }
-      />
+          <CustomizeButton hidden={prefs.hiddenSections} />
+        </div>
+
+        <section aria-label="Wybór wydziału" className="space-y-3">
+          <FacultyPicker
+            faculty={selected}
+            source={faculty.source}
+            persistent={faculty.persistent}
+            onChange={faculty.setFaculty}
+            variant="hero"
+          />
+          {needsFaculty ? (
+            <p className="px-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Bez wyboru pokażemy cały UJ — wydział zawęża komunikaty i rejestracje.
+            </p>
+          ) : null}
+        </section>
+
+        <nav aria-label="Główne sekcje" className="grid gap-3 sm:grid-cols-2">
+          {DOORS.map((door) => {
+            const Icon = door.icon
+            return (
+              <Link
+                key={door.to}
+                to={door.to}
+                className={`${EVENTS_HUB.hero.cardClass} group flex items-center gap-4 p-4 transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${FOCUS_RING}`}
+              >
+                <span
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-ink/[0.07] text-brand-ink dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright"
+                  aria-hidden
+                >
+                  <Icon size={20} strokeWidth={1.75} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5 text-base font-bold text-zinc-900 dark:text-zinc-50">
+                    {door.label}
+                    <ArrowUpRight
+                      size={15}
+                      className="opacity-40 transition-opacity group-hover:opacity-70"
+                      aria-hidden
+                    />
+                  </span>
+                  <span className="mt-0.5 block text-sm text-zinc-500 dark:text-zinc-400">{door.blurb}</span>
+                </span>
+              </Link>
+            )
+          })}
+        </nav>
+      </header>
 
       {heroPriority ? (
         <section aria-labelledby="board-priority-heading" className="space-y-4">
@@ -259,12 +272,18 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
               ))}
             </ul>
           )}
-          {announcements.length > 0 ? <SectionMore to="/komunikaty" label="Wszystkie komunikaty" /> : null}
+          {announcements.length > 0 ? (
+            <div className="pt-1">
+              <Link to="/komunikaty" className={INFO_ACTION_LINK_CLS} aria-label="Wszystkie komunikaty">
+                Wszystkie komunikaty →
+              </Link>
+            </div>
+          ) : null}
         </InfoHubSection>
       ) : null}
 
       {showRegistrations || showEvents ? (
-        <div className="grid items-start gap-12 xl:grid-cols-2 xl:gap-14">
+        <div className="grid items-start gap-12 md:grid-cols-2 md:gap-10">
           {showRegistrations ? (
             regsUnavailable ? (
               <p className="text-sm text-zinc-500 dark:text-zinc-400" role="status">
@@ -313,7 +332,11 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
                         </li>
                       ))}
                     </ul>
-                    <SectionMore to="/rejestracje" label="Wszystkie rejestracje" />
+                    <div className="pt-1">
+                      <Link to="/rejestracje" className={INFO_ACTION_LINK_CLS} aria-label="Wszystkie rejestracje">
+                        Wszystkie rejestracje →
+                      </Link>
+                    </div>
                   </>
                 )}
               </InfoHubSection>
@@ -342,7 +365,11 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
                         </li>
                       ))}
                     </ul>
-                    <SectionMore to="/wydarzenia" label="Wszystkie wydarzenia" />
+                    <div className="pt-1">
+                      <Link to="/wydarzenia" className={INFO_ACTION_LINK_CLS} aria-label="Wszystkie wydarzenia">
+                        Wszystkie wydarzenia →
+                      </Link>
+                    </div>
                   </>
                 )}
               </InfoHubSection>
@@ -382,7 +409,11 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
               )
             })}
           </ul>
-          <SectionMore to="/niezbednik" label="Cały niezbędnik" />
+          <div className="pt-1">
+            <Link to="/niezbednik" className={INFO_ACTION_LINK_CLS} aria-label="Wszystkie narzędzia">
+              Cały niezbędnik →
+            </Link>
+          </div>
         </InfoHubSection>
       ) : null}
 
@@ -395,6 +426,6 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
         eventsLatest={eventsQ.data?.freshness.latest ?? null}
         now={now}
       />
-    </InfoHubShell>
+    </div>
   )
 }

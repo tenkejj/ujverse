@@ -13,12 +13,21 @@ type Props = {
   persistent: boolean
   onChange: (faculty: string | null) => void
   className?: string
+  /** `chip` — header; `hero` — duży panel na Start. */
+  variant?: 'chip' | 'hero'
 }
 
 const TRIGGER_BASE =
   `inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors ${FOCUS_RING} ` +
   'border-brand-ink/30 bg-white/60 text-brand-ink hover:border-brand-ink/50 hover:bg-white ' +
   'dark:border-brand-gold-bright/35 dark:bg-white/[0.03] dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-white/[0.06]'
+
+const HERO_TRIGGER =
+  `group flex w-full items-center gap-4 rounded-[1.75rem] border px-5 py-5 text-left transition-colors sm:px-6 sm:py-6 ${FOCUS_RING} ` +
+  'border-brand-ink/25 bg-gradient-to-br from-white via-white to-brand-ink/[0.04] shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)] ' +
+  'hover:border-brand-ink/45 hover:to-brand-ink/[0.07] ' +
+  'dark:border-brand-gold-bright/30 dark:from-zinc-950/70 dark:via-zinc-950/50 dark:to-brand-gold-bright/[0.07] ' +
+  'dark:hover:border-brand-gold-bright/50'
 
 const OPTION_BASE =
   `group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors ${FOCUS_RING}`
@@ -33,30 +42,73 @@ export default function FacultyPicker({
   persistent,
   onChange,
   className = '',
+  variant = 'chip',
 }: Props) {
   const [open, setOpen] = useState(false)
   // „Wybierz wydział" dopóki nic nie wybrano; „Cały UJ" tylko po świadomym wyborze.
-  const label = faculty
+  const shortLabel = faculty
     ? (facultyShortLabel(faculty) ?? faculty)
     : source === 'none'
       ? 'Wybierz wydział'
       : 'Cały UJ'
+  const fullLabel = faculty ?? (source === 'none' ? null : 'Cały UJ — wszystkie wydziały')
+  const needsChoice = !faculty && source === 'none'
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        title={faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'}
-        className={`${TRIGGER_BASE} ${className}`.trim()}
-      >
-        <Landmark size={15} strokeWidth={2} className="shrink-0" aria-hidden />
-        <span className="sr-only">Wydział: </span>
-        <span className="truncate">{label}</span>
-        <ChevronDown size={14} strokeWidth={2.25} className="shrink-0 opacity-70" aria-hidden />
-      </button>
+      {variant === 'hero' ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title={faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'}
+          className={`${HERO_TRIGGER} ${className}`.trim()}
+        >
+          <span
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-ink/[0.08] text-brand-ink dark:bg-brand-gold-bright/15 dark:text-brand-gold-bright"
+            aria-hidden
+          >
+            <Landmark size={22} strokeWidth={1.75} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-brand-ink dark:text-brand-gold-bright">
+              Twój wydział
+            </span>
+            <span className="sr-only">Wydział: </span>
+            <span className="mt-1 block truncate text-xl font-extrabold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
+              {shortLabel}
+            </span>
+            <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">
+              {needsChoice
+                ? 'Wybierz, żeby zobaczyć komunikaty i rejestracje dla siebie.'
+                : fullLabel && fullLabel !== shortLabel
+                  ? fullLabel
+                  : 'Kliknij, żeby zmienić.'}
+            </span>
+          </span>
+          <ChevronDown
+            size={20}
+            strokeWidth={2.25}
+            className="shrink-0 text-zinc-400 transition-transform group-hover:translate-y-0.5 dark:text-zinc-500"
+            aria-hidden
+          />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title={faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'}
+          className={`${TRIGGER_BASE} ${className}`.trim()}
+        >
+          <Landmark size={15} strokeWidth={2} className="shrink-0" aria-hidden />
+          <span className="sr-only">Wydział: </span>
+          <span className="truncate">{shortLabel}</span>
+          <ChevronDown size={14} strokeWidth={2.25} className="shrink-0 opacity-70" aria-hidden />
+        </button>
+      )}
       {open && typeof document !== 'undefined'
         ? createPortal(
             <FacultyDialog
