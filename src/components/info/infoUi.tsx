@@ -58,7 +58,7 @@ export function InfoSection({
       <BaseCard variant="default" className="flex h-full min-w-0 flex-col gap-3 p-4 sm:p-5">
         <div className="flex min-w-0 items-center gap-2">
           <SectionIcon size={14} strokeWidth={2} className={`${widgetGoldCls} shrink-0`} aria-hidden />
-          <h2 id={headingId} className={`${sectionTitleCls} min-w-0 flex-1 truncate`}>
+          <h2 id={headingId} className={`${sectionTitleCls} min-w-0 flex-1 break-words leading-snug`}>
             {title}
           </h2>
           {action}

@@ -182,7 +182,6 @@ export default function Header({
         </div>
         <div className="hidden min-w-0 lg:flex">
           <FacultyPicker
-            variant="header"
             faculty={faculty.faculty}
             source={faculty.source}
             persistent={faculty.persistent}

@@ -106,6 +106,7 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
             source={faculty.source}
             persistent={faculty.persistent}
             onChange={faculty.setFaculty}
+            className="lg:hidden"
           />
           <CustomizeButton hidden={prefs.hiddenSections} />
         </div>
@@ -113,8 +114,8 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
 
       {!selected ? (
         <p className="rounded-2xl border border-brand-ink/15 bg-brand-ink/[0.03] px-4 py-3 text-sm text-zinc-700 dark:border-brand-gold-bright/20 dark:bg-brand-gold-bright/[0.04] dark:text-zinc-300">
-          Pokazujemy informacje z całego UJ. Wybierz swój wydział, żeby zobaczyć jego komunikaty, rejestracje
-          i sekcję „Ważne teraz".
+          Pokazujemy informacje z całego UJ. Wybierz swój wydział (przycisk „Wybierz wydział"), żeby zobaczyć
+          jego komunikaty, rejestracje i sekcję „Ważne teraz".
         </p>
       ) : null}
 

@@ -13,8 +13,6 @@ type Props = {
   persistent: boolean
   onChange: (faculty: string | null) => void
   className?: string
-  /** `header` — kompaktowa pigułka w nagłówku; `inline` — przycisk w treści strony. */
-  variant?: 'header' | 'inline'
 }
 
 const TRIGGER_BASE =
@@ -35,10 +33,14 @@ export default function FacultyPicker({
   persistent,
   onChange,
   className = '',
-  variant = 'inline',
 }: Props) {
   const [open, setOpen] = useState(false)
-  const label = faculty ? (facultyShortLabel(faculty) ?? faculty) : 'Cały UJ'
+  // „Wybierz wydział" dopóki nic nie wybrano; „Cały UJ" tylko po świadomym wyborze.
+  const label = faculty
+    ? (facultyShortLabel(faculty) ?? faculty)
+    : source === 'none'
+      ? 'Wybierz wydział'
+      : 'Cały UJ'
 
   return (
     <>
@@ -52,7 +54,7 @@ export default function FacultyPicker({
       >
         <Landmark size={15} strokeWidth={2} className="shrink-0" aria-hidden />
         <span className="sr-only">Wydział: </span>
-        <span className="truncate">{variant === 'inline' && !faculty ? 'Wybierz wydział' : label}</span>
+        <span className="truncate">{label}</span>
         <ChevronDown size={14} strokeWidth={2.25} className="shrink-0 opacity-70" aria-hidden />
       </button>
       {open && typeof document !== 'undefined'

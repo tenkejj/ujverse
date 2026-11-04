@@ -66,7 +66,13 @@ export default function AnnouncementsPage({ faculty }: { faculty: FacultyPrefere
           </>
         }
       >
-        <FacultyPicker faculty={selected} source={faculty.source} persistent={faculty.persistent} onChange={faculty.setFaculty} />
+        <FacultyPicker
+          faculty={selected}
+          source={faculty.source}
+          persistent={faculty.persistent}
+          onChange={faculty.setFaculty}
+          className="lg:hidden"
+        />
       </PageIntro>
 
       <div className="flex flex-col gap-3 px-1">

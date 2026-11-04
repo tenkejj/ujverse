@@ -869,7 +869,7 @@ export const BOTTOM_NAV_MOBILE = {
   navDefaultClass: 'bg-bg-app border-border-app',
   safeAreaBottomInset: 'env(safe-area-inset-bottom)',
   /** Pełna szerokość + 5 równych kolumn — FAB w środkowej kolumnie = 50vw (oś z logo). */
-  rowClass: 'grid grid-cols-5 items-end w-full px-4 py-1.5 min-h-16',
+  rowClass: 'grid grid-cols-5 items-end w-full px-1 py-1.5 min-h-16',
   iconButtonBaseClass:
     'flex flex-col col-span-1 items-center justify-center gap-1 min-h-[56px] py-2 px-1 transition-colors rounded-xl',
   iconButtonActiveClass: 'text-brand-ink dark:text-accent-interactive',

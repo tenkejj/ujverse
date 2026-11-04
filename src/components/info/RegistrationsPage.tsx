@@ -101,7 +101,13 @@ export default function RegistrationsPage({
         title="Rejestracje USOS"
         description="Trwające i nadchodzące rejestracje z publicznego katalogu USOSweb UJ. UJverse tylko je zbiera — zapisujesz się zawsze w USOSweb."
       >
-        <FacultyPicker faculty={selected} source={faculty.source} persistent={faculty.persistent} onChange={faculty.setFaculty} />
+        <FacultyPicker
+          faculty={selected}
+          source={faculty.source}
+          persistent={faculty.persistent}
+          onChange={faculty.setFaculty}
+          className="lg:hidden"
+        />
       </PageIntro>
 
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
