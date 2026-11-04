@@ -5,7 +5,24 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
-import { ArrowUpRight, Bookmark, BookmarkCheck } from 'lucide-react'
+import {
+  AlarmClock,
+  ArrowUpRight,
+  BookOpen,
+  Bookmark,
+  BookmarkCheck,
+  CalendarDays,
+  ClipboardList,
+  DoorOpen,
+  GraduationCap,
+  Library,
+  Lock,
+  Mail,
+  Sparkles,
+  Tag,
+  type LucideIcon,
+} from 'lucide-react'
+import type { InfoResource, InfoResourceIcon } from '../../lib/info/resources'
 import {
   canShowCountdown,
   registrationTiming,
@@ -37,14 +54,15 @@ import {
 const ADDED_MEANING =
   'Dodano do UJverse (moment pobrania ze strony wydziału, może różnić się od daty publikacji)'
 
-const surface =
-  'rounded-[1.35rem] border border-zinc-200/90 bg-white/80 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-md ' +
-  'dark:border-white/10 dark:bg-white/[0.035] dark:shadow-none'
+/** Wspólna powierzchnia boardu — bez lift/glow (mniej „AI look”). */
+export const boardSurface =
+  'rounded-2xl border border-zinc-200/90 bg-white/70 ' +
+  'dark:border-white/[0.08] dark:bg-white/[0.03]'
 
 const surfaceInteractive =
-  `${surface} transition-[transform,border-color,background-color] duration-200 ` +
-  'hover:-translate-y-0.5 hover:border-brand-ink/25 hover:bg-white ' +
-  'dark:hover:border-brand-gold-bright/30 dark:hover:bg-white/[0.055]'
+  `${boardSurface} transition-colors duration-150 ` +
+  'hover:border-zinc-300 hover:bg-white ' +
+  'dark:hover:border-white/15 dark:hover:bg-white/[0.05]'
 
 function SaveChip({ item }: { item: InfoAnnouncement | InfoRegistration | InfoEvent }) {
   const { saved } = useInfoStore()
@@ -76,20 +94,27 @@ function SectionHead({
   title,
   to,
   label,
+  hint,
 }: {
   id: string
   title: string
-  to: string
-  label: string
+  to?: string
+  label?: string
+  hint?: string
 }) {
   return (
-    <div className="mb-4 flex items-end justify-between gap-3">
-      <h2 id={id} className="text-[13px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
-        {title}
-      </h2>
-      <Link to={to} className={INFO_ACTION_LINK_CLS} aria-label={label}>
-        Wszystkie →
-      </Link>
+    <div className="mb-5 flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        <h2 id={id} className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          {title}
+        </h2>
+        {hint ? <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{hint}</p> : null}
+      </div>
+      {to && label ? (
+        <Link to={to} className={INFO_ACTION_LINK_CLS} aria-label={label}>
+          Wszystkie →
+        </Link>
+      ) : null}
     </div>
   )
 }
@@ -150,12 +175,7 @@ export function BoardSpotlight({
   const shown = items.slice(0, 2)
   return (
     <section aria-labelledby="board-priority-heading" className="min-w-0">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 id="board-priority-heading" className="text-[13px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
-          Ważne teraz
-        </h2>
-        <p className="text-xs text-zinc-400 dark:text-zinc-500">{facultyLabel}</p>
-      </div>
+      <SectionHead id="board-priority-heading" title="Ważne teraz" hint={facultyLabel} />
       <motion.ul
         className="grid gap-3 lg:grid-cols-2"
         role="list"
@@ -203,36 +223,32 @@ export function BoardSpotlight({
 function AnnouncementTile({
   item,
   now,
-  featured = false,
+  lead = false,
 }: {
   item: InfoAnnouncement
   now: Date
-  featured?: boolean
+  lead?: boolean
 }) {
   const meta = [item.facultyShort, item.sourceLabel].filter(Boolean).join(' · ')
   const sourceLabel = item.sourceIsListing ? 'Lista komunikatów wydziału' : 'Sprawdź w źródle'
   const added = parseIsoDate(item.addedAt)
 
   return (
-    <article className={`${surfaceInteractive} relative flex h-full flex-col ${featured ? 'p-6 sm:p-7' : 'p-4 sm:p-5'}`}>
-      <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
+    <article className={`${surfaceInteractive} relative flex h-full min-h-[11.5rem] flex-col p-5`}>
+      <div className="absolute right-3 top-3">
         <SaveChip item={item} />
       </div>
-      <div className="mb-2 flex flex-wrap items-center gap-2 pr-10">
+      <div className="mb-2.5 flex flex-wrap items-center gap-2 pr-10">
+        {lead ? (
+          <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Najnowszy</span>
+        ) : null}
         <AnnouncementStatusPill status={item.status} />
         {meta ? <span className="text-xs text-zinc-500 dark:text-zinc-400">{meta}</span> : null}
       </div>
-      <h3
-        className={`pr-8 font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 ${
-          featured ? 'text-xl leading-snug sm:text-2xl' : 'text-[15px] leading-snug'
-        }`}
-      >
+      <h3 className="line-clamp-3 pr-8 text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-zinc-50">
         {item.title}
       </h3>
-      {featured && item.excerpt && item.excerpt !== item.title ? (
-        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{item.excerpt}</p>
-      ) : null}
-      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-4">
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-5">
         {added ? (
           <time
             dateTime={added.toISOString()}
@@ -273,6 +289,7 @@ export function BoardAnnouncements({
   onRetry,
   empty,
   dimmed,
+  hint,
 }: {
   title: string
   items: InfoAnnouncement[]
@@ -282,14 +299,19 @@ export function BoardAnnouncements({
   onRetry: () => void
   empty: ReactNode
   dimmed?: boolean
+  hint?: string
 }) {
   const motionCfg = useBoardMotion()
-  const [featured, ...rest] = items
-  const side = rest.slice(0, 2)
 
   return (
     <section aria-labelledby="board-announcements-heading" className="min-w-0">
-      <SectionHead id="board-announcements-heading" title={title} to="/komunikaty" label="Wszystkie komunikaty" />
+      <SectionHead
+        id="board-announcements-heading"
+        title={title}
+        to="/komunikaty"
+        label="Wszystkie komunikaty"
+        hint={hint}
+      />
       {pending ? (
         <RowSkeletons count={3} variant="feed" />
       ) : error && items.length === 0 ? (
@@ -297,23 +319,19 @@ export function BoardAnnouncements({
       ) : items.length === 0 ? (
         empty
       ) : (
-        <motion.div
-          className={`grid gap-3 lg:grid-cols-5 ${dimmed ? 'opacity-60' : ''}`}
+        <motion.ul
+          className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 ${dimmed ? 'opacity-60' : ''}`}
+          role="list"
           variants={motionCfg.container}
           initial="hidden"
           animate="show"
         >
-          <motion.div className="lg:col-span-3" variants={motionCfg.item}>
-            <AnnouncementTile item={featured} now={now} featured />
-          </motion.div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-1">
-            {side.map((item) => (
-              <motion.div key={item.id} variants={motionCfg.item}>
-                <AnnouncementTile item={item} now={now} />
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+          {items.slice(0, 3).map((item, index) => (
+            <motion.li key={item.id} variants={motionCfg.item} className="min-w-0">
+              <AnnouncementTile item={item} now={now} lead={index === 0} />
+            </motion.li>
+          ))}
+        </motion.ul>
       )}
     </section>
   )
@@ -516,5 +534,88 @@ export function BoardRail({
         </section>
       ) : null}
     </div>
+  )
+}
+
+/* ─── Niezbędnik: kafelki narzędzi ─── */
+
+const TOOL_ICONS: Record<InfoResourceIcon, LucideIcon> = {
+  usos: GraduationCap,
+  pegaz: BookOpen,
+  mail: Mail,
+  registrations: AlarmClock,
+  calendar: CalendarDays,
+  rooms: DoorOpen,
+  plan: ClipboardList,
+  spots: Library,
+  discounts: Tag,
+  assistant: Sparkles,
+}
+
+function ToolTile({ resource, isAuthenticated }: { resource: InfoResource; isAuthenticated: boolean }) {
+  const Glyph = TOOL_ICONS[resource.icon]
+  const locked = resource.requiresAccount && !isAuthenticated
+  const body = (
+    <>
+      <span
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200"
+        aria-hidden
+      >
+        <Glyph size={16} strokeWidth={1.75} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          <span className="truncate">{resource.label}</span>
+          {resource.external ? <ArrowUpRight size={12} className="shrink-0 text-zinc-400" aria-hidden /> : null}
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-zinc-500 dark:text-zinc-400">{resource.description}</span>
+        {locked ? (
+          <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+            <Lock size={10} aria-hidden /> wymaga konta
+          </span>
+        ) : null}
+      </span>
+    </>
+  )
+  const cls = `${surfaceInteractive} flex h-full items-start gap-3 p-4 text-left ${FOCUS_RING}`
+  if (resource.external) {
+    return (
+      <a href={resource.href} target="_blank" rel="noopener noreferrer" className={cls}>
+        {body}
+        <span className="sr-only">(otwiera się w nowej karcie)</span>
+      </a>
+    )
+  }
+  return (
+    <Link to={resource.href} className={cls}>
+      {body}
+    </Link>
+  )
+}
+
+export function BoardTools({
+  resources,
+  isAuthenticated,
+}: {
+  resources: readonly InfoResource[]
+  isAuthenticated: boolean
+}) {
+  return (
+    <section aria-labelledby="board-tools-heading" className="min-w-0">
+      <SectionHead
+        id="board-tools-heading"
+        title="Niezbędnik studenta"
+        to="/niezbednik"
+        label="Wszystkie narzędzia"
+        hint="Szybki dostęp do USOS, PEGAZ i narzędzi UJverse"
+      />
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+        {resources.map((resource) => (
+          <li key={resource.id} className="min-w-0">
+            <ToolTile resource={resource} isAuthenticated={isAuthenticated} />
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

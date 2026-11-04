@@ -1,8 +1,7 @@
 /**
- * Strona startowa UJverse (`/`) — board informacyjny (nie lista / nie siatka tabel).
+ * Strona startowa UJverse (`/`) — board z wyraźnymi strefami i oddechem.
  */
 import { Link } from 'react-router-dom'
-import { Link2 } from 'lucide-react'
 import { usePublicAnnouncements, usePublicOfficialEvents, usePublicRegistrations } from '../../hooks/usePublicInfo'
 import { useInfoStore, type FacultyPreference } from '../../hooks/useInfoPreferences'
 import { useNow } from '../../hooks/useNow'
@@ -20,13 +19,9 @@ import {
   BoardAnnouncements,
   BoardRail,
   BoardSpotlight,
+  BoardTools,
 } from './InfoBoard'
-import {
-  CustomizeButton,
-  ResourceStrip,
-  SavedSection,
-  SourcesNote,
-} from './InfoBlocks'
+import { CustomizeButton, SavedSection, SourcesNote } from './InfoBlocks'
 import { DomainEmpty, INFO_ACTION_LINK_CLS } from './infoUi'
 
 const DASHBOARD_TOOL_IDS = ['usosweb', 'pegaz', 'poczta', 'sale', 'moj-plan', 'miejsca']
@@ -48,7 +43,8 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
   const registrationsQ = usePublicRegistrations()
   const eventsQ = usePublicOfficialEvents()
 
-  const announcements = sortAnnouncementsNewestFirst(announcementsQ.data?.items ?? []).slice(0, 3)
+  const announcementsAll = sortAnnouncementsNewestFirst(announcementsQ.data?.items ?? [])
+  const announcements = announcementsAll.slice(0, 3)
   const registrationsAll = registrationsQ.data?.items ?? []
   const latestRegistrationRun = registrationsQ.data?.freshness.latest ?? null
   const activeRegistrations = activeRegistrationsSorted(registrationsAll, now)
@@ -59,7 +55,7 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
 
   const priority = buildPriorityItems({
     faculty: selected,
-    announcements: sortAnnouncementsNewestFirst(announcementsQ.data?.items ?? []),
+    announcements: announcementsAll,
     registrations: registrationsAll,
     now,
     latestRegistrationVerifiedAt: latestRegistrationRun,
@@ -67,12 +63,15 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
 
   const tools = INFO_RESOURCES.filter((r) => DASHBOARD_TOOL_IDS.includes(r.id))
   const announcementsTitle = selected ? 'Komunikaty z Twojego wydziału' : 'Najnowsze komunikaty'
+  const announcementsHint = selected
+    ? 'Ostatnie 30 dni z Twojego wydziału'
+    : 'Z oficjalnych stron wydziałów · ostatnie 30 dni'
 
-  const regsUnavailable = registrationsQ.isSuccess && latestRegistrationRun === null
-  const eventsUnavailable = eventsQ.isSuccess && eventsQ.data.freshness.latest === null
+  const regsUnavailable = registrationsQ.isFetched && !registrationsQ.isError && latestRegistrationRun === null
+  const eventsUnavailable =
+    eventsQ.isFetched && !eventsQ.isError && (eventsQ.data?.freshness.latest ?? null) === null
   const showRegistrations = !hidden.has('registrations')
   const showEvents = !hidden.has('events')
-  // Pusta szyna (brak dostępu anon) nie zabiera szerokości — komunikaty dostają pełny board.
   const railHasSignal =
     (showRegistrations &&
       (registrationsQ.isPending ||
@@ -81,9 +80,7 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
         (!regsUnavailable && registrations.length === 0 && otherRegistrationsCount > 0))) ||
     (showEvents &&
       (eventsQ.isPending || eventsQ.isError || (!eventsUnavailable && events.length > 0)))
-  const showRail = showRegistrations || showEvents
-  // Nadal renderujemy cichy status „niedostępne”, ale w jednej wąskiej stopce pod boardem —
-  // nie jako pustą kolumnę.
+
   const unavailableNotes: string[] = []
   if (showRegistrations && regsUnavailable) {
     unavailableNotes.push('Dane o rejestracjach z USOSweb są chwilowo niedostępne.')
@@ -93,13 +90,13 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 pb-4">
-      <header className="flex flex-col gap-5 border-b border-zinc-200/80 pb-6 dark:border-white/10 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 pb-6 sm:gap-14">
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 max-w-2xl">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-brand-ink dark:text-brand-gold-bright">
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
             {firstName ? `Cześć, ${firstName}` : 'UJverse'}
           </p>
-          <h1 className="mt-2 text-[1.65rem] font-extrabold leading-[1.15] tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+          <h1 className="mt-1 text-[1.75rem] font-semibold leading-[1.2] tracking-tight text-zinc-900 sm:text-[2rem] dark:text-zinc-50">
             Wszystko, co ważne na UJ, w jednym miejscu
           </h1>
         </div>
@@ -118,71 +115,46 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
       {selectedShort ? <BoardSpotlight items={priority} facultyLabel={selectedShort} now={now} /> : null}
 
       <div
-        className={`grid items-start gap-10 ${
-          showRail && railHasSignal ? 'xl:grid-cols-[minmax(0,1.55fr)_minmax(18rem,0.85fr)]' : ''
+        className={`grid items-start gap-12 ${
+          railHasSignal ? 'xl:grid-cols-[minmax(0,1.6fr)_minmax(17rem,0.8fr)] xl:gap-14' : ''
         }`}
       >
-        <div className="flex min-w-0 flex-col gap-10">
-          {!hidden.has('announcements') ? (
-            <BoardAnnouncements
-              title={announcementsTitle}
-              items={announcements}
-              now={now}
-              pending={announcementsQ.isPending}
-              error={announcementsQ.isError}
-              onRetry={() => void announcementsQ.refetch()}
-              dimmed={announcementsQ.isPlaceholderData}
-              empty={
-                <DomainEmpty
-                  tone="quiet"
-                  action={
-                    selected ? (
-                      <button
-                        type="button"
-                        onClick={() => faculty.setFaculty(null)}
-                        className={`${INFO_ACTION_LINK_CLS} -ml-2`}
-                      >
-                        Pokaż komunikaty z całego UJ
-                      </button>
-                    ) : undefined
-                  }
-                >
-                  {selected
-                    ? `Brak nowych komunikatów z wydziału ${selectedShort} w ostatnich 30 dniach.`
-                    : 'Brak nowych komunikatów w ostatnich 30 dniach.'}
-                </DomainEmpty>
-              }
-            />
-          ) : null}
+        {!hidden.has('announcements') ? (
+          <BoardAnnouncements
+            title={announcementsTitle}
+            hint={announcementsHint}
+            items={announcements}
+            now={now}
+            pending={announcementsQ.isPending}
+            error={announcementsQ.isError}
+            onRetry={() => void announcementsQ.refetch()}
+            dimmed={announcementsQ.isPlaceholderData}
+            empty={
+              <DomainEmpty
+                tone="quiet"
+                action={
+                  selected ? (
+                    <button
+                      type="button"
+                      onClick={() => faculty.setFaculty(null)}
+                      className={`${INFO_ACTION_LINK_CLS} -ml-2`}
+                    >
+                      Pokaż komunikaty z całego UJ
+                    </button>
+                  ) : undefined
+                }
+              >
+                {selected
+                  ? `Brak nowych komunikatów z wydziału ${selectedShort} w ostatnich 30 dniach.`
+                  : 'Brak nowych komunikatów w ostatnich 30 dniach.'}
+              </DomainEmpty>
+            }
+          />
+        ) : (
+          <div />
+        )}
 
-          {unavailableNotes.length > 0 && !railHasSignal ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400" role="status">
-              {unavailableNotes.join(' ')}
-            </p>
-          ) : null}
-
-          <SavedSection items={saved} now={now} />
-
-          {!hidden.has('tools') ? (
-            <section className="min-w-0" aria-labelledby="board-tools-heading">
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <h2
-                  id="board-tools-heading"
-                  className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400"
-                >
-                  <Link2 size={13} aria-hidden />
-                  Niezbędnik studenta
-                </h2>
-                <Link to="/niezbednik" className={INFO_ACTION_LINK_CLS} aria-label="Wszystkie narzędzia">
-                  Wszystkie →
-                </Link>
-              </div>
-              <ResourceStrip resources={tools} isAuthenticated={isAuthenticated} />
-            </section>
-          ) : null}
-        </div>
-
-        {showRail && railHasSignal ? (
+        {railHasSignal ? (
           <BoardRail
             registrations={registrations}
             events={events}
@@ -190,7 +162,7 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
             latestRegistrationRun={latestRegistrationRun}
             registrationsPending={registrationsQ.isPending}
             registrationsError={registrationsQ.isError}
-            registrationsUnavailable={regsUnavailable}
+            registrationsUnavailable={false}
             registrationsStale={registrationsStale}
             onRetryRegistrations={() => void registrationsQ.refetch()}
             registrationsEmpty={
@@ -211,14 +183,24 @@ export default function InfoDashboard({ faculty, isAuthenticated, firstName }: P
             }
             eventsPending={eventsQ.isPending}
             eventsError={eventsQ.isError}
-            eventsUnavailable={eventsUnavailable}
+            eventsUnavailable={false}
             eventsEmpty={<DomainEmpty tone="quiet">Brak zapowiedzianych wydarzeń w kalendarzu UJ.</DomainEmpty>}
             onRetryEvents={() => void eventsQ.refetch()}
-            hideRegistrations={!showRegistrations}
-            hideEvents={!showEvents}
+            hideRegistrations={!showRegistrations || regsUnavailable}
+            hideEvents={!showEvents || eventsUnavailable}
           />
         ) : null}
       </div>
+
+      {unavailableNotes.length > 0 ? (
+        <p className="-mt-6 text-sm text-zinc-500 dark:text-zinc-400" role="status">
+          {unavailableNotes.join(' ')}
+        </p>
+      ) : null}
+
+      <SavedSection items={saved} now={now} />
+
+      {!hidden.has('tools') ? <BoardTools resources={tools} isAuthenticated={isAuthenticated} /> : null}
 
       <SourcesNote
         announcementsLatest={announcementsQ.data?.freshness.latest ?? null}

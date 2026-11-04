@@ -5,7 +5,6 @@ import {
   AlarmClock,
   ArrowUpRight,
   BookOpen,
-  Bookmark,
   CalendarDays,
   ClipboardList,
   DoorOpen,
@@ -255,22 +254,28 @@ export function ResourceStrip({
 export function SavedSection({ items, now }: { items: SavedItem[]; now: Date }) {
   const [showAll, setShowAll] = useState(false)
   if (items.length === 0) return null
-  const visible = showAll ? items : items.slice(0, 4)
+  const visible = showAll ? items : items.slice(0, 3)
   return (
-    <InfoSection variant="feed" icon={Bookmark} title="Zapisane">
-      <ul className="divide-y divide-zinc-200/80 dark:divide-white/10" role="list">
+    <section aria-labelledby="board-saved-heading" className="min-w-0">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <h2 id="board-saved-heading" className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Zapisane
+        </h2>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Na tym urządzeniu</p>
+      </div>
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
         {visible.map((item) => (
           <li key={`${item.kind}:${item.id}`} className="min-w-0">
-            <SavedItemRow item={item} now={now} variant="feed" />
+            <SavedItemRow item={item} now={now} />
           </li>
         ))}
       </ul>
-      {items.length > 4 ? (
-        <button type="button" onClick={() => setShowAll((v) => !v)} className={`${INFO_ACTION_LINK_CLS} mt-2`}>
+      {items.length > 3 ? (
+        <button type="button" onClick={() => setShowAll((v) => !v)} className={`${INFO_ACTION_LINK_CLS} mt-3`}>
           {showAll ? 'Pokaż mniej' : `Pokaż wszystkie (${items.length})`}
         </button>
       ) : null}
-    </InfoSection>
+    </section>
   )
 }
 
@@ -300,15 +305,15 @@ export function SourcesNote({
   now: Date
 }) {
   return (
-    <footer className="px-1 text-xs text-zinc-500 dark:text-zinc-400">
-      <p className="flex items-start gap-2">
-        <ShieldCheck size={14} className={`mt-0.5 shrink-0 ${widgetGoldCls}`} aria-hidden />
+    <footer className="border-t border-zinc-200/80 pt-8 text-sm text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+      <p className="flex items-start gap-2 max-w-3xl">
+        <ShieldCheck size={15} className={`mt-0.5 shrink-0 ${widgetGoldCls}`} aria-hidden />
         <span>
-          Dane z {ANNOUNCEMENT_SOURCE_COUNT} stron wydziałów, USOSweb i uj.edu.pl — nie na żywo; w ważnych sprawach
-          sprawdź źródło. Nieoficjalny projekt studencki.
+          Dane z {ANNOUNCEMENT_SOURCE_COUNT} stron wydziałów, USOSweb i uj.edu.pl. Nie aktualizujemy ich na żywo —
+          w ważnych sprawach sprawdź źródło. UJverse to nieoficjalny projekt studencki.
         </span>
       </p>
-      <p className={`mt-2 ${sideMutedCls}`}>
+      <p className={`mt-3 text-xs ${sideMutedCls}`}>
         Aktualność: komunikaty{' '}
         <FreshnessValue iso={announcementsLatest} meaning="Najnowszy komunikat dodany do UJverse" now={now} />
         {' · '}rejestracje{' '}
