@@ -10,6 +10,8 @@ Hierarchy: Versuś and the question field are the focal point. Page title 22 px,
 
 Show one information category at a time using native filter buttons with explicit selected states. Preserve category in `?sekcja=`. Keep the full catalogues, saved items, faculty selection, customization and source links available. Avoid a long wall of equally prominent sections.
 
+Faculty selection has its own sticky strip below the global header on public pages. The label “Twój wydział” stays visible, the selected name is written out, and “Wybierz” / “Zmień” explicitly names the action. Keep one visible selector per viewport. Mobile uses an 88 px strip and desktop 80 px; chat height reserves that space.
+
 Depth: existing neutral surfaces and restrained structural borders; no decorative shadows. Input outer radius 23 px = button radius 10 px + padding 12 px + border 1 px. Button height 48 px; secondary controls at least 44 px. Hover styling is pointer-aware; optional press feedback is scale 0.96 over 150 ms, gated by reduced-motion preference. State changes remain immediate.
 
 This records the implemented revision for review, not a usability study or an approved final visual direction. The user requested no automated test runs for this visual iteration.

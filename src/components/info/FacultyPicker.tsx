@@ -105,28 +105,24 @@ export default function FacultyPicker({
           title={
             faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'
           }
-          className={`${TRIGGER_BASE} ${className}`.trim()}
+          className={`${TRIGGER_BASE} ${needsChoice ? 'faculty-picker-needs-choice' : ''} ${className}`.trim()}
         >
-          <Landmark
-            size={15}
-            strokeWidth={2}
-            className="shrink-0"
-            aria-hidden
-          />
-          <span className="min-w-0 text-left">
-            <span className="block text-[11px] font-medium opacity-75">
-              Wydział:
-            </span>
-            <span className="block truncate text-sm leading-snug">
-              {shortLabel}
+          <span className="faculty-picker-icon" aria-hidden>
+            <Landmark size={21} strokeWidth={1.75} />
+          </span>
+          <span className="faculty-picker-copy">
+            <span className="faculty-picker-label">Twój wydział</span>
+            <span className="faculty-picker-value">
+              {faculty?.replace(/^Wydział\s+/, '') ??
+                (needsChoice
+                  ? 'Wybierz swój wydział'
+                  : 'Cały UJ — wszystkie wydziały')}
             </span>
           </span>
-          <ChevronDown
-            size={14}
-            strokeWidth={2.25}
-            className="shrink-0 opacity-70"
-            aria-hidden
-          />
+          <span className="faculty-picker-action">
+            {needsChoice ? 'Wybierz' : 'Zmień'}
+            <ChevronDown size={16} strokeWidth={2} aria-hidden />
+          </span>
         </button>
       )}
       {open && typeof document !== 'undefined'

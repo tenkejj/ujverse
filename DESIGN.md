@@ -8,4 +8,6 @@ Below the assistant, one information area switches between announcements, regist
 
 Detailed type, spacing and interaction decisions live in [.interface-design/system.md](.interface-design/system.md). Theme definitions and original branding remain unchanged. The sidebar shares the page canvas and uses quieter controls; the floating mobile AI shortcut remains on other pages, while Start has its own prominent entry.
 
+Faculty selection is a distinct sticky strip below the header, with “Twój wydział”, a readable name and an explicit “Wybierz” / “Zmień” action. It stays available while browsing public information.
+
 This revision supersedes the earlier Baltic Wheels-inspired opening. Automated tests were not run for this visual iteration, at the user's request.

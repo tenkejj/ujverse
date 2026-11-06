@@ -181,7 +181,7 @@ export default function Header({
             ) : null}
           </button>
         </div>
-        <div className="hidden min-w-0 lg:flex">
+        <div className={`${showFacultyStrip ? 'hidden' : 'hidden lg:flex'} min-w-0`}>
           <FacultyPicker
             faculty={faculty.faculty}
             source={faculty.source}
@@ -382,7 +382,7 @@ export default function Header({
     {showFacultyStrip ? (
       <>
         <div className="faculty-strip-spacer lg:hidden" aria-hidden />
-        <div className="faculty-strip lg:hidden">
+        <div className="faculty-strip">
           <FacultyPicker faculty={faculty.faculty} source={faculty.source} persistent={faculty.persistent} onChange={faculty.setFaculty} />
         </div>
       </>

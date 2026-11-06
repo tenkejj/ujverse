@@ -630,10 +630,62 @@
 }
 .faculty-picker {
   min-width: 176px;
-  max-width: 240px;
+  max-width: 420px;
+  min-height: 64px;
+  gap: 12px;
+  padding: 8px 12px;
+}
+.faculty-picker-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--campus-tint);
+}
+.faculty-picker-copy {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.faculty-picker-label {
+  display: block;
+  color: var(--campus-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.faculty-picker-value {
+  display: block;
+  margin-top: 2px;
+  color: var(--campus-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+.faculty-picker-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--campus-tint);
+  color: var(--campus-accent);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.faculty-picker-needs-choice .faculty-picker-action {
+  background: var(--campus-accent);
+  color: var(--campus-bg);
 }
 .faculty-strip-spacer {
-  height: 64px;
+  height: 88px;
 }
 .faculty-strip {
   position: fixed;
@@ -641,7 +693,7 @@
   left: 0;
   right: 0;
   z-index: 45;
-  height: 64px;
+  height: 88px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--campus-line);
   background: var(--bg-app);
@@ -650,13 +702,49 @@
   display: flex;
   width: 100%;
   max-width: none;
-  min-height: 48px;
-}
-.faculty-strip .faculty-picker > span {
-  flex: 1;
+  min-height: 72px;
 }
 @media (min-width: 768px) {
   .faculty-strip {
     top: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+}
+@media (min-width: 1024px) {
+  .faculty-strip {
+    position: sticky;
+    top: 4rem;
+    left: auto;
+    right: auto;
+    height: 80px;
+    padding: 8px 48px;
+  }
+  .faculty-strip .faculty-picker {
+    min-height: 64px;
+    max-width: 1040px;
+    margin-inline: auto;
+  }
+  .faculty-strip .faculty-picker-value {
+    font-size: 15px;
+  }
+}
+@media (max-width: 767px) {
+  .faculty-picker {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+  .faculty-picker-icon {
+    width: 28px;
+    height: 32px;
+  }
+  .faculty-picker-action {
+    padding-inline: 10px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .faculty-picker-value {
+    font-size: 13px;
+  }
+  .faculty-picker-label {
+    font-size: 11px;
   }
 }

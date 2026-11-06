@@ -279,8 +279,8 @@ export default function ChatHubView({
         'flex w-full flex-col',
         // Mobile: full viewport minus sticky header (h-14) minus mobile BottomNav (~4.25rem).
         // Desktop: full viewport minus sticky header (h-16). BottomNav is md:hidden.
-        'h-[calc(100dvh-3.5rem-4rem-4.25rem-env(safe-area-inset-bottom,0px))]',
-        'md:h-[calc(100dvh-8rem)] lg:h-[calc(100dvh-4rem)]',
+        'h-[calc(100dvh-3.5rem-5.5rem-4.25rem-env(safe-area-inset-bottom,0px))]',
+        'md:h-[calc(100dvh-9.5rem)] lg:h-[calc(100dvh-9rem)]',
       ].join(' ')}
     >
       {/*
