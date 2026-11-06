@@ -43,7 +43,7 @@ const noOverflow = async (page) =>
 {
   const { context, page } = await newPage({ width: 1440, height: 1000 })
   await page.goto(`${BASE}/`)
-  await page.getByRole('heading', { level: 1, name: /Na bieżąco z UJ/ }).waitFor()
+  await page.getByRole('heading', { level: 1, name: /Dziś na UJ/ }).waitFor()
   record('A1 dashboard H1 visible at / without login', true)
   record('A2 no login form on /', (await page.locator('#auth-username').count()) === 0)
   const annSection = page.getByRole('heading', { name: 'Najnowsze komunikaty' }).locator('xpath=ancestor::section')
@@ -83,7 +83,7 @@ const noOverflow = async (page) =>
 
   // Back/forward
   await page.goBack()
-  await page.getByRole('heading', { level: 1, name: /Na bieżąco z UJ/ }).waitFor()
+  await page.getByRole('heading', { level: 1, name: /Dziś na UJ/ }).waitFor()
   record('N1 browser back returns to dashboard', true)
   await page.goForward()
   await page.waitForURL(/\/szukaj/)
@@ -95,7 +95,7 @@ const noOverflow = async (page) =>
     ['Rejestracje', '/rejestracje', async (p) => p.getByRole('heading', { level: 1, name: 'Rejestracje USOS' }).waitFor()],
     ['Wydarzenia', '/wydarzenia', async (p) => p.getByRole('tablist', { name: 'Widoki strony Wydarzenia' }).waitFor()],
     ['Niezbędnik', '/niezbednik', async (p) => p.getByRole('heading', { level: 1, name: 'Niezbędnik studenta' }).waitFor()],
-    ['Start', '/', async (p) => p.getByRole('heading', { level: 1, name: 'Na bieżąco z UJ.' }).waitFor()],
+    ['Start', '/', async (p) => p.getByRole('heading', { level: 1, name: 'Dziś na UJ' }).waitFor()],
   ]) {
     await page.getByRole('navigation', { name: 'Sekcje UJverse' }).getByRole('button', { name: label, exact: true }).click()
     await page.waitForURL(`${BASE}${path}`)
@@ -311,6 +311,36 @@ const noOverflow = async (page) =>
     await page.locator('.info-entry').first().waitFor({ timeout: 15000 })
     record(`J17 no horizontal overflow at ${width}px`, await noOverflow(page))
   }
+  await context.close()
+}
+
+// ── K: preserve UJverse branding while presenting a compact dashboard ───────
+{
+  const { context, page } = await newPage({ width: 1440, height: 1000 })
+  await page.goto(`${BASE}/`)
+  await page.locator('main .info-entry').first().waitFor({ timeout: 20000 })
+  const logo = page.getByRole('button', { name: 'UJverse — strona startowa', exact: true })
+  record('K1 original image-based UJverse logo is present', await logo.locator('[style*="logo.png"]').count() === 1)
+  const family = await page.locator('main').evaluate(el => getComputedStyle(el).fontFamily)
+  record('K2 existing system typography is used', /system-ui/.test(family) && !/Source Sans/.test(family), family)
+  record('K3 all four dashboard sections render', await page.locator('.dashboard-panel').count() === 4)
+  const boxes = await page.locator('.dashboard-panel').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().bottom))
+  record('K4 dashboard previews fit desktop viewport', boxes.every(bottom => bottom <= 1000), `${Math.round(Math.max(...boxes))}px`)
+  const themeNav = page.getByRole('navigation', { name: 'Sekcje UJverse' })
+  await themeNav.getByRole('button', { name: 'Jasny', exact: true }).click()
+  await page.waitForFunction(() => document.documentElement.classList.contains('theme-uj'))
+  record('K5 existing UJ theme is reachable through its control', true)
+  await themeNav.getByRole('button', { name: 'Kolory UJ', exact: true }).click()
+  await page.waitForFunction(() => document.documentElement.classList.contains('dark') && !document.documentElement.classList.contains('theme-uj'))
+  record('K6 existing dark theme is reachable through its control', true)
+  await page.getByRole('button', { name: 'Dostosuj', exact: true }).click()
+  const custom = page.getByRole('dialog', { name: 'Co pokazywać na stronie startowej' })
+  await custom.getByRole('checkbox', { name: 'Wydarzenia na UJ', exact: true }).uncheck()
+  await custom.getByRole('button', { name: 'Zamknij', exact: true }).click()
+  record('K7 dashboard customisation hides the chosen section', await page.locator('.dashboard-events').count() === 0)
+  await page.reload()
+  await page.getByRole('heading', { name: 'Dziś na UJ', exact: true }).waitFor()
+  record('K8 dashboard customisation survives reload', await page.locator('.dashboard-events').count() === 0)
   await context.close()
 }
 

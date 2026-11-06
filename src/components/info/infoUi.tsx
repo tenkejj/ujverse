@@ -119,9 +119,11 @@ export function RowSkeletons({ count = 3, variant = 'panel' }: { count?: number;
 export function DomainError({
   what,
   onRetry,
+  compact = false,
 }: {
   what: string
   onRetry?: () => void
+  compact?: boolean
 }) {
   return (
     <div
@@ -131,9 +133,9 @@ export function DomainError({
       <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold">Nie udało się pobrać: {what}.</p>
-        <p className="mt-0.5 text-xs opacity-80">
+        {!compact ? <p className="mt-0.5 text-xs opacity-80">
           To problem z połączeniem lub serwerem, a nie brak informacji. Pozostałe sekcje działają niezależnie.
-        </p>
+        </p> : null}
       </div>
       {onRetry ? (
         <button

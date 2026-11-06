@@ -194,7 +194,7 @@ function isResetPasswordPath(pathname: string): boolean {
  * `getAppContentShellClass` — wcześniej cała ramka 80rem ucinała header.
  */
 function getAppShellClass(_view: AppShellView): string {
-  return 'w-full lg:ml-[15rem] lg:w-[calc(100%-15rem)]'
+  return 'w-full lg:ml-[18rem] lg:w-[calc(100%-18rem)]'
 }
 
 /** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */

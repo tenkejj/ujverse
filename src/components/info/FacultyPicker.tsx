@@ -101,7 +101,7 @@ export default function FacultyPicker({
           aria-haspopup="dialog"
           aria-expanded={open}
           title={faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'}
-          className={`campus-faculty-picker ${TRIGGER_BASE} ${className}`.trim()}
+          className={`${TRIGGER_BASE} ${className}`.trim()}
         >
           <Landmark size={15} strokeWidth={2} className="shrink-0" aria-hidden />
           <span className="sr-only">Wydział: </span>

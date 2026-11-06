@@ -1,5 +1,7 @@
 # UJverse: public information UI, 6 November 2026
 
+> Historical first proposal. The user subsequently requested restoration of the original logo, colours and font, with a dashboard layout. See [the current dashboard direction](dashboard.md). The custom Source Sans / white-blue visual system below is no longer used.
+
 ## Baseline and decision
 
 Base: `cursor/info-dashboard-simplify-0474`, `488f42d`. Both pivot PR #24 and follow-up PR #25 are pushed but unmerged. Work is isolated on `codex/info-ui-research`.

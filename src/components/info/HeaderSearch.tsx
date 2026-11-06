@@ -55,7 +55,7 @@ export default function HeaderSearch({ className = '' }: { className?: string })
       role="search"
       onSubmit={onSubmit}
       className={
-        'campus-header-search relative hidden h-10 w-full min-w-0 max-w-80 items-center gap-2 rounded-2xl px-3.5 md:flex ' +
+        'relative hidden h-10 w-full min-w-0 max-w-80 items-center gap-2 rounded-2xl px-3.5 md:flex ' +
         'backdrop-blur-md backdrop-saturate-150 border border-white/55 bg-white/55 ' +
         'shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_2px_8px_-3px_rgba(15,23,42,0.1)] ' +
         'transition-colors duration-200 focus-within:border-brand-ink/40 ' +
