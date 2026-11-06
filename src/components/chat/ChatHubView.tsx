@@ -26,8 +26,9 @@ import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Send, Square } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL, CHAT_PROVIDER_LABEL } from '../../lib/chatModel'
-import { buildWelcomeOpener } from '../../lib/welcomeOpener'
+import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
+import { useLocation, useNavigate } from 'react-router-dom'
+import type { VersusEntryState } from '../../lib/versusEntry'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import {
@@ -35,21 +36,32 @@ import {
   isSlashMode,
   type SlashCommand,
 } from '../../lib/chatSlashCommands'
-import VersuHeroCluster from './VersuHeroCluster'
 import VersuMark from './VersuMark'
 import MessageList from './MessageList'
 import SlashCommandMenu from './SlashCommandMenu'
 import ChatVoiceButton from './ChatVoiceButton'
 
-import { CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
+import {
+  CHAT_QUICK_PROMPTS,
+  PUBLIC_CHAT_QUICK_PROMPTS,
+} from '../../lib/chatQuickPrompts'
 
 type Props = {
   displayName: string
+  isAuthenticated?: boolean
   /** Profil zalogowanego użytkownika — awatar w wierszach jego wiadomości. */
   myProfile?: Profile | null
 }
 
-export default function ChatHubView({ displayName, myProfile }: Props) {
+export default function ChatHubView({
+  displayName,
+  myProfile,
+  isAuthenticated = false,
+}: Props) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const consumedEntry = useRef<string | null>(null)
+  const error = useChatStore((s) => s.error)
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
   const actionLabel = useChatStore((s) => s.actionLabel)
@@ -62,8 +74,23 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
 
   const slashMode = useMemo(() => isSlashMode(draft), [draft])
   const slashCommands = useMemo(
-    () => (slashMode ? filterSlashCommands(draft) : []),
-    [slashMode, draft],
+    () =>
+      slashMode
+        ? filterSlashCommands(draft).filter(
+            (command) =>
+              isAuthenticated ||
+              [
+                'oglosznia',
+                'tydzien',
+                'naukowe',
+                'wziks',
+                'juwenalia',
+                'rejestracje',
+                'pomoc',
+              ].includes(command.slug),
+          )
+        : [],
+    [slashMode, draft, isAuthenticated],
   )
   const slashOpen = slashMode
 
@@ -78,13 +105,6 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
     () => messages.some((m) => m.role !== 'system'),
     [messages],
   )
-  // Welcome opener — dynamiczne powitanie zależne od pory dnia / dnia tygodnia.
-  // `useMemo` z deps na `displayName` daje JEDEN losowy wybór per render-cykl
-  // (nowe wejście = nowa para headline/subline, ale stabilne podczas używania).
-  const welcome = useMemo(
-    () => buildWelcomeOpener(displayName),
-    [displayName],
-  )
 
   useEffect(() => {
     const el = scrollRef.current
@@ -93,9 +113,14 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
   }, [messages, isTyping])
 
   useEffect(() => {
+    if (
+      !window.matchMedia('(min-width: 768px)').matches ||
+      (location.state as Partial<VersusEntryState> | null)?.versusPrompt
+    )
+      return
     const t = window.setTimeout(() => inputRef.current?.focus(), 80)
     return () => window.clearTimeout(t)
-  }, [])
+  }, [location.state])
 
   const handleSend = useCallback(
     async (content: string) => {
@@ -106,6 +131,39 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
     },
     [isTyping, sendMessage],
   )
+
+  const entry = location.state as Partial<VersusEntryState> | null
+  const entryId = entry?.versusRequestId
+  const entryPrompt = entry?.versusPrompt
+  useEffect(() => {
+    if (
+      typeof entryId !== 'string' ||
+      typeof entryPrompt !== 'string' ||
+      !entryPrompt.trim() ||
+      isTyping ||
+      consumedEntry.current === entryId
+    )
+      return
+    // Wait until mount effects settle: StrictMode replays their setup/cleanup,
+    // and useChatSend correctly cancels a stream during that cleanup.
+    const timer = window.setTimeout(() => {
+      consumedEntry.current = entryId
+      void handleSend(entryPrompt.slice(0, 4000))
+      navigate(`${location.pathname}${location.search}`, {
+        replace: true,
+        state: null,
+      })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [
+    entryId,
+    entryPrompt,
+    isTyping,
+    handleSend,
+    navigate,
+    location.pathname,
+    location.search,
+  ])
 
   const handleEditLastUser = useCallback(
     (text: string) => {
@@ -221,8 +279,8 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
         'flex w-full flex-col',
         // Mobile: full viewport minus sticky header (h-14) minus mobile BottomNav (~4.25rem).
         // Desktop: full viewport minus sticky header (h-16). BottomNav is md:hidden.
-        'h-[calc(100dvh-3.5rem-4.25rem-env(safe-area-inset-bottom,0px))]',
-        'md:h-[calc(100dvh-4rem)]',
+        'h-[calc(100dvh-3.5rem-4rem-4.25rem-env(safe-area-inset-bottom,0px))]',
+        'md:h-[calc(100dvh-8rem)] lg:h-[calc(100dvh-4rem)]',
       ].join(' ')}
     >
       {/*
@@ -239,19 +297,16 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
             <VersuMark size={34} className="shrink-0" />
             <div className="min-w-0 flex flex-col leading-tight">
               <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-semibold tracking-tight text-fg-primary">
+                <h1 className="truncate text-sm font-semibold tracking-tight text-fg-primary">
                   {CHAT_ASSISTANT_NAME}
-                </span>
-                <span
-                  aria-hidden
-                  className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                    isTyping ? 'animate-pulse bg-emerald-400' : 'bg-emerald-400/60'
-                  }`}
-                />
+                </h1>
               </div>
-              <p className="truncate text-[11px] text-fg-secondary">
-                {CHAT_MODEL_LABEL}
-                <span className="text-fg-secondary/65"> · {CHAT_PROVIDER_LABEL}</span>
+              <p className="versus-chat-caption truncate text-[11px]">
+                {isTyping
+                  ? 'Sprawdzam informacje…'
+                  : isAuthenticated
+                    ? 'Twój asystent studencki AI'
+                    : 'Asystent studencki AI · Bez logowania'}
               </p>
             </div>
           </div>
@@ -293,53 +348,37 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pt-[10vh] pb-4 text-center md:px-6 md:pt-[14vh]">
+            <VersuMark size={64} className="mb-6" />
+            <h2 className="text-2xl font-semibold tracking-tight text-fg-primary md:text-3xl">
+              Co chcesz wiedzieć o UJ?
+            </h2>
+            <p className="versus-chat-caption mt-3 max-w-md text-sm leading-relaxed">
+              {isAuthenticated
+                ? 'Sprawdź informacje z uczelni lub zapytaj o swój plan.'
+                : 'Zapytaj o komunikaty, terminy rejestracji i wydarzenia. Możesz zacząć bez zakładania konta.'}
+            </p>
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-6"
-            >
-              <VersuHeroCluster
-                containerClass="size-40"
-                iconWrapClass="size-[4.5rem]"
-                iconSize={72}
-              />
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-linear-to-br from-logo-navy to-logo-navy/60 bg-clip-text pb-1 text-3xl leading-tight font-semibold tracking-tight text-transparent md:text-4xl dark:from-brand-gold-bright dark:to-brand-gold-bright/55"
-            >
-              {welcome.headline}
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-2 text-base text-fg-secondary md:text-lg"
-            >
-              {welcome.subline}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                duration: 0.45,
+                delay: 0.2,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="mt-6 grid w-full max-w-md grid-cols-2 gap-1.5 md:gap-2"
-              role="list"
+              role="group"
               aria-label="Sugerowane pytania"
             >
-              {CHAT_QUICK_PROMPTS.map((prompt) => (
+              {(isAuthenticated
+                ? CHAT_QUICK_PROMPTS
+                : PUBLIC_CHAT_QUICK_PROMPTS
+              ).map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
-                  role="listitem"
                   onClick={() => void handleSend(prompt)}
                   disabled={isTyping}
-                  className="w-full rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-center text-xs font-medium text-zinc-600 backdrop-blur-md transition-colors hover:border-logo-navy/30 hover:bg-zinc-50 hover:text-logo-navy disabled:cursor-not-allowed disabled:opacity-40 md:text-sm dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-300 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70 dark:hover:text-brand-gold-bright"
+                  className="versus-quick-prompt w-full rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-center text-xs font-medium backdrop-blur-md transition-colors disabled:cursor-not-allowed disabled:opacity-40 md:text-sm dark:border-white/10 dark:bg-zinc-950/50"
                 >
                   {prompt}
                 </button>
@@ -356,7 +395,19 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
             renderuje się `absolute bottom-full` (czyli NAD inputem). Bez tego
             menu by uciekło do prawego krańca viewportu.
           */}
-          <form onSubmit={onSubmitForm} className="relative flex items-end gap-2">
+          {error ? (
+            <p
+              className="mb-3 text-sm text-rose-700 dark:text-rose-300"
+              role="alert"
+            >
+              Nie udało się uzyskać odpowiedzi. Sprawdź połączenie i spróbuj
+              ponownie.
+            </p>
+          ) : null}
+          <form
+            onSubmit={onSubmitForm}
+            className="relative flex items-end gap-2"
+          >
             {slashOpen && (
               <SlashCommandMenu
                 commands={slashCommands}
@@ -382,7 +433,9 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDownTextarea}
-              placeholder="Napisz wiadomość lub wpisz / dla komend..."
+              aria-label="Wiadomość do Versusia"
+              name="message"
+              placeholder="Zapytaj Versusia…"
               rows={1}
               disabled={isTyping}
               className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl border border-zinc-200 bg-white/90 p-3 text-sm text-fg-primary shadow-sm outline-none transition-colors focus:border-logo-navy focus:ring-2 focus:ring-logo-navy/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/80 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"
@@ -408,7 +461,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               </button>
             )}
           </form>
-          <p className="mt-2 text-center text-[11px] text-fg-secondary">
+          <p className="versus-chat-caption mt-2 text-center text-[11px]">
             {CHAT_ASSISTANT_NAME} może się mylić — sprawdzaj ważne informacje.
           </p>
         </div>

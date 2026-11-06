@@ -132,14 +132,19 @@ async function execute(
     return { ok: false, error: validation.error }
   }
 
-  const { data, error } = await ctx.supabaseAdmin.rpc('calendar_search', {
+  const { data, error } = ctx.userId ? await ctx.supabaseAdmin.rpc('calendar_search', {
     p_range_start: args.range_start,
     p_range_end: args.range_end,
     p_kinds: null,
     p_lecturer_keys: null,
     p_departments: null,
     p_limit: MAX_ROWS,
-  })
+  }) : await ctx.supabaseAdmin.from('calendar_entries')
+    .select('id,kind,title,description,starts_at,ends_at,all_day,lecturer_name,location,department')
+    .or('source_announcement_id.not.is.null,source_official_event_id.not.is.null')
+    .neq('kind', 'community_event')
+    .lt('starts_at', args.range_end).gte('ends_at', args.range_start)
+    .order('starts_at', { ascending: true }).limit(MAX_ROWS)
 
   if (error) {
     console.error('[get_calendar_in_range] RPC error:', error.message)

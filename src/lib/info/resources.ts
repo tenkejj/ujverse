@@ -129,11 +129,11 @@ export const INFO_RESOURCES: readonly InfoResource[] = [
   {
     id: 'asystent',
     label: 'Asystent Versuś',
-    description: 'Pytania o plan, komunikaty i wydarzenia',
+    description: 'AI do pytań o komunikaty, rejestracje i wydarzenia. Bez logowania.',
     icon: 'assistant',
     href: '/chat',
     external: false,
-    requiresAccount: true,
+    requiresAccount: false,
     keywords: ['ai', 'asystent', 'chat', 'pytanie', 'versus'],
   },
 ]

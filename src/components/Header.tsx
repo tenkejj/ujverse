@@ -75,6 +75,7 @@ export default function Header({
   faculty,
   onOpenMobileDrawer,
 }: Props) {
+  const showFacultyStrip = ['home', 'komunikaty', 'rejestracje', 'wydarzenia', 'niezbednik', 'szukaj', 'chat'].includes(activeView)
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -378,6 +379,14 @@ export default function Header({
         )}
       </div>
     </header>
+    {showFacultyStrip ? (
+      <>
+        <div className="faculty-strip-spacer lg:hidden" aria-hidden />
+        <div className="faculty-strip lg:hidden">
+          <FacultyPicker faculty={faculty.faculty} source={faculty.source} persistent={faculty.persistent} onChange={faculty.setFaculty} />
+        </div>
+      </>
+    ) : null}
     {createPortal(desktopLogo, document.body)}
     </>
   )

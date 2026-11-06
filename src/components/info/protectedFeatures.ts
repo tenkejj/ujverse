@@ -35,11 +35,6 @@ export const PROTECTED_FEATURES: Record<string, ProtectedFeatureCopy> = {
     feature: 'Ustawienia konta',
     reason: 'Ustawienia dotyczą Twojego konta.',
   },
-  chat: {
-    feature: 'Asystent Versuś',
-    reason: 'Asystent korzysta z Twojego planu i ustawień, dlatego działa po zalogowaniu.',
-    alternative: { label: 'Przeszukaj komunikaty i rejestracje', to: '/szukaj' },
-  },
   aula: {
     feature: 'Aula',
     reason: 'Aula to czat Twojego rocznika — wiadomości widzą tylko jego członkowie.',

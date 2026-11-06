@@ -19,6 +19,7 @@ type NewMessage = {
 }
 
 type ChatState = {
+  generation: number
   messages: ChatMessage[]
   isTyping: boolean
   error: string | null
@@ -82,6 +83,7 @@ function generateId(): string {
 }
 
 export const useChatStore = create<ChatState>((set) => ({
+  generation: 0,
   messages: [],
   isTyping: false,
   error: null,
@@ -227,5 +229,5 @@ export const useChatStore = create<ChatState>((set) => ({
   },
 
   clearHistory: () =>
-    set({ messages: [], error: null, isTyping: false, actionLabel: null }),
+    set(state => ({ generation: state.generation + 1, messages: [], error: null, isTyping: false, actionLabel: null, isOpen: false })),
 }))

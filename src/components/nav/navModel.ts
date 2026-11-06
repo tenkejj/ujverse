@@ -11,6 +11,7 @@ import {
   Home,
   Link2,
   Megaphone,
+  MessageCircle,
   Search,
   User,
   Users,
@@ -19,7 +20,7 @@ import type { ComponentType, SVGProps } from 'react'
 
 export type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }>
 
-export type PrimaryNavTarget = 'home' | 'komunikaty' | 'rejestracje' | 'wydarzenia' | 'szukaj' | 'niezbednik'
+export type PrimaryNavTarget = 'home' | 'komunikaty' | 'rejestracje' | 'wydarzenia' | 'szukaj' | 'niezbednik' | 'chat'
 export type AccountNavTarget = 'mojPlan' | 'aula' | 'feed' | 'notifications' | 'profile'
 export type NavTarget = PrimaryNavTarget | AccountNavTarget | 'settings'
 
@@ -31,6 +32,7 @@ export type NavEntry<T extends NavTarget = NavTarget> = {
 }
 
 export const PRIMARY_NAV: ReadonlyArray<NavEntry<PrimaryNavTarget>> = [
+  { target: 'chat', label: 'Versuś AI', icon: MessageCircle, title: 'Zapytaj Versusia — także bez logowania' },
   { target: 'home', label: 'Start', icon: Home, title: 'Strona startowa — najważniejsze informacje' },
   { target: 'komunikaty', label: 'Komunikaty', icon: Megaphone, title: 'Komunikaty wydziałów UJ' },
   { target: 'rejestracje', label: 'Rejestracje', icon: AlarmClock, title: 'Rejestracje z USOSweb' },
@@ -50,6 +52,7 @@ export const ACCOUNT_NAV: ReadonlyArray<NavEntry<AccountNavTarget>> = [
 /** Który element nawigacji podświetlić dla danego widoku aplikacji. */
 export function navTargetForView(view: string): NavTarget | null {
   switch (view) {
+    case 'chat':
     case 'home':
     case 'komunikaty':
     case 'rejestracje':
@@ -72,7 +75,6 @@ export function navTargetForView(view: string): NavTarget | null {
     case 'sale':
     case 'znizki':
     case 'miejsca':
-    case 'chat':
       return 'niezbednik'
     case 'post':
     case 'group':

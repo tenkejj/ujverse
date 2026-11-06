@@ -32,6 +32,7 @@ import {
   ttlForTool,
 } from '../cache.js'
 import { isPersonalTool } from '../personalTools.js'
+import { canUseChatTool, chatToolAccessScope } from '../chatAccess.js'
 import { kvGetWithin, kvSetSafe } from '../kvCache.js'
 import { incrCounter, pushLatency } from '../metrics.js'
 
@@ -125,7 +126,13 @@ export function registerTool<TArgs, TResult>(
   const decorated = withCache(entry.tool.name, entry.execute, ttlMs)
   registry.set(entry.tool.name, {
     tool: entry.tool,
-    execute: decorated as ToolExecutor,
+    execute: async (args, ctx) => {
+      // Check before cache lookup: previously cached private results are not public.
+      if (!canUseChatTool(entry.tool.name, ctx.userId)) {
+        return { ok: false, requiresAuth: true, error: 'Do tych informacji potrzebne jest logowanie. Bez konta sprawdzę komunikaty, rejestracje i oficjalne wydarzenia UJ.' }
+      }
+      return decorated(args as TArgs, ctx)
+    },
   })
 }
 
@@ -165,7 +172,7 @@ function withCache<TArgs, TResult>(
 ): ToolExecutor<TArgs, TResult> {
   const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000))
   return async (args, ctx) => {
-    const argsRecord = args as unknown as Record<string, unknown>
+    const argsRecord = { ...(args as unknown as Record<string, unknown>), __access: chatToolAccessScope(ctx.userId) }
     const cacheKey = isPersonalTool(toolName)
       ? buildToolCacheKey(toolName, {
           ...argsRecord,
@@ -247,8 +254,8 @@ export function clearToolCache(): void {
  * Wywoływane przez orchestrator (`api/chat.ts`) tuż przed wysłaniem requestu
  * do Groqa.
  */
-export function toGroqToolsArray(): GroqToolDescriptor[] {
-  return Array.from(registry.values()).map(({ tool }) => ({
+export function toGroqToolsArray(userId: string | null = null): GroqToolDescriptor[] {
+  return Array.from(registry.values()).filter(({ tool }) => canUseChatTool(tool.name, userId)).map(({ tool }) => ({
     type: 'function',
     function: tool,
   }))

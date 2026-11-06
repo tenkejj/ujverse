@@ -51,6 +51,7 @@ import AnnouncementsPage from './components/info/AnnouncementsPage'
 import RegistrationsPage from './components/info/RegistrationsPage'
 import ToolsPage from './components/info/ToolsPage'
 import InfoSearchPage from './components/info/InfoSearchPage'
+import { useChatStore } from './store/useChatStore'
 import AuthRequired from './components/info/AuthRequired'
 import { PROTECTED_FEATURES } from './components/info/protectedFeatures'
 import { RowSkeletons } from './components/info/infoUi'
@@ -124,6 +125,7 @@ const PUBLIC_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
   'szukaj',
   'niezbednik',
   'sale',
+  'chat',
   'login',
 ])
 
@@ -775,6 +777,16 @@ function App() {
     navigate(next ?? '/', { replace: true })
   }, [authReady, session, normalizedPath, location.search, navigate])
 
+  const chatIdentity = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    if (!authReady) return
+    const next = session?.user.id ?? null
+    if (chatIdentity.current !== undefined && chatIdentity.current !== next) {
+      useChatStore.getState().clearHistory()
+    }
+    chatIdentity.current = next
+  }, [authReady, session?.user.id])
+
   // Po wylogowaniu (lub wygaśnięciu sesji) czyścimy stan konta — widoki
   // publiczne działają dalej, chronione pokażą `AuthRequired`.
   useEffect(() => {
@@ -793,6 +805,7 @@ function App() {
       toast.error('Nie udało się wylogować. Spróbuj ponownie.')
       return
     }
+    useChatStore.getState().clearHistory()
     navigate('/')
   }, [navigate])
 
@@ -1524,6 +1537,12 @@ function App() {
 
   const renderPublicView = (): ReactNode => {
     switch (effectiveActiveView) {
+      case 'chat':
+        return (
+          <Suspense fallback={viewFallback}>
+            <ChatHubView displayName={isAuthenticated ? displayName : ''} myProfile={myProfile} isAuthenticated={isAuthenticated} />
+          </Suspense>
+        )
       case 'home':
         return (
           <InfoDashboard faculty={facultyPreference} isAuthenticated={isAuthenticated} firstName={firstName} />
@@ -1710,8 +1729,6 @@ function App() {
             />
           </ViewErrorBoundary>
         )
-      case 'chat':
-        return <ChatHubView displayName={displayName} myProfile={myProfile} />
       case 'aula':
         return (
           <AulaView
@@ -1970,22 +1987,22 @@ function App() {
         </Suspense>
       ) : null}
 
-      {session ? (
-        <Suspense fallback={null}>
-          <ChatAssistantFab
-            hidden={
-              isMobileComposeOpen ||
-              profileModalOpen ||
-              notificationsPanelOpen ||
-              menuOpen ||
-              effectiveActiveView === 'chat' ||
-              effectiveActiveView === 'aula'
-            }
-            myProfile={myProfile}
-            displayName={displayName}
-          />
-        </Suspense>
-      ) : null}
+      <Suspense fallback={null}>
+        <ChatAssistantFab
+          hidden={
+            isMobileComposeOpen ||
+            profileModalOpen ||
+            notificationsPanelOpen ||
+            mobileDrawerOpen ||
+            menuOpen ||
+            effectiveActiveView === 'chat' ||
+            effectiveActiveView === 'aula'
+          }
+          myProfile={myProfile}
+          displayName={displayName}
+          isAuthenticated={isAuthenticated}
+        />
+      </Suspense>
     </>
     </LecturerSubscriptionsProvider>
   )

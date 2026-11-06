@@ -38,10 +38,18 @@ export function useChatSend(): UseChatSendResult {
     if (abortRef.current) {
       abortRef.current.abort()
       abortRef.current = null
+      useChatStore.getState().setTyping(false)
+      useChatStore.getState().setActionLabel(null)
     }
   }, [])
 
   useEffect(() => () => cancel(), [cancel])
+  useEffect(
+    () => useChatStore.subscribe((next, prev) => {
+      if (next.generation !== prev.generation) cancel()
+    }),
+    [cancel],
+  )
 
   const sendMessage = useCallback(
     async (rawContent: string): Promise<void> => {
@@ -49,6 +57,7 @@ export function useChatSend(): UseChatSendResult {
       const store = useChatStore.getState()
       if (!content || store.isTyping) return
 
+      const generation = store.generation
       // Wymóg #4: AbortController musi uciąć poprzedni stream PRZED rozpoczęciem nowego.
       cancel()
       store.setError(null)
@@ -69,6 +78,10 @@ export function useChatSend(): UseChatSendResult {
           signal: controller.signal,
         })
         for await (const event of LLMService.parseSSEStream(stream)) {
+          if (controller.signal.aborted || useChatStore.getState().generation !== generation) {
+            controller.abort()
+            return
+          }
           if (event.type === 'meta') {
             // Server zna tool name → pokaż konkretną etykietę („Sprawdzam
             // zniżki…") zamiast losowych thinking-phrases. Zostanie do
@@ -102,8 +115,8 @@ export function useChatSend(): UseChatSendResult {
           toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
         }
       } catch (err) {
+        if (controller.signal.aborted || useChatStore.getState().generation !== generation) return
         useChatStore.getState().dropTrailingEmptyAssistant()
-        if (controller.signal.aborted) return
         // DEBUG (Krok 3): pełen rzut błędu do F12 → Console.
         // `LLMServiceError` niesie też status HTTP — przydatne, gdy proxy
         // zwróciło 404 (np. brak `vercel dev`), 500 (brak klucza) lub 502
@@ -133,11 +146,11 @@ export function useChatSend(): UseChatSendResult {
           toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
         }
       } finally {
-        if (abortRef.current === controller) abortRef.current = null
-        useChatStore.getState().setTyping(false)
-        // Etykieta ma sens tylko podczas „myślenia" — gdy stream kończy się,
-        // typewriter już animuje pełną odpowiedź; trzymanie label'u rozprasza.
-        useChatStore.getState().setActionLabel(null)
+        if (abortRef.current === controller && useChatStore.getState().generation === generation) {
+          abortRef.current = null
+          useChatStore.getState().setTyping(false)
+          useChatStore.getState().setActionLabel(null)
+        }
       }
     },
     [cancel],

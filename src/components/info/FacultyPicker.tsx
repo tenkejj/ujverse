@@ -18,7 +18,7 @@ type Props = {
 }
 
 const TRIGGER_BASE =
-  `inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors ${FOCUS_RING} ` +
+  `faculty-picker inline-flex min-h-12 max-w-full items-center gap-2.5 rounded-xl border px-3.5 text-sm font-semibold transition-colors ${FOCUS_RING} ` +
   'border-brand-ink/30 bg-white/60 text-brand-ink hover:border-brand-ink/50 hover:bg-white ' +
   'dark:border-brand-gold-bright/35 dark:bg-white/[0.03] dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-white/[0.06]'
 
@@ -29,8 +29,7 @@ const HERO_TRIGGER =
   'dark:border-brand-gold-bright/30 dark:from-zinc-950/70 dark:via-zinc-950/50 dark:to-brand-gold-bright/[0.07] ' +
   'dark:hover:border-brand-gold-bright/50'
 
-const OPTION_BASE =
-  `group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors ${FOCUS_RING}`
+const OPTION_BASE = `group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors ${FOCUS_RING}`
 const OPTION_IDLE =
   'border-transparent hover:border-zinc-200 hover:bg-white/70 dark:hover:border-white/10 dark:hover:bg-white/[0.04]'
 const OPTION_ACTIVE =
@@ -51,7 +50,8 @@ export default function FacultyPicker({
     : source === 'none'
       ? 'Wybierz wydział'
       : 'Cały UJ'
-  const fullLabel = faculty ?? (source === 'none' ? null : 'Cały UJ — wszystkie wydziały')
+  const fullLabel =
+    faculty ?? (source === 'none' ? null : 'Cały UJ — wszystkie wydziały')
   const needsChoice = !faculty && source === 'none'
 
   return (
@@ -62,7 +62,9 @@ export default function FacultyPicker({
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          title={faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'}
+          title={
+            faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'
+          }
           className={`${HERO_TRIGGER} ${className}`.trim()}
         >
           <span
@@ -100,13 +102,31 @@ export default function FacultyPicker({
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          title={faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'}
+          title={
+            faculty ? `Wydział: ${faculty}. Zmień wydział` : 'Wybierz wydział'
+          }
           className={`${TRIGGER_BASE} ${className}`.trim()}
         >
-          <Landmark size={15} strokeWidth={2} className="shrink-0" aria-hidden />
-          <span className="sr-only">Wydział: </span>
-          <span className="truncate">{shortLabel}</span>
-          <ChevronDown size={14} strokeWidth={2.25} className="shrink-0 opacity-70" aria-hidden />
+          <Landmark
+            size={15}
+            strokeWidth={2}
+            className="shrink-0"
+            aria-hidden
+          />
+          <span className="min-w-0 text-left">
+            <span className="block text-[11px] font-medium opacity-75">
+              Wydział:
+            </span>
+            <span className="block truncate text-sm leading-snug">
+              {shortLabel}
+            </span>
+          </span>
+          <ChevronDown
+            size={14}
+            strokeWidth={2.25}
+            className="shrink-0 opacity-70"
+            aria-hidden
+          />
         </button>
       )}
       {open && typeof document !== 'undefined'
@@ -147,10 +167,15 @@ function FacultyDialog({
   const selectedRef = useRef<HTMLButtonElement | null>(null)
   useDialogA11y(true, panelRef, onClose, selectedRef)
 
-  const options: Array<{ value: string | null; short: string; name: string }> = [
-    { value: null, short: 'UJ', name: 'Cały UJ — wszystkie wydziały' },
-    ...UJ_DEPARTMENTS.map((dept) => ({ value: dept, short: DEPT_SHORT[dept] ?? dept, name: dept })),
-  ]
+  const options: Array<{ value: string | null; short: string; name: string }> =
+    [
+      { value: null, short: 'UJ', name: 'Cały UJ — wszystkie wydziały' },
+      ...UJ_DEPARTMENTS.map((dept) => ({
+        value: dept,
+        short: DEPT_SHORT[dept] ?? dept,
+        name: dept,
+      })),
+    ]
 
   return (
     <div className="fixed inset-0 z-[400] flex items-end justify-center sm:items-start sm:pt-[10vh]">
@@ -172,11 +197,18 @@ function FacultyDialog({
       >
         <div className="flex items-start gap-3 border-b border-zinc-200 px-5 pb-3 pt-4 dark:border-white/10">
           <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="text-base font-bold text-zinc-900 dark:text-zinc-50">
+            <h2
+              id={titleId}
+              className="text-base font-bold text-zinc-900 dark:text-zinc-50"
+            >
               Wybierz wydział
             </h2>
-            <p id={descriptionId} className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-              Dopasujemy komunikaty, rejestracje i sekcję „Ważne teraz". Bez zakładania konta.
+            <p
+              id={descriptionId}
+              className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400"
+            >
+              Dopasujemy komunikaty, rejestracje i sekcję „Ważne teraz". Bez
+              zakładania konta.
             </p>
           </div>
           <button
@@ -189,7 +221,10 @@ function FacultyDialog({
           </button>
         </div>
 
-        <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-3" role="list">
+        <ul
+          className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-3"
+          role="list"
+        >
           {options.map((option) => {
             const active = option.value === faculty
             return (
@@ -208,7 +243,12 @@ function FacultyDialog({
                     {option.name}
                   </span>
                   {active ? (
-                    <Check size={16} strokeWidth={2.5} className="shrink-0 text-brand-ink dark:text-brand-gold-bright" aria-hidden />
+                    <Check
+                      size={16}
+                      strokeWidth={2.5}
+                      className="shrink-0 text-brand-ink dark:text-brand-gold-bright"
+                      aria-hidden
+                    />
                   ) : null}
                 </button>
               </li>

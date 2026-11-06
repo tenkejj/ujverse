@@ -18,7 +18,6 @@ import {
   formatRelativePast,
   parseIsoDate,
 } from '../../lib/info/time'
-import FacultyPicker from './FacultyPicker'
 import { RegistrationHubCard } from './InfoHubCards'
 import {
   InfoHubCardGrid,
@@ -76,15 +75,7 @@ export default function RegistrationsPage({
       <InfoHubTitle
         title="Rejestracje USOS"
         description="Sprawdź terminy. Zapisz się w USOSweb."
-        actions={
-          <FacultyPicker
-            faculty={faculty.faculty}
-            source={faculty.source}
-            persistent={faculty.persistent}
-            onChange={faculty.setFaculty}
-            className="lg:hidden"
-          />
-        }
+
       />
       <InfoHubToolbar
         filters={filters}

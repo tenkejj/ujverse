@@ -924,3 +924,262 @@
 .dashboard-disclaimer + .dashboard-sources {
   margin-top: 0;
 }
+
+/* Versuś is a primary action, using the established UJverse surfaces and accent. */
+.versus-chat-caption {
+  color: var(--campus-muted);
+}
+.versus-quick-prompt {
+  min-height: 44px;
+  color: var(--campus-text);
+}
+.versus-quick-prompt:hover {
+  color: var(--campus-accent);
+  border-color: var(--campus-accent);
+}
+.versus-entry {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.versus-entry-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.versus-entry-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.versus-entry-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.versus-entry-heading h2 > span,
+.sidebar-versus strong > span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--campus-accent);
+  border: 1px solid var(--campus-line);
+  border-radius: 5px;
+  padding: 2px 5px;
+}
+.versus-entry-heading p {
+  color: var(--campus-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.versus-entry-heading > a {
+  color: var(--campus-accent);
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.versus-entry-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--campus-line);
+  border-radius: 12px;
+  padding: 6px;
+  margin-top: 16px;
+  background: var(--campus-side);
+}
+.versus-entry-form:focus-within {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: 2px;
+}
+.versus-entry-form input {
+  width: 0;
+  min-width: 0;
+  flex: 1;
+  min-height: 44px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--campus-text);
+  background: transparent;
+  outline: none;
+}
+.versus-entry-form input:focus-visible {
+  outline: none;
+}
+.versus-entry-form button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--campus-accent);
+  color: var(--campus-bg);
+}
+.versus-entry-form button:hover {
+  opacity: 0.9;
+}
+.versus-entry-form button:disabled {
+  opacity: 0.45;
+}
+.versus-entry-suggestions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 8px;
+}
+.versus-entry-suggestions button {
+  min-height: 36px;
+  font-size: 12px;
+  color: var(--campus-accent);
+  text-align: left;
+  border-radius: 4px;
+}
+.versus-entry-suggestions button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.versus-entry-suggestions > span {
+  margin-left: auto;
+  color: var(--campus-muted);
+  font-size: 11px;
+}
+.sidebar-versus {
+  margin: 0 2px 8px;
+  padding: 12px;
+  border: 1px solid var(--campus-line);
+  border-radius: 14px;
+  background: var(--campus-tint);
+}
+.sidebar-versus-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  border-radius: 8px;
+  color: var(--campus-accent);
+}
+.sidebar-versus-link > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-versus-link strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.sidebar-versus-link small {
+  display: block;
+  font-size: 11px;
+  color: var(--campus-muted);
+  margin-top: 3px;
+}
+.sidebar-versus-link:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sidebar-versus-link[aria-current='page'] {
+  outline: 1px solid var(--campus-accent);
+  outline-offset: 4px;
+}
+.sidebar-versus > p {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--campus-muted);
+  margin: 8px 0;
+}
+.sidebar-versus > button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  text-align: left;
+  font-size: 11px;
+  color: var(--campus-text);
+  border-top: 1px solid var(--campus-line);
+  border-radius: 3px;
+}
+.sidebar-versus > button:hover {
+  color: var(--campus-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.versus-sidebar :where(a, button):focus-visible {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: 2px;
+}
+.faculty-picker {
+  min-width: 176px;
+  max-width: 240px;
+}
+.faculty-strip-spacer {
+  height: 64px;
+}
+.faculty-strip {
+  position: fixed;
+  top: calc(3.5rem + env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  z-index: 45;
+  height: 64px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--campus-line);
+  background: var(--bg-app);
+}
+.faculty-strip .faculty-picker {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  min-height: 48px;
+}
+.faculty-strip .faculty-picker > span {
+  flex: 1;
+}
+@media (min-width: 768px) {
+  .faculty-strip {
+    top: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+}
+@media (max-width: 767px) {
+  .versus-entry {
+    padding: 16px;
+  }
+  .versus-entry-heading {
+    gap: 8px;
+  }
+  .versus-entry-heading h2 {
+    font-size: 16px;
+  }
+  .versus-entry-heading p {
+    font-size: 12px;
+  }
+  .versus-entry-form {
+    gap: 4px;
+  }
+  .versus-entry-form input {
+    font-size: 16px;
+    padding-inline: 6px;
+  }
+  .versus-entry-form button {
+    min-width: 44px;
+    padding-inline: 10px;
+  }
+  .versus-entry-form button > span {
+    display: none;
+  }
+  .versus-entry-suggestions {
+    gap: 0 12px;
+  }
+  .versus-entry-suggestions > span {
+    width: 100%;
+    margin: 4px 0 0;
+  }
+}

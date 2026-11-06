@@ -249,7 +249,7 @@ export type SynthesisResult = {
 export async function synthesizeAnswer(
   opts: SynthesisOptions,
 ): Promise<SynthesisResult> {
-  const { userQuery, facts, hint, topicHint, provider, recentOpeners } = opts
+  const { userQuery, facts, hint, topicHint, provider } = opts
 
   const compact = tryCompactSynthesis(userQuery, facts, hint)
   if (compact) {
@@ -559,7 +559,7 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Cisza, ostatnio nic nowego z ISI UJ nie wpadło.',
+      text: 'Brak komunikatów UJ dla tego zapytania.',
     }
   }
   const items = rawItems.slice(0, MAX_ANNOUNCEMENTS)
@@ -569,7 +569,7 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
     .map((item) => {
       const lecturer =
         pickString(item, 'lecturer_name_nominative') || 'ktoś z kadry'
-      const annId = pickString(item, 'id')
+      const title = pickString(item, 'title') || lecturer
       const sourceUrl = pickStringOrNull(item, 'source_url')
       const statusKey = pickString(item, 'status')
       const statusPl = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey
@@ -577,17 +577,15 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
       const dept = pickStringOrNull(item, 'department')
       const createdAt = pickStringOrNull(item, 'created_at')
 
-      const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
+      const when = createdAt ? ` (dodano do UJverse ${formatRelativeDate(createdAt)})` : ''
       const deptTag = dept ? ` [${dept}]` : ''
       const tail = body ? ` — ${clip(body, 160)}` : ''
-      const lecturerLabel = annId
-        ? `[${lecturer}](/moj-plan?announcement=${encodeURIComponent(annId)})`
-        : lecturer
+      const titleLabel = sourceUrl ? `[${title}](${sourceUrl})` : `[${title}](/komunikaty)`
       const sourceTail =
         sourceUrl && !tail.includes(sourceUrl)
           ? ` [źródło](${sourceUrl})`
           : ''
-      return `${lecturerLabel} ${statusPl}${when}${deptTag}${tail}${sourceTail}`
+      return `${titleLabel} ${statusPl}${when}${deptTag}${tail}${sourceTail}`
     })
     .join('\n')
 
@@ -595,7 +593,7 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
-    topicHint: 'Komunikaty wykładowców UJ (nieobecności, zmiany sal itd.).',
+    topicHint: 'Publiczne komunikaty wydziałów UJ. Daty oznaczają dodanie do UJverse. Kieruj do źródła lub publicznej listy /komunikaty.',
   }
 }
 

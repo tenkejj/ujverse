@@ -10,7 +10,6 @@ import {
 import { sortAnnouncementsNewestFirst } from '../../lib/info/relevance'
 import { foldForSearch } from '../../lib/info/resources'
 import type { AnnouncementStatus } from '../../types/content'
-import FacultyPicker from './FacultyPicker'
 import { AnnouncementHubCard } from './InfoHubCards'
 import {
   InfoHubCardGrid,
@@ -96,15 +95,7 @@ export default function AnnouncementsPage({
       <InfoHubTitle
         title="Komunikaty"
         description="Ogłoszenia z wydziałów. Najnowsze informacje zawsze na początku."
-        actions={
-          <FacultyPicker
-            faculty={faculty.faculty}
-            source={faculty.source}
-            persistent={faculty.persistent}
-            onChange={faculty.setFaculty}
-            className="lg:hidden"
-          />
-        }
+
       />
       <InfoHubToolbar
         filters={filters}

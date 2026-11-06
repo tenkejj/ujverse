@@ -28,7 +28,7 @@ import { supabase } from '../../supabaseClient'
 // w trakcie odpowiedzi modelu, więc statyczny RAG-Lite jest zbędny.
 // Plik dekoratora zostaje na wypadek powrotu do statycznego kontekstu.
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3000' : ''
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, '') ?? (import.meta.env.DEV ? 'http://localhost:3000' : '')
 const DEFAULT_ENDPOINT = `${API_BASE}/api/chat`
 
 export class LLMServiceError extends Error {

@@ -1171,7 +1171,7 @@ export default async function handler(req: Request): Promise<Response> {
   )
 
   const provider = new GroqProvider(apiKey, DEFAULT_GROQ_MODEL)
-  const tools = toGroqToolsArray()
+  const tools = toGroqToolsArray(user.userId)
 
   const ctx: ToolContext = {
     userId: user.userId,
@@ -1295,6 +1295,7 @@ export default async function handler(req: Request): Promise<Response> {
     lastUserText,
     useTools,
     ctx.userId,
+    pruned,
   )
 
   const cacheLookupStarted = Date.now()
@@ -1328,7 +1329,7 @@ export default async function handler(req: Request): Promise<Response> {
   console.log('[Response Cache] MISS key:', responseCacheKey)
   void incrCounter('response_cache:miss')
 
-  const capabilitiesReply = tryCapabilitiesReply(lastUserText)
+  const capabilitiesReply = tryCapabilitiesReply(lastUserText, Boolean(user.userId))
   if (capabilitiesReply) {
     console.log('[Capabilities] match — SKIPPING Groq entirely')
     void incrCounter('capabilities:hit')
@@ -1423,7 +1424,7 @@ export default async function handler(req: Request): Promise<Response> {
   const personaConversation = withPersona(pruned)
   const conversation: GroqMessage[] = [
     personaConversation[0]!,
-    { role: 'system', content: autoContext },
+    { role: 'system', content: autoContext + (user.userId ? '' : '\nRozmówca nie jest zalogowany. Masz dostęp tylko do publicznych informacji uczelni. Do planu, powiadomień i społeczności potrzebne jest logowanie; nie wymyślaj tych danych.') },
     ...personaConversation.slice(1),
   ]
 

@@ -20,17 +20,19 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Send, Square, X } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
+import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import AnimatedBot from './AnimatedBot'
 import ChatVoiceButton from './ChatVoiceButton'
 import MessageList from './MessageList'
+import { useDialogA11y } from '../info/useDialogA11y'
 
 type Props = {
   /** Gdy `true` — komponent nic nie renderuje (kolizja z innym sheetem). */
   hidden?: boolean
+  isAuthenticated?: boolean
   /** Profil zalogowanego użytkownika — awatar w wierszach jego wiadomości. */
   myProfile?: Profile | null
   /** Fallback inicjału awatara, gdy `myProfile` brak. */
@@ -49,10 +51,14 @@ const SHEET_GLASS_CLS = [
   'border-t',
 ].join(' ')
 
-import { CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
+import {
+  CHAT_QUICK_PROMPTS,
+  PUBLIC_CHAT_QUICK_PROMPTS,
+} from '../../lib/chatQuickPrompts'
 
 export default function ChatAssistantFab({
   hidden = false,
+  isAuthenticated = false,
   myProfile,
   displayName,
 }: Props) {
@@ -64,6 +70,7 @@ export default function ChatAssistantFab({
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
+  const sheetRef = useRef<HTMLElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -73,24 +80,14 @@ export default function ChatAssistantFab({
     el.scrollTop = el.scrollHeight
   }, [messages, isTyping, isOpen])
 
-  useEffect(() => {
-    if (!isOpen) return
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isOpen, setOpen])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const t = window.setTimeout(() => inputRef.current?.focus(), 80)
-    return () => window.clearTimeout(t)
-  }, [isOpen])
-
   const handleClose = useCallback(() => {
     setOpen(false)
   }, [setOpen])
+
+  useDialogA11y(isOpen && !hidden, sheetRef, handleClose, inputRef)
+  useEffect(() => {
+    if (hidden && isOpen) setOpen(false)
+  }, [hidden, isOpen, setOpen])
 
   const hasMessages = useMemo(
     () => messages.some((m) => m.role !== 'system'),
@@ -164,7 +161,7 @@ export default function ChatAssistantFab({
       type="button"
       onClick={() => setOpen(true)}
       aria-label="Otwórz Versusia"
-      className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-brand-ink text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-2 ring-white/25 transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950 dark:ring-[#0b1220]/55 dark:shadow-[0_12px_36px_rgba(0,0,0,0.55),0_0_0_1px_rgba(232,201,122,0.35)]"
+      className="fixed right-4 z-200 flex h-12 items-center justify-center gap-2 px-4 rounded-full bg-brand-ink text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-2 ring-white/25 transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950 dark:ring-[#0b1220]/55 dark:shadow-[0_12px_36px_rgba(0,0,0,0.55),0_0_0_1px_rgba(232,201,122,0.35)]"
       style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -174,6 +171,7 @@ export default function ChatAssistantFab({
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
     >
       <AnimatedBot size={22} intensity="idle" variant="onAccent" />
+      <span className="text-sm font-semibold">Versuś</span>
     </motion.button>
   )
 
@@ -192,6 +190,8 @@ export default function ChatAssistantFab({
         onClick={handleClose}
       />
       <motion.section
+        ref={sheetRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={CHAT_ASSISTANT_NAME}
@@ -217,7 +217,9 @@ export default function ChatAssistantFab({
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                 {CHAT_ASSISTANT_NAME}
               </h2>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{CHAT_MODEL_LABEL}</p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                Asystent studencki AI
+              </p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -263,7 +265,10 @@ export default function ChatAssistantFab({
             role="group"
             aria-label="Szybkie pytania"
           >
-            {CHAT_QUICK_PROMPTS.map((prompt) => (
+            {(isAuthenticated
+              ? CHAT_QUICK_PROMPTS
+              : PUBLIC_CHAT_QUICK_PROMPTS
+            ).map((prompt) => (
               <button
                 key={prompt}
                 type="button"
@@ -294,7 +299,9 @@ export default function ChatAssistantFab({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDownTextarea}
-            placeholder="Napisz wiadomość..."
+            aria-label="Wiadomość do Versusia"
+            name="message"
+            placeholder="Zapytaj Versusia…"
             rows={1}
             disabled={isTyping}
             className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}

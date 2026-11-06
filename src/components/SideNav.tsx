@@ -1,9 +1,17 @@
-import { GraduationCap, LogIn, LogOut, Moon, Settings, Sun } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowUpRight, GraduationCap, LogIn, LogOut, Moon, Settings, Sun } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { SIDE_NAV_DESKTOP } from '../styles/mobile-theme'
+import VersuMark from './chat/VersuMark'
+import { NIEZBEDNIK_LINKS } from './Niezbednik'
+import { versusEntryState } from '../lib/versusEntry'
 import NavItem from './nav/NavItem'
-import { ACCOUNT_NAV, PRIMARY_NAV, navTargetForView, type NavTarget } from './nav/navModel'
+import {
+  ACCOUNT_NAV,
+  PRIMARY_NAV,
+  navTargetForView,
+  type NavTarget,
+} from './nav/navModel'
 
 type Props = {
   /** Efektywny widok aplikacji (`AppShellView`) — podświetlenie wylicza `navTargetForView`. */
@@ -32,34 +40,91 @@ export default function SideNav({
 }: Props) {
   const { theme: colorMode, cycleTheme } = useTheme()
   const navigate = useNavigate()
-  const ThemeIcon = colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
+  const ThemeIcon =
+    colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
   const active = navTargetForView(activeView)
 
   return (
-    <aside aria-label="Nawigacja główna" className={SIDE_NAV_DESKTOP.containerClass}>
+    <aside
+      aria-label="Nawigacja główna"
+      className={SIDE_NAV_DESKTOP.containerClass}
+    >
       <div className={SIDE_NAV_DESKTOP.stickyClass}>
         <div className={SIDE_NAV_DESKTOP.innerClass}>
-          <nav className={SIDE_NAV_DESKTOP.scrollAreaClass} aria-label="Sekcje UJverse">
+          <nav
+            className={`versus-sidebar ${SIDE_NAV_DESKTOP.scrollAreaClass}`}
+            aria-label="Sekcje UJverse"
+          >
+            <div className="sidebar-versus">
+              <Link
+                to="/chat"
+                className="sidebar-versus-link"
+                aria-current={active === 'chat' ? 'page' : undefined}
+              >
+                <VersuMark size={34} />
+                <span>
+                  <strong>
+                    Versuś <span>AI</span>
+                  </strong>
+                  <small>Twój asystent na UJ</small>
+                </span>
+                <ArrowUpRight size={15} aria-hidden />
+              </Link>
+              <p>
+                {isAuthenticated
+                  ? 'Zapytaj o sprawy uczelni'
+                  : 'Dostępny także bez logowania'}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/chat', {
+                    state: versusEntryState('Najnowsze ogłoszenia'),
+                  })
+                }
+              >
+                Najnowsze komunikaty
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/chat', {
+                    state: versusEntryState(
+                      'Jakie są nadchodzące rejestracje USOS?',
+                    ),
+                  })
+                }
+              >
+                Sprawdź terminy rejestracji
+              </button>
+            </div>
             <div className={SIDE_NAV_DESKTOP.groupClass}>
               <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Informacje</p>
-              {PRIMARY_NAV.map((entry) => (
-                <NavItem
-                  key={entry.target}
-                  icon={entry.icon}
-                  label={entry.label}
-                  title={entry.title}
-                  active={active === entry.target}
-                  onClick={() => onNavigate(entry.target)}
-                  variant="sidebar"
-                />
-              ))}
+              {PRIMARY_NAV.filter((entry) => entry.target !== 'chat').map(
+                (entry) => (
+                  <NavItem
+                    key={entry.target}
+                    icon={entry.icon}
+                    label={entry.label}
+                    title={entry.title}
+                    active={active === entry.target}
+                    onClick={() => onNavigate(entry.target)}
+                    variant="sidebar"
+                  />
+                ),
+              )}
             </div>
 
             {isAuthenticated ? (
               <>
-                <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
+                <div
+                  className={SIDE_NAV_DESKTOP.groupDividerClass}
+                  aria-hidden
+                />
                 <div className={SIDE_NAV_DESKTOP.groupClass}>
-                  <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Twoje konto</p>
+                  <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>
+                    Twoje konto
+                  </p>
                   {ACCOUNT_NAV.map((entry) => (
                     <NavItem
                       key={entry.target}
@@ -69,14 +134,34 @@ export default function SideNav({
                       active={active === entry.target}
                       onClick={() => onNavigate(entry.target)}
                       variant="sidebar"
-                      hasUnread={entry.target === 'aula' ? aulaHasUnread : undefined}
-                      badgeCount={entry.target === 'notifications' ? unreadCount : undefined}
+                      hasUnread={
+                        entry.target === 'aula' ? aulaHasUnread : undefined
+                      }
+                      badgeCount={
+                        entry.target === 'notifications'
+                          ? unreadCount
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
               </>
             ) : null}
 
+            <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
+            <div className={SIDE_NAV_DESKTOP.groupClass}>
+              <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Serwisy UJ</p>
+              {NIEZBEDNIK_LINKS.map(({ label, href, Icon }) => (
+                <NavItem
+                  key={label}
+                  icon={Icon}
+                  label={label}
+                  active={false}
+                  href={href}
+                  variant="sidebar"
+                />
+              ))}
+            </div>
             <div className="flex-1 min-h-2" />
 
             <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
@@ -100,7 +185,13 @@ export default function SideNav({
                 title="Zmień motyw: Jasny → Kolory UJ → Ciemny"
               />
               {isAuthenticated ? (
-                <NavItem icon={LogOut} label="Wyloguj się" active={false} onClick={onSignOut} variant="sidebar" />
+                <NavItem
+                  icon={LogOut}
+                  label="Wyloguj się"
+                  active={false}
+                  onClick={onSignOut}
+                  variant="sidebar"
+                />
               ) : (
                 <NavItem
                   icon={LogIn}

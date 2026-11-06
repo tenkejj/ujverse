@@ -36,17 +36,23 @@ const CAPABILITIES_TEXT =
   'rejestracje USOS, briefing tygodniowy, Aulę albo znaleźć wykładowcę. ' +
   'Pisz normalnie albo użyj slashy — /plan, /zniski, /oglosznia, /brief — to trafia prosto w temat.'
 
+const PUBLIC_CAPABILITIES_TEXT =
+  'Jestem Versuś — asystent UJverse. Bez logowania sprawdzę komunikaty z wydziałów UJ, ' +
+  'terminy rejestracji USOS, oficjalne wydarzenia i informacje o wykładowcach. ' +
+  'Pisz po swojemu albo wybierz jedno z sugerowanych pytań. ' +
+  'Twój plan i inne informacje z konta sprawdzę po zalogowaniu.'
+
 /**
  * Zwraca gotową odpowiedź lub `null` gdy wiadomość nie jest pytaniem o możliwości.
  */
-export function tryCapabilitiesReply(userMessage: string): string | null {
+export function tryCapabilitiesReply(userMessage: string, isAuthenticated = true): string | null {
   const text = userMessage.trim().replace(/\s+/g, ' ')
   if (text.length === 0 || text.length > 80) return null
   for (const pattern of IDENTITY_PATTERNS) {
-    if (pattern.test(text)) return IDENTITY_TEXT
+    if (pattern.test(text)) return isAuthenticated ? IDENTITY_TEXT : PUBLIC_CAPABILITIES_TEXT
   }
   for (const pattern of CAPABILITY_PATTERNS) {
-    if (pattern.test(text)) return CAPABILITIES_TEXT
+    if (pattern.test(text)) return isAuthenticated ? CAPABILITIES_TEXT : PUBLIC_CAPABILITIES_TEXT
   }
   return null
 }

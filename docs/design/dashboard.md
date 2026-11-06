@@ -11,10 +11,12 @@ The earlier `ui-research.md` describes the initial investigation and an earlier 
 - Typography: existing system font, 24–27 px page title, 16 px section titles, 14 px overview item titles. No custom font download.
 - Colour: use existing roles. Light uses brand ink #1e293b, card/surface roles and existing secondary labels. Dark uses the original black surfaces and #e8c84a accent. UJ uses the original #0a121c / #121c2c surfaces and #e8c97a accent. These values are illustrative references to the original tokens, not a new palette.
 - Layout: two columns on desktop, one on mobile, with four useful sections and bounded previews. Announcements and registration deadlines come first; events and student tools follow. Keep the main information visible without a large introductory hero.
+- Versuś revision: a compact public AI question field precedes the four information sections. The sidebar combines a prominent AI entry, useful sample questions, information navigation and existing university service links. Faculty selection stays visible while scrolling, with an explicit “Wydział” label.
 
 ```
 Original header and logo
 Dziś na UJ                  Dostosuj
+Zapytaj Versusia AI         [Public question field + suggested questions]
 [Optional real priority alert]
 Komunikaty                  Rejestracje USOS
 3 source-aware rows         2 active/upcoming rows
@@ -33,3 +35,5 @@ The page should feel like the existing UJverse product with a better organised d
 ## Persistent project skill
 
 See [ujverse-ui](../../.agents/skills/ujverse-ui/SKILL.md). It records the identity constraint and the practical Frontend Design / Web Design Guidelines principles for subsequent work.
+
+Public assistant access and local API requirements are documented in [versus-public.md](versus-public.md).

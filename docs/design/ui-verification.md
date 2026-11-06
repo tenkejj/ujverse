@@ -1,5 +1,16 @@
 # UI verification — dashboard revision, 6 November 2026
 
+## Public Versuś follow-up
+
+- Production build and `npm test` pass. The individual test run now passes **90 tests across 30 suites**, including public tool boundaries, source-backed record sets, cache separation, post-pivot announcements and conversation reset.
+- Existing browser acceptance: **90/90 passed**. Public AI browser checks: **22/22 passed**, with simulated SSE and failure responses. These cover guest access, one-time dashboard handoff, lack of an Authorization header, reload, suggested questions, clearing a conversation, visible errors, sticky faculty selection, floating assistant dialog and focus restoration, and mobile composer placement.
+- Live public announcement tool: ten real public records validated successfully, without database writes. No real Groq inference was tested.
+- Main dashboard axe checks pass in light/dark/UJ themes; public chat, added sidebar AI entry and faculty control were also checked. Widths 360, 390, 768, 1024 and 1920 have no horizontal dashboard overflow.
+- Changed TypeScript files pass no-unused-vars and React Hooks lint rules. Both chat API entry points bundle successfully. An additional standalone strict API typecheck still reports existing errors in `notificationHelpers.ts`, `userMemory.ts` and the unchanged history-pruning lines in `api/chat.ts`; this is separate from the configured production build and test checks.
+- Identity files (`public/logo.png`, `src/index.css`, `src/ThemeContext.tsx`, `src/styles/theme.ts`) remain unchanged in this revision. No deployment, migration or merge.
+
+The earlier revision's results below are retained as history. See [versus-public.md](versus-public.md) for the current access model and local API requirements.
+
 ## Completed checks
 
 - Production build: `npm run build` (strict TypeScript + Vite), passed.

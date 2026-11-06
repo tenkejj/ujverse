@@ -275,6 +275,7 @@ function MessageBubble({
           {!isStreaming ? (
             <AssistantMessageActions
               message={message}
+              canVote={Boolean(myProfile)}
               showRetry={isLastAssistant}
               onRetry={onRetryAssistant}
             />
@@ -334,10 +335,12 @@ function MessageActionButton({
  */
 function AssistantMessageActions({
   message,
+  canVote,
   showRetry,
   onRetry,
 }: {
   message: ChatMessage
+  canVote: boolean
   showRetry: boolean
   onRetry?: () => void
 }) {
@@ -383,6 +386,7 @@ function AssistantMessageActions({
           subtle highlight (border + bg gold tint). Klik wysyła POST do
           `/api/chat-feedback` przez `useChatFeedback` hook; drugi klik
           tego samego cofa głos (DELETE). Toast tylko przy bledzie. */}
+      {canVote ? <>
       <button
         type="button"
         onClick={() => void vote(message, 'up')}
@@ -403,6 +407,7 @@ function AssistantMessageActions({
       >
         <ThumbsDown size={12} />
       </button>
+      </> : null}
       {showRetry && onRetry ? (
         <button
           type="button"

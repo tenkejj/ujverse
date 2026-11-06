@@ -4,7 +4,7 @@
 
 import { buildToolCacheKey } from './cache.js'
 import { tryFastPath } from './fastPath.js'
-import { isPersonalTool } from './personalTools.js'
+import { chatResponseScope } from './chatAccess.js'
 import {
   buildToolFacts,
   formatListedFacts,
@@ -30,12 +30,18 @@ export function buildResponseCacheKey(
   lastUserText: string,
   useTools: boolean,
   userId?: string | null,
+  conversation?: readonly { role: string; content?: string | null }[],
 ): string {
   const normalized = lastUserText.trim().toLowerCase().replace(/\s+/g, ' ')
-  const match = tryFastPath(lastUserText)
-  const scope =
-    match && isPersonalTool(match.toolName) ? (userId ?? 'anon') : 'shared'
-  return buildToolCacheKey('chat_response', { text: normalized, useTools, scope })
+  return buildToolCacheKey('chat_response_v2', {
+    text: normalized,
+    useTools,
+    scope: chatResponseScope(userId),
+    // The same follow-up can refer to different information in each conversation.
+    ...(conversation && conversation.length > 1
+      ? { context: conversation.slice(0, -1) }
+      : {}),
+  })
 }
 
 /**

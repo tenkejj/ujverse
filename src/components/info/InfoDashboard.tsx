@@ -31,7 +31,7 @@ import {
 import { upcomingEventsSorted } from '../../lib/info/relevance'
 import { INFO_RESOURCES } from '../../lib/info/resources'
 import { formatDurationShort } from '../../lib/info/time'
-import FacultyPicker from './FacultyPicker'
+import VersusEntry from '../chat/VersusEntry'
 import {
   AnnouncementHubCard,
   EventHubCard,
@@ -126,14 +126,7 @@ export default function InfoDashboard({
         <CustomizeButton hidden={prefs.hiddenSections} />
       </header>
 
-      <div className="dashboard-faculty-mobile lg:hidden">
-        <FacultyPicker
-          faculty={selected}
-          source={faculty.source}
-          persistent={faculty.persistent}
-          onChange={faculty.setFaculty}
-        />
-      </div>
+      <VersusEntry />
 
       {priority ? (
         <section

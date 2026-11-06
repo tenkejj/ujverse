@@ -9,6 +9,8 @@ description: Design, refine and review UJverse dashboards and public information
 
 UJverse is an unofficial student information hub. The main tasks are finding faculty announcements, registration deadlines, upcoming events and student tools. Public information is readable without an account.
 
+Versuś AI is a primary public entry point: a useful question field on Start, a prominent sidebar entry and a labelled mobile shortcut. Offer concrete questions about public university information. Explain account requirements for personal features; never promise response speed without measurement or show a fake online indicator. Keep AI prominent without duplicating the entire conversation interface on the dashboard.
+
 The user wants the existing visual identity preserved. Layout work must reuse the original `public/logo.png`, header branding and existing light/dark/UJ themes. Source tokens from `src/styles/theme.ts`, `src/styles/mobile-theme.ts` and `src/index.css`. Use the existing font stack. Do not introduce replacement wordmarks, fonts or palettes as a side effect of a layout redesign. If the user explicitly requests an identity change, follow that request.
 
 ## Design process
@@ -21,6 +23,7 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 ## Dashboard hierarchy
 
 - Keep a short page heading and one visible faculty control per viewport.
+- Label the selector visibly as “Wydział”, provide at least a 44 px target and keep it accessible while scrolling. A tiny icon or an unexplained “UJ” is insufficient.
 - Group announcements, registrations, events and tools by function. Show bounded previews and a clear link to each full section.
 - Give the sections a consistent structure without wrapping every row in a separate decorative card.
 - Make actionable urgent information prominent using verified relevance rules. Do not invent statistics, urgency, recommendations or data.
@@ -40,6 +43,8 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 ## Verification
 
 Run the production build and checks appropriate to changed behaviour. `scripts/pivot-browser-checks/checks.mjs` covers the public flows; use a local Chrome executable when available. The default ESLint config may be empty, so do not report it as a substantive lint audit. Inspect all three themes and narrow widths. Do not deploy as part of local preview work.
+
+For public AI changes, also run `scripts/versus-browser-checks.mjs` and the chat access unit tests. Distinguish simulated SSE UI tests from real provider inference. Anonymous tools must use public records, and cache keys must separate access scopes, users and conversation context. Clear conversation state at account boundaries.
 
 ## Guidance sources
 
