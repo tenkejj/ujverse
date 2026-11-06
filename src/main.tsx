@@ -19,6 +19,7 @@ import {
   subscribePreferences,
 } from './lib/userPreferences.ts'
 import './index.css'
+import './styles/campus.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

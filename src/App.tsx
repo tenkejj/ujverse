@@ -77,6 +77,7 @@ const GroupsIndexView = lazy(() => import('./components/GroupsIndexView'))
 const MojPlanView = lazy(() => import('./components/MojPlanView'))
 const AdminDiagView = lazy(() => import('./components/admin/AdminDiagView'))
 const AdminReportsView = lazy(() => import('./components/admin/AdminReportsView'))
+const OfficialEventsPage = lazy(() => import('./components/info/OfficialEventsPage'))
 const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 const AulaView = lazy(() => import('./components/aula/AulaView'))
@@ -130,7 +131,6 @@ const PUBLIC_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
 const EVENTS_CONTEXT_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
   'feed',
   'events',
-  'wydarzenia',
   'profile',
   'userProfile',
 ])
@@ -194,7 +194,7 @@ function isResetPasswordPath(pathname: string): boolean {
  * `getAppContentShellClass` — wcześniej cała ramka 80rem ucinała header.
  */
 function getAppShellClass(_view: AppShellView): string {
-  return 'w-full lg:ml-[18rem] lg:w-[calc(100%-18rem)]'
+  return 'w-full lg:ml-[15rem] lg:w-[calc(100%-15rem)]'
 }
 
 /** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */
@@ -1533,17 +1533,7 @@ function App() {
       case 'rejestracje':
         return <RegistrationsPage faculty={facultyPreference} isAuthenticated={isAuthenticated} />
       case 'wydarzenia':
-        return (
-          <ViewErrorBoundary onRecover={recoverHome}>
-            <Suspense fallback={viewFallback}>
-              <EventsHub
-                currentUserId={session?.user.id ?? ''}
-                guestMode={!session}
-                onNavigateToProfileHandle={navigateToProfileByHandle}
-              />
-            </Suspense>
-          </ViewErrorBoundary>
-        )
+        return <ViewErrorBoundary onRecover={recoverHome}><Suspense fallback={viewFallback}><OfficialEventsPage isAuthenticated={isAuthenticated} /></Suspense></ViewErrorBoundary>
       case 'szukaj':
         // Nowe wyszukiwanie z nagłówka/menu niesie `searchNonce` — zmiana klucza
         // resetuje pole do frazy z URL bez synchronizacji w efekcie.
@@ -1892,7 +1882,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
+      <div className="campus-app min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
         <div className={`relative min-h-dvh ${appShellClass}`}>
         <SideNav
           activeView={effectiveActiveView}
@@ -1937,9 +1927,8 @@ function App() {
             </Suspense>
           ) : null}
 
-          <main id="tresc" tabIndex={-1} className={`${contentShellClass} ${mainLayoutClass} outline-none`}>
-            {EVENTS_CONTEXT_VIEWS.has(effectiveActiveView) &&
-            (session || effectiveActiveView === 'wydarzenia') ? (
+          <main id="tresc" tabIndex={-1} className={`${contentShellClass} ${mainLayoutClass} ${['home', 'komunikaty', 'rejestracje', 'niezbednik', 'szukaj', 'wydarzenia'].includes(effectiveActiveView) ? 'campus-page' : ''} outline-none`}>
+            {EVENTS_CONTEXT_VIEWS.has(effectiveActiveView) && session ? (
               <EventsProvider>{animatedMain}</EventsProvider>
             ) : (
               animatedMain

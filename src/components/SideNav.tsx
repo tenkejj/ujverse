@@ -1,9 +1,14 @@
 import { GraduationCap, LogIn, LogOut, Moon, Settings, Sun } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { SIDE_NAV_DESKTOP } from '../styles/mobile-theme'
 import NavItem from './nav/NavItem'
-import { ACCOUNT_NAV, PRIMARY_NAV, navTargetForView, type NavTarget } from './nav/navModel'
+import {
+  ACCOUNT_NAV,
+  PRIMARY_NAV,
+  navTargetForView,
+  type NavTarget,
+} from './nav/navModel'
 
 type Props = {
   /** Efektywny widok aplikacji (`AppShellView`) — podświetlenie wylicza `navTargetForView`. */
@@ -32,16 +37,34 @@ export default function SideNav({
 }: Props) {
   const { theme: colorMode, cycleTheme } = useTheme()
   const navigate = useNavigate()
-  const ThemeIcon = colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
+  const ThemeIcon =
+    colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
   const active = navTargetForView(activeView)
 
   return (
-    <aside aria-label="Nawigacja główna" className={SIDE_NAV_DESKTOP.containerClass}>
+    <aside
+      aria-label="Nawigacja główna"
+      className={`campus-sidebar ${SIDE_NAV_DESKTOP.containerClass}`}
+    >
       <div className={SIDE_NAV_DESKTOP.stickyClass}>
         <div className={SIDE_NAV_DESKTOP.innerClass}>
-          <nav className={SIDE_NAV_DESKTOP.scrollAreaClass} aria-label="Sekcje UJverse">
+          <Link
+            to="/"
+            className="campus-brand"
+            aria-label="UJverse — strona startowa"
+          >
+            <span className="campus-brand-name" translate="no">
+              UJverse
+            </span>
+            <span className="campus-brand-description">
+              Bliżej spraw uczelni
+            </span>
+          </Link>
+          <nav
+            className={SIDE_NAV_DESKTOP.scrollAreaClass}
+            aria-label="Sekcje UJverse"
+          >
             <div className={SIDE_NAV_DESKTOP.groupClass}>
-              <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Informacje</p>
               {PRIMARY_NAV.map((entry) => (
                 <NavItem
                   key={entry.target}
@@ -57,9 +80,14 @@ export default function SideNav({
 
             {isAuthenticated ? (
               <>
-                <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
+                <div
+                  className={SIDE_NAV_DESKTOP.groupDividerClass}
+                  aria-hidden
+                />
                 <div className={SIDE_NAV_DESKTOP.groupClass}>
-                  <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Twoje konto</p>
+                  <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>
+                    Twoje konto
+                  </p>
                   {ACCOUNT_NAV.map((entry) => (
                     <NavItem
                       key={entry.target}
@@ -69,8 +97,14 @@ export default function SideNav({
                       active={active === entry.target}
                       onClick={() => onNavigate(entry.target)}
                       variant="sidebar"
-                      hasUnread={entry.target === 'aula' ? aulaHasUnread : undefined}
-                      badgeCount={entry.target === 'notifications' ? unreadCount : undefined}
+                      hasUnread={
+                        entry.target === 'aula' ? aulaHasUnread : undefined
+                      }
+                      badgeCount={
+                        entry.target === 'notifications'
+                          ? unreadCount
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -100,7 +134,13 @@ export default function SideNav({
                 title="Zmień motyw: Jasny → Kolory UJ → Ciemny"
               />
               {isAuthenticated ? (
-                <NavItem icon={LogOut} label="Wyloguj się" active={false} onClick={onSignOut} variant="sidebar" />
+                <NavItem
+                  icon={LogOut}
+                  label="Wyloguj się"
+                  active={false}
+                  onClick={onSignOut}
+                  variant="sidebar"
+                />
               ) : (
                 <NavItem
                   icon={LogIn}
@@ -112,6 +152,11 @@ export default function SideNav({
                 />
               )}
             </div>
+            <p className="campus-sidebar-note">
+              Niezależny projekt studencki.
+              <br />
+              Dla społeczności UJ.
+            </p>
           </nav>
         </div>
       </div>

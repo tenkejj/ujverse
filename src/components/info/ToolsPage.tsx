@@ -16,9 +16,6 @@ import { INFO_RESOURCES, type InfoResourceIcon } from '../../lib/info/resources'
 import { ResourceHubCard } from './InfoHubCards'
 import {
   InfoHubCardGrid,
-  InfoHubRailFilters,
-  InfoHubRailStats,
-  InfoHubRailStatus,
   InfoHubSection,
   InfoHubShell,
   InfoHubTitle,
@@ -71,21 +68,7 @@ export default function ToolsPage({ isAuthenticated }: { isAuthenticated: boolea
   const appVisible = visible.filter((r) => !r.external)
 
   return (
-    <InfoHubShell
-      rail={
-        <>
-          <InfoHubRailStatus live label="Linki oficjalne + narzędzia UJverse" />
-          <InfoHubRailStats
-            stats={[
-              { value: INFO_RESOURCES.length, label: 'Łącznie' },
-              { value: ujCount, label: 'UJ' },
-              { value: appCount, label: 'UJverse' },
-            ]}
-          />
-          <InfoHubRailFilters filters={filters} activeKey={scope} onFilterChange={(k) => setScope(k as Scope)} />
-        </>
-      }
-    >
+    <InfoHubShell>
       <InfoHubTitle
         title="Niezbędnik studenta"
         description="Najważniejsze serwisy UJ i narzędzia UJverse w jednym miejscu."

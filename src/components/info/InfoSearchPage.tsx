@@ -7,7 +7,7 @@ import { useNow } from '../../hooks/useNow'
 import { facultyShortLabel } from '../../lib/info/faculty'
 import { MIN_QUERY_LENGTH } from '../../lib/info/search'
 import { pluralPL } from '../../lib/info/time'
-import { AnnouncementItem, EventItem, RegistrationItem } from './InfoItems'
+import { AnnouncementHubCard, EventHubCard, RegistrationHubCard } from './InfoHubCards'
 import { ResourceGrid } from './InfoBlocks'
 import { DomainEmpty, DomainError, FOCUS_RING, InfoSection, PageIntro } from './infoUi'
 
@@ -68,7 +68,7 @@ export default function InfoSearchPage({
   const facultyShort = faculty.faculty ? (facultyShortLabel(faculty.faculty) ?? faculty.faculty) : null
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+    <div className="campus-search-page mx-auto flex w-full max-w-4xl flex-col gap-4">
       <PageIntro
         title="Szukaj"
         description="Komunikaty wydziałów, rejestracje z USOSweb, wydarzenia UJ i narzędzia — bez zakładania konta."
@@ -192,7 +192,7 @@ export default function InfoSearchPage({
               <ul className="space-y-2.5" role="list">
                 {data.announcements.items.map((item) => (
                   <li key={item.id}>
-                    <AnnouncementItem item={item} now={now} />
+                    <AnnouncementHubCard item={item} now={now} />
                   </li>
                 ))}
               </ul>
@@ -208,7 +208,7 @@ export default function InfoSearchPage({
               <ul className="space-y-2.5" role="list">
                 {data.registrations.items.map((item) => (
                   <li key={item.id}>
-                    <RegistrationItem item={item} now={now} latestVerifiedAt={latestRegistrationRun} />
+                    <RegistrationHubCard item={item} now={now} latestVerifiedAt={latestRegistrationRun} />
                   </li>
                 ))}
               </ul>
@@ -224,7 +224,7 @@ export default function InfoSearchPage({
               <ul className="space-y-2.5" role="list">
                 {data.events.items.map((item) => (
                   <li key={item.id}>
-                    <EventItem item={item} now={now} />
+                    <EventHubCard item={item} now={now} />
                   </li>
                 ))}
               </ul>

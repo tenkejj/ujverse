@@ -63,7 +63,7 @@ export default function BottomNav({ activeView, onNavigate }: Props) {
 
   return (
     <nav
-      className={`${BOTTOM_NAV_MOBILE.navBaseClass} ${
+      className={`campus-bottom-nav ${BOTTOM_NAV_MOBILE.navBaseClass} ${
         isScrolled ? BOTTOM_NAV_MOBILE.navScrolledClass : BOTTOM_NAV_MOBILE.navDefaultClass
       }`}
       style={{ paddingBottom: BOTTOM_NAV_MOBILE.safeAreaBottomInset }}

@@ -43,7 +43,7 @@ const noOverflow = async (page) =>
 {
   const { context, page } = await newPage({ width: 1440, height: 1000 })
   await page.goto(`${BASE}/`)
-  await page.getByRole('heading', { level: 1, name: /Wszystko, co ważne na UJ/ }).waitFor()
+  await page.getByRole('heading', { level: 1, name: /Na bieżąco z UJ/ }).waitFor()
   record('A1 dashboard H1 visible at / without login', true)
   record('A2 no login form on /', (await page.locator('#auth-username').count()) === 0)
   const annSection = page.getByRole('heading', { name: 'Najnowsze komunikaty' }).locator('xpath=ancestor::section')
@@ -83,7 +83,7 @@ const noOverflow = async (page) =>
 
   // Back/forward
   await page.goBack()
-  await page.getByRole('heading', { level: 1, name: /Wszystko, co ważne na UJ/ }).waitFor()
+  await page.getByRole('heading', { level: 1, name: /Na bieżąco z UJ/ }).waitFor()
   record('N1 browser back returns to dashboard', true)
   await page.goForward()
   await page.waitForURL(/\/szukaj/)
@@ -95,7 +95,7 @@ const noOverflow = async (page) =>
     ['Rejestracje', '/rejestracje', async (p) => p.getByRole('heading', { level: 1, name: 'Rejestracje USOS' }).waitFor()],
     ['Wydarzenia', '/wydarzenia', async (p) => p.getByRole('tablist', { name: 'Widoki strony Wydarzenia' }).waitFor()],
     ['Niezbędnik', '/niezbednik', async (p) => p.getByRole('heading', { level: 1, name: 'Niezbędnik studenta' }).waitFor()],
-    ['Start', '/', async (p) => p.getByRole('heading', { level: 1, name: 'Wszystko, co ważne na UJ, w jednym miejscu' }).waitFor()],
+    ['Start', '/', async (p) => p.getByRole('heading', { level: 1, name: 'Na bieżąco z UJ.' }).waitFor()],
   ]) {
     await page.getByRole('navigation', { name: 'Sekcje UJverse' }).getByRole('button', { name: label, exact: true }).click()
     await page.waitForURL(`${BASE}${path}`)
@@ -110,7 +110,7 @@ const noOverflow = async (page) =>
   const { context, page } = await newPage({ width: 1440, height: 1000 })
   await page.goto(`${BASE}/`)
   await page.locator('article').first().waitFor({ timeout: 15000 })
-  await page.getByRole('banner').getByRole('button', { name: /Wydział:/ }).click()
+  await page.getByRole('button', { name: /Wydział:/ }).click()
   const dialog = page.getByRole('dialog', { name: 'Wybierz wydział' })
   await dialog.waitFor()
   const focusedInDialog = await page
@@ -129,14 +129,14 @@ const noOverflow = async (page) =>
   record('B3 announcements filtered to WZiKS (or honest empty state)', allWziks, `${metas.length} items`)
   await page.reload()
   await page.getByRole('heading', { name: 'Komunikaty z Twojego wydziału' }).waitFor()
-  const label = await page.getByRole('banner').getByRole('button', { name: /Wydział:/ }).textContent()
+  const label = await page.getByRole('button', { name: /Wydział:/ }).textContent()
   record('B4 selection persists after refresh', /WZiKS/.test(label ?? ''), label ?? '')
-  await page.getByRole('banner').getByRole('button', { name: /Wydział:/ }).click()
+  await page.getByRole('button', { name: /Wydział:/ }).click()
   await page.getByRole('dialog').getByRole('button', { name: /Cały UJ/ }).click()
   await page.getByRole('heading', { name: 'Najnowsze komunikaty' }).waitFor()
   record('B5 return to all-university view', true)
   const keyboardEscape = await (async () => {
-    await page.getByRole('banner').getByRole('button', { name: /Wydział:/ }).click()
+    await page.getByRole('button', { name: /Wydział:/ }).click()
     await page.getByRole('dialog').waitFor()
     await page.keyboard.press('Escape')
     await page.getByRole('dialog').waitFor({ state: 'detached' })
@@ -219,12 +219,12 @@ const noOverflow = async (page) =>
   record('E5 event rendered without placeholder location', eventRow === 1 && placeholder === 0)
   await page.getByText(/Nie udało się pobrać: komunikaty/).waitFor({ timeout: 15000 })
   record('F1 failed announcements show an error (not "no announcements") while other sections render', true)
-  await page.getByRole('banner').getByRole('button', { name: /Wydział:/ }).click()
+  await page.getByRole('button', { name: /Wydział:/ }).click()
   await page.getByRole('dialog').getByRole('button', { name: /Wydział Zarządzania i Komunikacji Społecznej/ }).click()
   await page.getByRole('heading', { name: 'Ważne teraz' }).waitFor({ timeout: 10000 })
   const priority = await page.getByText(/Rejestracja zamyka się za 1 dzień/).count()
   record('E6 "Ważne teraz" escalates the faculty registration closing within 72 h', priority === 1)
-  const otherFacultyInList = await page.getByRole('heading', { name: 'Nadchodzące rejestracje' }).locator('xpath=ancestor::section').getByText('Rejestracja na wykłady monograficzne').count()
+  const otherFacultyInList = await page.getByRole('heading', { name: 'Rejestracje USOS' }).locator('xpath=ancestor::section').getByText('Rejestracja na wykłady monograficzne').count()
   record('E7 registrations filtered by faculty (WMI item hidden for WZiKS)', otherFacultyInList === 0)
     await context.close()
 }
@@ -258,6 +258,59 @@ const noOverflow = async (page) =>
   record('I5 drawer opens with information items', (await drawer.getByRole('button', { name: 'Komunikaty' }).count()) === 1)
   const socialInDrawer = await drawer.getByRole('button', { name: 'Społeczność' }).count()
   record('I6 anonymous drawer hides account/social items', socialInDrawer === 0)
+  await context.close()
+}
+
+// ── J: information UI regression checks ───────────────────────────────────
+{
+  const { context, page } = await newPage({ width: 390, height: 844 })
+  await page.goto(`${BASE}/`)
+  await page.locator('main .info-entry').first().waitFor({ timeout: 20000 })
+  const first = await page.locator('main .info-entry').first().boundingBox()
+  record('J3 first announcement starts in the first mobile viewport', !!first && first.y < 600, first ? `${Math.round(first.y)}px` : '')
+  record('J4 one visible faculty control on Start', await page.getByRole('button', { name: /Wydział:/ }).count() === 1)
+  const save = page.getByRole('button', { name: /Zapisz na później:/ }).first()
+  await save.click()
+  await page.getByRole('heading', { name: 'Zapisane', exact: true }).waitFor()
+  record('J5 save for later creates saved section', true)
+  await page.reload()
+  await page.getByRole('heading', { name: 'Zapisane', exact: true }).waitFor()
+  record('J6 saved section persists after refresh', true)
+  await page.goto(`${BASE}/komunikaty`)
+  await page.locator('main .info-entry').first().waitFor({ timeout: 15000 })
+  record('J7 announcement page limits rendered rows to 12', (await page.locator('main .info-entry').count()) <= 12)
+  const next = page.getByRole('link', { name: 'Następna strona' })
+  if (await next.count()) {
+    await next.click()
+    record('J8 pagination reflected in URL', new URL(page.url()).searchParams.get('strona') === '2')
+  }
+  await page.getByRole('button', { name: /^Odwołane/ }).click()
+  record('J9 changing status resets pagination and writes URL', new URL(page.url()).searchParams.get('status') === 'cancelled' && !new URL(page.url()).searchParams.has('strona'))
+  await page.reload()
+  record('J10 status survives reload', await page.getByRole('button', { name: /^Odwołane/ }).getAttribute('aria-pressed') === 'true')
+  await page.goto(`${BASE}/wydarzenia`)
+  await page.locator('main .event-entry').first().waitFor({ timeout: 15000 })
+  const calendar = page.getByRole('tab', { name: 'Kalendarz', exact: true })
+  await calendar.click()
+  await page.locator('.campus-calendar-days').waitFor()
+  record('J11 calendar view stored in URL', new URL(page.url()).searchParams.get('widok') === 'kalendarz')
+  record('J12 calendar has 42 day controls', await page.locator('.campus-calendar-days button').count() === 42)
+  record('J13 event calendar has no horizontal overflow at 390px', await noOverflow(page))
+  await page.getByRole('button', { name: 'Następny miesiąc' }).click()
+  record('J14 month navigation stored in URL', /^20\d\d-\d\d$/.test(new URL(page.url()).searchParams.get('miesiac') ?? ''))
+  await page.reload()
+  await page.locator('.campus-calendar-days').waitFor()
+  record('J15 calendar survives refresh', await calendar.getAttribute('aria-selected') === 'true')
+  await calendar.focus()
+  await page.keyboard.press('ArrowLeft')
+  await page.waitForFunction(() => document.querySelector('#events-list-tab')?.getAttribute('aria-selected') === 'true')
+  record('J16 calendar tabs support arrow keys', await page.getByRole('tab', { name: 'Wydarzenia', exact: true }).getAttribute('aria-selected') === 'true')
+  for (const width of [360, 768, 1024, 1920]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(`${BASE}/`)
+    await page.locator('.info-entry').first().waitFor({ timeout: 15000 })
+    record(`J17 no horizontal overflow at ${width}px`, await noOverflow(page))
+  }
   await context.close()
 }
 
