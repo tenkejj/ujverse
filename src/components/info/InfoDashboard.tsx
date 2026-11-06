@@ -1,14 +1,6 @@
 /** Public student information overview. Real content comes before navigation shortcuts. */
 import { Link } from 'react-router-dom'
-import {
-  ArrowUpRight,
-  BookOpen,
-  CalendarDays,
-  ClipboardList,
-  Lock,
-  Megaphone,
-  type LucideIcon,
-} from 'lucide-react'
+import { ArrowUpRight, Lock } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 import BaseCard from '../ui/BaseCard'
 import {
@@ -111,22 +103,28 @@ export default function InfoDashboard({
 
   return (
     <div className="campus-home student-dashboard">
-      <header className="dashboard-heading">
-        <div>
-          {firstName ? (
-            <p className="dashboard-greeting">Cześć, {firstName}</p>
-          ) : null}
-          <h1>Dziś na UJ</h1>
-          <p>
-            {dateLabel}
-            <span aria-hidden> · </span>
-            {short ?? 'Wszystkie wydziały'}
-          </p>
-        </div>
-        <CustomizeButton hidden={prefs.hiddenSections} />
-      </header>
+      <div className="dashboard-opening">
+        <header className="dashboard-heading">
+          <div>
+            {firstName ? (
+              <p className="dashboard-greeting">Cześć, {firstName}</p>
+            ) : null}
+            <h1>Dziś na UJ</h1>
+            <p className="dashboard-context">
+              {dateLabel}
+              <span aria-hidden> · </span>
+              {short ?? 'Wszystkie wydziały'}
+            </p>
+            <p className="dashboard-intro">
+              Co warto wiedzieć na uczelni? Sprawdź komunikaty, terminy i
+              wydarzenia albo zapytaj Versusia.
+            </p>
+          </div>
+          <CustomizeButton hidden={prefs.hiddenSections} />
+        </header>
 
-      <VersusEntry />
+        <VersusEntry />
+      </div>
 
       {priority ? (
         <section
@@ -158,10 +156,8 @@ export default function InfoDashboard({
               short ? 'Komunikaty z Twojego wydziału' : 'Najnowsze komunikaty'
             }
             description={short ?? 'Ogłoszenia z wydziałów UJ'}
-            icon={Megaphone}
             href="/komunikaty"
             action="Wszystkie komunikaty"
-            count={announcementsQ.isSuccess ? announcements.length : undefined}
           >
             {announcementsQ.isPending ? (
               <RowSkeletons count={3} variant="feed" />
@@ -190,10 +186,10 @@ export default function InfoDashboard({
                 ostatnich 30 dniach.
               </DomainEmpty>
             ) : (
-              <ul className="campus-entry-list">
-                {announcements.slice(0, 3).map((item) => (
+              <ul className="dashboard-stories">
+                {announcements.slice(0, 2).map((item) => (
                   <li key={item.id}>
-                    <AnnouncementHubCard item={item} now={now} compact />
+                    <AnnouncementHubCard item={item} now={now} />
                   </li>
                 ))}
               </ul>
@@ -210,14 +206,8 @@ export default function InfoDashboard({
                 ? `Trwające i nadchodzące · ${short}`
                 : 'Trwające i nadchodzące tury'
             }
-            icon={ClipboardList}
             href="/rejestracje"
             action="Wszystkie rejestracje"
-            count={
-              registrationsQ.isSuccess && latestRun
-                ? registrations.length
-                : undefined
-            }
           >
             {registrationsQ.isPending ? (
               <RowSkeletons count={2} variant="feed" />
@@ -249,7 +239,7 @@ export default function InfoDashboard({
                 Brak aktywnych rejestracji{short ? ` dla ${short}` : ''}.
               </DomainEmpty>
             ) : (
-              <ul className="campus-entry-list">
+              <ul className="dashboard-deadlines">
                 {registrations.slice(0, 2).map((item) => (
                   <li key={item.id}>
                     <RegistrationHubCard
@@ -275,14 +265,8 @@ export default function InfoDashboard({
             className="dashboard-events"
             title="Wydarzenia na UJ"
             description="Najbliższe spotkania i wydarzenia"
-            icon={CalendarDays}
             href="/wydarzenia"
             action="Kalendarz wydarzeń"
-            count={
-              eventsQ.isSuccess && eventsQ.data.freshness.latest
-                ? events.length
-                : undefined
-            }
           >
             {eventsQ.isPending ? (
               <RowSkeletons count={2} variant="feed" />
@@ -299,7 +283,7 @@ export default function InfoDashboard({
                   : 'Dane o wydarzeniach są chwilowo niedostępne.'}
               </DomainEmpty>
             ) : (
-              <ul className="campus-event-list">
+              <ul className="dashboard-event-previews">
                 {events.slice(0, 2).map((item) => (
                   <li key={item.id}>
                     <EventHubCard item={item} now={now} />
@@ -315,7 +299,6 @@ export default function InfoDashboard({
             className="dashboard-tools"
             title="Pod ręką"
             description="Serwisy i narzędzia studenckie"
-            icon={BookOpen}
             href="/niezbednik"
             action="Cały niezbędnik"
           >
@@ -387,46 +370,35 @@ export default function InfoDashboard({
 function DashboardPanel({
   title,
   description,
-  icon: Icon,
   href,
   action,
-  count,
   className,
   children,
 }: {
   title: string
   description: string
-  icon: LucideIcon
   href: string
   action: string
-  count?: number
   className: string
   children: ReactNode
 }) {
   const headingId = useId()
   return (
-    <BaseCard
-      as="section"
+    <section
       className={`dashboard-panel ${className}`}
       aria-labelledby={headingId}
     >
       <header className="dashboard-panel-heading">
-        <Icon size={18} strokeWidth={1.7} aria-hidden />
         <div>
-          <h2 id={headingId}>
-            {title}
-            {typeof count === 'number' ? (
-              <span className="dashboard-panel-count">{count}</span>
-            ) : null}
-          </h2>
+          <h2 id={headingId}>{title}</h2>
           <p>{description}</p>
         </div>
+        <Link className="dashboard-panel-link" to={href}>
+          {action}
+          <ArrowUpRight size={14} aria-hidden />
+        </Link>
       </header>
       <div className="dashboard-panel-body">{children}</div>
-      <Link className="dashboard-panel-link" to={href}>
-        {action}
-        <ArrowUpRight size={14} aria-hidden />
-      </Link>
-    </BaseCard>
+    </section>
   )
 }

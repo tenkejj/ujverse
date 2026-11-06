@@ -141,7 +141,7 @@ export default function AnnouncementsPage({
               : 'Brak nowych komunikatów w ostatnich 30 dniach.'}
           </DomainEmpty>
         ) : (
-          <InfoHubCardGrid>
+          <InfoHubCardGrid layout="open">
             {visible.map((item) => (
               <li key={item.id}>
                 <AnnouncementHubCard item={item} now={now} />

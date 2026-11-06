@@ -17,7 +17,7 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 
 1. Inspect the actual current branch and existing components before designing.
 2. Identify which user task the change improves. Sketch hierarchy before adding decoration.
-3. Distinguish layout from branding. Use existing tokens and `BaseCard` for section containers.
+3. Distinguish layout from branding. Use existing tokens. Use `BaseCard` when an independent surface is needed; public overview sections are open by default.
 4. Review desktop and phone screenshots after implementation, including long titles, empty data and errors. Remove visual elements that carry no useful information.
 
 ## Dashboard hierarchy
@@ -25,7 +25,7 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 - Keep a short page heading and one visible faculty control per viewport.
 - Label the selector visibly as “Wydział”, provide at least a 44 px target and keep it accessible while scrolling. A tiny icon or an unexplained “UJ” is insufficient.
 - Group announcements, registrations, events and tools by function. Show bounded previews and a clear link to each full section.
-- Give the sections a consistent structure without wrapping every row in a separate decorative card.
+- Use the [layout](../ujverse-layout/SKILL.md) and [simplify](../ujverse-simplify/SKILL.md) workflows for crowded pages. Group by meaning and spacing, with different emphasis for announcements, deadlines and event dates. Do not return to the rejected equal-panel dashboard or force all sections into one viewport.
 - Make actionable urgent information prominent using verified relevance rules. Do not invent statistics, urgency, recommendations or data.
 - Avoid new decorative gradients, marketing heroes, oversized numbers, all-cap eyebrows and repeated entrance animations.
 - Use whitespace, alignment, readable type and selective emphasis. Keep content aligned to the left.

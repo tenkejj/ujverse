@@ -1,6 +1,6 @@
 # Public Versuś revision — 6 November 2026
 
-The dashboard and navigation preserve the original UJverse logo, system font and light/dark/UJ colour tokens. Versuś is now a primary action on Start, a dedicated sidebar entry with sample questions, a mobile drawer destination and a labelled floating mobile shortcut. The question field hands off once to `/chat`; replacing navigation state prevents refresh from sending it again. Search no longer displays the Ctrl+K badge; the shortcut still works.
+The dashboard and navigation preserve the original UJverse logo, system font and light/dark/UJ colour tokens. Versuś is a primary action on Start, a dedicated sidebar entry, a mobile drawer destination and a labelled floating mobile shortcut. The [open overview revision](open-overview.md) places sample questions next to a multiline field on Start and removes their duplicate sidebar menu. The question field hands off once to `/chat`; replacing navigation state prevents refresh from sending it again. Search no longer displays the Ctrl+K badge; the shortcut still works.
 
 Faculty selection explicitly says “Wydział”, has a 48 px target, stays in the desktop header and uses a fixed strip below the mobile header. Existing faculty preference storage, dialog keyboard access and information filters are retained. The sidebar uses existing USOSweb, PEGAZ and student mail links to make its space useful.
 

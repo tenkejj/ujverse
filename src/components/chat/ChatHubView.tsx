@@ -298,7 +298,7 @@ export default function ChatHubView({
             <div className="min-w-0 flex flex-col leading-tight">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-sm font-semibold tracking-tight text-fg-primary">
-                  {CHAT_ASSISTANT_NAME}
+                  Versuś
                 </h1>
               </div>
               <p className="versus-chat-caption truncate text-[11px]">
@@ -347,8 +347,8 @@ export default function ChatHubView({
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pt-[10vh] pb-4 text-center md:px-6 md:pt-[14vh]">
-            <VersuMark size={64} className="mb-6" />
+          <div className="versus-chat-welcome mx-auto flex w-full max-w-3xl flex-col items-start px-5 pb-8 md:px-8">
+            <VersuMark size={48} className="mb-6" />
             <h2 className="text-2xl font-semibold tracking-tight text-fg-primary md:text-3xl">
               Co chcesz wiedzieć o UJ?
             </h2>
@@ -365,7 +365,7 @@ export default function ChatHubView({
                 delay: 0.2,
                 ease: [0.16, 1, 0.3, 1],
               }}
-              className="mt-6 grid w-full max-w-md grid-cols-2 gap-1.5 md:gap-2"
+              className="versus-chat-suggestions mt-6 flex w-full flex-wrap gap-x-6 gap-y-2"
               role="group"
               aria-label="Sugerowane pytania"
             >
@@ -378,7 +378,7 @@ export default function ChatHubView({
                   type="button"
                   onClick={() => void handleSend(prompt)}
                   disabled={isTyping}
-                  className="versus-quick-prompt w-full rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-center text-xs font-medium backdrop-blur-md transition-colors disabled:cursor-not-allowed disabled:opacity-40 md:text-sm dark:border-white/10 dark:bg-zinc-950/50"
+                  className="versus-quick-prompt rounded text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {prompt}
                 </button>

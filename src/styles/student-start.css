@@ -1,0 +1,630 @@
+/* Open information layout. All colour roles come from the original UJverse themes. */
+.student-dashboard {
+  --start-section-gap: 64px;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-block: 16px 32px;
+}
+.campus-app .campus-page:has(.student-dashboard) {
+  padding: 40px 40px 64px;
+}
+.dashboard-opening {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 56px;
+  margin-bottom: var(--start-section-gap);
+}
+.dashboard-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+.dashboard-heading h1 {
+  font-size: 40px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.dashboard-context,
+.dashboard-greeting {
+  color: var(--campus-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.dashboard-context {
+  margin-top: 12px;
+}
+.dashboard-greeting {
+  margin-bottom: 8px;
+}
+.dashboard-intro {
+  max-width: 32ch;
+  margin-top: 24px;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--campus-muted);
+}
+.dashboard-heading > button {
+  min-height: 44px;
+  font-size: 13px;
+}
+.versus-entry {
+  min-width: 0;
+}
+.versus-entry-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.versus-entry-heading h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}
+.versus-entry-heading h2 > span {
+  color: var(--campus-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.versus-entry-heading p {
+  color: var(--campus-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+.versus-entry-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin-top: 24px;
+  background: var(--campus-bg);
+  border: 1px solid var(--campus-line);
+  border-radius: 16px;
+  transition: border-color 150ms;
+}
+.versus-entry-form:focus-within {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: 3px;
+}
+.versus-entry-form textarea {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  max-height: 160px;
+  resize: vertical;
+  outline: none;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--campus-text);
+  background: transparent;
+}
+.versus-entry-form textarea::placeholder {
+  color: var(--campus-muted);
+  opacity: 1;
+}
+.versus-entry-form textarea:focus-visible {
+  outline: none;
+}
+.versus-entry-access {
+  color: var(--campus-muted);
+  font-size: 12px;
+}
+.versus-entry-form button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--campus-accent);
+  color: var(--campus-bg);
+  transition: opacity 150ms;
+}
+.versus-entry-form button:hover {
+  opacity: 0.85;
+}
+.versus-entry-form button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.versus-entry-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+  margin-top: 12px;
+}
+.versus-entry-suggestions button,
+.versus-entry-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--campus-accent);
+  font-size: 13px;
+  text-align: left;
+  border-radius: 4px;
+}
+.versus-entry-suggestions button:hover,
+.versus-entry-open:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.versus-entry-open {
+  color: var(--campus-muted);
+}
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--start-section-gap);
+}
+.dashboard-grid:empty {
+  display: none;
+}
+.dashboard-panel {
+  min-width: 0;
+}
+.dashboard-panel-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+.dashboard-panel-heading h2 {
+  font-size: 26px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.dashboard-panel-heading p {
+  margin-top: 8px;
+  color: var(--campus-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.dashboard-panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 44px;
+  color: var(--campus-accent);
+  font-size: 13px;
+  border-radius: 4px;
+}
+.dashboard-stories,
+.dashboard-deadlines,
+.dashboard-event-previews {
+  list-style: none;
+  display: grid;
+  gap: 40px;
+  margin: 0;
+  padding: 0;
+}
+.dashboard-stories {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+}
+.dashboard-deadlines,
+.dashboard-event-previews {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.student-dashboard .info-entry,
+.student-dashboard .deadline-entry,
+.student-dashboard .event-entry {
+  padding: 0;
+  gap: 16px;
+}
+.student-dashboard .info-entry h3,
+.student-dashboard .deadline-entry h3,
+.student-dashboard .event-entry h3 {
+  font-size: 20px;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.dashboard-stories > li:first-child h3 {
+  font-size: 26px;
+  line-height: 1.35;
+}
+.student-dashboard .info-entry-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.75;
+  margin-bottom: 12px;
+  max-width: 64ch;
+}
+.student-dashboard .info-entry-meta {
+  font-size: 12px;
+  line-height: 1.6;
+  gap: 6px 12px;
+}
+.student-dashboard .info-entry-meta > time {
+  margin-left: 0;
+}
+.student-dashboard .info-entry-content > a {
+  font-size: 13px;
+  min-height: 44px;
+}
+.student-dashboard .info-entry > button,
+.student-dashboard .event-entry > button {
+  width: 44px;
+  height: 44px;
+}
+.student-dashboard .event-entry > button {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+.dashboard-registrations {
+  padding: 32px;
+  border-radius: 16px;
+  background: var(--campus-tint);
+}
+.student-dashboard .deadline-time {
+  font-size: 16px;
+  margin-top: 16px;
+  line-height: 1.6;
+}
+.student-dashboard .deadline-entry-compact .campus-phase {
+  font-size: 13px;
+}
+.student-dashboard .campus-date-block {
+  width: 64px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+.student-dashboard .campus-date-block span:first-child {
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.student-dashboard .campus-date-block span:last-child {
+  font-size: 16px;
+  margin-top: 6px;
+}
+.dashboard-tool-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.dashboard-tool-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 15px;
+  color: var(--campus-text);
+}
+.dashboard-tool-list svg {
+  color: var(--campus-muted);
+  flex-shrink: 0;
+}
+.dashboard-priority {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid var(--campus-line);
+  border-radius: 12px;
+  margin-bottom: 40px;
+}
+.dashboard-priority h2 {
+  color: var(--campus-accent);
+  font-size: 16px;
+  font-weight: 600;
+}
+.dashboard-priority p {
+  color: var(--campus-muted);
+  font-size: 14px;
+  margin-top: 8px;
+}
+.dashboard-priority h3 {
+  margin-top: 8px;
+  font-size: 18px;
+  line-height: 1.5;
+}
+.dashboard-priority > a {
+  flex-shrink: 0;
+  min-height: 44px;
+  color: var(--campus-accent);
+  align-content: center;
+}
+.dashboard-saved {
+  padding: 24px;
+  margin-top: var(--start-section-gap);
+}
+.dashboard-disclaimer {
+  color: var(--campus-muted);
+  font-size: 13px;
+  line-height: 1.75;
+  margin-top: var(--start-section-gap);
+}
+.dashboard-sources {
+  color: var(--campus-muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+.dashboard-sources summary {
+  min-height: 44px;
+  width: fit-content;
+  align-content: center;
+  cursor: pointer;
+}
+.dashboard-sources > footer {
+  padding-top: 16px;
+}
+.sidebar-surface {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+  backdrop-filter: none;
+}
+.dark .sidebar-surface {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+.sidebar-versus {
+  padding: 16px 8px 24px;
+}
+.sidebar-versus-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  border-radius: 8px;
+  color: var(--campus-accent);
+}
+.sidebar-versus-link > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-versus-link strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.sidebar-versus-link strong > span {
+  font-size: 11px;
+  color: var(--campus-muted);
+}
+.sidebar-versus-link small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--campus-muted);
+}
+.sidebar-versus > p {
+  color: var(--campus-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.sidebar-versus-link:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.sidebar-versus-link[aria-current='page'] {
+  outline: 1px solid var(--campus-accent);
+  outline-offset: 4px;
+}
+.versus-sidebar :where(a, button):focus-visible {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: 3px;
+}
+.versus-sidebar > div > p {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  color: var(--campus-muted);
+}
+.versus-chat-welcome {
+  padding-top: 64px;
+}
+.versus-chat-welcome h2 {
+  max-width: 20ch;
+  font-size: 32px;
+  line-height: 1.3;
+}
+.versus-chat-welcome > p {
+  max-width: 52ch;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.versus-chat-suggestions button {
+  padding: 8px 0;
+  color: var(--campus-accent);
+  min-height: 44px;
+}
+.versus-chat-suggestions button:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.campus-open-entries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px;
+  list-style: none;
+  padding: 16px 0;
+}
+.campus-open-entries > li {
+  min-width: 0;
+}
+.campus-open-entries :where(.info-entry, .deadline-entry, .event-entry) {
+  padding: 0;
+}
+.campus-open-entries h3 {
+  font-size: 20px;
+  line-height: 1.45;
+  margin: 12px 0;
+}
+.campus-open-entries .info-entry-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.75;
+}
+.campus-open-entries .info-entry-content > a {
+  min-height: 44px;
+  font-size: 13px;
+}
+@media (max-width: 1199px) {
+  .campus-app .campus-page:has(.student-dashboard) {
+    padding-inline: 24px;
+  }
+  .dashboard-opening {
+    gap: 32px;
+  }
+  .dashboard-heading h1 {
+    font-size: 32px;
+  }
+  .dashboard-stories,
+  .dashboard-deadlines,
+  .dashboard-event-previews {
+    gap: 28px;
+  }
+}
+@media (max-width: 767px) {
+  .campus-app .campus-page:has(.student-dashboard) {
+    padding: 24px 20px calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+  .student-dashboard {
+    --start-section-gap: 40px;
+    padding-block: 0 16px;
+  }
+  .dashboard-opening {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .dashboard-heading {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .dashboard-heading h1 {
+    font-size: 30px;
+  }
+  .dashboard-context {
+    margin-top: 8px;
+    font-size: 12px;
+  }
+  .dashboard-heading .dashboard-intro {
+    display: none;
+  }
+  .dashboard-heading > button {
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+  .versus-entry-heading h2 {
+    font-size: 24px;
+  }
+  .versus-entry-heading p {
+    font-size: 13px;
+  }
+  .versus-entry-form {
+    margin-top: 20px;
+  }
+  .versus-entry-form textarea {
+    min-height: 72px;
+  }
+  .versus-entry-suggestions {
+    column-gap: 16px;
+  }
+  .versus-entry-suggestions button {
+    font-size: 12px;
+  }
+  .dashboard-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .dashboard-panel-heading h2 {
+    font-size: 24px;
+  }
+  .dashboard-panel-heading p {
+    font-size: 13px;
+  }
+  .dashboard-panel-link {
+    min-height: 44px;
+  }
+  .dashboard-stories,
+  .dashboard-deadlines,
+  .dashboard-event-previews {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .dashboard-stories > li:first-child h3 {
+    font-size: 24px;
+  }
+  .dashboard-registrations {
+    padding: 24px 20px;
+  }
+  .student-dashboard .info-entry,
+  .student-dashboard .event-entry {
+    gap: 12px;
+  }
+  .student-dashboard .event-entry h3 {
+    font-size: 19px;
+  }
+  .student-dashboard .campus-date-block {
+    width: 52px;
+  }
+  .student-dashboard .campus-date-block span:first-child {
+    font-size: 48px;
+  }
+  .dashboard-priority {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .dashboard-tool-list {
+    gap: 8px 24px;
+  }
+  .campus-open-entries {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .versus-chat-welcome {
+    padding-top: 32px;
+  }
+  .versus-chat-welcome h2 {
+    font-size: 26px;
+  }
+  .versus-chat-welcome > p {
+    font-size: 14px;
+  }
+}

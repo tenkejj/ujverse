@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowUpRight, Send } from 'lucide-react'
-import BaseCard from '../ui/BaseCard'
 import VersuMark from './VersuMark'
 import { PUBLIC_CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
 import { versusEntryState } from '../../lib/versusEntry'
@@ -17,42 +16,48 @@ export default function VersusEntry() {
     if (question.trim()) ask(question)
   }
   return (
-    <BaseCard
-      as="section"
-      className="versus-entry"
-      aria-labelledby="versus-entry-heading"
-    >
+    <section className="versus-entry" aria-labelledby="versus-entry-heading">
       <div className="versus-entry-heading">
-        <VersuMark size={38} />
+        <VersuMark size={32} />
         <div>
           <h2 id="versus-entry-heading">
             Zapytaj Versusia <span>AI</span>
           </h2>
-          <p>Komunikaty, rejestracje i wydarzenia — zapytaj po swojemu.</p>
+          <p>Masz pytanie o uczelnię? Zacznij tutaj.</p>
         </div>
-        <Link to="/chat" aria-label="Otwórz rozmowę z Versusiem">
-          <ArrowUpRight size={19} aria-hidden />
-        </Link>
       </div>
       <form onSubmit={submit} className="versus-entry-form">
         <label className="sr-only" htmlFor="versus-question">
           O co chcesz zapytać Versusia?
         </label>
-        <input
+        <textarea
           id="versus-question"
           name="question"
           autoComplete="off"
-          placeholder="Np. kiedy zaczynają się rejestracje?"
+          enterKeyHint="send"
+          placeholder="Np. kiedy rusza rejestracja na zajęcia?"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           maxLength={4000}
+          rows={2}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault()
+              if (question.trim()) ask(question)
+            }
+          }}
         />
+        <span className="versus-entry-access">Bez logowania</span>
         <button
           type="submit"
           aria-label="Zapytaj Versusia"
           disabled={!question.trim()}
         >
-          <span>Zapytaj</span>
+          <span>Wyślij pytanie</span>
           <Send size={16} aria-hidden />
         </button>
       </form>
@@ -65,15 +70,21 @@ export default function VersusEntry() {
           <button type="button" key={prompt} onClick={() => ask(prompt)}>
             {
               [
-                'Komunikaty z wydziałów',
-                'Terminy rejestracji',
-                'Najbliższe wydarzenia',
+                'Co nowego na UJ?',
+                'Kiedy rejestracje?',
+                'Co się dzieje na uczelni?',
               ][i]
             }
           </button>
         ))}
-        <span>Bez logowania</span>
       </div>
-    </BaseCard>
+      <Link
+        className="versus-entry-open"
+        to="/chat"
+        aria-label="Otwórz rozmowę z Versusiem"
+      >
+        Otwórz czat <ArrowUpRight size={15} aria-hidden />
+      </Link>
+    </section>
   )
 }

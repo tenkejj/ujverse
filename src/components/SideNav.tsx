@@ -1,10 +1,17 @@
-import { ArrowUpRight, GraduationCap, LogIn, LogOut, Moon, Settings, Sun } from 'lucide-react'
+import {
+  ArrowUpRight,
+  GraduationCap,
+  LogIn,
+  LogOut,
+  Moon,
+  Settings,
+  Sun,
+} from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { SIDE_NAV_DESKTOP } from '../styles/mobile-theme'
 import VersuMark from './chat/VersuMark'
 import { NIEZBEDNIK_LINKS } from './Niezbednik'
-import { versusEntryState } from '../lib/versusEntry'
 import NavItem from './nav/NavItem'
 import {
   ACCOUNT_NAV,
@@ -50,7 +57,7 @@ export default function SideNav({
       className={SIDE_NAV_DESKTOP.containerClass}
     >
       <div className={SIDE_NAV_DESKTOP.stickyClass}>
-        <div className={SIDE_NAV_DESKTOP.innerClass}>
+        <div className={`sidebar-surface ${SIDE_NAV_DESKTOP.innerClass}`}>
           <nav
             className={`versus-sidebar ${SIDE_NAV_DESKTOP.scrollAreaClass}`}
             aria-label="Sekcje UJverse"
@@ -75,28 +82,6 @@ export default function SideNav({
                   ? 'Zapytaj o sprawy uczelni'
                   : 'Dostępny także bez logowania'}
               </p>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate('/chat', {
-                    state: versusEntryState('Najnowsze ogłoszenia'),
-                  })
-                }
-              >
-                Najnowsze komunikaty
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate('/chat', {
-                    state: versusEntryState(
-                      'Jakie są nadchodzące rejestracje USOS?',
-                    ),
-                  })
-                }
-              >
-                Sprawdź terminy rejestracji
-              </button>
             </div>
             <div className={SIDE_NAV_DESKTOP.groupClass}>
               <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Informacje</p>

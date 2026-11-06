@@ -194,7 +194,7 @@ export default function OfficialEventsPage({
                 title={group.title}
                 count={group.items.length}
               >
-                <ul className="campus-event-list">
+                <ul className="campus-open-entries">
                   {group.items.map((item) => (
                     <li key={item.id}>
                       <EventHubCard item={item} now={now} />

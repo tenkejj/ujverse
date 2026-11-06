@@ -112,6 +112,20 @@ export function InfoHubSection({
   )
 }
 
-export function InfoHubCardGrid({ children }: { children: ReactNode }) {
-  return <ul className="campus-entry-list">{children}</ul>
+export function InfoHubCardGrid({
+  children,
+  layout = 'rows',
+}: {
+  children: ReactNode
+  layout?: 'rows' | 'open'
+}) {
+  return (
+    <ul
+      className={
+        layout === 'open' ? 'campus-open-entries' : 'campus-entry-list'
+      }
+    >
+      {children}
+    </ul>
+  )
 }

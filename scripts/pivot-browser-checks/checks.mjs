@@ -315,7 +315,7 @@ const noOverflow = async (page) =>
   await context.close()
 }
 
-// ── K: preserve UJverse branding while presenting a compact dashboard ───────
+// ── K: preserve UJverse branding in an open, spacious overview ──────────────
 {
   const { context, page } = await newPage({ width: 1440, height: 1000 })
   await page.goto(`${BASE}/`)
@@ -325,8 +325,12 @@ const noOverflow = async (page) =>
   const family = await page.locator('main').evaluate(el => getComputedStyle(el).fontFamily)
   record('K2 existing system typography is used', /system-ui/.test(family) && !/Source Sans/.test(family), family)
   record('K3 all four dashboard sections render', await page.locator('.dashboard-panel').count() === 4)
-  const boxes = await page.locator('.dashboard-panel-heading').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().bottom))
-  record('K4 all dashboard section headings are visible on desktop', boxes.every(bottom => bottom <= 1000), `${Math.round(Math.max(...boxes))}px`)
+  const sectionLayout = await page.locator('.dashboard-grid').evaluate(el => ({
+    direction: getComputedStyle(el).flexDirection,
+    gap: parseFloat(getComputedStyle(el).rowGap),
+    borders: [...el.children].map(section => getComputedStyle(section).borderTopWidth),
+  }))
+  record('K4 dashboard uses open sections with at least 56px separation', sectionLayout.direction === 'column' && sectionLayout.gap >= 56 && sectionLayout.borders.every(width => parseFloat(width) === 0), `${sectionLayout.gap}px gap`)
   const themeNav = page.getByRole('navigation', { name: 'Sekcje UJverse' })
   await themeNav.getByRole('button', { name: 'Jasny', exact: true }).click()
   await page.waitForFunction(() => document.documentElement.classList.contains('theme-uj'))

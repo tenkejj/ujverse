@@ -145,7 +145,7 @@ export default function RegistrationsPage({
             Brak rejestracji spełniających wybrane kryteria.
           </DomainEmpty>
         ) : (
-          <InfoHubCardGrid>
+          <InfoHubCardGrid layout="open">
             {filtered.map((item) => (
               <li key={item.id}>
                 <RegistrationHubCard

@@ -1,5 +1,14 @@
 # UI verification — dashboard revision, 6 November 2026
 
+## Current: open overview inspired by Baltic Wheels
+
+- `npm run build`, `npm test` and the individual 90-test run pass. Changed TypeScript files pass no-unused-vars and React Hooks lint rules.
+- Public acceptance: 90/90 browser checks pass. Public AI: 22/22 checks pass with simulated SSE. The former requirement to fit every section above the fold has intentionally been replaced by an open-section and spacing check.
+- Dashboard main-content axe checks: zero violations in light, dark and UJ themes. Chat, the sidebar AI entry and faculty selector also report zero violations in all three themes.
+- Dashboard widths 360, 390, 768, 1024 and 1920 px have no horizontal overflow. New catalogue layouts retain filters, pagination, saved items and calendar behavior.
+- Theme definition files and original logo remain unchanged. Obsolete compact-dashboard CSS was removed; the new layout has a dedicated stylesheet.
+- Read [open-overview.md](open-overview.md) for the reference analysis, skill selection, preview images and limits. The sections below describe earlier revisions.
+
 ## Public Versuś follow-up
 
 - Production build and `npm test` pass. The individual test run now passes **90 tests across 30 suites**, including public tool boundaries, source-backed record sets, cache separation, post-pivot announcements and conversation reset.

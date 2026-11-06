@@ -1,5 +1,7 @@
 # Dashboard revision: keep the existing UJverse identity
 
+**Current direction:** the user has rejected the compact panel composition described below. The implemented replacement is documented in [open-overview.md](open-overview.md) and the root [DESIGN.md](../../DESIGN.md). It preserves the identity constraints while replacing equal panels with open sections and generous spacing. The remainder of this document records the previous revision.
+
 ## Accepted direction
 
 The user rejected the replacement palette and wordmark. This revision restores the original header/logo, sidebar, bottom navigation, font stack and three colour themes. `src/ThemeContext.tsx`, `src/index.css` and `src/styles/theme.ts` remain unchanged. Page-layout aliases reference their existing values; no alternative light/dark/UJ palette is defined.
