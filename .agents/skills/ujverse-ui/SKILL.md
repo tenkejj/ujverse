@@ -42,6 +42,8 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 
 ## Verification
 
+The user has explicitly requested no automated test suites during the current visual UI iterations. Respect that instruction instead of automatically running the suites below. Prioritize the actual implementation and visual preview; do not claim previous test results cover a newer revision.
+
 Run the production build and checks appropriate to changed behaviour. `scripts/pivot-browser-checks/checks.mjs` covers the public flows; use a local Chrome executable when available. The default ESLint config may be empty, so do not report it as a substantive lint audit. Inspect all three themes and narrow widths. Do not deploy as part of local preview work.
 
 For public AI changes, also run `scripts/versus-browser-checks.mjs` and the chat access unit tests. Distinguish simulated SSE UI tests from real provider inference. Anonymous tools must use public records, and cache keys must separate access scopes, users and conversation context. Clear conversation state at account boundaries.

@@ -1,5 +1,9 @@
 # UI verification — dashboard revision, 6 November 2026
 
+## Current: UI Skills revision
+
+The user requested implementation without automated test runs. No unit, browser acceptance, lint or axe suites were run for this revision. The production bundle compiled and desktop/phone renders were viewed. Earlier counts below refer to older revisions. Current previews: [desktop](previews/ui-skills-desktop.png), [phone](previews/ui-skills-mobile.png). Design sources and decisions are in the root `DESIGN.md` and `.interface-design/system.md`.
+
 ## Current: open overview inspired by Baltic Wheels
 
 - `npm run build`, `npm test` and the individual 90-test run pass. Changed TypeScript files pass no-unused-vars and React Hooks lint rules.

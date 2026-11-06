@@ -1,11 +1,11 @@
-# UJverse: open information layout
+# UJverse: a focused student interface
 
 The established identity remains in `public/logo.png`, `src/index.css`, `src/ThemeContext.tsx` and `src/styles/theme.ts`. No new palette or font is introduced.
 
-The Start page uses open sections and an asymmetric opening: date and context on the left, a useful Versuś question field on the right. On phones this becomes a short heading followed by the assistant. The assistant is visibly labelled AI, uses a multiline field with a text-labelled send action and offers concrete questions.
+The Start page follows [interface-design](https://www.ui-skills.com/skills/dammyjay93/interface-design) and [better-ui](https://www.ui-skills.com/skills/jakubkrehel/better-ui), selected from UI Skills. Versuś is the central focal point: an identifiable owl and AI label, one welcoming question, a growing text field and a text-labelled send action. Three concrete suggestions reduce typing. The page heading and date support this primary action.
 
-Announcements are editorial previews with readable titles and excerpts. Registrations form a quieter area with truthful deadlines. Events use dates as meaningful visual anchors. University tools remain simple links. Saved items, complete catalogues, source links, faculty filtering and customization remain accessible.
+Below the assistant, one information area switches between announcements, registrations and events. Only one category is displayed at a time. The selected category stays in the URL; hidden sections remain hidden. Previews use restrained type sizes and bounded excerpts. University services remain simple links. Saved items, complete catalogues, source links, faculty filtering and customization remain accessible.
 
-Desktop section separation is 64 px; mobile separation is 40 px. Related controls use 8–16 px gaps and content groups 24–32 px. Main content has generous but balanced side margins. Major headings use the original system family at 28–40 px; body copy uses 15–16 px. The page scrolls naturally instead of squeezing every heading into one screen.
+Detailed type, spacing and interaction decisions live in [.interface-design/system.md](.interface-design/system.md). Theme definitions and original branding remain unchanged. The sidebar shares the page canvas and uses quieter controls; the floating mobile AI shortcut remains on other pages, while Start has its own prominent entry.
 
-The composition takes inspiration from [Baltic Wheels](https://balticwheels.pl/en/). Its branding, automotive imagery, wave decorations, marketing content and viewport-sized promotional sections are not copied. This document supersedes the compact equal-panel layout in the earlier dashboard revision.
+This revision supersedes the earlier Baltic Wheels-inspired opening. Automated tests were not run for this visual iteration, at the user's request.

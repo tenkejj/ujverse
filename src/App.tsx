@@ -1996,6 +1996,7 @@ function App() {
             mobileDrawerOpen ||
             menuOpen ||
             effectiveActiveView === 'chat' ||
+            effectiveActiveView === 'home' ||
             effectiveActiveView === 'aula'
           }
           myProfile={myProfile}
