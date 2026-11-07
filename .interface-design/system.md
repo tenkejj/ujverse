@@ -1,17 +1,17 @@
 # UJverse interface
 
-Sources: [interface-design](https://www.ui-skills.com/skills/dammyjay93/interface-design), [better-ui](https://www.ui-skills.com/skills/jakubkrehel/better-ui).
+Intent: help a new student understand what UJverse does and take one clear action. The page introduces its scope, then groups AI assistance and directly browsable information into two distinct surfaces.
 
-Intent: a UJ student checking university information between classes. One clear place to ask, followed by a small amount of directly browsable information. The domain is faculties, classes, registration windows, announcements, university services and campus events.
+Preserve `public/logo.png`, system typography and existing light/dark/UJ tokens. Use the established navy, gold, neutral surfaces and text roles. The original Versuś creature is the only new illustrative element; it does not replace the main logo.
 
-Preserve the existing logo, owl, system font and light/dark/UJ theme tokens. The existing navy, gold, neutral surfaces, ink and muted text are the colour world; no new palette, font or decorative gradient.
+Hierarchy: page heading 28 px (25 px phone); assistant heading 30 px (25 px phone); information group heading 20 px (18 px phone); preview titles 17 px; body 14–16 px; metadata 12 px. Page maximum width 1040 px. Four-pixel spacing base, 28–32 px surface padding and 24–32 px between task groups. Surfaces have neutral backgrounds, structural borders, 16 px corners and no decorative shadow or blur. Form radius 12 px, button radius 8 px. Primary controls are at least 48 px; secondary controls at least 44 px.
 
-Hierarchy: Versuś and the question field are the focal point. Page title 22 px, assistant heading 36 px (28 px on phones), content titles 18 px, body 14–16 px, metadata 12 px. Four-pixel spacing base. The assistant has 48 px of separation from the page heading. Related controls use 8–12 px gaps; content previews use 32 px gaps.
+AI identity, explanation, labelled question field, explicit submit action and examples belong inside one surface. On phone, illustration sits beside the assistant identity and heading, while the description spans the full width. Below 380 px use a smaller illustration. Keep the submit action reachable without adding a duplicate chat interface.
 
-Show one information category at a time using native filter buttons with explicit selected states. Preserve category in `?sekcja=`. Keep the full catalogues, saved items, faculty selection, customization and source links available. Avoid a long wall of equally prominent sections.
+Show one information category at a time using native filter buttons with explicit selected states. Preserve category in `?sekcja=` and wrap controls on narrow screens. Keep catalogues, saved items, faculty selection, customization, source links and honest source states.
 
-Faculty selection has its own sticky strip below the global header on public pages. The label “Twój wydział” stays visible, the selected name is written out, and “Wybierz” / “Zmień” explicitly names the action. Keep one visible selector per viewport. Mobile uses an 88 px strip and desktop 80 px; chat height reserves that space.
+Faculty selection has a sticky strip below the global header. The label “Twój wydział”, full readable name and “Wybierz” / “Zmień” stay explicit. Keep one visible selector per viewport. Mobile reserves 88 px and desktop 80 px; chat height includes the strip.
 
-Depth: existing neutral surfaces and restrained structural borders; no decorative shadows. Input outer radius 23 px = button radius 10 px + padding 12 px + border 1 px. Button height 48 px; secondary controls at least 44 px. Hover styling is pointer-aware; optional press feedback is scale 0.96 over 150 ms, gated by reduced-motion preference. State changes remain immediate.
+Mascot assets: `public/versus/idle.*` (full-body) and `face.*` (small avatars). WebP/GIF play one four-second cycle and finish with open eyes. PNG is selected for reduced motion. No extra CSS/Framer bobbing, colour inversion or background disc.
 
-This records the implemented revision for review, not a usability study or an approved final visual direction. The user requested no automated test runs for this visual iteration.
+Sources and evaluation limits are recorded in `DESIGN.md`. This is an implemented visual direction, not a usability study. The user requested no automated test suites for this iteration.

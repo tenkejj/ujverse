@@ -9,98 +9,133 @@
 .campus-app .campus-page:has(.student-dashboard) {
   padding: 28px 48px 64px;
 }
+/* Task surfaces keep related copy and controls together. */
 .dashboard-opening {
-  margin-bottom: 48px;
+  margin-bottom: 32px;
 }
 .dashboard-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
+  gap: 24px;
+  margin-bottom: 28px;
 }
 .dashboard-heading h1 {
-  font-size: 22px;
+  max-width: 29ch;
+  font-size: 28px;
   font-weight: 600;
   line-height: 1.3;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.dashboard-description {
+  max-width: 62ch;
+  margin-top: 10px;
+  color: var(--campus-muted);
+  font-size: 14px;
+  line-height: 1.7;
 }
 .dashboard-context {
   color: var(--campus-muted);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.6;
-  margin-top: 6px;
+  margin-top: 12px;
 }
 .dashboard-greeting {
   color: var(--campus-muted);
   font-size: 13px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .dashboard-heading > button {
   min-height: 44px;
   font-size: 12px;
   border-radius: 10px;
+  flex-shrink: 0;
+}
+.student-dashboard :where(.versus-entry, .dashboard-overview) {
+  border: 1px solid var(--campus-line);
+  border-radius: 16px;
+  background: var(--campus-bg);
+  background-image: none;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 .versus-entry {
   width: 100%;
-  max-width: 720px;
-  margin: 48px auto 0;
-  text-align: center;
+  padding: 28px 32px;
 }
-.versus-entry-brand {
-  display: inline-flex;
+.versus-entry-intro {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--campus-accent);
-  min-height: 44px;
-  border-radius: 8px;
+  justify-content: space-between;
+  gap: 32px;
 }
-.versus-entry-brand > span:last-child {
-  font-size: 17px;
-  font-weight: 600;
+.versus-entry-copy {
+  min-width: 0;
 }
-.versus-entry-brand > span:last-child > span {
-  display: inline-block;
-  margin-left: 5px;
+.versus-entry-identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
   color: var(--campus-muted);
+}
+.versus-entry-identity span {
   font-size: 11px;
-  font-weight: 500;
+  border: 1px solid var(--campus-line);
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 .versus-entry h2 {
-  margin-top: 16px;
-  font-size: 36px;
+  margin-top: 10px;
+  font-size: 30px;
   font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.2;
-  text-wrap: balance;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
 }
 .versus-entry-description {
+  max-width: 52ch;
   color: var(--campus-muted);
-  font-size: 15px;
-  line-height: 1.6;
-  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 10px;
   text-wrap: pretty;
 }
+.versus-entry-mascot {
+  width: 144px;
+  height: 144px;
+  flex-shrink: 0;
+}
 .versus-entry-form {
+  margin-top: 24px;
+}
+.versus-entry-form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.versus-entry-input {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 16px;
   padding: 12px;
-  margin-top: 28px;
-  background: var(--campus-bg);
-  border: 1px solid color-mix(in srgb, var(--campus-muted) 50%, transparent);
-  border-radius: 23px;
+  background: var(--campus-side);
+  border: 1px solid color-mix(in srgb, var(--campus-muted) 45%, transparent);
+  border-radius: 12px;
 }
-.versus-entry-form:focus-within {
+.versus-entry-input:focus-within {
   outline: 2px solid var(--campus-accent);
   outline-offset: 3px;
 }
-.versus-entry-form textarea {
+.versus-entry-input textarea {
   flex: 1;
   width: 0;
   min-width: 0;
-  min-height: 48px;
+  min-height: 72px;
   max-height: 160px;
-  padding: 12px 8px;
+  padding: 8px;
   resize: none;
   outline: none;
   font: inherit;
@@ -109,21 +144,21 @@
   color: var(--campus-text);
   background: transparent;
 }
-.versus-entry-form textarea::placeholder {
+.versus-entry-input textarea::placeholder {
   color: var(--campus-muted);
   opacity: 1;
 }
-.versus-entry-form textarea:focus-visible {
+.versus-entry-input textarea:focus-visible {
   outline: none;
 }
 .versus-entry-form button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   min-height: 48px;
-  padding: 12px 14px 12px 16px;
-  border-radius: 10px;
+  padding: 12px 16px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   background: var(--campus-accent);
@@ -134,62 +169,72 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+.versus-entry-examples {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 16px;
+}
+.versus-entry-examples > p {
+  color: var(--campus-muted);
+  font-size: 12px;
+}
 .versus-entry-suggestions {
   display: flex;
   align-items: center;
-  justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 4px 8px;
 }
 .versus-entry-suggestions button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-height: 44px;
-  padding: 10px 14px;
-  border: 1px solid var(--campus-line);
-  border-radius: 12px;
-  color: var(--campus-text);
-  font-size: 13px;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--campus-accent);
+  font-size: 12px;
   text-align: left;
   background: transparent;
   -webkit-tap-highlight-color: transparent;
 }
 .versus-entry-suggestions svg {
-  color: var(--campus-muted);
   flex-shrink: 0;
-}
-.versus-entry-access {
-  margin-top: 16px;
-  color: var(--campus-muted);
-  font-size: 12px;
-  line-height: 1.5;
 }
 .dashboard-overview {
   min-width: 0;
+  padding: 28px 32px;
 }
 .dashboard-overview-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
 }
 .dashboard-overview-heading h2 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+}
+.dashboard-overview-heading p {
+  color: var(--campus-muted);
+  font-size: 13px;
+  margin-top: 4px;
 }
 .dashboard-overview-heading > span {
   color: var(--campus-muted);
   font-size: 12px;
+  margin-top: 5px;
 }
 .dashboard-switcher {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   padding-bottom: 20px;
+  border-bottom: 1px solid var(--campus-line);
   overflow-x: auto;
   scrollbar-width: thin;
 }
@@ -200,7 +245,7 @@
   min-height: 44px;
   padding: 10px 14px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 8px;
   flex-shrink: 0;
   color: var(--campus-muted);
   font-size: 13px;
@@ -270,7 +315,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 10px 0 8px;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.5;
   font-weight: 600;
   letter-spacing: -0.015em;
@@ -335,14 +380,13 @@
   margin-top: 4px;
 }
 .dashboard-tools {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid var(--campus-line);
+  margin-top: 32px;
+  padding: 0 4px;
 }
 .dashboard-tools-heading {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--campus-muted);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--campus-text);
   margin-bottom: 12px;
 }
 .dashboard-tool-list {
@@ -559,7 +603,6 @@ html.theme-uj aside[aria-label='Nawigacja główna'] > div > div.sidebar-surface
     background: var(--campus-tint);
     color: var(--campus-accent);
   }
-  .versus-entry-brand:hover,
   .sidebar-versus-link:hover,
   .versus-chat-suggestions button:hover {
     text-decoration: underline;
@@ -588,70 +631,129 @@ html.theme-uj aside[aria-label='Nawigacja główna'] > div > div.sidebar-surface
     padding: 24px 20px calc(100px + env(safe-area-inset-bottom, 0px));
   }
   .dashboard-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px 12px;
+    margin-bottom: 24px;
+  }
+  .dashboard-heading > div {
+    display: contents;
   }
   .dashboard-heading h1 {
-    font-size: 20px;
+    grid-column: 1 / -1;
+    font-size: 25px;
+    max-width: 24ch;
+  }
+  .dashboard-description {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    font-size: 14px;
   }
   .dashboard-context {
-    font-size: 12px;
+    align-self: center;
+    font-size: 11px;
+    margin-top: 0;
   }
   .dashboard-heading > button {
-    padding-inline: 10px;
-    font-size: 11px;
+    font-size: 12px;
+    padding-inline: 12px;
   }
   .dashboard-opening {
-    margin-bottom: 36px;
+    margin-bottom: 24px;
   }
-  .versus-entry {
-    margin-top: 32px;
+  .versus-entry,
+  .dashboard-overview {
+    padding: 22px 20px;
+  }
+  .versus-entry-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    align-items: center;
+    gap: 8px 12px;
+  }
+  .versus-entry-copy {
+    display: contents;
   }
   .versus-entry h2 {
-    font-size: 28px;
-    margin-top: 16px;
+    grid-column: 1;
+    font-size: 25px;
+    margin-top: 0;
   }
-  .versus-entry-description {
-    font-size: 14px;
-    max-width: 34ch;
-    margin-inline: auto;
-  }
-  .versus-entry-form {
-    margin-top: 24px;
-    padding: 10px;
-    gap: 8px;
-    border-radius: 21px;
-  }
-  .versus-entry-form textarea {
-    padding-inline: 4px;
-  }
-  .versus-entry-form button {
-    padding-inline: 12px;
-    font-size: 13px;
-  }
-  .versus-entry-form button svg {
-    display: none;
-  }
-  .versus-entry-suggestions {
-    gap: 8px;
-  }
-  .versus-entry-suggestions button {
-    padding-inline: 10px;
+  .versus-entry-identity {
+    grid-column: 1;
+    gap: 6px;
     font-size: 12px;
   }
-  .versus-entry-access {
-    font-size: 11px;
+  .versus-entry-identity span {
+    font-size: 10px;
+  }
+  .versus-entry-description {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .versus-entry-mascot {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 72px;
+    height: 80px;
+    margin-top: 0;
+  }
+  .versus-entry-mascot > span {
+    width: 80px !important;
+    height: 80px !important;
+  }
+  .versus-entry-form {
+    margin-top: 20px;
+  }
+  .versus-entry-input {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+  }
+  .versus-entry-input textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 8px;
+  }
+  .versus-entry-form button {
+    width: 100%;
+    font-size: 13px;
+  }
+  .versus-entry-examples {
+    margin-top: 16px;
+    gap: 4px;
+  }
+  .versus-entry-examples > p {
+    width: 100%;
+  }
+  .versus-entry-suggestions {
+    gap: 0 4px;
+  }
+  .versus-entry-suggestions button {
+    padding-inline: 4px;
+    font-size: 12px;
   }
   .dashboard-overview-heading {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .dashboard-overview-heading h2 {
+    font-size: 18px;
+  }
+  .dashboard-overview-heading > span {
+    display: none;
   }
   .dashboard-switcher {
-    gap: 0;
-    padding-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-bottom: 16px;
   }
   .dashboard-switcher button {
-    gap: 6px;
-    padding: 10px;
+    gap: 5px;
+    padding: 10px 8px;
     font-size: 12px;
   }
   .dashboard-switcher button > svg {
@@ -712,5 +814,29 @@ html.theme-uj aside[aria-label='Nawigacja główna'] > div > div.sidebar-surface
   }
   .versus-chat-welcome > p {
     font-size: 14px;
+  }
+}
+@media (max-width: 379px) {
+  .campus-app .campus-page:has(.student-dashboard) {
+    padding-inline: 16px;
+  }
+  .versus-entry,
+  .dashboard-overview {
+    padding: 20px 16px;
+  }
+  .versus-entry-intro {
+    grid-template-columns: minmax(0, 1fr) 52px;
+    gap: 8px;
+  }
+  .versus-entry-mascot {
+    width: 52px;
+    height: 60px;
+  }
+  .versus-entry-mascot > span {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  .versus-entry h2 {
+    font-size: 23px;
   }
 }

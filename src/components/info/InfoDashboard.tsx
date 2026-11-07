@@ -156,7 +156,10 @@ export default function InfoDashboard({
             {firstName ? (
               <p className="dashboard-greeting">Cześć, {firstName}</p>
             ) : null}
-            <h1>Dziś na UJ</h1>
+            <h1>Twoje sprawy na UJ, w jednym miejscu</h1>
+            <p className="dashboard-description">
+              Komunikaty, rejestracje i wydarzenia dla studentów.
+            </p>
             <p className="dashboard-context">
               {dateLabel}
               <span aria-hidden> · </span>
@@ -192,12 +195,16 @@ export default function InfoDashboard({
       ) : null}
 
       {sections.length ? (
-        <section
+        <BaseCard
+          as="section"
           className="dashboard-overview"
           aria-labelledby="overview-heading"
         >
           <header className="dashboard-overview-heading">
-            <h2 id="overview-heading">Na uczelni</h2>
+            <div>
+              <h2 id="overview-heading">Informacje z uczelni</h2>
+              <p>Wybierz, co chcesz sprawdzić.</p>
+            </div>
             <span>{short ?? 'Cały UJ'}</span>
           </header>
           <div
@@ -368,13 +375,13 @@ export default function InfoDashboard({
               </DashboardPanel>
             ) : null}
           </div>
-        </section>
+        </BaseCard>
       ) : null}
 
       {!hidden.has('tools') ? (
         <DashboardPanel
           className="dashboard-tools"
-          title="Pod ręką"
+          title="Serwisy uczelni"
           description="Serwisy i narzędzia studenckie"
           href="/niezbednik"
           action="Cały niezbędnik"

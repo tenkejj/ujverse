@@ -1,8 +1,4 @@
-/**
- * `VersuMark` — ikona Versusia (sowa), osobne assety light / dark.
- */
-
-import { useTheme } from '../../ThemeContext'
+/** Original Versuś mascot, with a quieter static image for reduced motion. */
 
 export type VersuMarkVariant = 'brand' | 'onAccent'
 
@@ -12,47 +8,38 @@ type Props = {
   variant?: VersuMarkVariant
 }
 
-const ASSETS = {
-  light: '/versu-icon-light.png?v=7',
-  dark: '/versu-icon-dark.png?v=7',
-} as const
-
 export default function VersuMark({
   size,
   className = '',
   variant = 'brand',
 }: Props) {
-  const { theme } = useTheme()
-  // Kolory UJ to ciemny motyw — złota sowa (asset „dark”), nie granatowa z light.
-  const src = theme === 'light' ? ASSETS.light : ASSETS.dark
-
-  let imgClass = 'h-full w-full object-contain object-center'
-  if (variant === 'onAccent') {
-    // Na złotym FAB / akcencie: czarna sylwetka (jasne tło → invert).
-    imgClass += theme === 'light' ? ' invert' : ' brightness-0'
-  }
-
-  // Plate tylko dla wariantu „brand” na ciemnym tle. Na `onAccent` (złoty FAB)
-  // ciemna płytka + czarna sowa = niewidoczna ikona — pomijamy.
-  const ujPlate =
-    theme === 'uj' && variant !== 'onAccent'
-      ? 'rounded-full bg-[#0e1624]/90 ring-1 ring-[#cdb590]/45 shadow-[0_0_0_1px_rgb(0_81_158/0.25)]'
-      : ''
+  // The portrait keeps the face legible in the chat's smaller avatars.
+  const asset = size < 72 ? 'face' : 'idle'
+  const source = `/versus/${asset}`
 
   return (
     <span
-      aria-hidden
-      className={`relative inline-flex shrink-0 items-center justify-center ${ujPlate} ${className}`}
+      aria-hidden="true"
+      data-variant={variant}
+      className={`relative inline-flex shrink-0 items-center justify-center ${className}`}
       style={{ width: size, height: size }}
     >
-      <img
-        key={src}
-        src={src}
-        alt=""
-        draggable={false}
-        decoding="async"
-        className={imgClass}
-      />
+      <picture className="block h-full w-full">
+        <source
+          media="(prefers-reduced-motion: reduce)"
+          srcSet={`${source}.png`}
+        />
+        <source type="image/webp" srcSet={`${source}.webp`} />
+        <img
+          src={`${source}.gif`}
+          alt=""
+          width={size}
+          height={size}
+          draggable={false}
+          decoding="async"
+          className="h-full w-full object-contain object-center"
+        />
+      </picture>
     </span>
   )
 }

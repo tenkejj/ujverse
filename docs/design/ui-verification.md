@@ -1,10 +1,18 @@
-# UI verification — dashboard revision, 6 November 2026
+# UI verification — dashboard revisions
 
-## Current: UI Skills revision
+## Current: grouped first-visit layout, 7 November 2026
+
+The AI purpose, access label, question, send action and examples are grouped in one neutral surface. A second surface contains the university information filters and previews. The faculty strip remains sticky. A new original mascot replaces the owl; WebP/GIF plays one four-second cycle and PNG respects reduced motion.
+
+No unit, browser acceptance, lint or axe suites were run, as requested. The production frontend compiled through `vercel build --prod`, and the Vercel output includes the chat and scraper functions. Existing API bundling diagnostics in `notificationHelpers.ts` and the existing Vite large-chunk warning remain. A read-only React/semantic review was performed. Desktop renders in all three themes and phone renders at 390 px and 320 px were visually inspected. Previews: [desktop](previews/grouped-start-desktop.png), [phone](previews/grouped-start-mobile.png).
+
+The following results describe previous revisions and do not cover this change.
+
+## Historical: UI Skills revision, 6 November 2026
 
 The user requested implementation without automated test runs. No unit, browser acceptance, lint or axe suites were run for this revision. The production bundle compiled and desktop/phone renders were viewed. Earlier counts below refer to older revisions. Current previews: [desktop](previews/ui-skills-desktop.png), [phone](previews/ui-skills-mobile.png). Design sources and decisions are in the root `DESIGN.md` and `.interface-design/system.md`.
 
-## Current: open overview inspired by Baltic Wheels
+## Historical: open overview inspired by Baltic Wheels
 
 - `npm run build`, `npm test` and the individual 90-test run pass. Changed TypeScript files pass no-unused-vars and React Hooks lint rules.
 - Public acceptance: 90/90 browser checks pass. Public AI: 22/22 checks pass with simulated SSE. The former requirement to fit every section above the fold has intentionally been replaced by an open-section and spacing check.

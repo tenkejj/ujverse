@@ -1,13 +1,16 @@
-# UJverse: a focused student interface
+# UJverse: clear tasks for a first visit
 
-The established identity remains in `public/logo.png`, `src/index.css`, `src/ThemeContext.tsx` and `src/styles/theme.ts`. No new palette or font is introduced.
+Start explains the product immediately: university announcements, registration windows and events for students. Two independent surfaces group the primary tasks: **Zapytaj Versusia** and **Informacje z uczelni**. University services follow as a quiet, labelled utility group. Related copy, controls and feedback stay together; the page no longer relies on disconnected text strips.
 
-The Start page follows [interface-design](https://www.ui-skills.com/skills/dammyjay93/interface-design) and [better-ui](https://www.ui-skills.com/skills/jakubkrehel/better-ui), selected from UI Skills. Versuś is the central focal point: an identifiable owl and AI label, one welcoming question, a growing text field and a text-labelled send action. Three concrete suggestions reduce typing. The page heading and date support this primary action.
+The AI surface contains its purpose, public-access label, visible question label, growing textarea, explicit send action and three concrete examples. It opens the existing public conversation flow, preserving request delivery and authentication boundaries. The original main logo, system font and light/dark/UJ tokens remain unchanged. No decorative gradients or new palette are introduced.
 
-Below the assistant, one information area switches between announcements, registrations and events. Only one category is displayed at a time. The selected category stays in the URL; hidden sections remain hidden. Previews use restrained type sizes and bounded excerpts. University services remain simple links. Saved items, complete catalogues, source links, faculty filtering and customization remain accessible.
+The owl is replaced with an original navy, cream and gold book-carrying creature. Full-body and face assets share `VersuMark`; the portrait keeps small avatars legible. WebP is used on the site, GIF is available directly, and PNG respects reduced motion. A single four-second animation ends with open eyes, without perpetual movement.
 
-Detailed type, spacing and interaction decisions live in [.interface-design/system.md](.interface-design/system.md). Theme definitions and original branding remain unchanged. The sidebar shares the page canvas and uses quieter controls; the floating mobile AI shortcut remains on other pages, while Start has its own prominent entry.
+The information surface shows one category at a time with native `aria-pressed` filter buttons. The category stays in `?sekcja=`. Two previews lead to the full catalogue and original sources. Faculty preferences, hidden sections, saved items and independent loading, error, empty and stale states remain intact. The visibly labelled faculty selector stays in the sticky strip below the header.
 
-Faculty selection is a distinct sticky strip below the header, with “Twój wydział”, a readable name and an explicit “Wybierz” / “Zmień” action. It stays available while browsing public information.
+Guidance selected from [Top Agent Skills](https://top-agent-skills.com/top-skills-for-frontend-design), checked against their actual source files:
 
-This revision supersedes the earlier Baltic Wheels-inspired opening. Automated tests were not run for this visual iteration, at the user's request.
+- [Anthropic frontend-design](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md): intentional structure, coherent visual hierarchy and one distinctive detail within the existing identity.
+- [Vercel web-design-guidelines](https://github.com/vercel-labs/agent-skills/blob/main/skills/web-design-guidelines/SKILL.md) and [Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines/blob/main/command.md): meaningful labels, semantic controls, visible focus and reduced motion.
+
+The catalogue's linked `design-critique` and `ux-copy` locations returned 404 during research, so they are not claimed as applied skills. The changes also received a read-only React component review. Automated test suites are intentionally not run for this visual iteration, as requested by the user. Compilation and screenshots are separate verification steps.

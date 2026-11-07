@@ -17,7 +17,7 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 
 1. Inspect the actual current branch and existing components before designing.
 2. Identify which user task the change improves. Sketch hierarchy before adding decoration.
-3. Distinguish layout from branding. Use existing tokens. Use `BaseCard` when an independent surface is needed; public overview sections are open by default.
+3. Distinguish layout from branding. Use existing tokens. Use `BaseCard` when an independent surface is needed; use distinct neutral surfaces to group complete tasks, keeping related copy and controls together. Avoid disconnected text and controls.
 4. Review desktop and phone screenshots after implementation, including long titles, empty data and errors. Remove visual elements that carry no useful information.
 
 ## Dashboard hierarchy
@@ -27,7 +27,9 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 - Group announcements, registrations, events and tools by function. Show bounded previews and a clear link to each full section.
 - Use the [layout](../ujverse-layout/SKILL.md) and [simplify](../ujverse-simplify/SKILL.md) workflows for crowded pages. Group by meaning and spacing, with different emphasis for announcements, deadlines and event dates. Do not return to the rejected equal-panel dashboard or force all sections into one viewport.
 - Make actionable urgent information prominent using verified relevance rules. Do not invent statistics, urgency, recommendations or data.
-- Avoid new decorative gradients, marketing heroes, oversized numbers, all-cap eyebrows and repeated entrance animations.
+- Explain the product in plain language on the first visit. Keep the AI question, examples and access label in one group, followed by one information group and labelled university services.
+- Avoid new decorative gradients, marketing heroes, oversized numbers, all-cap eyebrows and repeated entrance animations. The original Versuś creature is allowed as the distinctive illustrative detail; preserve the main UJverse logo.
+- Mascot animation must finish after one short cycle and show a static PNG for reduced motion.
 - Use whitespace, alignment, readable type and selective emphasis. Keep content aligned to the left.
 - On mobile use a single natural page scroll, not independently scrolling widgets. Keep actions usable without hover.
 
