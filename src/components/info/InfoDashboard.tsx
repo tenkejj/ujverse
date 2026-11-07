@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   CalendarDays,
   ClipboardList,
-  Lock,
   Megaphone,
 } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
@@ -27,7 +26,6 @@ import {
   sortAnnouncementsNewestFirst,
 } from '../../lib/info/relevance'
 import { upcomingEventsSorted } from '../../lib/info/relevance'
-import { INFO_RESOURCES } from '../../lib/info/resources'
 import { formatDurationShort } from '../../lib/info/time'
 import VersusEntry from '../chat/VersusEntry'
 import {
@@ -35,7 +33,8 @@ import {
   EventHubCard,
   RegistrationHubCard,
 } from './InfoHubCards'
-import { CustomizeButton, SavedSection, SourcesNote } from './InfoBlocks'
+import { CustomizeButton, SavedSection } from './InfoBlocks'
+import InfoFooter from './InfoFooter'
 import {
   DomainEmpty,
   DomainError,
@@ -84,14 +83,6 @@ export default function InfoDashboard({
     now,
     latestRegistrationVerifiedAt: latestRun,
   })[0]
-  const quickLinks = [
-    'usosweb',
-    'pegaz',
-    'poczta',
-    'sale',
-    'moj-plan',
-    'miejsca',
-  ].flatMap((id) => INFO_RESOURCES.filter((r) => r.id === id))
   const sections = [
     {
       id: 'announcements',
@@ -378,49 +369,6 @@ export default function InfoDashboard({
         </BaseCard>
       ) : null}
 
-      {!hidden.has('tools') ? (
-        <DashboardPanel
-          className="dashboard-tools"
-          title="Serwisy uczelni"
-          description="Serwisy i narzędzia studenckie"
-          href="/niezbednik"
-          action="Cały niezbędnik"
-        >
-          <ul className="dashboard-tool-list">
-            {quickLinks.map((resource) => {
-              const label = (
-                <>
-                  <span>{resource.label}</span>
-                  {resource.requiresAccount && !isAuthenticated ? (
-                    <>
-                      <Lock size={13} aria-hidden />
-                      <span className="sr-only"> (wymaga konta)</span>
-                    </>
-                  ) : null}
-                  <ArrowUpRight size={14} aria-hidden />
-                </>
-              )
-              return (
-                <li key={resource.id}>
-                  {resource.external ? (
-                    <a
-                      href={resource.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {label}
-                      <span className="sr-only"> (nowa karta)</span>
-                    </a>
-                  ) : (
-                    <Link to={resource.href}>{label}</Link>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </DashboardPanel>
-      ) : null}
-
       {saved.length ? (
         <BaseCard className="dashboard-saved">
           <SavedSection items={saved} now={now} />
@@ -432,20 +380,15 @@ export default function InfoDashboard({
           strony.
         </p>
       ) : null}
-      <p className="dashboard-disclaimer">
-        UJverse to niezależny projekt studencki. Ważne informacje potwierdzaj w
-        źródle.
-      </p>
-      <details className="dashboard-sources">
-        <summary>Źródła i aktualność danych</summary>
-        <SourcesNote
-          announcementsLatest={announcementsQ.data?.freshness.latest ?? null}
-          registrationsLatest={latestRun}
-          registrationsStale={stale}
-          eventsLatest={eventsQ.data?.freshness.latest ?? null}
-          now={now}
-        />
-      </details>
+      <InfoFooter
+        isAuthenticated={isAuthenticated}
+        showTools={!hidden.has('tools')}
+        announcementsLatest={announcementsQ.data?.freshness.latest ?? null}
+        registrationsLatest={latestRun}
+        registrationsStale={stale}
+        eventsLatest={eventsQ.data?.freshness.latest ?? null}
+        now={now}
+      />
     </div>
   )
 }
@@ -471,14 +414,7 @@ function DashboardPanel({
       className={`dashboard-panel ${className}`}
       aria-labelledby={headingId}
     >
-      <h2
-        id={headingId}
-        className={
-          className === 'dashboard-tools'
-            ? 'dashboard-tools-heading'
-            : 'sr-only'
-        }
-      >
+      <h2 id={headingId} className="sr-only">
         {title}
       </h2>
       <div className="dashboard-panel-body">{children}</div>

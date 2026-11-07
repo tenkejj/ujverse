@@ -24,6 +24,9 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 
 - Keep a short page heading and one visible faculty control per viewport.
 - Label the selector visibly as “Wydział”, provide at least a 44 px target and keep it accessible while scrolling. A tiny icon or an unexplained “UJ” is insufficient.
+- Keep the Start assistant compact: one identity/access header, one explanation and the labelled question field. Sending comes before optional examples on phones.
+- The faculty dialog should support labelled name/abbreviation search, a clear all-university option and long accessible names. Preserve the strip height and focus behaviour.
+- Group footer destinations by purpose, keep the toolkit link near its heading, and place project/source information together. Expanding sources must not move its trigger.
 - Group announcements, registrations, events and tools by function. Show bounded previews and a clear link to each full section.
 - Use the [layout](../ujverse-layout/SKILL.md) and [simplify](../ujverse-simplify/SKILL.md) workflows for crowded pages. Group by meaning and spacing, with different emphasis for announcements, deadlines and event dates. Do not return to the rejected equal-panel dashboard or force all sections into one viewport.
 - Make actionable urgent information prominent using verified relevance rules. Do not invent statistics, urgency, recommendations or data.
@@ -60,3 +63,9 @@ Adapted to this project from:
 - https://github.com/vercel-labs/web-interface-guidelines/blob/main/command.md
 
 These sources guide quality, not a replacement UJverse visual identity.
+
+Additional UI Skills sources used for layout refinement:
+
+- https://github.com/Dammyjay93/interface-design/blob/main/.claude/skills/interface-design/SKILL.md
+- https://github.com/jakubkrehel/skills/blob/main/skills/better-layout/SKILL.md
+- https://github.com/jakubkrehel/skills/blob/main/skills/better-ui/SKILL.md

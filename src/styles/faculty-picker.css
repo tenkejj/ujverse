@@ -1,0 +1,407 @@
+/* A named selection control and a searchable faculty dialog share existing tokens. */
+.faculty-selector,
+.faculty-dialog {
+  --faculty-accent: var(--brand-ink);
+  --faculty-muted: var(--text-label);
+  --faculty-tint: color-mix(in srgb, var(--faculty-accent) 7%, transparent);
+}
+.dark .faculty-selector,
+.dark .faculty-dialog {
+  --faculty-accent: var(--brand-gold-bright);
+  --faculty-muted: var(--text-secondary);
+}
+
+/* Higher specificity keeps the legacy campus picker rules from changing this control. */
+html .faculty-picker.faculty-selector {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-app);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  text-align: left;
+}
+.faculty-strip .faculty-picker.faculty-selector {
+  min-height: 72px;
+}
+@media (min-width: 1024px) {
+  .faculty-strip .faculty-picker.faculty-selector {
+    min-height: 64px;
+  }
+}
+html .faculty-picker.faculty-selector .faculty-picker-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--faculty-tint);
+  color: var(--faculty-accent);
+}
+html .faculty-picker.faculty-selector .faculty-picker-copy {
+  min-width: 0;
+  flex: 1;
+}
+html .faculty-picker.faculty-selector .faculty-picker-label {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--faculty-muted);
+}
+html .faculty-picker.faculty-selector .faculty-picker-value {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+html .faculty-picker.faculty-selector .faculty-picker-action {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--faculty-tint);
+  color: var(--faculty-accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+html
+  .faculty-picker.faculty-selector.faculty-picker-needs-choice
+  .faculty-picker-action {
+  background: var(--faculty-accent);
+  color: var(--bg-app);
+}
+.faculty-selector-hint {
+  display: none;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--faculty-muted);
+}
+
+.faculty-dialog-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: min(10vh, 80px) 20px 20px;
+}
+.faculty-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  cursor: default;
+}
+.dark .faculty-dialog-backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.faculty-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(80dvh, 760px);
+  overflow: hidden;
+  border: 1px solid var(--modal-border);
+  border-radius: 16px;
+  outline: none;
+  background: var(--modal-bg);
+  color: var(--text-primary);
+}
+.faculty-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 24px 20px;
+}
+.faculty-dialog-header h2 {
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+.faculty-dialog-header p {
+  margin-top: 8px;
+  color: var(--faculty-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 40ch;
+}
+.faculty-dialog-close,
+.faculty-search-field > button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: var(--faculty-muted);
+}
+.faculty-dialog-close {
+  margin: -4px -8px 0 0;
+}
+.faculty-dialog-search {
+  padding: 0 24px 20px;
+}
+.faculty-dialog-search label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.faculty-search-field {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  gap: 10px;
+  padding-left: 14px;
+  border: 1px solid color-mix(in srgb, var(--faculty-muted) 45%, transparent);
+  border-radius: 10px;
+  background: var(--bg-app);
+}
+.faculty-search-field > svg {
+  flex-shrink: 0;
+  color: var(--faculty-muted);
+}
+.faculty-search-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 12px 12px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 24px;
+  outline: none;
+}
+.faculty-search-field input::placeholder {
+  color: var(--faculty-muted);
+  opacity: 1;
+}
+.faculty-search-field input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.faculty-dialog-content {
+  min-height: 0;
+  padding: 0 16px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-primary) 24%, transparent)
+    transparent;
+}
+.faculty-all-option,
+.faculty-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  text-align: left;
+  color: var(--text-primary);
+}
+.faculty-all-option {
+  margin-bottom: 20px;
+  background: var(--bg-app);
+  border-color: var(--border-app);
+}
+.faculty-all-option[aria-pressed='true'],
+.faculty-option[aria-pressed='true'] {
+  background: var(--faculty-tint);
+  border-color: color-mix(in srgb, var(--faculty-accent) 35%, transparent);
+}
+.faculty-all-option > svg,
+.faculty-option > svg {
+  flex-shrink: 0;
+  color: var(--faculty-accent);
+}
+.faculty-option-abbreviation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 36px;
+  border-radius: 7px;
+  background: var(--faculty-tint);
+  color: var(--faculty-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+.faculty-option-copy {
+  display: block;
+  min-width: 0;
+  flex: 1;
+}
+.faculty-option-copy strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.faculty-option-copy > span:not(.sr-only) {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--faculty-muted);
+}
+.faculty-results-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 10px;
+  color: var(--faculty-muted);
+}
+.faculty-results-heading h3 {
+  font-size: 12px;
+  font-weight: 500;
+}
+.faculty-results-heading > span {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.faculty-option-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.faculty-dialog-footer {
+  padding: 16px 24px max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border-app);
+}
+.faculty-dialog-footer p {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--faculty-muted);
+}
+.faculty-search-empty {
+  padding: 24px 12px 28px;
+  text-align: center;
+}
+.faculty-search-empty p {
+  font-size: 14px;
+  font-weight: 500;
+}
+.faculty-search-empty > span {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--faculty-muted);
+}
+.faculty-search-empty button {
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px;
+  font-size: 13px;
+  color: var(--faculty-accent);
+  border-radius: 6px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+html .faculty-picker.faculty-selector:focus-visible,
+.faculty-dialog :where(button):focus-visible,
+.faculty-search-field:focus-within {
+  outline: 2px solid var(--faculty-accent);
+  outline-offset: 3px;
+}
+.faculty-search-field input:focus-visible {
+  outline: none;
+}
+@media (hover: hover) {
+  html .faculty-picker.faculty-selector:hover {
+    border-color: color-mix(in srgb, var(--faculty-accent) 40%, transparent);
+  }
+  .faculty-dialog-close:hover,
+  .faculty-search-field > button:hover,
+  .faculty-option:hover,
+  .faculty-all-option:hover {
+    background: var(--faculty-tint);
+  }
+}
+@media (min-width: 1200px) {
+  .faculty-selector-hint {
+    display: inline;
+  }
+}
+@media (max-width: 767px) {
+  html .faculty-picker.faculty-selector {
+    gap: 10px;
+    padding-inline: 10px;
+  }
+  html .faculty-picker.faculty-selector .faculty-picker-icon {
+    width: 30px;
+    height: 34px;
+  }
+  html .faculty-picker.faculty-selector .faculty-picker-value {
+    font-size: 13px;
+  }
+  html .faculty-picker.faculty-selector .faculty-picker-action {
+    gap: 5px;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+  .faculty-selector-action-suffix {
+    display: none;
+  }
+  .faculty-dialog-layer {
+    align-items: flex-end;
+    padding: max(20px, env(safe-area-inset-top)) 0 0;
+  }
+  .faculty-dialog {
+    max-height: calc(100dvh - max(20px, env(safe-area-inset-top)));
+    width: 100%;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+  }
+  .faculty-dialog-header {
+    padding: 20px 20px 16px;
+    gap: 12px;
+  }
+  .faculty-dialog-header h2 {
+    font-size: 20px;
+  }
+  .faculty-dialog-search {
+    padding: 0 20px 16px;
+  }
+  .faculty-dialog-content {
+    padding-inline: 12px;
+  }
+  .faculty-dialog-footer {
+    padding-inline: 20px;
+  }
+}
+@media (forced-colors: active) {
+  .faculty-option[aria-pressed='true'],
+  .faculty-all-option[aria-pressed='true'] {
+    border-color: Highlight;
+  }
+  .faculty-dialog-content {
+    scrollbar-color: auto;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html .faculty-picker.faculty-selector,
+  .faculty-dialog :where(button) {
+    transition:
+      background-color 150ms ease-out,
+      border-color 150ms ease-out;
+  }
+}

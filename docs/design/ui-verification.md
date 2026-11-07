@@ -1,6 +1,14 @@
 # UI verification — dashboard revisions
 
-## Current: pixel-art activities and themed scrollbars, 7 November 2026
+## Current: UI Skills layout refinement, 7 November 2026
+
+The Start assistant now has a compact identity header, one explanation and a clearly separated field/action area. Faculty selection adds name/abbreviation search while preserving sticky offsets and preferences. The footer groups university services and UJverse tools, keeps the full toolkit link near its heading and aligns project/source information. Expanding sources keeps its trigger stationary.
+
+No unit, browser acceptance, lint or axe suites were run, as requested. The frontend and Vercel build output compiled through `vercel build --prod`; the existing notification helper diagnostic and Vite chunk-size warning remain. A read-only component/semantic review covered dialog focus, source footer semantics, query submission and preserved strip heights. Desktop/phone previews were viewed, including a 320 px screen, long faculty name, filtered faculty results and the footer in all three themes. Earlier suite results below do not cover this revision.
+
+Previews: [desktop](previews/ui-refined-desktop.png), [phone](previews/ui-refined-mobile.png), [faculty search](previews/ui-refined-faculty.png). [Source selection and MCP limitation](ui-skills-refinement.md).
+
+## Historical: pixel-art activities and themed scrollbars, 7 November 2026
 
 Seven distinct mascot animations are connected to focus/composition and actual request/stream phases. Cancellation returns to idle, completion requires a non-empty response, and account/conversation resets clear the phase. Stable message IDs replay activities for new turns without restarts on each chunk. System and application reduced-motion preferences both select static PNG. Full-body and portrait variants share a 96×96 pixel grid and 32-colour palette.
 

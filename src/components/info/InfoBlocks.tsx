@@ -292,12 +292,14 @@ function FreshnessValue({ iso, meaning, now }: { iso: string | null; meaning: st
 }
 
 export function SourcesNote({
+  as: Container = 'footer',
   announcementsLatest,
   registrationsLatest,
   registrationsStale,
   eventsLatest,
   now,
 }: {
+  as?: 'footer' | 'div'
   announcementsLatest: string | null
   registrationsLatest: string | null
   registrationsStale: boolean
@@ -305,7 +307,7 @@ export function SourcesNote({
   now: Date
 }) {
   return (
-    <footer className="border-t border-zinc-200/80 pt-8 text-sm text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+    <Container className="border-t border-zinc-200/80 pt-8 text-sm text-zinc-500 dark:border-white/10 dark:text-zinc-400">
       <p className="flex items-start gap-2 max-w-3xl">
         <ShieldCheck size={15} className={`mt-0.5 shrink-0 ${widgetGoldCls}`} aria-hidden />
         <span>
@@ -324,7 +326,7 @@ export function SourcesNote({
         {' · '}wydarzenia{' '}
         <FreshnessValue iso={eventsLatest} meaning="Ostatnie pobranie kalendarza uj.edu.pl" now={now} />
       </p>
-    </footer>
+    </Container>
   )
 }
 

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, ClipboardList, Megaphone, Send } from 'lucide-react'
+import { Send } from 'lucide-react'
 import VersuMark from './VersuMark'
 import { PUBLIC_CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
 import { versusEntryState } from '../../lib/versusEntry'
@@ -24,17 +24,7 @@ export default function VersusEntry() {
       className="versus-entry"
       aria-labelledby="versus-entry-heading"
     >
-      <div className="versus-entry-intro">
-        <div className="versus-entry-copy">
-          <p className="versus-entry-identity">
-            Asystent AI <span>Bez logowania</span>
-          </p>
-          <h2 id="versus-entry-heading">Zapytaj Versusia</h2>
-          <p className="versus-entry-description">
-            Pomoże Ci znaleźć komunikaty, terminy rejestracji i wydarzenia na
-            UJ. Napisz, czego szukasz.
-          </p>
-        </div>
+      <header className="versus-entry-header">
         <div
           className="versus-entry-mascot"
           aria-hidden="true"
@@ -42,13 +32,23 @@ export default function VersusEntry() {
           onPointerLeave={() => setGreeting(false)}
         >
           <VersuMark
-            size={144}
+            size={96}
             activity={
               isFocused ? 'listening' : isGreeting ? 'greeting' : 'idle'
             }
           />
         </div>
-      </div>
+        <div className="versus-entry-copy">
+          <div className="versus-entry-title-row">
+            <h2 id="versus-entry-heading">Zapytaj Versusia</h2>
+            <span className="versus-entry-access">AI · Bez logowania</span>
+          </div>
+          <p className="versus-entry-description">
+            Znajdź komunikaty, terminy rejestracji i wydarzenia. Zapytaj po
+            swojemu.
+          </p>
+        </div>
+      </header>
       <form onSubmit={submit} className="versus-entry-form">
         <label htmlFor="versus-question">Twoje pytanie</label>
         <div className="versus-entry-input">
@@ -79,43 +79,29 @@ export default function VersusEntry() {
               }
             }}
           />
+        </div>
+        <div className="versus-entry-actions">
           <button
+            className="versus-entry-submit"
             type="submit"
-            aria-label="Zapytaj Versusia"
             disabled={!question.trim()}
           >
-            <span>Zapytaj Versusia</span>
+            Zapytaj Versusia
             <Send size={16} aria-hidden />
           </button>
+          <div
+            className="versus-entry-suggestions"
+            role="group"
+            aria-label="Szybkie pytania do Versusia"
+          >
+            {PUBLIC_CHAT_QUICK_PROMPTS.slice(0, 3).map((prompt, i) => (
+              <button type="button" key={prompt} onClick={() => ask(prompt)}>
+                {['Co nowego?', 'Kiedy rejestracje?', 'Jakie wydarzenia?'][i]}
+              </button>
+            ))}
+          </div>
         </div>
       </form>
-      <div className="versus-entry-examples">
-        <p>Możesz też zapytać</p>
-        <div
-          className="versus-entry-suggestions"
-          role="group"
-          aria-label="Szybkie pytania do Versusia"
-        >
-          {PUBLIC_CHAT_QUICK_PROMPTS.slice(0, 3).map((prompt, i) => (
-            <button type="button" key={prompt} onClick={() => ask(prompt)}>
-              {i === 0 ? (
-                <Megaphone size={16} strokeWidth={1.75} aria-hidden />
-              ) : i === 1 ? (
-                <ClipboardList size={16} strokeWidth={1.75} aria-hidden />
-              ) : (
-                <CalendarDays size={16} strokeWidth={1.75} aria-hidden />
-              )}
-              {
-                [
-                  'Co nowego na UJ?',
-                  'Kiedy rejestracje?',
-                  'Najbliższe wydarzenia',
-                ][i]
-              }
-            </button>
-          ))}
-        </div>
-      </div>
     </BaseCard>
   )
 }
