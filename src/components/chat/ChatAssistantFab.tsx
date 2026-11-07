@@ -24,6 +24,7 @@ import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
+import { useVersuActivity } from '../../hooks/useVersuActivity'
 import AnimatedBot from './AnimatedBot'
 import ChatVoiceButton from './ChatVoiceButton'
 import MessageList from './MessageList'
@@ -70,6 +71,8 @@ export default function ChatAssistantFab({
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
+  const [isFocused, setFocused] = useState(false)
+  const activity = useVersuActivity(isFocused && draft.trim().length > 0)
   const sheetRef = useRef<HTMLElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -170,7 +173,12 @@ export default function ChatAssistantFab({
       whileTap={{ scale: 0.94 }}
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
     >
-      <AnimatedBot size={22} intensity="idle" variant="onAccent" />
+      <AnimatedBot
+        size={28}
+        activity={isTyping ? activity : 'idle'}
+        replayKey={messages.at(-1)?.id}
+        variant="onAccent"
+      />
       <span className="text-sm font-semibold">Versuś</span>
     </motion.button>
   )
@@ -208,8 +216,9 @@ export default function ChatAssistantFab({
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-ink text-white dark:bg-brand-gold-bright dark:text-zinc-950">
               <AnimatedBot
-                size={16}
-                intensity={isTyping ? 'active' : 'idle'}
+                size={32}
+                activity={activity}
+                replayKey={messages.at(-1)?.id}
                 variant="onAccent"
               />
             </span>
@@ -297,6 +306,8 @@ export default function ChatAssistantFab({
           <textarea
             ref={inputRef}
             value={draft}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDownTextarea}
             aria-label="Wiadomość do Versusia"

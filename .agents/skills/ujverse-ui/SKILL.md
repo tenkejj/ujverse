@@ -29,7 +29,8 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 - Make actionable urgent information prominent using verified relevance rules. Do not invent statistics, urgency, recommendations or data.
 - Explain the product in plain language on the first visit. Keep the AI question, examples and access label in one group, followed by one information group and labelled university services.
 - Avoid new decorative gradients, marketing heroes, oversized numbers, all-cap eyebrows and repeated entrance animations. The original Versuś creature is allowed as the distinctive illustrative detail; preserve the main UJverse logo.
-- Mascot animation must finish after one short cycle and show a static PNG for reduced motion.
+- The pixel-art mascot has idle, greeting, listening, thinking, answering, success and error activities. Tie response activities to real request phases and keep their animation key stable across streamed chunks. Replay for a new turn using a stable message ID; cancellation must not trigger success. Animations finish after one short cycle. Both system and UJverse reduced-motion preferences must select static PNG.
+- Preserve usable scrolling. Document tracks follow the existing app background; sidebar tracks remain transparent with a thin, quiet thumb. Keep stable page gutters and native forced-colour accessibility.
 - Use whitespace, alignment, readable type and selective emphasis. Keep content aligned to the left.
 - On mobile use a single natural page scroll, not independently scrolling widgets. Keep actions usable without hover.
 
@@ -53,6 +54,7 @@ For public AI changes, also run `scripts/versus-browser-checks.mjs` and the chat
 ## Guidance sources
 
 Adapted to this project from:
+
 - https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md
 - https://github.com/vercel-labs/agent-skills/blob/main/skills/web-design-guidelines/SKILL.md
 - https://github.com/vercel-labs/web-interface-guidelines/blob/main/command.md

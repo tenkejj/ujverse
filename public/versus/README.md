@@ -1,9 +1,7 @@
-# Versuś mascot
+# Versuś pixel mascot
 
-Original ink-drake character generated for UJverse. Navy, cream and gold; a friendly, alert university companion with a small book. It is not an existing Pokémon or the former owl.
+Original navy, cream and gold ink-drake with a book, adapted into a shared 32-colour pixel-art sprite set. Each sprite is 96×96 with binary transparency and no antialiasing. Upscale with `image-rendering: pixelated`.
 
-- `idle.webp` / `idle.gif`: transparent, one four-second idle and blink cycle, 320×320.
-- `face.webp` / `face.gif`: small-interface portrait, one four-second blink cycle, 160×160.
-- `idle.png` / `face.png`: static reduced-motion fallback.
+States: `idle`, `greeting`, `listening`, `thinking`, `answering`, `success`, `error`. Every state includes `.webp`, `.gif`, and a meaningful static `.png` for reduced motion. Every state also has a `face-STATE` portrait; `face.*` aliases `face-idle.*`. A shared lower-edge mask keeps detached paws and book fragments out of the portrait crop.
 
-Both animations play once and stop on the neutral pose with open eyes. WebP uses loop count 1; GIF has no Netscape looping extension. The web component selects static PNG when `prefers-reduced-motion: reduce`, otherwise animated WebP with GIF fallback. Animation is intentionally quiet and does not use a second CSS/Framer wobble.
+Animations play one 3.6-second cycle and stop on a neutral pose with open eyes. WebP uses loop count 1; GIF has no Netscape looping extension. All poses share a fixed crop and limited palette. No additional CSS or Framer wobble is needed.

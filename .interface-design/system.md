@@ -12,6 +12,8 @@ Show one information category at a time using native filter buttons with explici
 
 Faculty selection has a sticky strip below the global header. The label “Twój wydział”, full readable name and “Wybierz” / “Zmień” stay explicit. Keep one visible selector per viewport. Mobile reserves 88 px and desktop 80 px; chat height includes the strip.
 
-Mascot assets: `public/versus/idle.*` (full-body) and `face.*` (small avatars). WebP/GIF play one four-second cycle and finish with open eyes. PNG is selected for reduced motion. No extra CSS/Framer bobbing, colour inversion or background disc.
+Mascot assets: `public/versus/{idle,greeting,listening,thinking,answering,success,error}.*` (full-body) and matching `face-*` (small avatars). Pixel art uses 96×96, a32-colour palette and `image-rendering: pixelated`. WebP/GIF play one short activity cycle. Both system and UJverse reduced-motion preferences select PNG. Request phases change only at actual request/stream/completion boundaries. No extra CSS/Framer bobbing, colour inversion or background disc.
+
+Scrollbars: keep document stable gutters, match their background to `--bg-app`, and use a thin thumb mixed from existing text/surface tokens. Sidebar track stays transparent, overflow scrolling stays usable, and forced colours retain native controls.
 
 Sources and evaluation limits are recorded in `DESIGN.md`. This is an implemented visual direction, not a usability study. The user requested no automated test suites for this iteration.

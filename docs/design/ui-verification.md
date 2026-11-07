@@ -1,6 +1,16 @@
 # UI verification — dashboard revisions
 
-## Current: grouped first-visit layout, 7 November 2026
+## Current: pixel-art activities and themed scrollbars, 7 November 2026
+
+Seven distinct mascot animations are connected to focus/composition and actual request/stream phases. Cancellation returns to idle, completion requires a non-empty response, and account/conversation resets clear the phase. Stable message IDs replay activities for new turns without restarts on each chunk. System and application reduced-motion preferences both select static PNG. Full-body and portrait variants share a 96×96 pixel grid and 32-colour palette.
+
+No automated test suites were run, as requested. The production build compiles through `vercel build --prod`; the existing API bundling diagnostic and large-chunk warning remain separate. A read-only component/state review covered cancellation, generation resets, stable sprites and motion preferences. Visual previews include desktop and phone, the chat at 320/390 px, and the scrollbar at a short desktop height in all three themes. Illustrative chat phases in previews are browser memory, not real provider inference.
+
+Previews: [Start desktop](previews/pixel-start-desktop.png), [Start phone](previews/pixel-start-mobile.png), [seven poses](previews/pixel-versus-states.png). Implementation notes: [pixel mascot](versus-pixel.md).
+
+The historical results below do not cover the current revision.
+
+## Historical: grouped first-visit layout, 7 November 2026
 
 The AI purpose, access label, question, send action and examples are grouped in one neutral surface. A second surface contains the university information filters and previews. The faculty strip remains sticky. A new original mascot replaces the owl; WebP/GIF plays one four-second cycle and PNG respects reduced motion.
 

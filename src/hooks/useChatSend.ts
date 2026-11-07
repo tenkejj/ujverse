@@ -40,14 +40,16 @@ export function useChatSend(): UseChatSendResult {
       abortRef.current = null
       useChatStore.getState().setTyping(false)
       useChatStore.getState().setActionLabel(null)
+      useChatStore.getState().setResponsePhase('idle')
     }
   }, [])
 
   useEffect(() => () => cancel(), [cancel])
   useEffect(
-    () => useChatStore.subscribe((next, prev) => {
-      if (next.generation !== prev.generation) cancel()
-    }),
+    () =>
+      useChatStore.subscribe((next, prev) => {
+        if (next.generation !== prev.generation) cancel()
+      }),
     [cancel],
   )
 
@@ -72,13 +74,17 @@ export function useChatSend(): UseChatSendResult {
       const controller = new AbortController()
       abortRef.current = controller
       useChatStore.getState().setTyping(true)
+      useChatStore.getState().setResponsePhase('thinking')
 
       try {
         const stream = await LLMService.sendMessage(historyForApi, {
           signal: controller.signal,
         })
         for await (const event of LLMService.parseSSEStream(stream)) {
-          if (controller.signal.aborted || useChatStore.getState().generation !== generation) {
+          if (
+            controller.signal.aborted ||
+            useChatStore.getState().generation !== generation
+          ) {
             controller.abort()
             return
           }
@@ -102,6 +108,12 @@ export function useChatSend(): UseChatSendResult {
             }
             continue
           }
+          if (
+            event.content &&
+            useChatStore.getState().responsePhase !== 'answering'
+          ) {
+            useChatStore.getState().setResponsePhase('answering')
+          }
           useChatStore.getState().appendAssistantMessage(event.content)
         }
         const last = useChatStore.getState().messages.at(-1)
@@ -112,10 +124,21 @@ export function useChatSend(): UseChatSendResult {
         ) {
           useChatStore.getState().dropTrailingEmptyAssistant()
           useChatStore.getState().setError('Pusta odpowiedź asystenta.')
+          useChatStore.getState().setResponsePhase('error')
           toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
+        } else if (
+          !controller.signal.aborted &&
+          last?.role === 'assistant' &&
+          last.content.trim()
+        ) {
+          useChatStore.getState().setResponsePhase('success')
         }
       } catch (err) {
-        if (controller.signal.aborted || useChatStore.getState().generation !== generation) return
+        if (
+          controller.signal.aborted ||
+          useChatStore.getState().generation !== generation
+        )
+          return
         useChatStore.getState().dropTrailingEmptyAssistant()
         // DEBUG (Krok 3): pełen rzut błędu do F12 → Console.
         // `LLMServiceError` niesie też status HTTP — przydatne, gdy proxy
@@ -138,6 +161,7 @@ export function useChatSend(): UseChatSendResult {
               ? err.message
               : 'Nieznany błąd asystenta.'
         useChatStore.getState().setError(message)
+        useChatStore.getState().setResponsePhase('error')
         // 413 (za długa wiadomość) ma konkretny tekst z API — nie zasłaniaj
         // go ogólnym „Asystent nie odpowiada".
         if (err instanceof LLMServiceError && err.status === 413) {
@@ -146,7 +170,10 @@ export function useChatSend(): UseChatSendResult {
           toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
         }
       } finally {
-        if (abortRef.current === controller && useChatStore.getState().generation === generation) {
+        if (
+          abortRef.current === controller &&
+          useChatStore.getState().generation === generation
+        ) {
           abortRef.current = null
           useChatStore.getState().setTyping(false)
           useChatStore.getState().setActionLabel(null)

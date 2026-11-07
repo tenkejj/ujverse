@@ -31,6 +31,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import type { VersusEntryState } from '../../lib/versusEntry'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
+import { useVersuActivity } from '../../hooks/useVersuActivity'
 import {
   filterSlashCommands,
   isSlashMode,
@@ -68,6 +69,8 @@ export default function ChatHubView({
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
+  const [isFocused, setFocused] = useState(false)
+  const activity = useVersuActivity(isFocused && draft.trim().length > 0)
   const [slashActiveIndex, setSlashActiveIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -294,7 +297,12 @@ export default function ChatHubView({
       <header className="shrink-0 border-b border-zinc-200/60 bg-zinc-50/90 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/90">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-2.5 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <VersuMark size={34} className="shrink-0" />
+            <VersuMark
+              size={72}
+              activity={activity}
+              replayKey={messages.at(-1)?.id}
+              className="shrink-0"
+            />
             <div className="min-w-0 flex flex-col leading-tight">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-sm font-semibold tracking-tight text-fg-primary">
@@ -302,11 +310,17 @@ export default function ChatHubView({
                 </h1>
               </div>
               <p className="versus-chat-caption truncate text-[11px]">
-                {isTyping
-                  ? 'Sprawdzam informacje…'
-                  : isAuthenticated
-                    ? 'Twój asystent studencki AI'
-                    : 'Asystent studencki AI · Bez logowania'}
+                {activity === 'answering'
+                  ? 'Odpowiadam…'
+                  : activity === 'thinking'
+                    ? (actionLabel ?? 'Myślę nad odpowiedzią…')
+                    : activity === 'error'
+                      ? 'Nie udało się odpowiedzieć'
+                      : activity === 'success'
+                        ? 'Gotowe — możesz dopytać'
+                        : isAuthenticated
+                          ? 'Twój asystent studencki AI'
+                          : 'Asystent studencki AI · Bez logowania'}
               </p>
             </div>
           </div>
@@ -320,7 +334,7 @@ export default function ChatHubView({
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-logo-navy/25 bg-transparent px-3 py-2 text-xs font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10 sm:px-3.5 sm:text-sm"
           >
             <Plus size={16} strokeWidth={2.25} aria-hidden />
-            <span className="inline">Nowa rozmowa</span>
+            <span className="hidden min-[380px]:inline">Nowa rozmowa</span>
           </button>
         </div>
       </header>
@@ -348,7 +362,7 @@ export default function ChatHubView({
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="versus-chat-welcome mx-auto flex w-full max-w-3xl flex-col items-start px-5 pb-8 md:px-8">
-            <VersuMark size={48} className="mb-6" />
+            <VersuMark size={96} activity={activity} className="mb-6" />
             <h2 className="text-2xl font-semibold tracking-tight text-fg-primary md:text-3xl">
               Co chcesz wiedzieć o UJ?
             </h2>
@@ -431,11 +445,13 @@ export default function ChatHubView({
             <textarea
               ref={inputRef}
               value={draft}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDownTextarea}
               aria-label="Wiadomość do Versusia"
               name="message"
-              placeholder="Zapytaj Versusia…"
+              placeholder="Twoje pytanie…"
               rows={1}
               disabled={isTyping}
               className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl border border-zinc-200 bg-white/90 p-3 text-sm text-fg-primary shadow-sm outline-none transition-colors focus:border-logo-navy focus:ring-2 focus:ring-logo-navy/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/80 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"

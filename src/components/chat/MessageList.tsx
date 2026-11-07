@@ -27,13 +27,21 @@ import {
   type ReactNode,
 } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Copy, Pencil, RefreshCcw, ThumbsDown, ThumbsUp } from 'lucide-react'
+import {
+  Check,
+  Copy,
+  Pencil,
+  RefreshCcw,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react'
 import type { ChatMessage } from '../../types/ai'
 import type { Profile } from '../../types'
 import { toast } from '../../lib/appToast'
 import { useChatFeedback } from '../../hooks/useChatFeedback'
 import UserAvatar from '../UserAvatar'
 import AnimatedBot from './AnimatedBot'
+import type { VersuActivity } from './VersuMark'
 import TypewriterMarkdown from './TypewriterMarkdown'
 
 const STICK_TO_BOTTOM_TOLERANCE_PX = 48
@@ -110,7 +118,7 @@ const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
     userPad: 'px-3.5 py-2',
     userMax: 'max-w-[78%]',
     avatar: 'h-7 w-7',
-    botIcon: 15,
+    botIcon: 24,
     avatarText: 'text-[11px]',
     rowGap: 'gap-2',
   },
@@ -119,7 +127,7 @@ const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
     userPad: 'px-4 py-2.5',
     userMax: 'max-w-[72%]',
     avatar: 'h-8 w-8',
-    botIcon: 17,
+    botIcon: 28,
     avatarText: 'text-xs',
     rowGap: 'gap-2.5',
   },
@@ -158,11 +166,21 @@ const BOT_BADGE_CLS =
   'border border-logo-navy/30 bg-bg-card text-logo-navy ' +
   'dark:border-brand-gold-bright/30 dark:bg-bg-card dark:text-brand-gold-bright'
 
-function BotBadge({ size, sizeClass }: { size: number; sizeClass: string }) {
-  const iconSize = Math.round(size * 0.78)
+function BotBadge({
+  size,
+  sizeClass,
+  activity = 'idle',
+  replayKey,
+}: {
+  size: number
+  sizeClass: string
+  activity?: VersuActivity
+  replayKey?: string
+}) {
+  const iconSize = size
   return (
     <span className={`${BOT_BADGE_CLS} ${sizeClass}`} aria-hidden>
-      <AnimatedBot size={iconSize} intensity="idle" />
+      <AnimatedBot size={iconSize} activity={activity} replayKey={replayKey} />
     </span>
   )
 }
@@ -241,7 +259,9 @@ function MessageBubble({
         <div
           className={`${tokens.userMax} ${USER_BUBBLE_CLS} ${tokens.userPad} ${tokens.text}`}
         >
-          <p className="whitespace-pre-wrap wrap-break-word">{message.content}</p>
+          <p className="whitespace-pre-wrap wrap-break-word">
+            {message.content}
+          </p>
         </div>
         <UserAvatar
           profile={myProfile}
@@ -259,7 +279,12 @@ function MessageBubble({
       {...BUBBLE_MOTION_ASSISTANT}
     >
       <span className="mt-0.5">
-        <BotBadge size={tokens.botIcon} sizeClass={tokens.avatar} />
+        <BotBadge
+          size={tokens.botIcon}
+          sizeClass={tokens.avatar}
+          activity={isStreaming ? 'answering' : 'idle'}
+          replayKey={message.id}
+        />
       </span>
       <div
         className={`min-w-0 flex-1 ${ASSISTANT_TEXT_CLS} ${tokens.text} leading-relaxed`}
@@ -386,28 +411,34 @@ function AssistantMessageActions({
           subtle highlight (border + bg gold tint). Klik wysyła POST do
           `/api/chat-feedback` przez `useChatFeedback` hook; drugi klik
           tego samego cofa głos (DELETE). Toast tylko przy bledzie. */}
-      {canVote ? <>
-      <button
-        type="button"
-        onClick={() => void vote(message, 'up')}
-        title={feedback === 'up' ? 'Cofnij ocenę' : 'Dobra odpowiedź'}
-        aria-label={feedback === 'up' ? 'Cofnij pozytywną ocenę' : 'Oceń pozytywnie'}
-        aria-pressed={feedback === 'up'}
-        className={`${baseBtn} ${feedback === 'up' ? activeBtn : ''}`}
-      >
-        <ThumbsUp size={12} />
-      </button>
-      <button
-        type="button"
-        onClick={() => void vote(message, 'down')}
-        title={feedback === 'down' ? 'Cofnij ocenę' : 'Słaba odpowiedź'}
-        aria-label={feedback === 'down' ? 'Cofnij negatywną ocenę' : 'Oceń negatywnie'}
-        aria-pressed={feedback === 'down'}
-        className={`${baseBtn} ${feedback === 'down' ? activeBtn : ''}`}
-      >
-        <ThumbsDown size={12} />
-      </button>
-      </> : null}
+      {canVote ? (
+        <>
+          <button
+            type="button"
+            onClick={() => void vote(message, 'up')}
+            title={feedback === 'up' ? 'Cofnij ocenę' : 'Dobra odpowiedź'}
+            aria-label={
+              feedback === 'up' ? 'Cofnij pozytywną ocenę' : 'Oceń pozytywnie'
+            }
+            aria-pressed={feedback === 'up'}
+            className={`${baseBtn} ${feedback === 'up' ? activeBtn : ''}`}
+          >
+            <ThumbsUp size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void vote(message, 'down')}
+            title={feedback === 'down' ? 'Cofnij ocenę' : 'Słaba odpowiedź'}
+            aria-label={
+              feedback === 'down' ? 'Cofnij negatywną ocenę' : 'Oceń negatywnie'
+            }
+            aria-pressed={feedback === 'down'}
+            className={`${baseBtn} ${feedback === 'down' ? activeBtn : ''}`}
+          >
+            <ThumbsDown size={12} />
+          </button>
+        </>
+      ) : null}
       {showRetry && onRetry ? (
         <button
           type="button"
@@ -511,9 +542,11 @@ const THINKING_PHRASES: readonly string[] = [
 function TypingIndicator({
   variant,
   actionLabel,
+  replayKey,
 }: {
   variant: MessageListVariant
   actionLabel: string | null
+  replayKey?: string
 }) {
   const tokens = VARIANT_TOKENS[variant]
 
@@ -547,7 +580,12 @@ function TypingIndicator({
       aria-live="polite"
       aria-label="Asystent myśli"
     >
-      <BotBadge size={tokens.botIcon} sizeClass={tokens.avatar} />
+      <BotBadge
+        size={tokens.botIcon}
+        sizeClass={tokens.avatar}
+        activity="thinking"
+        replayKey={replayKey}
+      />
       <span
         aria-hidden
         className={`flex items-center gap-1.5 ${phraseSizeCls} text-fg-secondary`}
@@ -740,7 +778,16 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
             })
           })()
         )}
-        {isTyping && <TypingIndicator variant={variant} actionLabel={actionLabel} />}
+        {isTyping &&
+          !(
+            visible.at(-1)?.role === 'assistant' && visible.at(-1)?.content
+          ) && (
+            <TypingIndicator
+              variant={variant}
+              actionLabel={actionLabel}
+              replayKey={visible.at(-1)?.id}
+            />
+          )}
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { SIDE_NAV_DESKTOP } from '../styles/mobile-theme'
+import '../styles/sidebar-scroll.css'
 import VersuMark from './chat/VersuMark'
 import { NIEZBEDNIK_LINKS } from './Niezbednik'
 import NavItem from './nav/NavItem'
@@ -59,7 +60,7 @@ export default function SideNav({
       <div className={SIDE_NAV_DESKTOP.stickyClass}>
         <div className={`sidebar-surface ${SIDE_NAV_DESKTOP.innerClass}`}>
           <nav
-            className={`versus-sidebar ${SIDE_NAV_DESKTOP.scrollAreaClass}`}
+            className={`versus-sidebar sidebar-scroll-area ${SIDE_NAV_DESKTOP.scrollAreaClass}`}
             aria-label="Sekcje UJverse"
           >
             <div className="sidebar-versus">

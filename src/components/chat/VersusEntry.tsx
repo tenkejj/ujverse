@@ -9,6 +9,8 @@ import BaseCard from '../ui/BaseCard'
 /** A useful first action, not a second chat implementation or a latency promise. */
 export default function VersusEntry() {
   const [question, setQuestion] = useState('')
+  const [isFocused, setFocused] = useState(false)
+  const [isGreeting, setGreeting] = useState(false)
   const navigate = useNavigate()
   const ask = (prompt: string) =>
     navigate('/chat', { state: versusEntryState(prompt.trim()) })
@@ -33,8 +35,18 @@ export default function VersusEntry() {
             UJ. Napisz, czego szukasz.
           </p>
         </div>
-        <div className="versus-entry-mascot" aria-hidden="true">
-          <VersuMark size={144} />
+        <div
+          className="versus-entry-mascot"
+          aria-hidden="true"
+          onPointerEnter={() => setGreeting(true)}
+          onPointerLeave={() => setGreeting(false)}
+        >
+          <VersuMark
+            size={144}
+            activity={
+              isFocused ? 'listening' : isGreeting ? 'greeting' : 'idle'
+            }
+          />
         </div>
       </div>
       <form onSubmit={submit} className="versus-entry-form">
@@ -47,6 +59,8 @@ export default function VersusEntry() {
             enterKeyHint="send"
             placeholder="Np. kiedy ruszają rejestracje na zajęcia?"
             value={question}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             onChange={(e) => {
               setQuestion(e.target.value)
               e.currentTarget.style.height = 'auto'
