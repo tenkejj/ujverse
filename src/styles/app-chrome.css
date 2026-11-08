@@ -1,0 +1,67 @@
+/* Navigation supports the main content; the original logo stays on the viewport axis. */
+.app-sidebar .sidebar-versus {
+  padding: 12px 8px 20px;
+}
+
+.app-sidebar .sidebar-versus-link {
+  gap: 8px;
+}
+
+/* Compact selector on account/preferences pages, with room left for the logo. */
+@media (min-width: 1024px) {
+  .app-header-faculty {
+    max-inline-size: max(0px, calc(50vw - 14rem - 48px));
+  }
+
+  .uj-header-bar .app-header-faculty .faculty-selector {
+    min-height: 44px;
+    padding: 4px 8px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+
+  .app-header-faculty .faculty-picker-icon,
+  .app-header-faculty .faculty-selector-hint,
+  .app-header-faculty .faculty-selector-action-suffix {
+    display: none;
+  }
+
+  .uj-header-bar .app-header-faculty .faculty-selector .faculty-picker-label {
+    font-size: 10px;
+  }
+
+  .uj-header-bar .app-header-faculty .faculty-selector .faculty-picker-value {
+    font-size: 12px;
+    -webkit-line-clamp: 1;
+    margin-top: 2px;
+  }
+
+  .uj-header-bar .app-header-faculty .faculty-selector .faculty-picker-action {
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
+
+/* Keyboard focus and anchored content stay below the sticky application chrome. */
+html {
+  scroll-padding-block-start: calc(4rem + env(safe-area-inset-top, 0px) + 16px);
+  scroll-padding-block-end: 16px;
+}
+html:has(.faculty-strip) {
+  scroll-padding-block-start: calc(9rem + env(safe-area-inset-top, 0px) + 16px);
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  html:has(.faculty-strip) {
+    scroll-padding-block-start: calc(
+      9.5rem + env(safe-area-inset-top, 0px) + 16px
+    );
+  }
+}
+@media (max-width: 767px) {
+  html {
+    scroll-padding-block-end: calc(
+      4.25rem + env(safe-area-inset-bottom, 0px) + 16px
+    );
+  }
+}

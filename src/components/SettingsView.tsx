@@ -55,6 +55,7 @@ type ProfilePatch = Partial<
 >
 
 type Props = {
+  isAuthenticated?: boolean
   email: string | undefined
   myProfile: Profile | null
   onProfilePatch: (patch: ProfilePatch) => void
@@ -150,12 +151,15 @@ function SectionCard({
   icon: Icon,
   description,
   children,
+  hidden = false,
 }: {
   title: string
   icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
   description?: string
   children: ReactNode
+  hidden?: boolean
 }) {
+  if (hidden) return null
   return (
     <BaseCard className="px-4 py-4 sm:px-5 sm:py-5">
       <header className="mb-3 flex items-start gap-3">
@@ -267,11 +271,17 @@ function clearLocalAppCache(): number {
 
 // ── Main component ────────────────────────────────────────────────────────
 
-export default function SettingsView({ email, myProfile, onProfilePatch, onBack }: Props) {
+export default function SettingsView({
+  email,
+  myProfile,
+  onProfilePatch,
+  onBack,
+  isAuthenticated = Boolean(myProfile?.id || email),
+}: Props) {
   const { theme, setTheme } = useTheme()
   const prefs = useUserPrefs()
   const navigate = useNavigate()
-  const isAdmin = myProfile?.role === 'admin'
+  const isAdmin = isAuthenticated && myProfile?.role === 'admin'
 
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
@@ -285,7 +295,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
   const [pushBusy, setPushBusy] = useState(false)
 
   const [searchHistoryCount, refreshSearchHistoryCount] = useSearchHistoryCount()
-  const versusMemory = useVersusMemory(Boolean(myProfile?.id))
+  const versusMemory = useVersusMemory(isAuthenticated && Boolean(myProfile?.id))
 
   // Server-side privacy flags z `profiles` — domyślnie `true` żeby nie psuć
   // wyświetlania zanim user ich nie ruszy (i dla wierszy sprzed migracji).
@@ -320,7 +330,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
     studyMode !== (myProfile?.study_mode ?? '')
 
   const handleSaveStudies = useCallback(async () => {
-    if (!myProfile?.id || studyBusy) return
+    if (!isAuthenticated || !myProfile?.id || studyBusy) return
     if (!studyDept.trim() || !studyProgram.trim() || studyYear === '' || studyMode === '') {
       toast.error('Uzupełnij wydział, kierunek, rok i tryb.')
       return
@@ -340,7 +350,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
     }
     onProfilePatch(patch)
     toast.success('Zapisano dane studiów. Trafiłeś/aś do właściwego rocznika.')
-  }, [myProfile?.id, studyBusy, studyDept, studyProgram, studyYear, studyMode, onProfilePatch])
+  }, [isAuthenticated, myProfile?.id, studyBusy, studyDept, studyProgram, studyYear, studyMode, onProfilePatch])
 
   // Po przyznaniu/odebraniu zezwolenia (np. via OS) — odśwież stan przy fokusie.
   useEffect(() => {
@@ -353,7 +363,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (passwordSubmitting) return
+    if (!isAuthenticated || passwordSubmitting) return
     if (newPassword.length < 8) {
       toast.error('Nowe hasło musi mieć min. 8 znaków.')
       return
@@ -396,7 +406,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
   }
 
   const handleSignOut = async () => {
-    if (signingOut) return
+    if (!isAuthenticated || signingOut) return
     setSigningOut(true)
     try {
       await supabase.auth.signOut()
@@ -476,6 +486,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
       next: boolean,
       labels: { onSuccess: string; onError: string },
     ) => {
+      if (!isAuthenticated) return
       if (!myProfile?.id) {
         toast.error('Brak profilu — zaloguj się ponownie.')
         return
@@ -500,7 +511,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
       }
       toast.success(labels.onSuccess)
     },
-    [myProfile, onProfilePatch, privacyBusy],
+    [isAuthenticated, myProfile, onProfilePatch, privacyBusy],
   )
 
   const setShowProfileInSearch = (next: boolean) => {
@@ -590,7 +601,9 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
             Ustawienia
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Konto, wygląd i preferencje aplikacji w jednym miejscu.
+            {isAuthenticated
+              ? 'Konto, wygląd i preferencje aplikacji w jednym miejscu.'
+              : 'Motyw, animacje i dane zapisane na tym urządzeniu.'}
           </p>
         </div>
       </div>
@@ -598,6 +611,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
       <div className="grid grid-cols-1 gap-4 pb-10 lg:grid-cols-2 lg:items-start">
         {/* Konto ───────────────────────────────────────────────────────── */}
         <SectionCard
+          hidden={!isAuthenticated}
           title="Konto"
           icon={UserCircleIcon}
           description="Twój login w UJverse i dostęp do konta."
@@ -758,6 +772,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
 
         {/* Powiadomienia ──────────────────────────────────────────────── */}
         <SectionCard
+          hidden={!isAuthenticated}
           title="Powiadomienia"
           icon={BellAlertIcon}
           description="Decyduj, jak UJverse przykuwa Twoją uwagę."
@@ -794,6 +809,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
 
         {/* Prywatność ─────────────────────────────────────────────────── */}
         <SectionCard
+          hidden={!isAuthenticated}
           title="Prywatność"
           icon={ShieldCheckIcon}
           description="Kontroluj, jak Twój profil pojawia się w UJverse."
@@ -831,6 +847,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
 
         {/* Studia ──────────────────────────────────────────────────────── */}
         <SectionCard
+          hidden={!isAuthenticated}
           title="Studia"
           icon={AcademicCapIcon}
           description="Kierunek, rok i tryb decydują o Twoim roczniku w Auli (czat grupy)."
@@ -955,6 +972,7 @@ export default function SettingsView({ email, myProfile, onProfilePatch, onBack 
         </SectionCard>
 
         <SectionCard
+          hidden={!isAuthenticated}
           title="Pamięć Versusia"
           icon={SparklesIcon}
           description="Versuś zapamiętuje stabilne preferencje z rozmów (max 5 faktów, ważne 7 dni)."

@@ -1,6 +1,6 @@
 # Versuś pixel mascot
 
-Original navy, cream and gold ink-drake with a book, adapted into a shared 32-colour pixel-art sprite set. Each sprite is 96×96 with binary transparency and no antialiasing. Upscale with `image-rendering: pixelated`.
+Original simple hairless scholar companion with a book and clear round prescription glasses. Navy, cream and gold pixel-art sprites use a shared 24-colour palette. The smooth rounded character has no hair, fur, ears, horns or tail. Each sprite is 96×96 with binary transparency and no antialiasing. Upscale with `image-rendering: pixelated`.
 
 States: `idle`, `greeting`, `listening`, `thinking`, `answering`, `success`, `error`. Every state includes `.webp`, `.gif`, and a meaningful static `.png` for reduced motion. Every state also has a `face-STATE` portrait; `face.*` aliases `face-idle.*`. A shared lower-edge mask keeps detached paws and book fragments out of the portrait crop.
 

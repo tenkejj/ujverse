@@ -1,6 +1,6 @@
 # Versuś pixel-art activities
 
-The existing mascot is redrawn as an original 96×96 pixel-art creature, retaining its navy/cream/gold identity and small book. Shared 32-colour palette, binary alpha and nearest-neighbour rendering preserve a sharp sprite at different interface sizes. The main UJverse logo and themes are unchanged.
+The current mascot is a smooth, hairless 96×96 pixel-art scholar with clear round prescription glasses and a small book. It retains navy/cream/gold colours, a shared 24-colour palette, binary alpha and nearest-neighbour rendering. Full-body and portrait activities use the same public API. This November 8 revision replaces the earlier furry creature; the main UJverse logo and themes remain unchanged.
 
 | Activity  | Interface trigger                                             |
 | --------- | ------------------------------------------------------------- |

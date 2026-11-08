@@ -24,14 +24,17 @@ The user wants the existing visual identity preserved. Layout work must reuse th
 
 - Keep a short page heading and one visible faculty control per viewport.
 - Label the selector visibly as “Wydział”, provide at least a 44 px target and keep it accessible while scrolling. A tiny icon or an unexplained “UJ” is insufficient.
-- Keep the Start assistant compact: one identity/access header, one explanation and the labelled question field. Sending comes before optional examples on phones.
+- Keep the Start assistant as one task workspace: a small identity field beside the labelled question area; sending comes before optional examples on phones. Reuse the seven activity states and both reduced-motion preferences.
+- The shared events calendar provides month/day selection, keyboard navigation, Today/nearest-event shortcuts and a source-backed agenda. Preserve URL state and never invent event times.
+- Show exact Europe/Warsaw timing near the active information and catalogue headings. Separate announcement addition, USOS confirmation, event ingestion and browser cache read; do not relabel created_at as a source scraper check.
+- Use a 224 px desktop sidebar and a viewport-centred original header logo. Keep theme/settings/login accessible, local settings public and account controls private. Preserve identity resets and sticky-header scroll clearance.
 - The faculty dialog should support labelled name/abbreviation search, a clear all-university option and long accessible names. Preserve the strip height and focus behaviour.
 - Group footer destinations by purpose, keep the toolkit link near its heading, and place project/source information together. Expanding sources must not move its trigger.
 - Group announcements, registrations, events and tools by function. Show bounded previews and a clear link to each full section.
 - Use the [layout](../ujverse-layout/SKILL.md) and [simplify](../ujverse-simplify/SKILL.md) workflows for crowded pages. Group by meaning and spacing, with different emphasis for announcements, deadlines and event dates. Do not return to the rejected equal-panel dashboard or force all sections into one viewport.
 - Make actionable urgent information prominent using verified relevance rules. Do not invent statistics, urgency, recommendations or data.
 - Explain the product in plain language on the first visit. Keep the AI question, examples and access label in one group, followed by one information group and labelled university services.
-- Avoid new decorative gradients, marketing heroes, oversized numbers, all-cap eyebrows and repeated entrance animations. The original Versuś creature is allowed as the distinctive illustrative detail; preserve the main UJverse logo.
+- Avoid new decorative gradients, marketing heroes, oversized numbers, all-cap eyebrows and repeated entrance animations. The smooth hairless Versuś scholar with round glasses is the distinctive pixel-art detail; preserve the main UJverse logo.
 - The pixel-art mascot has idle, greeting, listening, thinking, answering, success and error activities. Tie response activities to real request phases and keep their animation key stable across streamed chunks. Replay for a new turn using a stable message ID; cancellation must not trigger success. Animations finish after one short cycle. Both system and UJverse reduced-motion preferences must select static PNG.
 - Preserve usable scrolling. Document tracks follow the existing app background; sidebar tracks remain transparent with a thin, quiet thumb. Keep stable page gutters and native forced-colour accessibility.
 - Use whitespace, alignment, readable type and selective emphasis. Keep content aligned to the left.
@@ -69,3 +72,5 @@ Additional UI Skills sources used for layout refinement:
 - https://github.com/Dammyjay93/interface-design/blob/main/.claude/skills/interface-design/SKILL.md
 - https://github.com/jakubkrehel/skills/blob/main/skills/better-layout/SKILL.md
 - https://github.com/jakubkrehel/skills/blob/main/skills/better-ui/SKILL.md
+
+The November 8 workspace refinement fetched interface-design, better-layout and better-ui directly through the available UI Skills MCP tools. See docs/design/campus-workspace.md for the current decisions and verification limits.

@@ -1,10 +1,23 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Send } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  ArrowUpRight,
+  CalendarDays,
+  ClipboardList,
+  LockOpen,
+  Megaphone,
+  Send,
+} from 'lucide-react'
 import VersuMark from './VersuMark'
 import { PUBLIC_CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
 import { versusEntryState } from '../../lib/versusEntry'
 import BaseCard from '../ui/BaseCard'
+
+const SUGGESTIONS = [
+  { label: 'Co nowego?', Icon: Megaphone },
+  { label: 'Kiedy rejestracje?', Icon: ClipboardList },
+  { label: 'Co w kalendarzu?', Icon: CalendarDays },
+] as const
 
 /** A useful first action, not a second chat implementation or a latency promise. */
 export default function VersusEntry() {
@@ -24,30 +37,36 @@ export default function VersusEntry() {
       className="versus-entry"
       aria-labelledby="versus-entry-heading"
     >
+      <Link
+        className="versus-entry-persona"
+        to="/chat"
+        aria-label="Otwórz rozmowę z Versusiem, asystentem AI"
+        onPointerEnter={() => setGreeting(true)}
+        onPointerLeave={() => setGreeting(false)}
+        onFocus={() => setGreeting(true)}
+        onBlur={() => setGreeting(false)}
+      >
+        <VersuMark
+          size={112}
+          activity={isFocused ? 'listening' : isGreeting ? 'greeting' : 'idle'}
+        />
+        <strong>
+          Versuś <span>AI</span>
+        </strong>
+        <span className="versus-entry-open">
+          Otwórz czat <ArrowUpRight size={14} aria-hidden />
+        </span>
+      </Link>
       <header className="versus-entry-header">
-        <div
-          className="versus-entry-mascot"
-          aria-hidden="true"
-          onPointerEnter={() => setGreeting(true)}
-          onPointerLeave={() => setGreeting(false)}
-        >
-          <VersuMark
-            size={96}
-            activity={
-              isFocused ? 'listening' : isGreeting ? 'greeting' : 'idle'
-            }
-          />
+        <div className="versus-entry-title-row">
+          <h2 id="versus-entry-heading">Zapytaj o sprawy na UJ</h2>
+          <span className="versus-entry-access">
+            <LockOpen size={14} aria-hidden /> Bez logowania
+          </span>
         </div>
-        <div className="versus-entry-copy">
-          <div className="versus-entry-title-row">
-            <h2 id="versus-entry-heading">Zapytaj Versusia</h2>
-            <span className="versus-entry-access">AI · Bez logowania</span>
-          </div>
-          <p className="versus-entry-description">
-            Znajdź komunikaty, terminy rejestracji i wydarzenia. Zapytaj po
-            swojemu.
-          </p>
-        </div>
+        <p className="versus-entry-description">
+          Komunikaty, rejestracje i wydarzenia. Pomogę Ci znaleźć konkrety.
+        </p>
       </header>
       <form onSubmit={submit} className="versus-entry-form">
         <label htmlFor="versus-question">Twoje pytanie</label>
@@ -94,11 +113,15 @@ export default function VersusEntry() {
             role="group"
             aria-label="Szybkie pytania do Versusia"
           >
-            {PUBLIC_CHAT_QUICK_PROMPTS.slice(0, 3).map((prompt, i) => (
-              <button type="button" key={prompt} onClick={() => ask(prompt)}>
-                {['Co nowego?', 'Kiedy rejestracje?', 'Jakie wydarzenia?'][i]}
-              </button>
-            ))}
+            {PUBLIC_CHAT_QUICK_PROMPTS.slice(0, 3).map((prompt, i) => {
+              const { label, Icon } = SUGGESTIONS[i]
+              return (
+                <button type="button" key={prompt} onClick={() => ask(prompt)}>
+                  <Icon size={16} strokeWidth={1.75} aria-hidden />
+                  {label}
+                </button>
+              )
+            })}
           </div>
         </div>
       </form>

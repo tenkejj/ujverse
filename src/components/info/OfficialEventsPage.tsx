@@ -1,16 +1,11 @@
 import { useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { CalendarDays, List } from 'lucide-react'
 import { usePublicOfficialEvents } from '../../hooks/usePublicInfo'
 import { useNow } from '../../hooks/useNow'
 import { upcomingEventsSorted } from '../../lib/info/relevance'
 import { foldForSearch, UJ_LINKS } from '../../lib/info/resources'
-import {
-  dayKeyToDate,
-  formatFull,
-  formatRelativePast,
-  parseIsoDate,
-  WARSAW_TZ,
-} from '../../lib/info/time'
+import { dayKeyToDate, WARSAW_TZ } from '../../lib/info/time'
 import type { InfoEvent } from '../../lib/info/types'
 import { EventHubCard } from './InfoHubCards'
 import { InfoHubSection, InfoHubShell, InfoHubTitle } from './InfoHubShell'
@@ -22,6 +17,7 @@ import {
 } from './infoUi'
 
 import InfoEventCalendar from './InfoEventCalendar'
+import DataFreshness from './DataFreshness'
 const monthFormatter = new Intl.DateTimeFormat('pl-PL', {
   timeZone: WARSAW_TZ,
   month: 'long',
@@ -47,7 +43,7 @@ export default function OfficialEventsPage({
 }) {
   const now = useNow()
   const [params, setParams] = useSearchParams()
-  const calendar = params.get('widok') === 'kalendarz'
+  const calendar = params.get('widok') !== 'lista'
   const tabsRef = useRef<HTMLDivElement>(null)
   const query = usePublicOfficialEvents()
   const text = params.get('q') ?? ''
@@ -58,12 +54,11 @@ export default function OfficialEventsPage({
       foldForSearch(`${item.title} ${item.description}`).includes(folded),
   )
   const groups = groupByMonth(events)
-  const latest = parseIsoDate(query.data?.freshness.latest ?? null)
   const switchView = (next: boolean) =>
     setParams((previous) => {
       const p = new URLSearchParams(previous)
       if (next) p.set('widok', 'kalendarz')
-      else p.delete('widok')
+      else p.set('widok', 'lista')
       return p
     })
   return (
@@ -72,9 +67,22 @@ export default function OfficialEventsPage({
         title="Wydarzenia na UJ"
         description="Wykłady, spotkania i życie uczelni. Z oficjalnego kalendarza UJ."
       />
+      <DataFreshness
+        kind="events"
+        iso={query.data?.freshness.latest ?? null}
+        now={now}
+        status={
+          query.isPending || query.isPlaceholderData
+            ? 'loading'
+            : query.isError
+              ? 'error'
+              : 'ready'
+        }
+        checkedAt={query.dataUpdatedAt}
+      />
       <div
         ref={tabsRef}
-        className="campus-view-tabs"
+        className="campus-view-tabs info-event-view-tabs"
         role="tablist"
         aria-label="Widoki strony Wydarzenia"
         onKeyDown={(event) => {
@@ -103,6 +111,7 @@ export default function OfficialEventsPage({
           tabIndex={calendar ? -1 : 0}
           onClick={() => switchView(false)}
         >
+          <List size={17} strokeWidth={1.75} aria-hidden />
           Wydarzenia
         </button>
         <button
@@ -114,6 +123,7 @@ export default function OfficialEventsPage({
           tabIndex={calendar ? 0 : -1}
           onClick={() => switchView(true)}
         >
+          <CalendarDays size={17} strokeWidth={1.75} aria-hidden />
           Kalendarz
         </button>
       </div>
@@ -214,15 +224,6 @@ export default function OfficialEventsPage({
           </ExternalSourceLink>
           .
         </p>
-        {latest ? (
-          <p>
-            Kalendarz sprawdzony{' '}
-            <time dateTime={latest.toISOString()} title={formatFull(latest)}>
-              {formatRelativePast(latest, now)}
-            </time>
-            .
-          </p>
-        ) : null}
         <p>
           Organizujesz własne wydarzenie?{' '}
           <Link to="/events" className="campus-text-link">

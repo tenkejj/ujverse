@@ -28,7 +28,7 @@ export const HEADER_MOBILE = {
    * nie prześwitywał w safe-area. Desktop: sticky w kolumnie.
    */
   containerClass:
-    'z-50 shrink-0 px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
+    'z-50 shrink-0 px-3 max-[359px]:px-1.5 sm:px-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ' +
     'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 ' +
     'h-[calc(3.5rem+env(safe-area-inset-top,0px))] min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] ' +
     'pt-[env(safe-area-inset-top,0px)] ' +
@@ -44,21 +44,23 @@ export const HEADER_MOBILE = {
    */
   /** Overflow clip na mobile — logo jest wyższe niż belka; bez clipu nachodzi na filtry. */
   logoLaneClass:
-    'relative z-10 flex h-14 w-[8.5rem] shrink-0 items-center justify-center overflow-hidden ' +
-    'md:h-16 lg:h-auto lg:overflow-visible',
+    'relative z-10 flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden ' +
+    'md:h-16 md:w-16 lg:h-auto lg:overflow-visible',
   rightSectionClass:
-    'flex w-full min-w-0 items-center justify-end gap-2 md:gap-3 relative z-10 justify-self-end',
+    'flex w-full min-w-0 items-center justify-end gap-0 min-[360px]:gap-1 sm:gap-2 relative z-10 justify-self-end',
   /**
    * Tylko desktop (portal). Mobile logo jest w `logoLaneClass`.
-   * Oś = środek shella feedu: `50% + 9rem`.
+   * Oś = środek okna, niezależnie od szerokości nawigacji.
    */
   logoAnchorClass:
-    'pointer-events-none fixed top-0 left-[calc(50%+9rem)] z-[60] hidden h-16 w-max -translate-x-1/2 items-center justify-center lg:flex',
-  logoClass: 'h-[6.75rem] w-auto aspect-[728/1372]',
+    'pointer-events-none fixed top-0 left-1/2 z-[60] hidden h-16 w-max -translate-x-1/2 items-center justify-center lg:flex',
+  logoClass: 'h-[6.25rem] md:h-[6.75rem] w-auto aspect-[728/1372]',
+  actionButtonClass:
+    'inline-flex h-11 min-h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-brand-ink dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 dark:focus-visible:ring-brand-gold-bright/40',
   themeToggleButtonClass:
-    'shrink-0 min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center rounded-full p-2',
+    'shrink-0 min-w-11 min-h-11 flex items-center justify-center rounded-xl p-2',
   userMenuButtonClass:
-    'group flex items-center gap-2 rounded-full pl-1 pr-1 py-1 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0 md:pl-1.5 md:pr-2 md:py-1',
+    'group flex items-center gap-2 rounded-full px-1 py-1 min-h-11 min-w-11 2xl:pl-1.5 2xl:pr-2',
   userAvatarClass: 'h-9 w-9',
   userAvatarTextSize: 'text-xs',
   userNameMaxWidthClass: 'max-w-[100px]',
@@ -905,23 +907,23 @@ export const SIDE_NAV_DESKTOP = {
   /**
    * Wisi po lewej kolumny treści (`right-full`), więc na szerokim oknie
    * feed zostaje na środku, a menu wchodzi w margines i go nie zakrywa.
-   * Na węższym desktopie kolumna dostaje `margin-left: 18rem` i menu
+   * Na desktopie kolumna dostaje `margin-left: 14rem` i menu
    * staje przy krawędzi okna — nadal bez nachodzenia.
    */
   containerClass:
-    'hidden lg:block lg:w-72 lg:min-w-72 lg:max-w-72 lg:absolute lg:right-full lg:inset-y-0 lg:z-30 bg-zinc-50 dark:bg-bg-app',
-  stickyClass: 'sticky top-0 flex h-dvh flex-col p-3',
+    'hidden lg:block lg:w-56 lg:min-w-56 lg:max-w-56 lg:absolute lg:right-full lg:inset-y-0 lg:z-30 bg-zinc-50 dark:bg-bg-app',
+  stickyClass: 'sticky top-0 flex h-dvh flex-col p-2',
   innerClass:
     'flex flex-1 min-h-0 flex-col rounded-2xl border border-white/45 bg-white/45 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.65)] dark:border-white/8 dark:bg-zinc-900/30 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] overflow-hidden',
   scrollAreaClass:
-    'flex-1 min-h-0 overflow-y-auto px-2.5 py-3 flex flex-col gap-1.5',
+    'flex-1 min-h-0 overflow-y-auto px-1.5 py-3 flex flex-col gap-1.5',
   groupClass: 'flex flex-col gap-1.5',
   groupDividerClass:
     'mt-1 mx-3 border-t border-zinc-200/70 dark:border-white/8',
   sectionLabelClass:
     'px-3 pt-3 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-ink dark:text-brand-gold-bright',
   itemBaseClass:
-    'group relative flex w-full items-center gap-3 rounded-full border pl-4 pr-4 py-3 text-[15px] font-medium transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/25 dark:focus-visible:ring-brand-gold/40',
+    'group relative flex w-full items-center gap-2.5 rounded-full border px-3 py-3 text-[15px] font-medium transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/25 dark:focus-visible:ring-brand-gold/40',
   itemInactiveClass:
     'border-transparent text-brand-ink hover:border-white/60 hover:bg-white/65 hover:text-brand-ink dark:text-zinc-200 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-brand-gold-bright',
   itemActiveClass:

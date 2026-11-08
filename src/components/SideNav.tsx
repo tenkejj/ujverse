@@ -55,7 +55,7 @@ export default function SideNav({
   return (
     <aside
       aria-label="Nawigacja główna"
-      className={SIDE_NAV_DESKTOP.containerClass}
+      className={`app-sidebar ${SIDE_NAV_DESKTOP.containerClass}`}
     >
       <div className={SIDE_NAV_DESKTOP.stickyClass}>
         <div className={`sidebar-surface ${SIDE_NAV_DESKTOP.innerClass}`}>
@@ -153,15 +153,13 @@ export default function SideNav({
             <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
 
             <div className={SIDE_NAV_DESKTOP.groupClass}>
-              {isAuthenticated ? (
-                <NavItem
-                  icon={Settings}
-                  label="Ustawienia"
-                  active={active === 'settings'}
-                  onClick={() => onNavigate('settings')}
-                  variant="sidebar"
-                />
-              ) : null}
+              <NavItem
+                icon={Settings}
+                label="Ustawienia"
+                active={active === 'settings'}
+                onClick={() => onNavigate('settings')}
+                variant="sidebar"
+              />
               <NavItem
                 icon={ThemeIcon}
                 label={THEME_META[colorMode].shortLabel}

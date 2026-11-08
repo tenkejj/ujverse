@@ -11,6 +11,7 @@ import { sortAnnouncementsNewestFirst } from '../../lib/info/relevance'
 import { foldForSearch } from '../../lib/info/resources'
 import type { AnnouncementStatus } from '../../types/content'
 import { AnnouncementHubCard } from './InfoHubCards'
+import DataFreshness from './DataFreshness'
 import {
   InfoHubCardGrid,
   InfoHubSection,
@@ -95,7 +96,23 @@ export default function AnnouncementsPage({
       <InfoHubTitle
         title="Komunikaty"
         description="Ogłoszenia z wydziałów. Najnowsze informacje zawsze na początku."
-
+      />
+      <DataFreshness
+        iso={
+          query.isPlaceholderData
+            ? null
+            : (query.data?.freshness.latest ?? null)
+        }
+        kind="announcements"
+        now={now}
+        status={
+          query.isPending || query.isPlaceholderData
+            ? 'loading'
+            : query.isError
+              ? 'error'
+              : 'ready'
+        }
+        checkedAt={query.isPlaceholderData ? undefined : query.dataUpdatedAt}
       />
       <InfoHubToolbar
         filters={filters}

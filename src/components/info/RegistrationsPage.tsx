@@ -13,12 +13,8 @@ import {
   isRegistrationDataStale,
   registrationTiming,
 } from '../../lib/info/relevance'
-import {
-  formatFull,
-  formatRelativePast,
-  parseIsoDate,
-} from '../../lib/info/time'
 import { RegistrationHubCard } from './InfoHubCards'
+import DataFreshness from './DataFreshness'
 import {
   InfoHubCardGrid,
   InfoHubSection,
@@ -43,7 +39,6 @@ export default function RegistrationsPage({
   const query = usePublicRegistrations()
   const latestRun = query.data?.freshness.latest ?? null
   const stale = query.isSuccess && isRegistrationDataStale(latestRun, now)
-  const latestDate = parseIsoDate(latestRun)
   const active = activeRegistrationsSorted(query.data?.items ?? [], now)
   const scoped = active.filter((item) =>
     matchesFaculty(item.faculty, faculty.faculty),
@@ -75,7 +70,14 @@ export default function RegistrationsPage({
       <InfoHubTitle
         title="Rejestracje USOS"
         description="Sprawdź terminy. Zapisz się w USOSweb."
-
+      />
+      <DataFreshness
+        iso={latestRun}
+        kind="registrations"
+        now={now}
+        status={query.isPending ? 'loading' : query.isError ? 'error' : 'ready'}
+        checkedAt={query.dataUpdatedAt}
+        stale={stale}
       />
       <InfoHubToolbar
         filters={filters}
@@ -99,12 +101,6 @@ export default function RegistrationsPage({
           </a>
         }
       />
-      {stale && latestRun ? (
-        <p className="campus-stale-note">
-          Katalog może być nieaktualny. Przed zapisami potwierdź termin w
-          USOSweb.
-        </p>
-      ) : null}
       <InfoHubSection
         title={short ? `Twój wydział: ${short}` : 'Wszystkie jednostki UJ'}
         count={filtered.length}
@@ -168,18 +164,6 @@ export default function RegistrationsPage({
             Alarmy rejestracji
           </Link>
         </p>
-        {latestDate ? (
-          <p>
-            Ostatnio potwierdzono w USOSweb:{' '}
-            <time
-              dateTime={latestDate.toISOString()}
-              title={formatFull(latestDate)}
-            >
-              {formatRelativePast(latestDate, now)}
-            </time>
-            .
-          </p>
-        ) : null}
       </div>
     </InfoHubShell>
   )

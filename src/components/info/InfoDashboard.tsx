@@ -2,6 +2,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowUpRight,
+  BellRing,
   CalendarDays,
   ClipboardList,
   Megaphone,
@@ -28,13 +29,11 @@ import {
 import { upcomingEventsSorted } from '../../lib/info/relevance'
 import { formatDurationShort } from '../../lib/info/time'
 import VersusEntry from '../chat/VersusEntry'
-import {
-  AnnouncementHubCard,
-  EventHubCard,
-  RegistrationHubCard,
-} from './InfoHubCards'
+import { AnnouncementHubCard, RegistrationHubCard } from './InfoHubCards'
 import { CustomizeButton, SavedSection } from './InfoBlocks'
 import InfoFooter from './InfoFooter'
+import InfoEventCalendar from './InfoEventCalendar'
+import DataFreshness, { type DataFreshnessKind } from './DataFreshness'
 import {
   DomainEmpty,
   DomainError,
@@ -99,7 +98,7 @@ export default function InfoDashboard({
     },
     {
       id: 'events',
-      label: 'Wydarzenia',
+      label: 'Kalendarz',
       Icon: CalendarDays,
       count:
         eventsQ.isSuccess && eventsQ.data.freshness.latest
@@ -132,6 +131,20 @@ export default function InfoDashboard({
       : priority.reason === 'registration-closing'
         ? `Rejestracja zamyka się za ${formatDurationShort(Date.parse(priority.item.closesAt ?? priority.item.opensAt) - now.getTime())}`
         : `Rejestracja otwiera się za ${formatDurationShort(Date.parse(priority.item.opensAt) - now.getTime())}`
+  const freshnessKind: DataFreshnessKind =
+    currentSection === 'registrations'
+      ? 'registrations'
+      : currentSection === 'events'
+        ? 'events'
+        : 'announcements'
+  const activeQuery =
+    freshnessKind === 'registrations'
+      ? registrationsQ
+      : freshnessKind === 'events'
+        ? eventsQ
+        : announcementsQ
+  const placeholder =
+    freshnessKind === 'announcements' && announcementsQ.isPlaceholderData
   const dateLabel = new Intl.DateTimeFormat('pl-PL', {
     day: 'numeric',
     month: 'long',
@@ -147,12 +160,12 @@ export default function InfoDashboard({
             {firstName ? (
               <p className="dashboard-greeting">Cześć, {firstName}</p>
             ) : null}
-            <h1>Twoje sprawy na UJ, w jednym miejscu</h1>
+            <h1>Co słychać na UJ?</h1>
             <p className="dashboard-description">
-              Komunikaty, rejestracje i wydarzenia dla studentów.
+              Komunikaty z wydziałów, terminy rejestracji i kalendarz wydarzeń.
             </p>
             <p className="dashboard-context">
-              {dateLabel}
+              <CalendarDays size={14} aria-hidden /> {dateLabel}
               <span aria-hidden> · </span>
               {short ?? 'Wszystkie wydziały'}
             </p>
@@ -169,7 +182,9 @@ export default function InfoDashboard({
           aria-labelledby="priority-heading"
         >
           <div>
-            <h2 id="priority-heading">Ważne teraz</h2>
+            <h2 id="priority-heading">
+              <BellRing size={16} aria-hidden /> Ważne teraz
+            </h2>
             <p>{priorityLabel}</p>
             <h3>{priority.item.title}</h3>
           </div>
@@ -193,10 +208,17 @@ export default function InfoDashboard({
         >
           <header className="dashboard-overview-heading">
             <div>
-              <h2 id="overview-heading">Informacje z uczelni</h2>
-              <p>Wybierz, co chcesz sprawdzić.</p>
+              <h2 id="overview-heading">
+                <span className="dashboard-section-icon" aria-hidden>
+                  <Megaphone size={20} strokeWidth={1.75} />
+                </span>{' '}
+                Informacje z uczelni
+              </h2>
+              <p>Komunikaty, zapisy i daty, które warto mieć pod ręką.</p>
             </div>
-            <span>{short ?? 'Cały UJ'}</span>
+            <span>
+              {currentSection === 'events' ? 'Cały UJ' : (short ?? 'Cały UJ')}
+            </span>
           </header>
           <div
             className="dashboard-switcher"
@@ -217,6 +239,26 @@ export default function InfoDashboard({
                 ) : null}
               </button>
             ))}
+          </div>
+          <div className="dashboard-freshness">
+            <DataFreshness
+              kind={freshnessKind}
+              iso={
+                placeholder
+                  ? null
+                  : (activeQuery.data?.freshness.latest ?? null)
+              }
+              checkedAt={placeholder ? undefined : activeQuery.dataUpdatedAt}
+              now={now}
+              status={
+                activeQuery.isPending || placeholder
+                  ? 'loading'
+                  : activeQuery.isError
+                    ? 'error'
+                    : 'ready'
+              }
+              stale={freshnessKind === 'registrations' && stale}
+            />
           </div>
           <div className="dashboard-grid">
             {currentSection === 'announcements' ? (
@@ -335,10 +377,10 @@ export default function InfoDashboard({
             {currentSection === 'events' ? (
               <DashboardPanel
                 className="dashboard-events"
-                title="Wydarzenia na UJ"
-                description="Najbliższe spotkania i wydarzenia"
-                href="/wydarzenia"
-                action="Kalendarz wydarzeń"
+                title="Kalendarz wydarzeń"
+                description="Wybierz dzień, żeby zobaczyć wydarzenia"
+                href="/wydarzenia?widok=kalendarz"
+                action="Pełny kalendarz"
               >
                 {eventsQ.isPending ? (
                   <RowSkeletons count={2} variant="feed" />
@@ -348,20 +390,16 @@ export default function InfoDashboard({
                     onRetry={() => void eventsQ.refetch()}
                     compact
                   />
-                ) : !events.length ? (
+                ) : !eventsQ.data?.freshness.latest ? (
                   <DomainEmpty tone="quiet">
-                    {eventsQ.data?.freshness.latest
-                      ? 'Brak nadchodzących wydarzeń w katalogu.'
-                      : 'Dane o wydarzeniach są chwilowo niedostępne.'}
+                    Dane o wydarzeniach są chwilowo niedostępne.
                   </DomainEmpty>
                 ) : (
-                  <ul className="dashboard-event-previews">
-                    {events.slice(0, 2).map((item) => (
-                      <li key={item.id}>
-                        <EventHubCard item={item} now={now} />
-                      </li>
-                    ))}
-                  </ul>
+                  <InfoEventCalendar
+                    events={events}
+                    now={now}
+                    variant="compact"
+                  />
                 )}
               </DashboardPanel>
             ) : null}

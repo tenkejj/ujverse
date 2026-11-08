@@ -1,0 +1,81 @@
+/* Visible factual timestamps, not an optimistic "live" badge. */
+.data-freshness {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--campus-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.campus-hub:has(> .data-freshness) > .campus-page-heading {
+  margin-block-end: 12px;
+}
+
+.campus-hub > .data-freshness {
+  margin-block-end: 24px;
+}
+
+.data-freshness-icon {
+  flex-shrink: 0;
+  margin-block-start: 2px;
+}
+
+.data-freshness-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.data-freshness-copy p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.data-freshness-primary time {
+  color: var(--campus-text);
+  font-weight: 500;
+}
+
+.data-freshness time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-freshness-check {
+  font-size: 11px;
+}
+
+.data-freshness-state {
+  color: var(--color-amber-800, var(--campus-text));
+}
+
+.data-freshness[data-stale='true'] .data-freshness-icon,
+.data-freshness[data-status='error'] .data-freshness-icon {
+  color: var(--color-amber-800, var(--campus-text));
+}
+
+.dark .data-freshness-state,
+.dark .data-freshness[data-stale='true'] .data-freshness-icon,
+.dark .data-freshness[data-status='error'] .data-freshness-icon {
+  color: var(--color-amber-300, var(--campus-text));
+}
+
+.data-freshness-compact {
+  font-size: 11px;
+  gap: 6px;
+  line-height: 1.6;
+}
+
+.data-freshness-compact .data-freshness-check {
+  font-size: inherit;
+}
+
+@media (forced-colors: active) {
+  .data-freshness-state,
+  .data-freshness[data-stale='true'] .data-freshness-icon,
+  .data-freshness[data-status='error'] .data-freshness-icon {
+    color: CanvasText;
+  }
+}

@@ -1,6 +1,16 @@
 # UI verification — dashboard revisions
 
-## Current: UI Skills layout refinement, 7 November 2026
+## Current: campus workspace, 8 November 2026
+
+The workspace adds moderate semantic icons, tonal borders, a shared interactive calendar, visible source/read timestamps, a hairless scholar mascot with round glasses, a 224 px sidebar, a viewport-centred logo and a restored header Settings action. Public settings expose local preferences; account sections remain authenticated and remount on identity change. The Start headline is “Co słychać na UJ?”.
+
+The current UI Skills MCP connection was used directly for interface-design, better-layout and better-ui. The old unavailability note below is historical. No automated unit, browser acceptance, lint or axe suites were run, as requested by the user. `vercel build --prod` completed successfully; the existing notification-helper bundling diagnostic and Vite large-chunk warning remain. Code review covered timestamp semantics, placeholder states, calendar URL/focus handling and public-settings identity reset.
+
+Visual previews were inspected for desktop, phones, three themes, the calendar and guest settings. Header geometry was read at 320/390/768/1440 px: original logo centred and controls do not overlap; sidebar 224 px. Date/month selection and ArrowRight were exercised as part of the visual preview. This does not claim exhaustive keyboard/browser acceptance, private-account verification, real provider inference or user testing.
+
+Previews and full scope: [Campus workspace](campus-workspace.md).
+
+## Historical: UI Skills layout refinement, 7 November 2026
 
 The Start assistant now has a compact identity header, one explanation and a clearly separated field/action area. Faculty selection adds name/abbreviation search while preserving sticky offsets and preferences. The footer groups university services and UJverse tools, keeps the full toolkit link near its heading and aligns project/source information. Expanding sources keeps its trigger stationary.
 

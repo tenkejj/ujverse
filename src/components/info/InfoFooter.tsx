@@ -1,5 +1,16 @@
 import { useId } from 'react'
-import { ArrowRight, ArrowUpRight, ChevronDown } from 'lucide-react'
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  CalendarDays,
+  ChevronDown,
+  Compass,
+  GraduationCap,
+  Library,
+  Mail,
+  MapPin,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { INFO_RESOURCES, type InfoResource } from '../../lib/info/resources'
 import { SourcesNote } from './InfoBlocks'
@@ -28,6 +39,15 @@ const GROUPS = [
   },
 ] as const
 
+const RESOURCE_ICONS = {
+  usosweb: GraduationCap,
+  pegaz: BookOpen,
+  poczta: Mail,
+  sale: MapPin,
+  'moj-plan': CalendarDays,
+  miejsca: Library,
+} as const
+
 /** A single footer groups useful destinations and the origin of the information. */
 export default function InfoFooter({
   isAuthenticated,
@@ -48,7 +68,12 @@ export default function InfoFooter({
       {showTools ? (
         <section className="info-footer-tools" aria-labelledby={`${id}-tools`}>
           <header className="info-footer-heading">
-            <h2 id={`${id}-tools`}>Serwisy i narzędzia</h2>
+            <h2 id={`${id}-tools`}>
+              <span className="info-footer-heading-icon" aria-hidden>
+                <Compass size={20} strokeWidth={1.75} />
+              </span>{' '}
+              Serwisy i narzędzia
+            </h2>
             <Link to="/niezbednik" className="info-footer-all">
               Cały niezbędnik <ArrowRight size={16} aria-hidden />
             </Link>
@@ -111,8 +136,13 @@ function ResourceLink({
   resource: InfoResource
   isAuthenticated: boolean
 }) {
+  const Icon =
+    RESOURCE_ICONS[resource.id as keyof typeof RESOURCE_ICONS] ?? BookOpen
   const content = (
     <>
+      <span className="info-footer-resource-icon" aria-hidden>
+        <Icon size={19} strokeWidth={1.75} />
+      </span>
       <span className="info-footer-link-copy">
         <span className="info-footer-link-title">
           {resource.label}
