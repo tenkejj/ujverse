@@ -32,14 +32,8 @@ import type { VersusEntryState } from '../../lib/versusEntry'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
 import { useVersuActivity } from '../../hooks/useVersuActivity'
-import {
-  filterSlashCommands,
-  isSlashMode,
-  type SlashCommand,
-} from '../../lib/chatSlashCommands'
 import VersuMark from './VersuMark'
 import MessageList from './MessageList'
-import SlashCommandMenu from './SlashCommandMenu'
 import ChatVoiceButton from './ChatVoiceButton'
 
 import {
@@ -71,49 +65,13 @@ export default function ChatHubView({
   const [draft, setDraft] = useState('')
   const [isFocused, setFocused] = useState(false)
   const activity = useVersuActivity(isFocused && draft.trim().length > 0)
-  const [slashActiveIndex, setSlashActiveIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
-
-  const slashMode = useMemo(() => isSlashMode(draft), [draft])
-  const slashCommands = useMemo(
-    () =>
-      slashMode
-        ? filterSlashCommands(draft).filter(
-            (command) =>
-              isAuthenticated ||
-              [
-                'oglosznia',
-                'tydzien',
-                'naukowe',
-                'wziks',
-                'juwenalia',
-                'rejestracje',
-                'pomoc',
-              ].includes(command.slug),
-          )
-        : [],
-    [slashMode, draft, isAuthenticated],
-  )
-  const slashOpen = slashMode
-
-  // Reset active index gdy lista się skraca lub user kasuje slash.
-  useEffect(() => {
-    if (slashActiveIndex >= slashCommands.length) {
-      setSlashActiveIndex(0)
-    }
-  }, [slashCommands.length, slashActiveIndex])
 
   const hasMessages = useMemo(
     () => messages.some((m) => m.role !== 'system'),
     [messages],
   )
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [messages, isTyping])
 
   useEffect(() => {
     if (
@@ -213,66 +171,23 @@ export default function ChatHubView({
     [draft, handleSend],
   )
 
-  const handleSelectSlashCommand = useCallback(
-    (cmd: SlashCommand) => {
-      // Słownie wysyłamy zapytanie odpowiadające komendzie. Cache (`responseCache`
-      // po stronie serwera) trafia te same prompty co `QUICK_PROMPTS` w wyspie.
-      setDraft('')
-      setSlashActiveIndex(0)
-      void handleSend(cmd.query)
-    },
-    [handleSend],
-  )
-
   const onKeyDownTextarea = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      // Slash mode: ArrowUp/Down nawigują listę, Enter wybiera, Escape zamyka.
-      if (slashOpen && slashCommands.length > 0) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault()
-          setSlashActiveIndex((i) => (i + 1) % slashCommands.length)
-          return
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault()
-          setSlashActiveIndex(
-            (i) => (i - 1 + slashCommands.length) % slashCommands.length,
-          )
-          return
-        }
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault()
-          const cmd = slashCommands[slashActiveIndex] ?? slashCommands[0]
-          if (cmd) handleSelectSlashCommand(cmd)
-          return
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          setDraft('')
-          return
-        }
-        if (e.key === 'Tab') {
-          // Tab uzupełnia slug aktywnej komendy w drafcie (jak shell).
-          e.preventDefault()
-          const cmd = slashCommands[slashActiveIndex] ?? slashCommands[0]
-          if (cmd) setDraft(`/${cmd.slug} `)
-          return
-        }
-      }
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         void handleSend(draft)
       }
     },
-    [
-      draft,
-      handleSend,
-      slashOpen,
-      slashCommands,
-      slashActiveIndex,
-      handleSelectSlashCommand,
-    ],
+    [draft, handleSend],
   )
+
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+    input.style.height = 'auto'
+    input.style.height = `${Math.min(input.scrollHeight, 160)}px`
+  }, [draft])
 
   const canClear = hasMessages || isTyping
 
@@ -331,7 +246,7 @@ export default function ChatHubView({
             disabled={!canClear}
             title="Nowa rozmowa"
             aria-label="Rozpocznij nową rozmowę z asystentem"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-logo-navy/25 bg-transparent px-3 py-2 text-xs font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10 sm:px-3.5 sm:text-sm"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-logo-navy/25 bg-transparent px-3 py-2 text-xs font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10 sm:px-3.5 sm:text-sm"
           >
             <Plus size={16} strokeWidth={2.25} aria-hidden />
             <span className="hidden min-[380px]:inline">Nowa rozmowa</span>
@@ -353,6 +268,7 @@ export default function ChatHubView({
               myProfile={myProfile}
               displayName={displayName}
               scrollable={false}
+              scrollContainerRef={scrollRef}
               onEditLastUser={handleEditLastUser}
               onRetryLastAssistant={handleRetryLastAssistant}
               onChipClick={handleSend}
@@ -375,8 +291,7 @@ export default function ChatHubView({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 0.45,
-                delay: 0.2,
+                duration: 0.15,
                 ease: [0.16, 1, 0.3, 1],
               }}
               className="versus-chat-suggestions mt-6 flex w-full flex-wrap gap-x-6 gap-y-2"
@@ -404,11 +319,6 @@ export default function ChatHubView({
 
       <div className="shrink-0 border-t border-zinc-200/70 bg-zinc-50/85 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/85">
         <div className="mx-auto w-full max-w-3xl px-4 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4">
-          {/*
-            `relative` wrapper jest anchorem dla `SlashCommandMenu`, który
-            renderuje się `absolute bottom-full` (czyli NAD inputem). Bez tego
-            menu by uciekło do prawego krańca viewportu.
-          */}
           {error ? (
             <p
               className="mb-3 text-sm text-rose-700 dark:text-rose-300"
@@ -422,15 +332,6 @@ export default function ChatHubView({
             onSubmit={onSubmitForm}
             className="relative flex items-end gap-2"
           >
-            {slashOpen && (
-              <SlashCommandMenu
-                commands={slashCommands}
-                activeIndex={slashActiveIndex}
-                onActiveIndexChange={setSlashActiveIndex}
-                onSelect={handleSelectSlashCommand}
-                onClose={() => setDraft('')}
-              />
-            )}
             <ChatVoiceButton
               onTranscript={(text) => {
                 // UX: nie auto-sendujemy — wkładamy tekst w composer żeby user
@@ -454,7 +355,7 @@ export default function ChatHubView({
               placeholder="Twoje pytanie…"
               rows={1}
               disabled={isTyping}
-              className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl border border-zinc-200 bg-white/90 p-3 text-sm text-fg-primary shadow-sm outline-none transition-colors focus:border-logo-navy focus:ring-2 focus:ring-logo-navy/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/80 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"
+              className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl border border-zinc-200 bg-white/90 p-3 text-base text-fg-primary shadow-sm outline-none transition-colors focus:border-logo-navy focus:ring-2 focus:ring-logo-navy/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/80 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"
             />
             {isTyping ? (
               <button

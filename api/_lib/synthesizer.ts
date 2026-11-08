@@ -1,23 +1,4 @@
-/**
- * Synthesizer — naturalna odpowiedź dla użytkownika z surowych wyników toola.
- *
- * Filozofia: SERWER NIE PISZE odpowiedzi. Serwer wyciąga z wyników faktów
- * (compact bullet-string) i prosi tani model (Llama 8B) o ułożenie ich
- * w naturalne, krótkie zdanie odpowiadające konkretnie na pytanie usera.
- *
- * Po co: wcześniej mieliśmy hardcoded leady typu „Spoko, 2 rzeczy:" które
- * były podejrzane (nie pasują do pytania) i sztywne (zero wariancji).
- * LLM dostając pytanie + fakty potrafi po prostu napisać po ludzku.
- *
- * Tradeoff: dodajemy ~1 dodatkowy round-trip do Groqa per tool (Llama 8B,
- * tani i szybki — ~150ms TTFB, ~$0.0001 per request). Przy 60s response
- * cache to dla typowych zapytań ~5-10× rzadsze niż 1:1.
- *
- * Nieużywany dla:
- *  - empty results (gotowy fallback string)
- *  - błędów (gotowy fallback string)
- *  - passthrough toolów (briefing — już jest mardownem)
- */
+/** Format public tool facts directly where possible; use the small model for synthesis. */
 
 import {
   GroqProvider,
@@ -25,7 +6,10 @@ import {
   type GroqUsage,
 } from './GroqProvider.js'
 import { GROQ_SMALLTALK_MODEL, withGroqRetry } from './llmService.js'
-import { SYNTHESIS_SYSTEM_PROMPT, SYNTHESIS_USER_INSTRUCTION } from './persona.js'
+import {
+  SYNTHESIS_SYSTEM_PROMPT,
+  SYNTHESIS_USER_INSTRUCTION,
+} from './persona.js'
 import { softenTranslationese } from './polishNaturalize.js'
 import type { GroqMessage } from './types.js'
 
@@ -51,7 +35,7 @@ export type ToolFactsResult =
  * Oszczędza call Llama 8B przy prostych wynikach (1 ogłoszenie, 1 wydarzenie).
  */
 export function tryCompactSynthesis(
-  userQuery: string,
+  _userQuery: string,
   facts: string,
   hint: string | null,
 ): string | null {
@@ -61,16 +45,11 @@ export function tryCompactSynthesis(
     .filter((l) => l.length > 0)
   if (lines.length !== 1) return null
   const line = lines[0]!
-  if (line.length < 12 || line.length > 140) return null
-  if (hint && hint.length > 55) return null
+  if (line.length < 12 || line.length > 600) return null
+  if (hint && hint.length > 240) return null
 
-  const q = userQuery.toLowerCase()
-  const openers = q.includes('?')
-    ? (['Krótko —', 'Patrz,', 'Masz tak:', 'W skrócie —'] as const)
-    : (['Krótko —', 'Słuchaj —', 'Tak jest:', 'W skrócie —'] as const)
-  const opener = openers[Math.floor(Math.random() * openers.length)]!
-  const tail = hint ? ` ${hint.endsWith('.') ? hint : `${hint}.`}` : ''
-  return `${opener} ${line}${tail}`
+  const tail = hint ? `\n\n${hint.trim()}` : ''
+  return `${line}${tail}`
 }
 
 /** Stosuj po złożeniu odpowiedzi z LLM lub kompaktowej syntezy. */
@@ -99,48 +78,23 @@ export function shouldFormatAsBulletList(facts: string): boolean {
   return countFactLines(facts) >= LIST_FORMAT_MIN_LINES
 }
 
-function polishItemCount(n: number): string {
-  if (n === 1) return '1 pozycję'
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-    return `${n} pozycje`
-  }
-  return `${n} pozycji`
+function conversationalListLead(topicHint: string): string {
+  if (/rejestracje USOS/i.test(topicHint)) return 'Najbliższe rejestracje USOS:'
+  if (/oficjalne wydarzenia/i.test(topicHint))
+    return 'Nadchodzące wydarzenia UJ:'
+  if (/plan zajęć/i.test(topicHint)) return 'W Twoim planie:'
+  if (/ogłoszenia wykładowcy /i.test(topicHint))
+    return `${topicHint.trim().replace(/\.$/, '')}:`
+  if (/ogłosze|komunikat/i.test(topicHint)) return 'Komunikaty:'
+  if (/kalendarz/i.test(topicHint)) return 'W kalendarzu:'
+  if (/zniżki/i.test(topicHint)) return 'Zniżki studenckie:'
+  if (/wykładowc/i.test(topicHint)) return 'Wykładowcy:'
+  if (/wydarzenia/i.test(topicHint)) return 'Wydarzenia:'
+  return 'Wyniki:'
 }
 
-function lowerFirst(s: string): string {
-  if (!s) return s
-  return s.charAt(0).toLowerCase() + s.slice(1)
-}
-
-function conversationalListLead(topicHint: string, lineCount: number): string {
-  const ctx = topicHint.trim().replace(/\.+$/, '')
-  const nPhrase = polishItemCount(lineCount)
-  const templates: readonly ((c: string, n: string) => string)[] = [
-    (c, n) => `${c} — poniżej ${n}:`,
-    (c, n) => `Patrz, ${lowerFirst(c)} — ${n}:`,
-    (c, n) => `Masz ${n} (${lowerFirst(c)}):`,
-  ]
-  const idx = lineCount % templates.length
-  return templates[idx]!(ctx, nPhrase)
-}
-
-function formatListClosingHint(
-  hint: string | null,
-  lineCount: number,
-): string {
-  if (hint) {
-    const h = hint.trim().replace(/\.+$/, '')
-    if (/^jeszcze/i.test(h) || /^w bazie/i.test(h)) {
-      return `\n${h.charAt(0).toUpperCase()}${h.slice(1)} — doprecyzuj pytanie albo zajrzyj w apce po resztę.`
-    }
-    return `\n${h}.`
-  }
-  if (lineCount >= 5) {
-    return '\nTo skrót — reszta siedzi w apce, jak chcesz zawęzić, dopisz np. dzielnicę albo datę.'
-  }
-  return ''
+function formatListClosingHint(hint: string | null): string {
+  return hint ? `\n\n${hint.trim()}` : ''
 }
 
 /**
@@ -160,11 +114,11 @@ export function formatListedFacts(
   if (lines.length === 0) return null
   if (!shouldFormatAsBulletList(facts)) return null
 
-  const lead = conversationalListLead(topicHint, lines.length)
+  const lead = conversationalListLead(topicHint)
   const bullets = lines
     .map((line) => (line.startsWith('- ') ? line : `- ${line}`))
     .join('\n')
-  const tail = formatListClosingHint(hint, lines.length)
+  const tail = formatListClosingHint(hint)
   return `${lead}\n${bullets}${tail}`
 }
 
@@ -183,35 +137,15 @@ export function formatFactsFallback(
 }
 
 function buildSynthesisUserContent(opts: SynthesisOptions): string {
-  const { userQuery, facts, hint, topicHint, recentOpeners } = opts
-  const lineCount = countFactLines(facts)
-
-  const userParts: string[] = [
-    `Pytanie usera: ${userQuery}`,
-    `Kontekst: ${topicHint}`,
-    'Fakty (każda linia = jeden wynik):',
+  const { userQuery, facts, hint, topicHint } = opts
+  return [
+    `Pytanie: ${userQuery}`,
+    `Temat: ${topicHint}`,
+    'Fakty (jedna linia = jeden wynik):',
     facts,
-  ]
-  if (hint) {
-    userParts.push(`Wskazówka na koniec (opcjonalna): ${hint}`)
-  }
-  if (lineCount >= LLM_SYNTHESIS_MIN_LINES && lineCount <= LLM_SYNTHESIS_MAX_LINES) {
-    userParts.push(
-      `Masz ${lineCount} wyniki — ułóż je w 2–4 zdaniach prozą (bez bullet listy). ` +
-        'Echo temat pytania; możesz **pogrubiać** nazwy lokali/wydarzeń. Zachowaj linki markdown z faktów.',
-    )
-  }
-  if (recentOpeners && recentOpeners.length > 0) {
-    const quoted = recentOpeners
-      .slice(0, 3)
-      .map((o) => `"${o}"`)
-      .join(', ')
-    userParts.push(
-      `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
-    )
-  }
-  userParts.push(SYNTHESIS_USER_INSTRUCTION)
-  return userParts.join('\n')
+    ...(hint ? [`Dodatkowa informacja: ${hint}`] : []),
+    SYNTHESIS_USER_INSTRUCTION,
+  ].join('\n')
 }
 
 export type SynthesisOptions = {
@@ -220,16 +154,8 @@ export type SynthesisOptions = {
   hint: string | null
   topicHint: string
   provider: GroqProvider
-  /**
-   * Anti-repetition: lista 1-3 pierwszych słów ostatnich odpowiedzi
-   * Versusia w tej rozmowie. Jeśli przekazana, dorzucamy do prompta
-   * negatywną wskazówkę („NIE zaczynaj od ..."). Llama 8B respektuje takie
-   * constrainty i wybiera inny opener — eliminuje monotonny rytm typu
-   * „Spoko, sprawdziłem..." × 5 turę pod rząd.
-   *
-   * Format: surowe pierwsze słowa (`['Spoko, sprawdziłem', 'No więc']`).
-   * Empty / undefined → bez constraintu.
-   */
+  signal?: AbortSignal
+  /** Accepted for existing callers; the prompt no longer rotates forced openers. */
   recentOpeners?: readonly string[]
 }
 
@@ -280,12 +206,10 @@ export async function synthesizeAnswer(
       // widoczne zdanie albo zwracało pusty `content`. 1024 zostawia
       // miejsce na krótki chain-of-thought i pełną odpowiedź po polsku.
       maxTokens: 1024,
-      // Wyższa temperatura → mniej powtarzalne formy, więcej naturalnych
-      // wariacji ("Pizzy taniej?" vs "Pod pizzę masz parę miejsc" vs „Tanio
-      // na pizzę: ..."). 0.75 to sweet spot dla Llama 8B w PL — niżej brzmi
-      // robotycznie, wyżej zaczyna kombinować ze słownictwem.
-      temperature: 0.75,
+      // Keep factual synthesis restrained; preserve the reasoning/output budget.
+      temperature: 0.4,
       toolChoice: 'none',
+      signal: opts.signal,
     }),
   )
 
@@ -327,8 +251,9 @@ export async function* streamAnswer(
   yield* provider.streamCompletion(messages, [], {
     model: GROQ_SMALLTALK_MODEL,
     maxTokens: 1024,
-    temperature: 0.75,
+    temperature: 0.4,
     toolChoice: 'none',
+    signal: opts.signal,
   })
 }
 
@@ -445,9 +370,13 @@ function buildDiscountsFacts(result: unknown): ToolFactsResult {
       const address = pickStringOrNull(item, 'address')
       const category = pickStringOrNull(item, 'category')
       const websiteUrl = pickStringOrNull(item, 'website_url')
-      const catLabel = category ? DISCOUNT_CATEGORY_PL[category] ?? category : null
+      const catLabel = category
+        ? (DISCOUNT_CATEGORY_PL[category] ?? category)
+        : null
       const where = address ? address.replace(', Kraków', '') : null
-      const businessLabel = websiteUrl ? `[${business}](${websiteUrl})` : business
+      const businessLabel = websiteUrl
+        ? `[${business}](${websiteUrl})`
+        : business
       const parts: string[] = [businessLabel]
       if (where) parts.push(`— ${where}`)
       if (catLabel) parts.push(`[${catLabel}]`)
@@ -488,7 +417,9 @@ function buildTrendingDiscountsFacts(result: unknown): ToolFactsResult {
       const recentUses = pickNumber(item, 'recent_uses') ?? 0
       const websiteUrl = pickStringOrNull(item, 'website_url')
       const usesPart = recentUses > 0 ? ` (${recentUses}× w tym tygodniu)` : ''
-      const businessLabel = websiteUrl ? `[${business}](${websiteUrl})` : business
+      const businessLabel = websiteUrl
+        ? `[${business}](${websiteUrl})`
+        : business
       return `${businessLabel} — ${headline}${usesPart}`
     })
     .join('\n')
@@ -577,14 +508,16 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
       const dept = pickStringOrNull(item, 'department')
       const createdAt = pickStringOrNull(item, 'created_at')
 
-      const when = createdAt ? ` (dodano do UJverse ${formatRelativeDate(createdAt)})` : ''
+      const when = createdAt
+        ? ` (dodano do UJverse ${formatRelativeDate(createdAt)})`
+        : ''
       const deptTag = dept ? ` [${dept}]` : ''
       const tail = body ? ` — ${clip(body, 160)}` : ''
-      const titleLabel = sourceUrl ? `[${title}](${sourceUrl})` : `[${title}](/komunikaty)`
+      const titleLabel = sourceUrl
+        ? `[${title}](${sourceUrl})`
+        : `[${title}](/komunikaty)`
       const sourceTail =
-        sourceUrl && !tail.includes(sourceUrl)
-          ? ` [źródło](${sourceUrl})`
-          : ''
+        sourceUrl && !tail.includes(sourceUrl) ? ` [źródło](${sourceUrl})` : ''
       return `${titleLabel} ${statusPl}${when}${deptTag}${tail}${sourceTail}`
     })
     .join('\n')
@@ -593,7 +526,8 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
-    topicHint: 'Publiczne komunikaty wydziałów UJ. Daty oznaczają dodanie do UJverse. Kieruj do źródła lub publicznej listy /komunikaty.',
+    topicHint:
+      'Publiczne komunikaty wydziałów UJ. Daty oznaczają dodanie do UJverse. Kieruj do źródła lub publicznej listy /komunikaty.',
   }
 }
 
@@ -610,7 +544,7 @@ function buildAnnouncementDetailsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Nic mi się nie pasuje do tego zapytania w bazie ogłoszeń.',
+      text: 'Nie ma komunikatów pasujących do tego pytania.',
     }
   }
   // Top 3 - synthesizer ma material zeby zlozyc zwiezla odpowiedz na konkret.
@@ -676,9 +610,11 @@ function buildPostsFacts(result: unknown): ToolFactsResult {
 
   const facts = items
     .map((item) => {
-      const author = (typeof item === 'object' && item !== null
-        ? (item as Record<string, unknown>).author
-        : null) as Record<string, unknown> | null
+      const author = (
+        typeof item === 'object' && item !== null
+          ? (item as Record<string, unknown>).author
+          : null
+      ) as Record<string, unknown> | null
       const username =
         (author && typeof author.username === 'string' && author.username) ||
         'anon'
@@ -698,8 +634,7 @@ function buildPostsFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint: remaining > 0 ? `jeszcze parę wpisów na feedzie` : null,
-    topicHint:
-      'Feed społeczności UJverse — krótkie cytaty wpisów, ton luźny.',
+    topicHint: 'Feed społeczności UJverse — krótkie cytaty wpisów, ton luźny.',
   }
 }
 
@@ -743,9 +678,7 @@ function buildCalendarFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint:
-      remaining > 0
-        ? `jeszcze ${remaining} dalej, zerknij na Kalendarz`
-        : null,
+      remaining > 0 ? `jeszcze ${remaining} dalej, zerknij na Kalendarz` : null,
     topicHint: 'Kalendarz UJverse (nieobecności, odwołania, deadliny, eventy).',
   }
 }
@@ -793,7 +726,8 @@ function buildMyClassesFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
-    topicHint: 'Plan zajęć usera (z USOSweb, z naszymi powiadomieniami o odwołaniach).',
+    topicHint:
+      'Plan zajęć usera (z USOSweb, z naszymi powiadomieniami o odwołaniach).',
   }
 }
 
@@ -822,20 +756,27 @@ function buildWeeklyBriefingFacts(result: unknown): ToolFactsResult {
 // get_upcoming_usos_registrations
 // -----------------------------------------------------------------------------
 
+/** Escape catalog text and allow only web links in tool facts. */
+function factLink(label: string, url: string | null): string {
+  const title = label.replace(/([\\`*_[\]<>])/g, '\\$1')
+  if (!url || !/^https?:\/\//i.test(url)) return title
+  return `[${title}](${url.replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\s/g, '%20')})`
+}
+
 function buildUpcomingUsosFacts(result: unknown): ToolFactsResult {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Nic w najbliższych tygodniach — najbliższe rejestracje USOS jeszcze nie są ogłoszone.',
+      text: 'W aktualnie pobranych danych nie ma nadchodzących rejestracji. Sprawdź też terminy w USOSweb.',
     }
   }
   const items = rawItems.slice(0, 5)
   const facts = items
     .map((item) => {
-      const name = pickString(item, 'name') || 'rejestracja'
-      const startsAt = pickStringOrNull(item, 'starts_at')
-      const endsAt = pickStringOrNull(item, 'ends_at')
+      const name = pickString(item, 'title') || 'rejestracja'
+      const startsAt = pickStringOrNull(item, 'opens_at')
+      const endsAt = pickStringOrNull(item, 'closes_at')
       const ctx = eventDateContext(startsAt)
       const start = startsAt
         ? ctx
@@ -843,13 +784,16 @@ function buildUpcomingUsosFacts(result: unknown): ToolFactsResult {
           : formatDateShort(startsAt)
         : 'bez daty'
       const end = endsAt ? ` do ${formatDateShort(endsAt)}` : ''
-      return `${name} — start ${start}${end}`
+      const url = pickStringOrNull(item, 'registration_url')
+      const title = factLink(name, url)
+      const program = pickStringOrNull(item, 'study_program')
+      return `${title}${program ? ` (${program})` : ''} — od ${start}${end}`
     })
     .join('\n')
   return {
     kind: 'synthesize',
     facts,
-    hint: 'więcej szczegółów w USOSweb',
+    hint: 'Terminy i zasady rejestracji potwierdź w USOSweb.',
     topicHint: 'Najbliższe rejestracje USOS (na zajęcia, egzaminy itd.).',
   }
 }
@@ -863,7 +807,7 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'W oficjalnym kalendarzu UJ na razie cisza.',
+      text: 'W pobranym kalendarzu nie ma nadchodzących wydarzeń. Pełny kalendarz znajdziesz na stronie UJ.',
     }
   }
   const items = rawItems.slice(0, 5)
@@ -871,7 +815,7 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
   const facts = items
     .map((item) => {
       const title = pickString(item, 'title') || 'wydarzenie'
-      const startsAt = pickStringOrNull(item, 'starts_at')
+      const startsAt = pickStringOrNull(item, 'date')
       const location = pickStringOrNull(item, 'location')
       const ctx = eventDateContext(startsAt)
       const datePart = startsAt
@@ -880,7 +824,7 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
           : formatDateShort(startsAt)
         : 'bez daty'
       const where = location ? ` w ${location}` : ''
-      return `${title} — ${datePart}${where}`
+      return `${factLink(title, pickStringOrNull(item, 'event_url'))} — ${datePart}${where}`
     })
     .join('\n')
   return {
@@ -948,7 +892,7 @@ function buildLecturerAnnouncementsFacts(result: unknown): ToolFactsResult {
     return {
       kind: 'direct',
       text: lecturer
-        ? `${lecturer} — w bazie znaleziony, ale brak ogłoszeń. Spokojny wykładowca.`
+        ? `${lecturer} — nie ma komunikatów w pobranych danych.`
         : 'Brak ogłoszeń.',
     }
   }
@@ -995,7 +939,7 @@ function buildMyFollowedLecturersFacts(result: unknown): ToolFactsResult {
       const latest = pickStringOrNull(it, 'latest_announcement_at')
       const status = pickStringOrNull(it, 'latest_status')
       const statusPl = status
-        ? ANNOUNCEMENT_STATUS_PL[status] ?? status
+        ? (ANNOUNCEMENT_STATUS_PL[status] ?? status)
         : null
       const recentPart =
         recent > 0

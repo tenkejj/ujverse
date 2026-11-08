@@ -29,7 +29,10 @@ const RETIRED_GROQ_MODELS = new Set([
   'llama-3.3-70b-versatile',
 ])
 
-function resolveGroqModel(envValue: string | undefined, fallback: string): string {
+function resolveGroqModel(
+  envValue: string | undefined,
+  fallback: string,
+): string {
   const trimmed = envValue?.trim()
   if (!trimmed || RETIRED_GROQ_MODELS.has(trimmed)) return fallback
   return trimmed
@@ -110,6 +113,11 @@ function sleep(ms: number): Promise<void> {
 }
 
 function isRetryableGroqError(err: unknown): boolean {
+  if (
+    err instanceof Error &&
+    (err.name === 'AbortError' || err.name === 'TimeoutError')
+  )
+    return false
   if (err instanceof GroqProviderError) {
     const status = err.status
     if (status === null) return true

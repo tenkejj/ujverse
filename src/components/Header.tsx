@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useId, useRef, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
@@ -52,6 +52,45 @@ type Props = {
   faculty: FacultyPreference
   /** Otwiera mobilny drawer z pełną listą sekcji (`<lg`). */
   onOpenMobileDrawer: () => void
+}
+
+/** Use the artwork bounds, rather than flexing the PNG's large transparent canvas. */
+function HeaderLogoArt() {
+  const maskId = `ujverse-header-${useId().replace(/:/g, '')}`
+
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width={40}
+      height={44}
+      viewBox="99 391 526 591"
+      preserveAspectRatio="xMidYMid meet"
+      className={`${HEADER_MOBILE.logoClass} text-logo-navy dark:text-brand-gold-bright`}
+    >
+      <defs>
+        <mask
+          id={maskId}
+          maskUnits="userSpaceOnUse"
+          x={99}
+          y={391}
+          width={526}
+          height={591}
+          style={{ maskType: 'alpha' }}
+        >
+          <image href="/logo.png" x={0} y={0} width={728} height={1372} />
+        </mask>
+      </defs>
+      <rect
+        x={99}
+        y={391}
+        width={526}
+        height={591}
+        fill="currentColor"
+        mask={`url(#${maskId})`}
+      />
+    </svg>
+  )
 }
 
 export default function Header({
@@ -154,20 +193,7 @@ export default function Header({
       className="pointer-events-auto inline-flex h-11 w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center overflow-visible rounded-xl border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40"
       aria-label="UJverse — strona startowa"
     >
-      <div
-        aria-hidden
-        style={{
-          maskImage: 'url(/logo.png)',
-          WebkitMaskImage: 'url(/logo.png)',
-          maskSize: 'contain',
-          WebkitMaskSize: 'contain',
-          maskRepeat: 'no-repeat',
-          WebkitMaskRepeat: 'no-repeat',
-          maskPosition: 'center',
-          WebkitMaskPosition: 'center',
-        }}
-        className={`mx-auto ${HEADER_MOBILE.logoClass} bg-logo-navy transition-colors duration-150 ease-in-out dark:bg-brand-gold-bright`}
-      />
+      <HeaderLogoArt />
     </motion.button>
   )
 

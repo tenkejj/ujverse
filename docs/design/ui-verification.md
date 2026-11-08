@@ -1,3 +1,5 @@
+Latest refinement and its separate verification limits: [Versuś refresh](versus-refresh.md). The checks below describe the earlier dashboard iteration.
+
 # UI verification — dashboard revisions
 
 ## Current: campus workspace, 8 November 2026

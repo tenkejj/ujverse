@@ -1,47 +1,8 @@
 /**
- * Edge orchestrator dla AI chat z Function Calling (Tools).
- *
- * - **Runtime**: Vercel Edge (Web standards `Request` / `Response`).
- * - **Provider**: `GroqProvider` (OpenAI-compat). Pełny zestaw narzędzi
- *   decyduje `DEFAULT_GROQ_MODEL` (`openai/gpt-oss-120b`). Small-talk
- *   spoza gotowych odpowiedzi i zawężona lista narzędzi (router) idą
- *   przez `GROQ_SMALLTALK_MODEL` (`openai/gpt-oss-20b`). Fakty z narzędzi
- *   1 wynik → compact; 2–3 → synteza LLM; 4+ → lista (`formatListedFacts`).
- *   `MockProvider` z `llmService.ts` jest świadomie pominięty w tool-aware
- *   ścieżce — bez `GROQ_API_KEY` brakuje sensu uruchamiać Function Calling.
- * - **Persona**: `UJVERSE_SYSTEM_PROMPT` z `_lib/llmService.ts` injectowany
- *   przez `withPersona(...)` jako pierwszy `system` message. Klient nie może
- *   podmienić tej instrukcji (`withPersona` filtruje zewnętrzne `system`-y).
- * - **Two-step tool flow**: wysyłamy historię + tools + tool_choice='auto'.
- *   Dwa wyniki możliwe:
- *   (a) model zwraca `content` (bez `tool_calls`) → finalna odpowiedź,
- *   (b) model zwraca `tool_calls[]` → wykonujemy każdy egzekutor, ekstrahujemy
- *       FAKTY (`buildToolFacts`), a finalną odpowiedź układa **mały model**
- *       (`GROQ_SMALLTALK_MODEL` w `synthesizeAnswer`, `_lib/synthesizer.ts`) —
- *       naturalna proza zamiast templatowych „X rzeczy: ..." odpowiedzi.
- *       Cost: +1 round-trip do Groqa.
- *       Świadomy tradeoff dla UX nad surowym kosztem.
- * - **Response cache (Vercel KV)**: 300s rozproszony cache zindeksowany po
- *   treści ostatniej wiadomości użytkownika + flagdze `useTools`. HIT →
- *   strumień SSE bez wywołania Groqa **i** bez wywołania Supabase. Persistent
- *   między cold-startami i instancjami Edge — w przeciwieństwie do
- *   poprzedniego in-memory `TTLMemoryCache`, który zerował się przy każdym
- *   wybudzeniu funkcji. Per-tool cache w `registry.ts` dalej żyje równolegle
- *   (też migrowany na KV) i obsługuje dedup `tool_call` ze świeższymi TTL.
- * - **Markdown Guard**: ostatnia bramka przed wysłaniem do usera — wykrywa
- *   wyciek surowego JSON-a / schematu tool-call w finalContent i zamienia go
- *   na bezpieczny komunikat błędu. Patrz `_lib/utils/markdownGuard.ts`.
- * - **Streaming UX**: po pętli syntezujemy POJEDYNCZY SSE chunk w formacie
- *   OpenAI delta, tak żeby klient (`BielikAdapter.parseSSEStream`) nie wymagał
- *   żadnych zmian. Pełny streaming finalnej odpowiedzi to opcja na później.
- * - **Auth**: `Authorization: Bearer <jwt>` jest opcjonalne. `extractRequestUser`
- *   weryfikuje JWT i zwraca `userId` (lub `null` dla anonimu). `userId`
- *   trafia do `ToolContext` — narzędzia mogą go logować i scope'ować.
- * - **Bezpieczeństwo**: tools wykonują zapytania przez `supabaseAdmin`
- *   (RLS bypass), ale udostępniają tylko tabele z publicznym `select`
- *   (announcements, events, posts). Klucz API i service role NIGDY nie
- *   trafiają do odpowiedzi.
- * - **CORS**: preflight `OPTIONS` + `Access-Control-*` na każdej odpowiedzi.
+ * Public/authenticated Groq chat orchestrator.
+ * The server owns the persona, tool scope, history budget, rate limits and cache.
+ * Ready replies are sent immediately; fact synthesis forwards real model deltas.
+ * Never expose provider credentials, private tools or raw reasoning to the client.
  */
 
 import {
@@ -93,17 +54,17 @@ import { generateSmartChips, isSmartChipsEnabled } from './_lib/smartChips.js'
 import { tryCapabilitiesReply } from './_lib/capabilitiesReply.js'
 import { trySmallTalkReply } from './_lib/smallTalkReply.js'
 import { updateUserMemory } from './_lib/userMemory.js'
-import { getToolEntry, toGroqToolsArray, type ToolContext } from './_lib/tools/index.js'
+import {
+  getToolEntry,
+  toGroqToolsArray,
+  type ToolContext,
+} from './_lib/tools/index.js'
 import { logTokenUsage, TokenUsageAccumulator } from './_lib/tokenUsage.js'
 import {
   MARKDOWN_GUARD_ERROR,
   validateMarkdown,
 } from './_lib/utils/markdownGuard.js'
-import type {
-  ChatRole,
-  GroqMessage,
-  GroqToolCall,
-} from './_lib/types.js'
+import type { ChatRole, GroqMessage, GroqToolCall } from './_lib/types.js'
 
 export const config = {
   runtime: 'edge',
@@ -137,7 +98,7 @@ const RATE_LIMIT_USER_MESSAGE =
  * w UI pustą chmurkę i toast „Asystent nie odpowiada".
  */
 const PROVIDER_FAILURE_MESSAGE =
-  'Coś po drodze się wykrzaczyło — spróbuj jeszcze raz za chwilę.'
+  'Nie udało się przygotować odpowiedzi. Spróbuj ponownie za chwilę.'
 /**
  * Decyzja narzędzi idzie mniejszym modelem, gdy router zawęził listę do
  * co najwyżej tylu schematów. Pełny zestaw zostaje na `DEFAULT_GROQ_MODEL`.
@@ -296,7 +257,10 @@ class StreamingThinkGate {
  */
 function groqErrorFrom(err: unknown): GroqProviderError | null {
   if (err instanceof GroqProviderError) return err
-  if (err instanceof LlmServiceError && err.cause instanceof GroqProviderError) {
+  if (
+    err instanceof LlmServiceError &&
+    err.cause instanceof GroqProviderError
+  ) {
     return err.cause
   }
   return null
@@ -311,7 +275,9 @@ function isProxyMessage(value: unknown): value is ProxyMessage {
   return typeof r === 'string' && typeof c === 'string'
 }
 
-function isMessagesPayload(value: unknown): value is { messages: ProxyMessage[] } {
+function isMessagesPayload(
+  value: unknown,
+): value is { messages: ProxyMessage[] } {
   if (!value || typeof value !== 'object') return false
   const m = (value as { messages?: unknown }).messages
   if (!Array.isArray(m)) return false
@@ -336,15 +302,7 @@ function jsonError(status: number, message: string): Response {
   })
 }
 
-/**
- * Tworzy strumień SSE z pojedynczym deltą + `[DONE]`. Najszybsza ścieżka,
- * używana dla cache hits gdy klient i tak ma typewriter do animowania.
- *
- * Dla fast-path / rate-limit komunikatów wolimy `synthesizeChunkedSSEStream`
- * (poniżej) — fragmentuje treść, dzięki czemu serwer nie wysyła „bęc
- * całość", a klient widzi delty napływające w tempie zbliżonym do
- * prawdziwego streamingu z LLM.
- */
+/** Ready content is sent immediately; only model-generated text streams in deltas. */
 function synthesizeSSEStream(content: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   const chunks = [
@@ -359,53 +317,25 @@ function synthesizeSSEStream(content: string): ReadableStream<Uint8Array> {
   })
 }
 
-/**
- * Fragmentowany strumień SSE — wycina `content` na chunki ~80 znaków
- * (mniej więcej linia tekstu) i wysyła je co `CHUNK_DELAY_MS` (~50ms).
- * Klient widzi sekwencję delt, zupełnie jak ze streaming-aware Groqa.
- *
- * Po co: typewriter na kliencie i tak animuje znak-po-znaku, ale gdy
- * serwer wypluwa całość w jednym chunku, animacja STARTUJE od pełnego
- * `content.length` z `isStreaming=true→false` zaraz potem. Fragmentacja
- * pozwala typewriter'owi „dogonić" w tempie naturalnym, bez uderzeń
- * `catch-up`-u (długie odpowiedzi się nie zacinają na adaptive backlog).
- *
- * Wartości dobrane tak:
- *  - 80 znaków/chunk = ~1 zdanie / linia
- *  - 50 ms/chunk = ~1600 cps strumienia (klient nie nadąży tylko gdy
- *    typewriter ma <60 cps; wtedy klient buforuje, ale UX jest „streaming")
- */
+/** Keep metadata and content in the existing SSE protocol, without artificial delays. */
 function synthesizeChunkedSSEStream(
   content: string,
   meta?: { tool: string; label: string; chips?: readonly string[] } | null,
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
-  const CHUNK_SIZE = 80
-  const CHUNK_DELAY_MS = 50
-
   return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        // Opcjonalny meta-event PRZED contentem — klient pokaże etykietę
-        // typu „Sprawdzam zniżki…" zamiast generycznych „Myślę…".
-        if (meta) {
-          const metaPayload = JSON.stringify({ meta })
-          controller.enqueue(encoder.encode(`data: ${metaPayload}\n\n`))
-        }
-        for (let i = 0; i < content.length; i += CHUNK_SIZE) {
-          const slice = content.slice(i, i + CHUNK_SIZE)
-          const payload = JSON.stringify({
-            choices: [{ delta: { content: slice } }],
-          })
-          controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
-          if (i + CHUNK_SIZE < content.length) {
-            await new Promise((r) => setTimeout(r, CHUNK_DELAY_MS))
-          }
-        }
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-      } finally {
-        controller.close()
-      }
+    start(controller) {
+      if (meta)
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ meta })}\n\n`),
+        )
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`,
+        ),
+      )
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
     },
   })
 }
@@ -449,7 +379,7 @@ export function pruneHistory(messages: GroqMessage[]): GroqMessage[] {
   return trimmed.map((m, i) => {
     if (m.role !== 'assistant') return m
     if (i === lastAssistantIdx) return m
-    if (m.content.length <= STALE_ASSISTANT_KEEP) return m
+    if (m.content === null || m.content.length <= STALE_ASSISTANT_KEEP) return m
     return {
       ...m,
       content: `${m.content.slice(0, STALE_ASSISTANT_KEEP - 1)}…`,
@@ -620,7 +550,14 @@ async function runToolCall(
   const name = toolCall.function.name
   const args = parseToolArgs(toolCall)
 
-  console.log('[AI Tool Call] name:', name, 'args:', args, 'userId:', ctx.userId)
+  console.log(
+    '[AI Tool Call] name:',
+    name,
+    'args:',
+    args,
+    'userId:',
+    ctx.userId,
+  )
 
   const entry = getToolEntry(name)
   if (!entry) {
@@ -705,6 +642,7 @@ const SYNTHESIS_STREAM_BUDGET_MS = 14_000
 
 function streamSynthesizedAnswer(opts: {
   provider: GroqProvider
+  requestSignal: AbortSignal
   toolName: string | null
   result: unknown
   userQuery: string
@@ -725,9 +663,7 @@ function streamSynthesizedAnswer(opts: {
   } = opts
   const facts = toolName ? buildToolFacts(toolName, result) : null
 
-  // 'direct' kind (empty/error/passthrough) — bez Llamy 8B. Idziemy starym
-  // chunked path: serwer już zna pełen text, więc fragmentacja po 80ch
-  // daje OK feedback bez kosztu LLM round-tripa.
+  // Empty/error/ready tool replies do not need model synthesis or display delays.
   if (facts && facts.kind === 'direct') {
     void onComplete(facts.text)
     return streamFinalContentChunked(facts.text, meta)
@@ -752,13 +688,29 @@ function streamSynthesizedAnswer(opts: {
   // 'synthesize' kind albo brak factsa (passthrough surowego string) —
   // live stream z Llamy 8B.
   const encoder = new TextEncoder()
+  const generation = new AbortController()
+  let cancelled = false
+  const onAbort = () => {
+    cancelled = true
+    generation.abort()
+  }
+  opts.requestSignal.addEventListener('abort', onAbort, { once: true })
+  if (opts.requestSignal.aborted) onAbort()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      // Bufor pełnej odpowiedzi — do markdown guard + KV cache po `done`.
+      // Buffer only a completed response for Markdown validation and scoped cache.
       let buffered = ''
       let emittedAnything = false
+      const deadline = setTimeout(
+        () =>
+          generation.abort(
+            new DOMException('Synthesis deadline', 'TimeoutError'),
+          ),
+        SYNTHESIS_STREAM_BUDGET_MS,
+      )
 
       try {
+        if (cancelled) return
         if (meta) {
           const metaPayload = JSON.stringify({ meta })
           controller.enqueue(encoder.encode(`data: ${metaPayload}\n\n`))
@@ -784,10 +736,9 @@ function streamSynthesizedAnswer(opts: {
           // callback (zmienna `facts` captured ze scope'u może być teoretycznie
           // reassignowana przed iteracją). Powtórzony check zwęża typ lokalnie.
           void incrCounter('synthesis:llm')
-          const streamStart = Date.now()
           const thinkGate = new StreamingThinkGate()
           const emitVisible = (content: string) => {
-            if (!content) return
+            if (!content || cancelled) return
             buffered += content
             emittedAnything = true
             const payload = JSON.stringify({
@@ -795,6 +746,7 @@ function streamSynthesizedAnswer(opts: {
             })
             controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
           }
+          if (cancelled) return
           for await (const chunk of streamAnswer({
             userQuery,
             facts: facts.facts,
@@ -802,13 +754,9 @@ function streamSynthesizedAnswer(opts: {
             topicHint: facts.topicHint,
             provider,
             recentOpeners,
+            signal: generation.signal,
           })) {
-            if (Date.now() - streamStart > SYNTHESIS_STREAM_BUDGET_MS) {
-              console.warn(
-                '[streamSynthesizedAnswer] synthesis stream budget exceeded — using fallback',
-              )
-              break
-            }
+            if (cancelled) return
             if (chunk.type === 'delta') {
               // Nie wołamy `stripThinkingTags` per delta — kończy się `.trim()`
               // i skleja tokeny („ w", „ Galerii") w jedno słowo. Tag `<think>`
@@ -824,8 +772,7 @@ function streamSynthesizedAnswer(opts: {
               // Jeśli już cokolwiek wyemitowaliśmy, nie cofamy. Zamykamy
               // strumień grzecznie i polegamy na cache miss przy kolejnej
               // próbie. Bez emitted — fallback dorzucamy w catch.
-              if (!emittedAnything) throw new Error(chunk.message)
-              break
+              throw new Error(chunk.message)
             }
           }
           emitVisible(thinkGate.flush())
@@ -854,6 +801,9 @@ function streamSynthesizedAnswer(opts: {
             emittedAnything = true
           }
         }
+
+        if (cancelled || generation.signal.aborted) return
+        clearTimeout(deadline)
 
         // Defensywny strip `<think>` na CAŁYM buforze (per-delta jest
         // niemożliwe bez utraty wiodących spacji — patrz komentarz wyżej).
@@ -910,6 +860,7 @@ function streamSynthesizedAnswer(opts: {
               provider,
               timeoutMs: 800,
             })
+            if (cancelled) return
             if (smartResult && smartResult.chips.length > 0 && meta) {
               if (smartResult.usage) usageAcc.add(smartResult.usage)
               const updatedMeta = {
@@ -930,8 +881,10 @@ function streamSynthesizedAnswer(opts: {
           }
         }
 
+        if (cancelled) return
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       } catch (err) {
+        if (cancelled) return
         console.error(
           '[streamSynthesizedAnswer] stream failed:',
           err instanceof Error ? err.message : err,
@@ -939,16 +892,31 @@ function streamSynthesizedAnswer(opts: {
         // Jeszcze nic nie poszło → wyślij fallback message jako delta.
         if (!emittedAnything) {
           const fallback =
-            'Coś po drodze się wykrzaczyło — spróbuj jeszcze raz za chwilę.'
+            'Nie udało się przygotować odpowiedzi. Spróbuj ponownie za chwilę.'
           const payload = JSON.stringify({
             choices: [{ delta: { content: fallback } }],
           })
           controller.enqueue(encoder.encode(`data: ${payload}\n\n`))
         }
+        if (emittedAnything) {
+          const content =
+            '\n\nNie udało się dokończyć odpowiedzi. Spróbuj ponownie.'
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`,
+            ),
+          )
+        }
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       } finally {
-        controller.close()
+        clearTimeout(deadline)
+        opts.requestSignal.removeEventListener('abort', onAbort)
+        if (!cancelled) controller.close()
       }
+    },
+    cancel() {
+      onAbort()
+      opts.requestSignal.removeEventListener('abort', onAbort)
     },
   })
 
@@ -967,13 +935,6 @@ function streamSynthesizedAnswer(opts: {
 // Helpery formattujące daty / picki z surowych tool results żyją teraz
 // w `_lib/toolFormatHelpers.ts` (dzielone z `_lib/synthesizer.ts`). Enumy
 // PL → `_lib/toolEnums.ts`. Tu zostaje tylko orchestracja chatu.
-
-
-
-
-
-
-
 
 /**
  * Tworzy naturalną odpowiedź z wyniku narzędzia. Etap pipelinu:
@@ -1049,7 +1010,6 @@ function factsToFallback(
     facts.topicHint,
   )
 }
-
 
 /**
  * Łączy wyniki >1 narzędzi w jedną odpowiedź. Format: każda sekcja oddzielona
@@ -1129,7 +1089,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
-    console.error('[api/chat] GROQ_API_KEY missing — tool-aware chat requires Groq')
+    console.error(
+      '[api/chat] GROQ_API_KEY missing — tool-aware chat requires Groq',
+    )
     return jsonError(500, 'GROQ_API_KEY not configured')
   }
 
@@ -1137,7 +1099,10 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     user = await extractRequestUser(req)
   } catch (err) {
-    console.warn('[api/chat] extractRequestUser threw:', err instanceof Error ? err.message : err)
+    console.warn(
+      '[api/chat] extractRequestUser threw:',
+      err instanceof Error ? err.message : err,
+    )
     user = { userId: null }
   }
 
@@ -1170,7 +1135,7 @@ export default async function handler(req: Request): Promise<Response> {
     rateLimit.tokensRemaining,
   )
 
-  const provider = new GroqProvider(apiKey, DEFAULT_GROQ_MODEL)
+  const provider = new GroqProvider(apiKey, DEFAULT_GROQ_MODEL, req.signal)
   const tools = toGroqToolsArray(user.userId)
 
   const ctx: ToolContext = {
@@ -1329,12 +1294,19 @@ export default async function handler(req: Request): Promise<Response> {
   console.log('[Response Cache] MISS key:', responseCacheKey)
   void incrCounter('response_cache:miss')
 
-  const capabilitiesReply = tryCapabilitiesReply(lastUserText, Boolean(user.userId))
+  const capabilitiesReply = tryCapabilitiesReply(
+    lastUserText,
+    Boolean(user.userId),
+  )
   if (capabilitiesReply) {
     console.log('[Capabilities] match — SKIPPING Groq entirely')
     void incrCounter('capabilities:hit')
     void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
-    void kvSetSafe(responseCacheKey, capabilitiesReply, RESPONSE_CACHE_TTL_SECONDS)
+    void kvSetSafe(
+      responseCacheKey,
+      capabilitiesReply,
+      RESPONSE_CACHE_TTL_SECONDS,
+    )
     return streamFinalContent(capabilitiesReply)
   }
 
@@ -1344,7 +1316,11 @@ export default async function handler(req: Request): Promise<Response> {
       console.log('[SmallTalk] canned reply — SKIPPING Groq entirely')
       void incrCounter('small_talk:canned')
       void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
-      void kvSetSafe(responseCacheKey, smallTalkReply, RESPONSE_CACHE_TTL_SECONDS)
+      void kvSetSafe(
+        responseCacheKey,
+        smallTalkReply,
+        RESPONSE_CACHE_TTL_SECONDS,
+      )
       return streamFinalContentChunked(smallTalkReply, null)
     }
   }
@@ -1376,6 +1352,7 @@ export default async function handler(req: Request): Promise<Response> {
         void pushLatency('chat:fast_path_ms', Date.now() - requestStartedAt)
         return streamSynthesizedAnswer({
           provider,
+          requestSignal: req.signal,
           toolName: fastMatch.toolName,
           result,
           userQuery: lastUserText,
@@ -1424,7 +1401,14 @@ export default async function handler(req: Request): Promise<Response> {
   const personaConversation = withPersona(pruned)
   const conversation: GroqMessage[] = [
     personaConversation[0]!,
-    { role: 'system', content: autoContext + (user.userId ? '' : '\nRozmówca nie jest zalogowany. Masz dostęp tylko do publicznych informacji uczelni. Do planu, powiadomień i społeczności potrzebne jest logowanie; nie wymyślaj tych danych.') },
+    {
+      role: 'system',
+      content:
+        autoContext +
+        (user.userId
+          ? ''
+          : '\nRozmówca nie jest zalogowany. Masz dostęp tylko do publicznych informacji uczelni. Do planu, powiadomień i społeczności potrzebne jest logowanie; nie wymyślaj tych danych.'),
+    },
     ...personaConversation.slice(1),
   ]
 
@@ -1531,10 +1515,14 @@ export default async function handler(req: Request): Promise<Response> {
       // czyści `open_until` (no-op gdy klucza i tak nie było). Tani write.
       void cbRecordSuccess()
     } catch (err) {
+      if (req.signal.aborted)
+        return new Response(null, { status: 499, headers: CORS_HEADERS })
       const groqErr = groqErrorFrom(err)
       const status = groqErr?.status ?? null
       if (status === 429) {
-        console.warn('[api/chat] Groq 429 after retry — graceful degrade for user')
+        console.warn(
+          '[api/chat] Groq 429 after retry — graceful degrade for user',
+        )
         rateLimited = true
         void cbRecordError({ status: 429, reason: 'rate_limit' })
       } else if (status !== null && status >= 500) {
@@ -1608,6 +1596,7 @@ export default async function handler(req: Request): Promise<Response> {
         // skończonym streamie (callback `onComplete`).
         return streamSynthesizedAnswer({
           provider,
+          requestSignal: req.signal,
           toolName,
           result,
           userQuery: lastUserText,
@@ -1664,11 +1653,7 @@ export default async function handler(req: Request): Promise<Response> {
               usageAcc,
               recentOpeners,
             )
-            return enrichWithEntityLinks(
-              call.function.name,
-              result,
-              section,
-            )
+            return enrichWithEntityLinks(call.function.name, result, section)
           }),
         )
         finalContent = joinToolSections(sections)
@@ -1689,10 +1674,13 @@ export default async function handler(req: Request): Promise<Response> {
       console.warn(
         '[api/chat] empty finalContent after single-shot path — using safe fallback',
       )
-      finalContent = 'Przepraszam, nie udało mi się dokończyć odpowiedzi. Spróbuj ponownie.'
+      finalContent =
+        'Przepraszam, nie udało mi się dokończyć odpowiedzi. Spróbuj ponownie.'
       suppressResponseCache = true
     }
   } catch (err) {
+    if (req.signal.aborted)
+      return new Response(null, { status: 499, headers: CORS_HEADERS })
     const groqErr = groqErrorFrom(err)
     console.error(
       '[api/chat] unhandled failure:',

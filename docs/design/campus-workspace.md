@@ -12,7 +12,7 @@ The previous note about unavailable MCP tools describes the earlier November 7 s
 
 The student workspace uses the original navy/gold/neutral themes, system font and UJverse logo. The heading is now **Co słychać na UJ?**. More icons and structural boundaries improve scanning, while colour marks meaningful actions, dates and selection. The sidebar is 224 px instead of 288 px and the main content can use 1120 px. The faculty strip shares that width; its reserved 80/88 px heights remain unchanged.
 
-Versuś has a small, distinct identity area beside its question workspace. The companion is an original smooth, hairless rounded scholar with clear round prescription glasses and a book. It retains the 96×96 pixel-art set, all seven activities, small portraits and PNG/WebP/GIF formats. Both system and app reduced-motion preferences still select PNG; animations play one short cycle. The main UJverse logo is unchanged.
+Versuś has a small, distinct identity area beside its question workspace. The companion is an original slender creature with tall ear fins, intelligent eyes and a book. It retains the 96×96 pixel-art set, all seven activities, small portraits and PNG/WebP/GIF formats. Both system and app reduced-motion preferences still select PNG; animations play one short cycle. The main UJverse logo is unchanged.
 
 The footer and information categories use one Lucide icon style, small tonal icon fields and quiet borders. Two news/deadline previews remain bounded; category selection, hidden sections, saved items and original source links are preserved.
 

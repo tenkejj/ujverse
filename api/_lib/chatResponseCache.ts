@@ -14,7 +14,7 @@ import {
 /** Organiczne odpowiedzi Groq / small-talk — krótki TTL. */
 export const RESPONSE_CACHE_TTL_SECONDS = 30
 
-/** Fast-path + prewarm — stabilne zapytania (chipy, slashy). */
+/** Fast-path + prewarm — stabilne zapytania (sugerowane pytania). */
 export const RESPONSE_CACHE_FAST_PATH_TTL_SECONDS = 300
 
 export function responseCacheTtlSeconds(
@@ -33,7 +33,7 @@ export function buildResponseCacheKey(
   conversation?: readonly { role: string; content?: string | null }[],
 ): string {
   const normalized = lastUserText.trim().toLowerCase().replace(/\s+/g, ' ')
-  return buildToolCacheKey('chat_response_v2', {
+  return buildToolCacheKey('chat_response_v3', {
     text: normalized,
     useTools,
     scope: chatResponseScope(userId),

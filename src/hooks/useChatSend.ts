@@ -19,12 +19,7 @@ import { useChatStore } from '../store/useChatStore'
 import { toast } from '../lib/appToast'
 import type { ChatMessage } from '../types/ai'
 
-/**
- * System-prompt nie jest tu już budowany ręcznie — buduje go
- * `ContextInjectedBielikAdapter` (RAG-Lite) zaraz przed wysłaniem żądania,
- * wstrzykując aktualny kontekst (ogłoszenia + ostatnie posty) z `DataService`.
- * Dzięki temu hook nie wie, że pod spodem siedzi dekorator — kontrakt LLMProvider.
- */
+// Persona and tool context are owned by the server.
 
 export type UseChatSendResult = {
   sendMessage: (rawContent: string) => Promise<void>

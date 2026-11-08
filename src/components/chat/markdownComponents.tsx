@@ -11,34 +11,22 @@
 import type { Components } from 'react-markdown'
 
 export const MARKDOWN_COMPONENTS: Components = {
-  p: ({ children }) => (
-    <p className="chat-line-fade-in my-1 wrap-break-word">{children}</p>
-  ),
+  p: ({ children }) => <p className="my-2.5 wrap-break-word">{children}</p>,
   ul: ({ children }) => (
-    <ul className="chat-line-fade-in my-1 list-disc space-y-0.5 pl-4">
-      {children}
-    </ul>
+    <ul className="my-2.5 list-disc space-y-1.5 pl-5">{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="chat-line-fade-in my-1 list-decimal space-y-0.5 pl-4">
-      {children}
-    </ol>
+    <ol className="my-2.5 list-decimal space-y-1.5 pl-5">{children}</ol>
   ),
-  li: ({ children }) => <li className="leading-snug">{children}</li>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   h1: ({ children }) => (
-    <h3 className="chat-line-fade-in mt-1.5 mb-1 text-sm font-semibold">
-      {children}
-    </h3>
+    <h3 className="mt-1.5 mb-1 text-sm font-semibold">{children}</h3>
   ),
   h2: ({ children }) => (
-    <h4 className="chat-line-fade-in mt-1.5 mb-1 text-xs font-semibold">
-      {children}
-    </h4>
+    <h4 className="mt-1.5 mb-1 text-sm font-semibold">{children}</h4>
   ),
   h3: ({ children }) => (
-    <h5 className="chat-line-fade-in mt-1.5 mb-1 text-xs font-semibold">
-      {children}
-    </h5>
+    <h5 className="mt-1.5 mb-1 text-sm font-semibold">{children}</h5>
   ),
   a: ({ children, href }) => (
     <a

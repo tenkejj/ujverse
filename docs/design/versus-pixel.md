@@ -1,6 +1,6 @@
 # Versuś pixel-art activities
 
-The current mascot is a smooth, hairless 96×96 pixel-art scholar with clear round prescription glasses and a small book. It retains navy/cream/gold colours, a shared 24-colour palette, binary alpha and nearest-neighbour rendering. Full-body and portrait activities use the same public API. This November 8 revision replaces the earlier furry creature; the main UJverse logo and themes remain unchanged.
+The current mascot is an original slender 96×96 pixel-art creature with tall ear fins, an angular muzzle, intelligent eyes and a small book. It retains navy/cream/gold colours, a shared 24-colour palette, binary alpha and nearest-neighbour rendering. Full-body and portrait activities use the same public API. This revision replaces the rounded scholar and its round glasses; the main UJverse logo and themes remain unchanged.
 
 | Activity  | Interface trigger                                             |
 | --------- | ------------------------------------------------------------- |
@@ -17,3 +17,5 @@ Every state has full-body and face variants in WebP, GIF and PNG. Short animatio
 The document and sidebar use restrained theme-aware scrollbars. Root gutters keep their stable layout and follow the app background; the sidebar keeps a transparent track. Wheel, touch and keyboard scrolling remain available.
 
 No automated test suites are run for this visual iteration, as requested by the user. Compilation, code review and visual previews are used; preview conversation states are illustrative browser memory, not evidence of real model inference.
+
+Conversation and header refinement: [Versuś refresh](versus-refresh.md).

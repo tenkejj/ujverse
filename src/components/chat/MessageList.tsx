@@ -21,12 +21,12 @@ import {
   forwardRef,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   Check,
   Copy,
@@ -61,7 +61,7 @@ type Props = {
   /**
    * Konkretna etykieta akcji asystenta z meta-eventu SSE (np. „Sprawdzam
    * zniżki…"). Gdy ustawione, `TypingIndicator` pokaże ją zamiast losowych
-   * thinking-phrases. `null` lub `undefined` = fallback do rotujących fraz.
+   * thinking-phrases. `null` lub `undefined` = spokojny, stały status.
    */
   actionLabel?: string | null
   /**
@@ -96,6 +96,8 @@ type Props = {
    * odpowiedź bota").
    */
   scrollable?: boolean
+  /** Optional outer scroller; retains the same user-controlled bottom anchoring. */
+  scrollContainerRef?: RefObject<HTMLDivElement | null>
 }
 
 type VariantTokens = {
@@ -197,13 +199,13 @@ function BotBadge({
 const BUBBLE_MOTION_USER = {
   initial: { opacity: 0, x: 12, y: 4 },
   animate: { opacity: 1, x: 0, y: 0 },
-  transition: { duration: 0.28, ease: 'easeOut' as const },
+  transition: { duration: 0.15, ease: 'easeOut' as const },
 }
 
 const BUBBLE_MOTION_ASSISTANT = {
   initial: { opacity: 0, x: -8, y: 4 },
   animate: { opacity: 1, x: 0, y: 0 },
-  transition: { duration: 0.32, ease: 'easeOut' as const },
+  transition: { duration: 0.15, ease: 'easeOut' as const },
 }
 
 function MessageBubble({
@@ -478,7 +480,7 @@ function FollowUpChips({
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       className="mt-2.5 flex flex-wrap gap-1.5"
       role="group"
       aria-label="Sugerowane pytania"
@@ -488,7 +490,7 @@ function FollowUpChips({
           key={chip}
           type="button"
           onClick={() => onClick(chip)}
-          className="rounded-full border border-zinc-200 bg-white/80 px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:border-logo-navy/40 hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+          className="min-h-11 rounded-full border border-zinc-200 bg-white/80 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:border-logo-navy/40 hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
         >
           {chip}
         </button>
@@ -497,48 +499,7 @@ function FollowUpChips({
   )
 }
 
-/**
- * Typing indicator — ikonka Bota animowana w framer-motion + trzy mini-kropki
- * pulsujące sekwencyjnie. Bez tekstu — sama animacja niesie informację, że
- * asystent myśli (language-agnostic, kompaktowe).
- *
- * Animacja Bota: breathing scale (1 → 1.12 → 1) + delikatny wobble rotation
- * (-4° → 4° → -4°) w 1.6s loop. Subtelny "thinking" gest — głowa robota
- * lekko się kiwa, jakby rozważała odpowiedź.
- *
- * Trzy kropki: opacity 0.25 → 1 → 0.25 z delay 0/200/400ms — płynniej niż
- * stary `animate-pulse` (framer-motion easing zamiast CSS keyframe ramp).
- *
- * `prefers-reduced-motion` — framer-motion automatycznie respektuje
- * `MotionConfig`-ową heurystykę; dodatkowo dla pewności dajemy
- * `aria-label="Asystent myśli"` żeby screen reader miał kontekst nawet
- * gdy nie widzi animacji.
- */
-const TYPING_DOT_DELAYS = [0, 0.2, 0.4] as const
-
-/**
- * Frazy „myślenia" — rotują co ~1.4s podczas streamingu, dając wrażenie
- * że asystent faktycznie wykonuje konkretną pracę zamiast „stoi i myśli".
- * Świadomie LUŹNE i konwersacyjne (zgodnie z tonem UJverse), nie
- * korporacyjne („Performing query...").
- *
- * Krótkie (bez kropek na końcu — kropki dorzucamy jako oddzielną animację
- * kropek). Każda fraza ma 2-4 słowa, max ~24 znaki, żeby zmieściła się
- * w obu wariantach (compact 14px, roomy 16px).
- */
-const THINKING_PHRASES: readonly string[] = [
-  'Versuś myśli',
-  'Sekundka',
-  'Już lecę',
-  'Patrzę co tam',
-  'Daj chwilę',
-  'Łapię to',
-  'Zaraz coś rzucę',
-  'Już prawie',
-  'Robi się',
-  'Moment',
-] as const
-
+/** A truthful status until the first text delta arrives. */
 function TypingIndicator({
   variant,
   actionLabel,
@@ -549,74 +510,16 @@ function TypingIndicator({
   replayKey?: string
 }) {
   const tokens = VARIANT_TOKENS[variant]
-
-  // Rotacja fraz co ~1.6s. Pierwszą frazę losujemy raz na mount, żeby
-  // dwa kolejne loading-state'y nie zaczynały od „Już patrzę" (wrażenie
-  // świeżości).
-  const initialIdx = useMemo(
-    () => Math.floor(Math.random() * THINKING_PHRASES.length),
-    [],
-  )
-  const [phraseIdx, setPhraseIdx] = useState(initialIdx)
-  useEffect(() => {
-    // Jeśli serwer dał konkretną etykietę („Sprawdzam zniżki…"), nie
-    // rotujemy — pokazujemy ją 1:1, bo niesie informację, a nie tylko
-    // wypełnia ciszę.
-    if (actionLabel) return
-    const id = window.setInterval(() => {
-      setPhraseIdx((prev) => (prev + 1) % THINKING_PHRASES.length)
-    }, 1600)
-    return () => window.clearInterval(id)
-  }, [actionLabel])
-  // `actionLabel` ma priorytet — gdy serwer wie którego narzędzia używa,
-  // user dostaje konkret, a nie generyczne „Już patrzę".
-  const phrase = actionLabel ?? THINKING_PHRASES[phraseIdx]
-
-  const phraseSizeCls = variant === 'compact' ? 'text-xs' : 'text-sm'
-
   return (
-    <div
-      className={`flex items-center ${tokens.rowGap}`}
-      aria-live="polite"
-      aria-label="Asystent myśli"
-    >
+    <div className={`flex items-center ${tokens.rowGap}`} role="status">
       <BotBadge
         size={tokens.botIcon}
         sizeClass={tokens.avatar}
         activity="thinking"
         replayKey={replayKey}
       />
-      <span
-        aria-hidden
-        className={`flex items-center gap-1.5 ${phraseSizeCls} text-fg-secondary`}
-      >
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={phrase}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="italic"
-          >
-            {phrase}
-          </motion.span>
-        </AnimatePresence>
-        <span className="flex items-center gap-1 text-logo-navy dark:text-brand-gold-bright">
-          {TYPING_DOT_DELAYS.map((delay) => (
-            <motion.span
-              key={delay}
-              className="h-1 w-1 rounded-full bg-current"
-              animate={{ opacity: [0.25, 1, 0.25], scale: [0.85, 1.05, 0.85] }}
-              transition={{
-                duration: 1.2,
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay,
-              }}
-            />
-          ))}
-        </span>
+      <span className="text-sm text-fg-secondary">
+        {actionLabel || 'Przygotowuję odpowiedź…'}
       </span>
     </div>
   )
@@ -672,6 +575,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     myProfile,
     displayName,
     scrollable = true,
+    scrollContainerRef,
     actionLabel = null,
     onEditLastUser,
     onRetryLastAssistant,
@@ -699,8 +603,8 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
   )
 
   useEffect(() => {
-    if (!scrollable) return
-    const el = containerRef.current
+    if (!scrollable && !scrollContainerRef) return
+    const el = scrollContainerRef?.current ?? containerRef.current
     if (!el) return
     const onScroll = () => {
       const distance = el.scrollHeight - el.clientHeight - el.scrollTop
@@ -708,11 +612,11 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [scrollable])
+  }, [scrollable, scrollContainerRef])
 
   useEffect(() => {
-    if (!scrollable) return
-    const container = containerRef.current
+    if (!scrollable && !scrollContainerRef) return
+    const container = scrollContainerRef?.current ?? containerRef.current
     const content = contentRef.current
     if (!container || !content) return
     if (typeof ResizeObserver === 'undefined') return
@@ -723,7 +627,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     })
     observer.observe(content)
     return () => observer.disconnect()
-  }, [scrollable])
+  }, [scrollable, scrollContainerRef])
 
   const visible = messages.filter((m) => m.role !== 'system')
   const containerCls = scrollable

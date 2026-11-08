@@ -81,7 +81,7 @@ export default function ChatAssistantFab({
     const el = scrollRef.current
     if (!el || !isOpen) return
     el.scrollTop = el.scrollHeight
-  }, [messages, isTyping, isOpen])
+  }, [isOpen])
 
   const handleClose = useCallback(() => {
     setOpen(false)
@@ -148,6 +148,7 @@ export default function ChatAssistantFab({
 
   const onKeyDownTextarea = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         void handleSend(draft)
@@ -315,7 +316,7 @@ export default function ChatAssistantFab({
             placeholder="Zapytaj Versusia…"
             rows={1}
             disabled={isTyping}
-            className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
+            className={`max-h-32 min-h-11 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-base text-zinc-900 outline-none transition-colors focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
           />
           {isTyping ? (
             <button
@@ -323,7 +324,7 @@ export default function ChatAssistantFab({
               onClick={cancel}
               aria-label="Zatrzymaj odpowiedź"
               title="Zatrzymaj odpowiedź"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
             >
               <Square size={14} strokeWidth={2.5} fill="currentColor" />
             </button>
@@ -332,7 +333,7 @@ export default function ChatAssistantFab({
               type="submit"
               aria-label="Wyślij wiadomość"
               disabled={draft.trim().length === 0}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-ink text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-ink text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
             >
               <Send size={17} strokeWidth={2} />
             </button>
