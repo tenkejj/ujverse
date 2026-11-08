@@ -79,7 +79,8 @@ export function shouldFormatAsBulletList(facts: string): boolean {
 }
 
 function conversationalListLead(topicHint: string): string {
-  if (/rejestracje USOS/i.test(topicHint)) return 'Najbliższe rejestracje USOS:'
+  if (/rejestracje USOS/i.test(topicHint))
+    return 'Trwające i nadchodzące rejestracje USOS:'
   if (/oficjalne wydarzenia/i.test(topicHint))
     return 'Nadchodzące wydarzenia UJ:'
   if (/plan zajęć/i.test(topicHint)) return 'W Twoim planie:'
@@ -763,6 +764,21 @@ function factLink(label: string, url: string | null): string {
   return `[${title}](${url.replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\s/g, '%20')})`
 }
 
+const registrationDateFormat = new Intl.DateTimeFormat('pl-PL', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Warsaw',
+})
+function formatRegistrationDate(iso: string | null): string {
+  const date = iso ? new Date(iso) : null
+  return date && Number.isFinite(date.getTime())
+    ? registrationDateFormat.format(date)
+    : 'brak potwierdzonej daty'
+}
+
 function buildUpcomingUsosFacts(result: unknown): ToolFactsResult {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
@@ -777,24 +793,25 @@ function buildUpcomingUsosFacts(result: unknown): ToolFactsResult {
       const name = pickString(item, 'title') || 'rejestracja'
       const startsAt = pickStringOrNull(item, 'opens_at')
       const endsAt = pickStringOrNull(item, 'closes_at')
-      const ctx = eventDateContext(startsAt)
-      const start = startsAt
-        ? ctx
-          ? `${ctx} (${formatDateShort(startsAt)})`
-          : formatDateShort(startsAt)
-        : 'bez daty'
-      const end = endsAt ? ` do ${formatDateShort(endsAt)}` : ''
+      const opened = startsAt ? Date.parse(startsAt) <= Date.now() : false
+      const start = formatRegistrationDate(startsAt)
+      const end = endsAt ? formatRegistrationDate(endsAt) : null
+      const timing = opened
+        ? end
+          ? `zapisy trwają do ${end}`
+          : `zapisy od ${start}; brak podanego terminu końca`
+        : `zapisy od ${start}${end ? ` do ${end}` : ''}`
       const url = pickStringOrNull(item, 'registration_url')
       const title = factLink(name, url)
       const program = pickStringOrNull(item, 'study_program')
-      return `${title}${program ? ` (${program})` : ''} — od ${start}${end}`
+      return `${title}${program ? ` (${program})` : ''} — ${timing}`
     })
     .join('\n')
   return {
     kind: 'synthesize',
     facts,
-    hint: 'Terminy i zasady rejestracji potwierdź w USOSweb.',
-    topicHint: 'Najbliższe rejestracje USOS (na zajęcia, egzaminy itd.).',
+    hint: 'Godziny w czasie polskim. Terminy i zasady potwierdź w USOSweb.',
+    topicHint: 'Trwające i nadchodzące rejestracje USOS.',
   }
 }
 

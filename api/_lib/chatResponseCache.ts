@@ -33,7 +33,7 @@ export function buildResponseCacheKey(
   conversation?: readonly { role: string; content?: string | null }[],
 ): string {
   const normalized = lastUserText.trim().toLowerCase().replace(/\s+/g, ' ')
-  return buildToolCacheKey('chat_response_v3', {
+  return buildToolCacheKey('chat_response_v4', {
     text: normalized,
     useTools,
     scope: chatResponseScope(userId),
