@@ -17,7 +17,7 @@ import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
 import { buildWelcomeOpener } from '../../lib/welcomeOpener'
 import { useChatStore } from '../../store/useChatStore'
 import { useTheme } from '../../ThemeContext'
-import VersuHeroCluster from './VersuHeroCluster'
+import VersuMark from './VersuMark'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 const SPRING = { type: 'spring' as const, stiffness: 380, damping: 28 }
@@ -86,10 +86,9 @@ export default function ChatAssistant({
         className="flex min-h-0 flex-col items-center justify-center gap-2 px-4 py-3 text-center"
       >
         <motion.div variants={reducedMotion ? undefined : motionItem}>
-          <VersuHeroCluster
-            containerClass="size-16"
-            iconWrapClass="size-11"
-            iconSize={40}
+          <VersuMark
+            size={72}
+            activity={hasConversation ? 'idle' : 'greeting'}
           />
         </motion.div>
 
@@ -97,7 +96,7 @@ export default function ChatAssistant({
           variants={reducedMotion ? undefined : motionItem}
           className="w-full text-balance text-[15px] font-semibold leading-snug tracking-tight text-brand-ink dark:text-white"
         >
-          {welcome.headline}
+          Co sprawdzić na UJ?
         </motion.h2>
 
         <motion.p

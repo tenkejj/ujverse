@@ -18,8 +18,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
+      // Preview HTML is local-only (`npm run dev`); keep production on index.html.
       input: './index.html',
     },
   },
   plugins: [react(), tailwindcss()],
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+  },
 })
