@@ -1,20 +1,13 @@
 /**
  * Empty state `/chat` — propozycja A:
- * jedna kolumna (mark → headline → composer z portretem → chipy → drobny dostęp).
+ * pixelowy Versuś z activity states → headline → composer → chipy.
  */
 
-import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, RefObject } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CalendarDays, ChevronDown, ClipboardList, Megaphone, Send } from 'lucide-react'
-import {
-  readVersusPortrait,
-  writeVersusPortrait,
-  VERSUS_PORTRAITS,
-  type VersusPortraitId,
-} from '../../lib/versusPortrait'
-import VersuMark from './VersuMark'
-import VersusPortraitFace from './VersusPortraitFace'
+import { CalendarDays, ClipboardList, Megaphone, Send } from 'lucide-react'
+import VersuMark, { type VersuActivity } from './VersuMark'
 
 const EMPTY_CHIPS = [
   {
@@ -49,38 +42,13 @@ export default function VersusEmptyStart({
   isTyping,
   inputRef,
 }: Props) {
-  const [portrait, setPortrait] = useState<VersusPortraitId>('owl')
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const pickerRef = useRef<HTMLDivElement | null>(null)
-  const listboxId = useId()
+  const [focused, setFocused] = useState(false)
 
-  useEffect(() => {
-    setPortrait(readVersusPortrait())
-  }, [])
-
-  useEffect(() => {
-    if (!pickerOpen) return
-    const onPointer = (event: MouseEvent) => {
-      if (!pickerRef.current?.contains(event.target as Node)) {
-        setPickerOpen(false)
-      }
-    }
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setPickerOpen(false)
-    }
-    document.addEventListener('mousedown', onPointer)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onPointer)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [pickerOpen])
-
-  const choosePortrait = (id: VersusPortraitId) => {
-    setPortrait(id)
-    writeVersusPortrait(id)
-    setPickerOpen(false)
-  }
+  const activity: VersuActivity = isTyping
+    ? 'thinking'
+    : focused || draft.trim().length > 0
+      ? 'listening'
+      : 'greeting'
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -104,7 +72,7 @@ export default function VersusEmptyStart({
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           className="mb-5"
         >
-          <VersuMark size={56} />
+          <VersuMark size={112} activity={activity} />
         </motion.div>
 
         <motion.h1
@@ -131,6 +99,8 @@ export default function VersusEmptyStart({
               id="versus-empty-question"
               ref={inputRef}
               value={draft}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               onChange={(e) => {
                 onDraftChange(e.target.value)
                 e.currentTarget.style.height = 'auto'
@@ -144,54 +114,12 @@ export default function VersusEmptyStart({
             />
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-2.5 pb-2.5">
-              <div ref={pickerRef} className="pointer-events-auto relative">
-                <button
-                  type="button"
-                  aria-haspopup="listbox"
-                  aria-expanded={pickerOpen}
-                  aria-controls={listboxId}
-                  aria-label="Wybierz wygląd Versusia w rozmowie"
-                  onClick={() => setPickerOpen((open) => !open)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200/90 bg-zinc-50/95 px-2 py-1.5 text-fg-secondary transition-colors hover:border-logo-navy/30 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/90 dark:hover:border-brand-gold-bright/35 dark:hover:text-brand-gold-bright"
-                >
-                  <VersusPortraitFace portrait={portrait} size={26} />
-                  <ChevronDown size={14} strokeWidth={2.25} aria-hidden />
-                </button>
-
-                {pickerOpen ? (
-                  <ul
-                    id={listboxId}
-                    role="listbox"
-                    aria-label="Wygląd Versusia"
-                    className="absolute bottom-full left-0 z-20 mb-2 min-w-[11.5rem] overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 text-left shadow-lg dark:border-white/10 dark:bg-zinc-950"
-                  >
-                    {VERSUS_PORTRAITS.map((option) => {
-                      const selected = option.id === portrait
-                      return (
-                        <li key={option.id} role="option" aria-selected={selected}>
-                          <button
-                            type="button"
-                            onClick={() => choosePortrait(option.id)}
-                            className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
-                              selected
-                                ? 'bg-logo-navy/8 text-logo-navy dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright'
-                                : 'text-fg-primary hover:bg-zinc-50 dark:hover:bg-zinc-900'
-                            }`}
-                          >
-                            <VersusPortraitFace portrait={option.id} size={28} />
-                            <span className="flex min-w-0 flex-col leading-tight">
-                              <span className="font-medium">{option.label}</span>
-                              <span className="text-[11px] text-fg-secondary">
-                                {option.hint}
-                              </span>
-                            </span>
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                ) : null}
-              </div>
+              <span
+                className="pointer-events-none inline-flex items-center rounded-xl border border-zinc-200/90 bg-zinc-50/95 px-2 py-1.5 dark:border-white/10 dark:bg-zinc-900/90"
+                title="Versuś"
+              >
+                <VersuMark size={28} activity={activity} />
+              </span>
 
               <button
                 type="submit"
@@ -221,7 +149,12 @@ export default function VersusEmptyStart({
               onClick={() => onSend(prompt)}
               className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-sm text-fg-secondary transition-colors hover:border-logo-navy/30 hover:text-logo-navy disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-950/50 dark:hover:border-brand-gold-bright/30 dark:hover:text-brand-gold-bright"
             >
-              <Icon size={14} strokeWidth={1.9} aria-hidden className="text-brand-gold-bright/90" />
+              <Icon
+                size={14}
+                strokeWidth={1.9}
+                aria-hidden
+                className="text-brand-gold-bright/90"
+              />
               {label}
             </button>
           ))}

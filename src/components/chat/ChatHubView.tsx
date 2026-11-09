@@ -223,7 +223,11 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
       <header className="shrink-0 border-b border-zinc-200/60 bg-zinc-50/90 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/90">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-2.5 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <VersuMark size={34} className="shrink-0" />
+            <VersuMark
+              size={34}
+              activity={isTyping ? 'thinking' : hasMessages ? 'idle' : 'greeting'}
+              className="shrink-0"
+            />
             <div className="min-w-0 flex flex-col leading-tight">
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-semibold tracking-tight text-fg-primary">
