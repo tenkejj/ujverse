@@ -158,6 +158,11 @@ export default function InfoDashboard({
   return (
     <div className="campus-home student-dashboard">
       <div className="dashboard-opening">
+
+
+        <VersusEntry />
+      </div>
+
         <header className="dashboard-heading">
           <div>
             {firstName ? (
@@ -172,9 +177,6 @@ export default function InfoDashboard({
           </div>
           <CustomizeButton hidden={prefs.hiddenSections} />
         </header>
-
-        <VersusEntry />
-      </div>
 
       {priority ? (
         <section
