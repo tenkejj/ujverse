@@ -67,6 +67,8 @@ export type InfoEvent = {
   category: string | null
   sourceName: string
   url: string | null
+  /** Source photo from the official event page, when the scraper found one. */
+  imageUrl?: string | null
   /** `official_events.scraped_at`: kiedy wydarzenie ostatnio widniało na uj.edu.pl. */
   seenAt: string | null
 }

@@ -1,14 +1,10 @@
-import { ArrowUpRight, Lock, MapPin } from 'lucide-react'
+import { ArrowUpRight, Lock } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 import { Link } from 'react-router-dom'
 import { canShowCountdown, registrationTiming } from '../../lib/info/relevance'
 import {
-  dayKeyToDate,
   formatDateTime,
-  formatDayLabel,
-  formatDayOfMonth,
   formatDurationShort,
-  formatMonthShort,
   formatRelativePast,
   parseIsoDate,
 } from '../../lib/info/time'
@@ -23,6 +19,7 @@ import {
   ExternalSourceLink,
   SaveToggle,
 } from './infoUi'
+import { EventPreviewTile } from './InfoItems'
 
 type Icon = ComponentType<
   SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }
@@ -156,27 +153,7 @@ export function RegistrationHubCard({
 }
 
 export function EventHubCard({ item, now }: { item: InfoEvent; now: Date }) {
-  const day = dayKeyToDate(item.dayKey)
-  return (
-    <article className="event-entry">
-      <time className="campus-date-block" dateTime={item.dayKey}>
-        <span>{formatDayOfMonth(day)}</span>
-        <span>{formatMonthShort(day)}</span>
-      </time>
-      <div className="info-entry-content">
-        <p className="info-entry-meta">{formatDayLabel(item.dayKey, now)}</p>
-        <h3>{item.title}</h3>
-        {item.location ? (
-          <p className="info-entry-meta">
-            <MapPin size={13} aria-hidden />
-            {item.location}
-          </p>
-        ) : null}
-        <ExternalSourceLink href={item.url}>Szczegóły</ExternalSourceLink>
-      </div>
-      <SaveToggle item={item} />
-    </article>
-  )
+  return <EventPreviewTile item={item} now={now} compact />
 }
 
 export function ResourceHubCard({

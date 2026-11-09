@@ -106,7 +106,7 @@ type VariantTokens = {
   userMax: string
   /** Średnica okrągłego awatara/badge w klasach Tailwind (`h-N w-N`). */
   avatar: string
-  /** Rozmiar ikony bota wewnątrz badge (px). */
+  /** Rozmiar portretu Versusia (px), bez dodatkowej ramki. */
   botIcon: number
   /** Rozmiar fontu inicjału w awatarze użytkownika. */
   avatarText: string
@@ -120,7 +120,7 @@ const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
     userPad: 'px-3.5 py-2',
     userMax: 'max-w-[78%]',
     avatar: 'h-7 w-7',
-    botIcon: 24,
+    botIcon: 44,
     avatarText: 'text-[11px]',
     rowGap: 'gap-2',
   },
@@ -129,60 +129,34 @@ const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
     userPad: 'px-4 py-2.5',
     userMax: 'max-w-[72%]',
     avatar: 'h-8 w-8',
-    botIcon: 28,
+    botIcon: 48,
     avatarText: 'text-xs',
     rowGap: 'gap-2.5',
   },
 }
 
-/**
- * Filozofia wizualna (Claude / ChatGPT 2026 + UJverse brand):
- *
- * - **Assistant**: brak dymka. Tekst odpowiedzi rozlewa się jak akapit
- *   dokumentu (lepiej dla markdown-u: nagłówków, list, code-blocków).
- *   Rolę identyfikuje okrągły brand-glass badge z `AnimatedBot` po lewej.
- *
- * - **User**: solidny brand-kafelek po prawej, jedna systemowa para:
- *   - Light: `bg-logo-navy text-white` (slate-800 na kremowym tle = mocny kontrast).
- *   - Dark:  `bg-brand-gold-bright text-zinc-950` — ten sam systemowy gold
- *     co Send button w `ChatHubView` (`dark:bg-brand-gold-bright dark:text-zinc-950`).
- *     Daje wizualne sprzężenie „naciskasz → kafelek się pojawia w tym samym kolorze",
- *     a `bg-logo-navy` w dark schodziło na `#0f172a` i zlewało się z czarnym `--bg-app`.
- *   Avatar z `UserAvatar` po prawej.
- *
- * - **Avatar badges**: ta sama średnica (compact 28px, roomy 32px), żeby
- *   wiersze user/assistant trzymały spójną siatkę pionową.
- *
- * Wszystkie kolory pochodzą z systemowych tokenów (`logo-navy`,
- * `brand-gold-bright`, `fg-primary`, `bg-card`) zdefiniowanych w `index.css`
- * przez `@theme` — auto-adaptacja light/dark bez `dark:` overridów.
+/** Assistant replies read as open text beside a prominent unframed portrait.
+ * User messages retain the existing navy/gold theme and account avatar.
  */
 const USER_BUBBLE_CLS =
-  'rounded-2xl bg-logo-navy text-white shadow-md ' +
-  'dark:bg-brand-gold-bright dark:text-zinc-950 dark:shadow-lg'
+  'rounded-2xl bg-logo-navy text-white ' +
+  'dark:bg-brand-gold-bright dark:text-zinc-950'
 
 const ASSISTANT_TEXT_CLS = 'text-fg-primary'
 
-const BOT_BADGE_CLS =
-  'inline-flex items-center justify-center rounded-full shrink-0 ' +
-  'border border-logo-navy/30 bg-bg-card text-logo-navy ' +
-  'dark:border-brand-gold-bright/30 dark:bg-bg-card dark:text-brand-gold-bright'
-
+/** The portrait is the identity, without a second circular container. */
 function BotBadge({
   size,
-  sizeClass,
   activity = 'idle',
   replayKey,
 }: {
   size: number
-  sizeClass: string
   activity?: VersuActivity
   replayKey?: string
 }) {
-  const iconSize = size
   return (
-    <span className={`${BOT_BADGE_CLS} ${sizeClass}`} aria-hidden>
-      <AnimatedBot size={iconSize} activity={activity} replayKey={replayKey} />
+    <span className="versus-message-avatar" aria-hidden>
+      <AnimatedBot size={size} activity={activity} replayKey={replayKey} />
     </span>
   )
 }
@@ -277,13 +251,12 @@ function MessageBubble({
 
   return (
     <motion.div
-      className={`group/bubble flex items-start ${tokens.rowGap}`}
+      className={`versus-message-row group/bubble flex items-start ${tokens.rowGap}`}
       {...BUBBLE_MOTION_ASSISTANT}
     >
-      <span className="mt-0.5">
+      <span className="versus-message-identity">
         <BotBadge
           size={tokens.botIcon}
-          sizeClass={tokens.avatar}
           activity={isStreaming ? 'answering' : 'idle'}
           replayKey={message.id}
         />
@@ -514,7 +487,6 @@ function TypingIndicator({
     <div className={`flex items-center ${tokens.rowGap}`} role="status">
       <BotBadge
         size={tokens.botIcon}
-        sizeClass={tokens.avatar}
         activity="thinking"
         replayKey={replayKey}
       />
@@ -538,17 +510,13 @@ function DefaultEmptyState({ variant }: { variant: MessageListVariant }) {
   const isCompact = variant === 'compact'
   const title = isCompact ? 'text-base' : 'text-xl'
   const subtitle = isCompact ? 'text-xs' : 'text-sm'
-  const iconSize = isCompact ? 36 : 48
-  const badgeSize = isCompact ? 'h-16 w-16' : 'h-24 w-24'
+  const iconSize = isCompact ? 112 : 144
   const minH = isCompact ? 'min-h-56' : 'min-h-80'
   return (
     <div
       className={`flex ${minH} h-full flex-col items-center justify-center gap-4 px-4 py-6 text-center`}
     >
-      <span
-        aria-hidden
-        className={`inline-flex ${badgeSize} items-center justify-center rounded-full border border-logo-navy/25 bg-logo-navy/4 text-logo-navy shadow-sm dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/6 dark:text-brand-gold-bright`}
-      >
+      <span aria-hidden className="versus-message-empty-mark">
         <AnimatedBot size={iconSize} strokeWidth={1.6} intensity="wave" />
       </span>
       <div className="flex flex-col gap-1.5">
@@ -558,7 +526,7 @@ function DefaultEmptyState({ variant }: { variant: MessageListVariant }) {
         <p
           className={`${subtitle} mx-auto max-w-xs leading-snug text-fg-secondary`}
         >
-          Wiem co dziś dzieje się na UJ — pytaj śmiało.
+          Zapytaj o komunikaty, terminy lub wydarzenia.
         </p>
       </div>
     </div>
@@ -639,8 +607,8 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
         ref={contentRef}
         className={
           scrollable
-            ? 'flex min-h-full flex-col space-y-3'
-            : 'flex flex-col space-y-3'
+            ? 'versus-message-flow flex min-h-full flex-col gap-5'
+            : 'versus-message-flow flex flex-col gap-5'
         }
       >
         {visible.length === 0 ? (

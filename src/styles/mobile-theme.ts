@@ -53,7 +53,7 @@ export const HEADER_MOBILE = {
    * Oś = środek okna, niezależnie od szerokości nawigacji.
    */
   logoAnchorClass:
-    'pointer-events-none fixed top-0 left-1/2 z-[60] hidden h-16 w-max -translate-x-1/2 items-center justify-center lg:flex',
+    'app-logo-axis pointer-events-none fixed top-0 left-0 z-[60] hidden h-16 w-screen items-center justify-center lg:flex',
   logoClass: 'block h-11 w-10 flex-none lg:h-12 lg:w-11',
   actionButtonClass:
     'inline-flex h-11 min-h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-brand-ink dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 dark:focus-visible:ring-brand-gold-bright/40',
@@ -896,13 +896,7 @@ export const BOTTOM_NAV_MOBILE = {
   },
 } as const
 
-/**
- * Tokeny dla lewego sidebara desktopowego (>=lg) — wariant **Unified
- * Glass**. Cały sidebar to jeden glass-kontener; sekcje wewnątrz są
- * oznaczone tylko nagłówkiem + delikatną hairline'ową kreską między
- * grupami (zamiast osobnych kart-wysp). Czytelne, jednolite, wciąż
- * minimalne. Aktywny stan: spokojny `border + tinted bg`, bez glow.
- */
+/** Desktop navigation uses compact rows and separated information/account groups. */
 export const SIDE_NAV_DESKTOP = {
   /**
    * Wisi po lewej kolumny treści (`right-full`), więc na szerokim oknie
@@ -914,20 +908,20 @@ export const SIDE_NAV_DESKTOP = {
     'hidden lg:block lg:w-56 lg:min-w-56 lg:max-w-56 lg:absolute lg:right-full lg:inset-y-0 lg:z-30 bg-zinc-50 dark:bg-bg-app',
   stickyClass: 'sticky top-0 flex h-dvh flex-col p-2',
   innerClass:
-    'flex flex-1 min-h-0 flex-col rounded-2xl border border-white/45 bg-white/45 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.65)] dark:border-white/8 dark:bg-zinc-900/30 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] overflow-hidden',
+    'flex flex-1 min-h-0 flex-col overflow-hidden',
   scrollAreaClass:
-    'flex-1 min-h-0 overflow-y-auto px-1.5 py-3 flex flex-col gap-1.5',
-  groupClass: 'flex flex-col gap-1.5',
+    'flex-1 min-h-0 overflow-y-auto px-1.5 pt-3 pb-4 flex flex-col gap-6',
+  groupClass: 'flex flex-col gap-0.5',
   groupDividerClass:
     'mt-1 mx-3 border-t border-zinc-200/70 dark:border-white/8',
   sectionLabelClass:
-    'px-3 pt-3 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-ink dark:text-brand-gold-bright',
+    'px-3 pb-2 text-xs font-medium text-fg-secondary',
   itemBaseClass:
-    'group relative flex w-full items-center gap-2.5 rounded-full border px-3 py-3 text-[15px] font-medium transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/25 dark:focus-visible:ring-brand-gold/40',
+    'group relative flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/25 dark:focus-visible:ring-brand-gold/40',
   itemInactiveClass:
-    'border-transparent text-brand-ink hover:border-white/60 hover:bg-white/65 hover:text-brand-ink dark:text-zinc-200 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-brand-gold-bright',
+    'border-transparent text-brand-ink/80 hover:bg-brand-ink/5 hover:text-brand-ink dark:text-zinc-300 dark:hover:bg-white/5 dark:hover:text-brand-gold-bright',
   itemActiveClass:
-    'border-brand-ink/35 bg-brand-ink/[0.08] text-brand-ink font-semibold dark:border-brand-gold-bright/45 dark:bg-brand-gold-bright/12 dark:text-brand-gold-bright',
+    'border-transparent bg-brand-ink/[0.08] text-brand-ink font-semibold dark:border-transparent dark:bg-brand-gold-bright/10 dark:text-brand-gold-bright',
   iconBaseClass: 'shrink-0 transition-colors',
   iconInactiveClass:
     'text-brand-ink/75 group-hover:text-brand-ink dark:text-zinc-400 dark:group-hover:text-brand-gold-bright',
@@ -936,7 +930,7 @@ export const SIDE_NAV_DESKTOP = {
     'h-2 w-2 rounded-full bg-brand-ink dark:bg-brand-gold-bright',
   badgePillClass:
     'ml-auto inline-flex min-w-[22px] h-5 items-center justify-center rounded-full bg-brand-ink px-1.5 text-[10px] font-bold text-white dark:bg-brand-gold-bright dark:text-zinc-900',
-  iconSize: 22,
+  iconSize: 19,
   iconStrokeWidth: 1.9,
   iconActiveStrokeWidth: 2.2,
 } as const

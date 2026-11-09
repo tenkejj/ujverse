@@ -1,5 +1,6 @@
 import {
   ArrowUpRight,
+  ChevronDown,
   GraduationCap,
   LogIn,
   LogOut,
@@ -33,8 +34,8 @@ type Props = {
 }
 
 /**
- * Lewy sticky sidebar (>=lg) — wariant **Unified Glass**. Najpierw sekcja
- * „Informacje" (dla wszystkich), potem „Twoje konto" (tylko zalogowani).
+ * Desktop navigation separates the assistant, information and personal areas.
+ * Utility controls remain reachable outside the content scroller.
  * Sidebar jest bezstanowy — nawigacja idzie przez `onNavigate` z `App.tsx`.
  */
 export default function SideNav({
@@ -69,23 +70,20 @@ export default function SideNav({
                 className="sidebar-versus-link"
                 aria-current={active === 'chat' ? 'page' : undefined}
               >
-                <VersuMark size={34} />
+                <VersuMark size={56} />
                 <span>
                   <strong>
                     Versuś <span>AI</span>
                   </strong>
-                  <small>Twój asystent na UJ</small>
+                  <small>
+                    {isAuthenticated ? 'Zapytaj o UJ' : 'Bez logowania'}
+                  </small>
                 </span>
                 <ArrowUpRight size={15} aria-hidden />
               </Link>
-              <p>
-                {isAuthenticated
-                  ? 'Zapytaj o sprawy uczelni'
-                  : 'Dostępny także bez logowania'}
-              </p>
             </div>
-            <div className={SIDE_NAV_DESKTOP.groupClass}>
-              <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Informacje</p>
+            <div className={`sidebar-nav-group ${SIDE_NAV_DESKTOP.groupClass}`}>
+              <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Na uczelni</p>
               {PRIMARY_NAV.filter((entry) => entry.target !== 'chat').map(
                 (entry) => (
                   <NavItem
@@ -104,12 +102,10 @@ export default function SideNav({
             {isAuthenticated ? (
               <>
                 <div
-                  className={SIDE_NAV_DESKTOP.groupDividerClass}
-                  aria-hidden
-                />
-                <div className={SIDE_NAV_DESKTOP.groupClass}>
+                  className={`sidebar-nav-group ${SIDE_NAV_DESKTOP.groupClass}`}
+                >
                   <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>
-                    Twoje konto
+                    Dla Ciebie
                   </p>
                   {ACCOUNT_NAV.map((entry) => (
                     <NavItem
@@ -134,28 +130,33 @@ export default function SideNav({
               </>
             ) : null}
 
-            <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
-            <div className={SIDE_NAV_DESKTOP.groupClass}>
-              <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Serwisy UJ</p>
-              {NIEZBEDNIK_LINKS.map(({ label, href, Icon }) => (
-                <NavItem
-                  key={label}
-                  icon={Icon}
-                  label={label}
-                  active={false}
-                  href={href}
-                  variant="sidebar"
-                />
-              ))}
-            </div>
-            <div className="flex-1 min-h-2" />
+            <details className="sidebar-services">
+              <summary>
+                <GraduationCap size={18} aria-hidden />
+                <span>Serwisy UJ</span>
+                <ChevronDown size={15} aria-hidden />
+              </summary>
+              <div className={SIDE_NAV_DESKTOP.groupClass}>
+                {NIEZBEDNIK_LINKS.map(({ label, href, Icon }) => (
+                  <NavItem
+                    key={label}
+                    icon={Icon}
+                    label={label}
+                    active={false}
+                    href={href}
+                    variant="sidebar"
+                  />
+                ))}
+              </div>
+            </details>
+          </nav>
 
-            <div className={SIDE_NAV_DESKTOP.groupDividerClass} aria-hidden />
-
+          <nav className="sidebar-controls" aria-label="Ustawienia i konto">
             <div className={SIDE_NAV_DESKTOP.groupClass}>
               <NavItem
                 icon={Settings}
                 label="Ustawienia"
+                title="Ustawienia"
                 active={active === 'settings'}
                 onClick={() => onNavigate('settings')}
                 variant="sidebar"
@@ -166,12 +167,14 @@ export default function SideNav({
                 active={false}
                 onClick={cycleTheme}
                 variant="sidebar"
-                title="Zmień motyw: Jasny → Kolory UJ → Ciemny"
+                title={`Motyw: ${THEME_META[colorMode].label}. Zmień motyw`}
+                ariaLabel={`Motyw: ${THEME_META[colorMode].label}. Zmień motyw`}
               />
               {isAuthenticated ? (
                 <NavItem
                   icon={LogOut}
                   label="Wyloguj się"
+                  title="Wyloguj się"
                   active={false}
                   onClick={onSignOut}
                   variant="sidebar"
@@ -183,7 +186,7 @@ export default function SideNav({
                   active={false}
                   onClick={() => navigate(loginHref)}
                   variant="sidebar"
-                  title="Konto daje dostęp do Mojego planu, Auli i społeczności"
+                  title="Zaloguj się — plan, Aula i społeczność"
                 />
               )}
             </div>

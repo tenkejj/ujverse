@@ -1,4 +1,4 @@
-import { useId, useRef, useEffect, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
@@ -127,9 +127,42 @@ export default function Header({
   const scrollY = useScrollY()
   const isScrolled = scrollY > 10
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const logoAxisRef = useRef<HTMLDivElement | null>(null)
   const { theme: colorMode, cycleTheme } = useTheme()
   const [shakeBell, setShakeBell] = useState(false)
   const bellActive = notificationsPanelOpen || activeView === 'notifications'
+
+  useLayoutEffect(() => {
+    const axis = logoAxisRef.current
+    if (!axis) return
+    let previousOffset = 0
+    let frame: number | null = null
+    const alignToViewport = () => {
+      frame = null
+      if (!axis.offsetWidth) return
+      const bounds = axis.getBoundingClientRect()
+      // Classic scrollbar gutters can change the origin of fixed elements.
+      // Measure that origin instead of guessing a browser-specific pixel nudge.
+      const unshiftedCentre = bounds.left + bounds.width / 2 - previousOffset
+      const nextOffset = window.innerWidth / 2 - unshiftedCentre
+      if (Math.abs(nextOffset - previousOffset) < 0.01) return
+      axis.style.setProperty('--logo-viewport-offset', `${nextOffset}px`)
+      previousOffset = nextOffset
+    }
+    const scheduleAlignment = () => {
+      if (frame === null) frame = window.requestAnimationFrame(alignToViewport)
+    }
+    alignToViewport()
+    const observer = new ResizeObserver(scheduleAlignment)
+    observer.observe(document.documentElement)
+    window.addEventListener('resize', scheduleAlignment)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', scheduleAlignment)
+      if (frame !== null) window.cancelAnimationFrame(frame)
+      axis.style.removeProperty('--logo-viewport-offset')
+    }
+  }, [])
 
   useEffect(() => {
     if (bellRingTick === 0) return
@@ -198,7 +231,9 @@ export default function Header({
   )
 
   const desktopLogo = (
-    <div className={HEADER_MOBILE.logoAnchorClass}>{logoButton}</div>
+    <div ref={logoAxisRef} className={HEADER_MOBILE.logoAnchorClass}>
+      {logoButton}
+    </div>
   )
 
   return (

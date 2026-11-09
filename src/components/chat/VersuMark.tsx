@@ -4,6 +4,7 @@ import {
   getUserPreferences,
   subscribePreferences,
 } from '../../lib/userPreferences'
+import '../../styles/versus-chat.css'
 
 const readReducedMotion = () => getUserPreferences().reducedMotion
 const serverReducedMotion = () => true
@@ -23,6 +24,8 @@ type Props = {
   className?: string
   variant?: VersuMarkVariant
   activity?: VersuActivity
+  /** Force the face crop or full pose; small marks use portraits by default. */
+  portrait?: boolean
   /** Stable request id replays a one-shot animation for each new conversation turn. */
   replayKey?: string
 }
@@ -32,6 +35,7 @@ export default function VersuMark({
   className = '',
   variant = 'brand',
   activity = 'idle',
+  portrait,
   replayKey,
 }: Props) {
   const reducedMotion = useSyncExternalStore(
@@ -40,7 +44,8 @@ export default function VersuMark({
     serverReducedMotion,
   )
   // Small avatars use a face crop; the full pose keeps gestures readable.
-  const asset = size < 72 ? `face-${activity}` : activity
+  const isPortrait = portrait ?? size < 72
+  const asset = isPortrait ? `face-${activity}` : activity
   const source = `/versus/${asset}`
   const replayQuery = replayKey ? `?turn=${encodeURIComponent(replayKey)}` : ''
 
@@ -49,8 +54,12 @@ export default function VersuMark({
       aria-hidden="true"
       data-variant={variant}
       data-activity={activity}
-      className={`relative inline-flex shrink-0 items-center justify-center ${className}`}
-      style={{ width: size, height: size }}
+      data-portrait={isPortrait}
+      className={`versu-mark relative inline-flex shrink-0 items-center justify-center ${className}`}
+      style={{
+        width: `var(--versu-mark-size, ${size}px)`,
+        height: `var(--versu-mark-size, ${size}px)`,
+      }}
     >
       <picture
         key={`${asset}:${replayKey ?? ''}`}

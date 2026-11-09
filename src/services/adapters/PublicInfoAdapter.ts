@@ -34,7 +34,7 @@ const ANNOUNCEMENT_COLUMNS =
 const REGISTRATION_COLUMNS =
   'id, title, description, audience_label, opens_at, closes_at, registration_url, kind, source_usos_tura_id, source_unit_code, updated_at'
 const EVENT_COLUMNS =
-  'id, external_id, title, date, category, location, description, faculty, source_name, event_url, scraped_at'
+  'id, external_id, title, date, category, location, description, faculty, source_name, event_url, image_url, scraped_at'
 
 const REGISTRATIONS_LIMIT = 200
 const EVENTS_LIMIT = 60

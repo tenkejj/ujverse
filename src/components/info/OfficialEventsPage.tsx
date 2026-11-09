@@ -7,7 +7,7 @@ import { upcomingEventsSorted } from '../../lib/info/relevance'
 import { foldForSearch, UJ_LINKS } from '../../lib/info/resources'
 import { dayKeyToDate, WARSAW_TZ } from '../../lib/info/time'
 import type { InfoEvent } from '../../lib/info/types'
-import { EventHubCard } from './InfoHubCards'
+import { EventPreviewTile } from './InfoItems'
 import { InfoHubSection, InfoHubShell, InfoHubTitle } from './InfoHubShell'
 import {
   DomainEmpty,
@@ -204,10 +204,10 @@ export default function OfficialEventsPage({
                 title={group.title}
                 count={group.items.length}
               >
-                <ul className="campus-open-entries">
+                <ul className="event-preview-grid">
                   {group.items.map((item) => (
                     <li key={item.id}>
-                      <EventHubCard item={item} now={now} />
+                      <EventPreviewTile item={item} now={now} />
                     </li>
                   ))}
                 </ul>

@@ -8,7 +8,6 @@ import {
   Megaphone,
 } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
-import BaseCard from '../ui/BaseCard'
 import {
   usePublicAnnouncements,
   usePublicOfficialEvents,
@@ -33,6 +32,7 @@ import { AnnouncementHubCard, RegistrationHubCard } from './InfoHubCards'
 import { CustomizeButton, SavedSection } from './InfoBlocks'
 import InfoFooter from './InfoFooter'
 import InfoEventCalendar from './InfoEventCalendar'
+import { EventPreviewTile } from './InfoItems'
 import DataFreshness, { type DataFreshnessKind } from './DataFreshness'
 import {
   DomainEmpty,
@@ -73,6 +73,9 @@ export default function InfoDashboard({
     matchesFaculty(item.faculty, selected),
   )
   const events = upcomingEventsSorted(eventsQ.data?.items ?? [], now)
+  const visualEvents = events.filter((item) => item.imageUrl).slice(0, 2)
+  const eventPreviews = visualEvents.length ? visualEvents : events.slice(0, 2)
+  const showEventPreview = !hidden.has('events')
   const stale =
     registrationsQ.isSuccess && isRegistrationDataStale(latestRun, now)
   const priority = buildPriorityItems({
@@ -161,9 +164,6 @@ export default function InfoDashboard({
               <p className="dashboard-greeting">Cześć, {firstName}</p>
             ) : null}
             <h1>Co słychać na UJ?</h1>
-            <p className="dashboard-description">
-              Komunikaty z wydziałów, terminy rejestracji i kalendarz wydarzeń.
-            </p>
             <p className="dashboard-context">
               <CalendarDays size={14} aria-hidden /> {dateLabel}
               <span aria-hidden> · </span>
@@ -200,217 +200,274 @@ export default function InfoDashboard({
         </section>
       ) : null}
 
-      {sections.length ? (
-        <BaseCard
-          as="section"
-          className="dashboard-overview"
-          aria-labelledby="overview-heading"
-        >
-          <header className="dashboard-overview-heading">
-            <div>
-              <h2 id="overview-heading">
-                <span className="dashboard-section-icon" aria-hidden>
-                  <Megaphone size={20} strokeWidth={1.75} />
-                </span>{' '}
-                Informacje z uczelni
-              </h2>
-              <p>Komunikaty, zapisy i daty, które warto mieć pod ręką.</p>
-            </div>
-            <span>
-              {currentSection === 'events' ? 'Cały UJ' : (short ?? 'Cały UJ')}
-            </span>
-          </header>
-          <div
-            className="dashboard-switcher"
-            role="group"
-            aria-label="Rodzaj informacji"
+      <div
+        className={`dashboard-content${showEventPreview ? ' dashboard-content-with-events' : ''}`}
+      >
+        {sections.length ? (
+          <section
+            className="dashboard-overview"
+            aria-labelledby="overview-heading"
           >
-            {sections.map(({ id, label, Icon, count }) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={currentSection === id}
-                onClick={() => selectSection(id)}
-              >
-                <Icon size={17} strokeWidth={1.75} aria-hidden />
-                <span>{label}</span>
-                {count !== null ? (
-                  <span className="dashboard-switcher-count">{count}</span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-          <div className="dashboard-freshness">
+            <header className="dashboard-overview-heading">
+              <div>
+                <h2 id="overview-heading">
+                  <span className="dashboard-section-icon" aria-hidden>
+                    <Megaphone size={20} strokeWidth={1.75} />
+                  </span>{' '}
+                  Na uczelni
+                </h2>
+              </div>
+              <span>
+                {currentSection === 'events' ? 'Cały UJ' : (short ?? 'Cały UJ')}
+              </span>
+            </header>
+            <div
+              className="dashboard-switcher"
+              role="group"
+              aria-label="Rodzaj informacji"
+            >
+              {sections.map(({ id, label, Icon, count }) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={currentSection === id}
+                  onClick={() => selectSection(id)}
+                >
+                  <Icon size={17} strokeWidth={1.75} aria-hidden />
+                  <span>{label}</span>
+                  {count !== null ? (
+                    <span className="dashboard-switcher-count">{count}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+            <div className="dashboard-freshness">
+              <DataFreshness
+                compact
+                kind={freshnessKind}
+                iso={
+                  placeholder
+                    ? null
+                    : (activeQuery.data?.freshness.latest ?? null)
+                }
+                checkedAt={placeholder ? undefined : activeQuery.dataUpdatedAt}
+                now={now}
+                status={
+                  activeQuery.isPending || placeholder
+                    ? 'loading'
+                    : activeQuery.isError
+                      ? 'error'
+                      : 'ready'
+                }
+                stale={freshnessKind === 'registrations' && stale}
+              />
+            </div>
+            <div className="dashboard-grid">
+              {currentSection === 'announcements' ? (
+                <DashboardPanel
+                  className="dashboard-announcements"
+                  title={
+                    short
+                      ? 'Komunikaty z Twojego wydziału'
+                      : 'Najnowsze komunikaty'
+                  }
+                  description={short ?? 'Ogłoszenia z wydziałów UJ'}
+                  href="/komunikaty"
+                  action="Wszystkie komunikaty"
+                >
+                  {announcementsQ.isPending ? (
+                    <RowSkeletons count={3} variant="feed" />
+                  ) : announcementsQ.isError && !announcements.length ? (
+                    <DomainError
+                      what="komunikaty"
+                      onRetry={() => void announcementsQ.refetch()}
+                      compact
+                    />
+                  ) : !announcements.length ? (
+                    <DomainEmpty
+                      tone="quiet"
+                      action={
+                        selected ? (
+                          <button
+                            type="button"
+                            className="campus-text-link"
+                            onClick={() => faculty.setFaculty(null)}
+                          >
+                            Pokaż cały UJ
+                          </button>
+                        ) : undefined
+                      }
+                    >
+                      Brak nowych komunikatów{short ? ` dla ${short}` : ''} w
+                      ostatnich 30 dniach.
+                    </DomainEmpty>
+                  ) : (
+                    <ul className="dashboard-stories">
+                      {announcements.slice(0, 3).map((item) => (
+                        <li key={item.id}>
+                          <span className="dashboard-story-icon" aria-hidden>
+                            <Megaphone size={18} strokeWidth={1.75} />
+                          </span>
+                          <AnnouncementHubCard item={item} now={now} compact />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </DashboardPanel>
+              ) : null}
+
+              {currentSection === 'registrations' ? (
+                <DashboardPanel
+                  className="dashboard-registrations"
+                  title="Rejestracje USOS"
+                  description={
+                    short
+                      ? `Trwające i nadchodzące · ${short}`
+                      : 'Trwające i nadchodzące tury'
+                  }
+                  href="/rejestracje"
+                  action="Wszystkie rejestracje"
+                >
+                  {registrationsQ.isPending ? (
+                    <RowSkeletons count={2} variant="feed" />
+                  ) : registrationsQ.isError ? (
+                    <DomainError
+                      what="rejestracje z USOSweb"
+                      onRetry={() => void registrationsQ.refetch()}
+                      compact
+                    />
+                  ) : !latestRun ? (
+                    <DomainEmpty tone="quiet">
+                      Dane o rejestracjach z USOSweb są chwilowo niedostępne.
+                    </DomainEmpty>
+                  ) : !registrations.length ? (
+                    <DomainEmpty
+                      tone="quiet"
+                      action={
+                        selected && active.length ? (
+                          <button
+                            type="button"
+                            className="campus-text-link"
+                            onClick={() => faculty.setFaculty(null)}
+                          >
+                            Pokaż rejestracje z całego UJ
+                          </button>
+                        ) : undefined
+                      }
+                    >
+                      Brak aktywnych rejestracji{short ? ` dla ${short}` : ''}.
+                    </DomainEmpty>
+                  ) : (
+                    <ul className="dashboard-deadlines">
+                      {registrations.slice(0, 2).map((item) => (
+                        <li key={item.id}>
+                          <RegistrationHubCard
+                            item={item}
+                            now={now}
+                            latestVerifiedAt={latestRun}
+                            compact
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {stale && latestRun ? (
+                    <p className="campus-stale-note">
+                      Dane mogą być nieaktualne. Potwierdź termin w USOSweb.
+                    </p>
+                  ) : null}
+                </DashboardPanel>
+              ) : null}
+
+              {currentSection === 'events' ? (
+                <DashboardPanel
+                  className="dashboard-events"
+                  title="Kalendarz wydarzeń"
+                  description="Wybierz dzień, żeby zobaczyć wydarzenia"
+                  href="/wydarzenia?widok=kalendarz"
+                  action="Pełny kalendarz"
+                >
+                  {eventsQ.isPending ? (
+                    <RowSkeletons count={2} variant="feed" />
+                  ) : eventsQ.isError ? (
+                    <DomainError
+                      what="wydarzenia"
+                      onRetry={() => void eventsQ.refetch()}
+                      compact
+                    />
+                  ) : !eventsQ.data?.freshness.latest ? (
+                    <DomainEmpty tone="quiet">
+                      Dane o wydarzeniach są chwilowo niedostępne.
+                    </DomainEmpty>
+                  ) : (
+                    <InfoEventCalendar
+                      events={events}
+                      now={now}
+                      variant="compact"
+                    />
+                  )}
+                </DashboardPanel>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+        {showEventPreview ? (
+          <section
+            className="dashboard-discover"
+            aria-labelledby="discover-heading"
+          >
+            <header className="dashboard-discover-heading">
+              <h2 id="discover-heading">
+                <CalendarDays size={20} strokeWidth={1.75} aria-hidden />{' '}
+                Wydarzenia na UJ
+              </h2>
+              <Link to="/wydarzenia" className="dashboard-panel-link">
+                Zobacz wszystkie <ArrowUpRight size={14} aria-hidden />
+              </Link>
+            </header>
             <DataFreshness
-              kind={freshnessKind}
-              iso={
-                placeholder
-                  ? null
-                  : (activeQuery.data?.freshness.latest ?? null)
-              }
-              checkedAt={placeholder ? undefined : activeQuery.dataUpdatedAt}
+              compact
+              kind="events"
+              iso={eventsQ.data?.freshness.latest ?? null}
+              checkedAt={eventsQ.dataUpdatedAt}
               now={now}
               status={
-                activeQuery.isPending || placeholder
+                eventsQ.isPending
                   ? 'loading'
-                  : activeQuery.isError
+                  : eventsQ.isError
                     ? 'error'
                     : 'ready'
               }
-              stale={freshnessKind === 'registrations' && stale}
             />
-          </div>
-          <div className="dashboard-grid">
-            {currentSection === 'announcements' ? (
-              <DashboardPanel
-                className="dashboard-announcements"
-                title={
-                  short
-                    ? 'Komunikaty z Twojego wydziału'
-                    : 'Najnowsze komunikaty'
-                }
-                description={short ?? 'Ogłoszenia z wydziałów UJ'}
-                href="/komunikaty"
-                action="Wszystkie komunikaty"
-              >
-                {announcementsQ.isPending ? (
-                  <RowSkeletons count={3} variant="feed" />
-                ) : announcementsQ.isError && !announcements.length ? (
-                  <DomainError
-                    what="komunikaty"
-                    onRetry={() => void announcementsQ.refetch()}
-                    compact
-                  />
-                ) : !announcements.length ? (
-                  <DomainEmpty
-                    tone="quiet"
-                    action={
-                      selected ? (
-                        <button
-                          type="button"
-                          className="campus-text-link"
-                          onClick={() => faculty.setFaculty(null)}
-                        >
-                          Pokaż cały UJ
-                        </button>
-                      ) : undefined
-                    }
-                  >
-                    Brak nowych komunikatów{short ? ` dla ${short}` : ''} w
-                    ostatnich 30 dniach.
-                  </DomainEmpty>
-                ) : (
-                  <ul className="dashboard-stories">
-                    {announcements.slice(0, 2).map((item) => (
-                      <li key={item.id}>
-                        <AnnouncementHubCard item={item} now={now} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </DashboardPanel>
-            ) : null}
-
-            {currentSection === 'registrations' ? (
-              <DashboardPanel
-                className="dashboard-registrations"
-                title="Rejestracje USOS"
-                description={
-                  short
-                    ? `Trwające i nadchodzące · ${short}`
-                    : 'Trwające i nadchodzące tury'
-                }
-                href="/rejestracje"
-                action="Wszystkie rejestracje"
-              >
-                {registrationsQ.isPending ? (
-                  <RowSkeletons count={2} variant="feed" />
-                ) : registrationsQ.isError ? (
-                  <DomainError
-                    what="rejestracje z USOSweb"
-                    onRetry={() => void registrationsQ.refetch()}
-                    compact
-                  />
-                ) : !latestRun ? (
-                  <DomainEmpty tone="quiet">
-                    Dane o rejestracjach z USOSweb są chwilowo niedostępne.
-                  </DomainEmpty>
-                ) : !registrations.length ? (
-                  <DomainEmpty
-                    tone="quiet"
-                    action={
-                      selected && active.length ? (
-                        <button
-                          type="button"
-                          className="campus-text-link"
-                          onClick={() => faculty.setFaculty(null)}
-                        >
-                          Pokaż rejestracje z całego UJ
-                        </button>
-                      ) : undefined
-                    }
-                  >
-                    Brak aktywnych rejestracji{short ? ` dla ${short}` : ''}.
-                  </DomainEmpty>
-                ) : (
-                  <ul className="dashboard-deadlines">
-                    {registrations.slice(0, 2).map((item) => (
-                      <li key={item.id}>
-                        <RegistrationHubCard
-                          item={item}
-                          now={now}
-                          latestVerifiedAt={latestRun}
-                          compact
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {stale && latestRun ? (
-                  <p className="campus-stale-note">
-                    Dane mogą być nieaktualne. Potwierdź termin w USOSweb.
-                  </p>
-                ) : null}
-              </DashboardPanel>
-            ) : null}
-
-            {currentSection === 'events' ? (
-              <DashboardPanel
-                className="dashboard-events"
-                title="Kalendarz wydarzeń"
-                description="Wybierz dzień, żeby zobaczyć wydarzenia"
-                href="/wydarzenia?widok=kalendarz"
-                action="Pełny kalendarz"
-              >
-                {eventsQ.isPending ? (
-                  <RowSkeletons count={2} variant="feed" />
-                ) : eventsQ.isError ? (
-                  <DomainError
-                    what="wydarzenia"
-                    onRetry={() => void eventsQ.refetch()}
-                    compact
-                  />
-                ) : !eventsQ.data?.freshness.latest ? (
-                  <DomainEmpty tone="quiet">
-                    Dane o wydarzeniach są chwilowo niedostępne.
-                  </DomainEmpty>
-                ) : (
-                  <InfoEventCalendar
-                    events={events}
-                    now={now}
-                    variant="compact"
-                  />
-                )}
-              </DashboardPanel>
-            ) : null}
-          </div>
-        </BaseCard>
-      ) : null}
+            {eventsQ.isPending ? (
+              <RowSkeletons count={2} variant="feed" />
+            ) : eventsQ.isError ? (
+              <DomainError
+                what="wydarzenia"
+                onRetry={() => void eventsQ.refetch()}
+                compact
+              />
+            ) : !eventPreviews.length ? (
+              <DomainEmpty tone="quiet">
+                Brak nadchodzących wydarzeń w pobranym kalendarzu.
+              </DomainEmpty>
+            ) : (
+              <ul className="dashboard-photo-events">
+                {eventPreviews.map((item) => (
+                  <li key={item.id}>
+                    <EventPreviewTile item={item} now={now} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : null}
+      </div>
 
       {saved.length ? (
-        <BaseCard className="dashboard-saved">
+        <section className="dashboard-saved" aria-label="Zapisane informacje">
           <SavedSection items={saved} now={now} />
-        </BaseCard>
+        </section>
       ) : null}
       {hidden.size > 0 ? (
         <p className="campus-hidden-note">

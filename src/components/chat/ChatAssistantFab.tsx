@@ -171,11 +171,11 @@ export default function ChatAssistantFab({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.94 }}
+      whileTap={{ scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
     >
       <AnimatedBot
-        size={28}
+        size={36}
         activity={isTyping ? activity : 'idle'}
         replayKey={messages.at(-1)?.id}
         variant="onAccent"
@@ -215,9 +215,9 @@ export default function ChatAssistantFab({
 
         <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-1">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-ink text-white dark:bg-brand-gold-bright dark:text-zinc-950">
+            <span className="versus-sheet-identity">
               <AnimatedBot
-                size={32}
+                size={56}
                 activity={activity}
                 replayKey={messages.at(-1)?.id}
                 variant="onAccent"
@@ -239,7 +239,7 @@ export default function ChatAssistantFab({
               disabled={!canClear}
               title="Nowa rozmowa"
               aria-label="Rozpocznij nową rozmowę z asystentem"
-              className="inline-flex items-center gap-1 rounded-full border border-logo-navy/25 bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10"
+              className="inline-flex min-h-11 items-center gap-1 rounded-full border border-logo-navy/25 bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10"
             >
               <Plus size={15} strokeWidth={2.25} aria-hidden />
               <span>Nowa</span>
@@ -248,7 +248,7 @@ export default function ChatAssistantFab({
               type="button"
               onClick={handleClose}
               aria-label="Zamknij asystenta"
-              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+              className="flex h-11 w-11 items-center justify-center rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
             >
               <X size={20} strokeWidth={2} />
             </button>

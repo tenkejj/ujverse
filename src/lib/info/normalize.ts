@@ -197,6 +197,7 @@ export function normalizeOfficialEvent(row: Row): InfoEvent | null {
     category: category && category !== 'Oficjalne' ? category : null,
     sourceName: str(row.source_name) ?? 'Uniwersytet Jagielloński',
     url,
+    imageUrl: safeExternalUrl(str(row.image_url)),
     seenAt: seen ? seen.toISOString() : null,
   }
 }

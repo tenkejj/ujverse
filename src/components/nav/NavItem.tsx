@@ -2,7 +2,9 @@ import type { ComponentType, SVGProps } from 'react'
 import { motion } from 'framer-motion'
 import { MOBILE_DRAWER, SIDE_NAV_DESKTOP } from '../../styles/mobile-theme'
 
-type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }>
+type LucideIcon = ComponentType<
+  SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }
+>
 
 type Variant = 'sidebar' | 'drawer'
 
@@ -52,7 +54,7 @@ export default function NavItem({
 }: Props) {
   const tokens = variant === 'sidebar' ? SIDE_NAV_DESKTOP : MOBILE_DRAWER
 
-  const itemClass = `${tokens.itemBaseClass} ${
+  const itemClass = `${variant === 'sidebar' ? 'sidebar-nav-item' : ''} ${tokens.itemBaseClass} ${
     active ? tokens.itemActiveClass : tokens.itemInactiveClass
   }`
   const iconClass = `${tokens.iconBaseClass} ${
@@ -63,15 +65,20 @@ export default function NavItem({
     <>
       <Icon
         size={tokens.iconSize}
-        strokeWidth={active ? tokens.iconActiveStrokeWidth : tokens.iconStrokeWidth}
+        strokeWidth={
+          active ? tokens.iconActiveStrokeWidth : tokens.iconStrokeWidth
+        }
         className={iconClass}
       />
-      <span className="truncate">{label}</span>
+      <span className="nav-item-label truncate">{label}</span>
       {hasUnread && (
         <span aria-hidden className={`ml-auto ${tokens.unreadDotClass}`} />
       )}
       {!hasUnread && typeof badgeCount === 'number' && badgeCount > 0 && (
-        <span className={tokens.badgePillClass} aria-label={`${badgeCount} nowych`}>
+        <span
+          className={tokens.badgePillClass}
+          aria-label={`${badgeCount} nowych`}
+        >
           {badgeCount > 99 ? '99+' : badgeCount}
         </span>
       )}

@@ -1,0 +1,327 @@
+/* Keep the creature's artwork close, without adding a circular frame around it. */
+.versu-mark[data-portrait='true'] {
+  overflow: hidden;
+}
+.versu-mark[data-portrait='true'] > picture {
+  position: absolute;
+  /* Shared crop (12, 10)–(94, 92) contains every frame of every portrait. */
+  width: 117.073171%;
+  height: 117.073171%;
+  left: -14.634146%;
+  top: -12.195122%;
+}
+.versus-message-avatar,
+.versus-message-identity,
+.versus-sheet-identity,
+.versus-message-empty-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.versus-message-identity {
+  margin-block-start: 2px;
+}
+.versus-message-row {
+  column-gap: 16px;
+}
+.versus-message-flow {
+  padding-block-end: 12px;
+}
+
+/* Open conversation canvas. Its only enclosing boundary belongs to the input. */
+.versus-conversation {
+  color: var(--campus-text, var(--text-primary));
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.versus-conversation[data-has-messages='false'] {
+  height: auto;
+  padding-block-end: 24px;
+}
+.versus-conversation-inner {
+  width: 100%;
+  max-width: 960px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+.versus-conversation-header {
+  background: transparent;
+}
+.versus-conversation-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 16px;
+  padding-block: 8px 12px;
+}
+.versus-conversation-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.versus-conversation-identity h1 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.versus-conversation-identity h1 > span {
+  color: var(--campus-muted, var(--text-label));
+  font-size: 11px;
+  font-weight: 500;
+}
+.versus-conversation-identity p {
+  margin-block-start: 5px;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 13px;
+  line-height: 1.4;
+}
+.versus-conversation-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 12px;
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  color: var(--campus-accent, var(--brand-ink));
+  background: var(--campus-tint, var(--bg-app));
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 150ms ease-out;
+}
+.versus-conversation-new:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.versus-conversation-welcome {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding-block: 12px 20px;
+}
+.versus-conversation-welcome-copy {
+  min-width: 0;
+}
+.versus-conversation-welcome h2 {
+  max-width: 23ch;
+  font-size: clamp(26px, 2.6vw, 36px);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.versus-conversation-welcome p {
+  max-width: 46ch;
+  margin-block-start: 12px;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 16px;
+  line-height: 1.6;
+}
+.versus-conversation-composer {
+  padding-block: 12px 8px;
+  background: transparent;
+}
+.versus-conversation-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--campus-line, var(--border-app));
+  border-radius: 18px;
+  background: var(--campus-side, var(--bg-app));
+}
+.versus-conversation-form:focus-within {
+  border-color: var(--campus-accent, var(--brand-ink));
+  outline: 1px solid var(--campus-accent, var(--brand-ink));
+  outline-offset: 0;
+}
+.versus-conversation-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  max-height: 160px;
+  padding: 12px 4px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  resize: none;
+  outline: none;
+  box-shadow: none;
+}
+.versus-conversation-input::placeholder {
+  color: var(--campus-muted, var(--text-label));
+  opacity: 1;
+}
+.versus-conversation-input:disabled {
+  opacity: 0.65;
+}
+.versus-conversation-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border: 0;
+  border-radius: 12px;
+  background: var(--campus-accent, var(--brand-ink));
+  color: var(--bg-app);
+  transition: opacity 150ms ease-out;
+}
+.versus-conversation-send:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.versus-conversation-stop {
+  background: var(--text-primary);
+  color: var(--bg-card);
+}
+.versus-conversation-note {
+  margin-block-start: 10px;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+.versus-conversation-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding-block-start: 16px;
+}
+.versus-conversation-suggestions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  background: var(--campus-tint, var(--bg-app));
+  font-size: 14px;
+  font-weight: 550;
+  text-align: start;
+  transition: background-color 150ms ease-out;
+}
+.versus-conversation-suggestions button svg {
+  flex: none;
+  color: var(--campus-accent, var(--brand-ink));
+}
+.versus-conversation :where(button, textarea):focus-visible {
+  outline: 2px solid var(--campus-accent, var(--brand-ink));
+  outline-offset: 3px;
+}
+.versus-conversation textarea:focus-visible {
+  outline: none;
+}
+.versus-conversation-messages {
+  padding-block: 12px 20px;
+}
+.versus-conversation-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--campus-line, var(--border-app)) transparent;
+}
+@media (hover: hover) {
+  .versus-conversation-new:not(:disabled):hover,
+  .versus-conversation-suggestions button:not(:disabled):hover {
+    background: var(--campus-hover, var(--bg-card-hover));
+  }
+  .versus-conversation-send:not(:disabled):hover {
+    opacity: 0.85;
+  }
+}
+@media (max-width: 639px) {
+  .versus-conversation-inner {
+    padding-inline: 12px;
+  }
+  .versus-conversation-header-content {
+    padding-block: 8px;
+    gap: 8px;
+  }
+  .versus-conversation-header-mark {
+    --versu-mark-size: 64px;
+  }
+  .versus-conversation-identity {
+    gap: 8px;
+  }
+  .versus-conversation-identity h1 {
+    font-size: 18px;
+  }
+  .versus-conversation-identity p {
+    font-size: 12px;
+  }
+  .versus-conversation-new {
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+  .versus-conversation-welcome {
+    gap: 12px;
+    padding-block: 12px 16px;
+  }
+  .versus-conversation-hero-mark {
+    --versu-mark-size: 112px;
+  }
+  .versus-conversation-welcome h2 {
+    font-size: 25px;
+  }
+  .versus-conversation-welcome p {
+    margin-block-start: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .versus-conversation-suggestions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-block-start: 12px;
+  }
+  .versus-conversation-suggestions button {
+    justify-content: flex-start;
+    min-width: 0;
+    padding-inline: 12px;
+    font-size: 13px;
+  }
+  .versus-message-row {
+    column-gap: 10px;
+  }
+  .versus-conversation-form {
+    gap: 4px;
+    padding: 6px;
+    border-radius: 16px;
+  }
+  .versus-conversation-send {
+    width: 44px;
+    height: 48px;
+  }
+  .versus-conversation-note {
+    font-size: 10px;
+  }
+}
+@media (forced-colors: active) {
+  .versus-conversation-form,
+  .versus-conversation-send,
+  .versus-conversation-suggestions button,
+  .versus-conversation-new {
+    border: 1px solid ButtonText;
+  }
+}

@@ -1,10 +1,143 @@
-/* Navigation supports the main content; the original logo stays on the viewport axis. */
-.app-sidebar .sidebar-versus {
-  padding: 12px 8px 20px;
+/* An explicit viewport-width axis avoids percentage offsets from classic scrollbars. */
+.app-logo-axis {
+  max-width: none;
+  transform: translateX(var(--logo-viewport-offset, 0px));
 }
 
+/* The sidebar is a few readable groups, not one enclosing panel. */
+html
+  aside.app-sidebar[aria-label='Nawigacja główna']
+  > div
+  > div.sidebar-surface {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.app-sidebar .sidebar-versus {
+  padding: 0;
+}
 .app-sidebar .sidebar-versus-link {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  min-height: 72px;
+  padding: 8px;
+  border-radius: 10px;
+  color: var(--campus-accent);
+}
+.sidebar-versus-link > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.sidebar-versus-link strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 650;
+}
+.sidebar-versus-link strong > span {
+  color: var(--campus-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.sidebar-versus-link small {
+  display: block;
+  margin-top: 4px;
+  color: var(--campus-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sidebar-versus-link > svg {
+  flex: none;
+}
+.sidebar-versus-link[aria-current='page'] {
+  background: var(--campus-tint);
+}
+.sidebar-nav-group > p {
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+.sidebar-nav-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.sidebar-services > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--campus-muted);
+  cursor: pointer;
+  list-style: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.sidebar-services > summary::-webkit-details-marker {
+  display: none;
+}
+.sidebar-services > summary > span {
+  flex: 1;
+}
+.sidebar-services > summary > svg:last-child {
+  flex: none;
+}
+.sidebar-services[open] > summary > svg:last-child {
+  rotate: 180deg;
+}
+.sidebar-services > div {
+  margin-top: 4px;
+}
+.sidebar-services .sidebar-nav-item {
+  font-size: 13px;
+}
+.sidebar-controls {
+  flex: none;
+  margin: 0 8px;
+  padding-block: 10px 4px;
+  border-top: 1px solid var(--campus-line);
+}
+.sidebar-controls > div {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sidebar-controls .sidebar-nav-item {
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  padding: 8px;
+}
+.sidebar-controls .nav-item-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.app-sidebar :where(a, button, summary):focus-visible {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .sidebar-versus-link:hover,
+  .sidebar-services > summary:hover {
+    background: var(--campus-tint);
+  }
 }
 
 /* Compact selector on account/preferences pages, with room left for the logo. */
@@ -63,5 +196,31 @@ html:has(.faculty-strip) {
     scroll-padding-block-end: calc(
       4.25rem + env(safe-area-inset-bottom, 0px) + 16px
     );
+  }
+}
+
+/* One visible faculty control, aligned with the open workspace rather than boxed in. */
+.campus-app .faculty-strip {
+  padding-inline: 36px;
+}
+html .campus-app .faculty-strip .faculty-picker.faculty-selector {
+  max-width: 1640px;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  padding-inline: 0;
+}
+html .campus-app .faculty-strip .faculty-picker .faculty-picker-action {
+  background: var(--faculty-accent);
+  color: var(--bg-app);
+}
+@media (max-width: 1199px) {
+  .campus-app .faculty-strip {
+    padding-inline: 24px;
+  }
+}
+@media (max-width: 767px) {
+  .campus-app .faculty-strip {
+    padding-inline: 12px;
   }
 }

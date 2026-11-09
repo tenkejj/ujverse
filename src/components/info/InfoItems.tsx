@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Trash2 } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, MapPin, Trash2 } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
 import AnnouncementTldr from '../announcements/AnnouncementTldr'
 import { DataService } from '../../services/DataService'
@@ -36,6 +36,7 @@ import {
   SaveToggle,
   TimeStamp,
 } from './infoUi'
+import '../../styles/event-imagery.css'
 
 const ADDED_MEANING =
   'Dodano do UJverse (moment pobrania ze strony wydziału, może różnić się od daty publikacji)'
@@ -311,6 +312,89 @@ export function RegistrationItem({
 }
 
 /* ─────────────────────────── Wydarzenie ─────────────────────────── */
+
+/** A source-backed event preview, without a surrounding card surface. */
+export function EventPreviewTile({
+  item,
+  now,
+  compact = false,
+}: {
+  item: InfoEvent
+  now: Date
+  compact?: boolean
+}) {
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
+  const photoUrl = item.imageUrl ?? null
+  const showPhoto = photoUrl !== null && failedImageUrl !== photoUrl
+  const day = dayKeyToDate(item.dayKey)
+  const content = (
+    <>
+      <div
+        className={`event-preview-media${showPhoto ? '' : ' event-preview-media-fallback'}`}
+      >
+        {showPhoto ? (
+          <img
+            src={photoUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => setFailedImageUrl(photoUrl)}
+          />
+        ) : (
+          <CalendarDays size={44} strokeWidth={1.25} aria-hidden />
+        )}
+        <time className="event-preview-date" dateTime={item.dayKey}>
+          <strong>{formatDayOfMonth(day)}</strong>
+          <span>{formatMonthShort(day)}</span>
+        </time>
+      </div>
+      <div className="event-preview-copy">
+        <p className="event-preview-meta">
+          <CalendarDays size={14} strokeWidth={1.75} aria-hidden />
+          <time dateTime={item.dayKey}>{formatDayLabel(item.dayKey, now)}</time>
+        </p>
+        <h3 title={item.title}>
+          {item.title}
+          {item.url ? (
+            <ArrowUpRight size={16} strokeWidth={1.75} aria-hidden />
+          ) : null}
+        </h3>
+        {item.location ? (
+          <p className="event-preview-location" title={item.location}>
+            <MapPin size={14} strokeWidth={1.75} aria-hidden />
+            <span>{item.location}</span>
+          </p>
+        ) : null}
+      </div>
+    </>
+  )
+  return (
+    <article
+      className={`event-preview${compact ? ' event-preview-compact' : ''}`}
+    >
+      {item.url ? (
+        <a
+          className="event-preview-main"
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {content}
+          <span className="sr-only">Szczegóły wydarzenia — nowa karta</span>
+        </a>
+      ) : (
+        <div className="event-preview-main" data-no-link="true">
+          {content}
+        </div>
+      )}
+      <div className="event-preview-controls">
+        <span>{item.category || item.sourceName}</span>
+        <SaveToggle item={item} />
+      </div>
+    </article>
+  )
+}
 
 export function EventItem({
   item,
