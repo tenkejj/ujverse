@@ -1,17 +1,71 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { AlarmClock, CalendarDays, Link2, Loader2, Megaphone, Search, Users, X } from 'lucide-react'
-import { usePublicRegistrations, usePublicSearch } from '../../hooks/usePublicInfo'
+import {
+  AlarmClock,
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
+  Languages,
+  Link2,
+  Loader2,
+  Mail,
+  MapPin,
+  Megaphone,
+  Search,
+  Users,
+  X,
+} from 'lucide-react'
+import {
+  usePublicRegistrations,
+  usePublicSearch,
+} from '../../hooks/usePublicInfo'
 import type { FacultyPreference } from '../../hooks/useInfoPreferences'
 import { useNow } from '../../hooks/useNow'
 import { facultyShortLabel } from '../../lib/info/faculty'
 import { MIN_QUERY_LENGTH } from '../../lib/info/search'
 import { pluralPL } from '../../lib/info/time'
-import { AnnouncementHubCard, EventHubCard, RegistrationHubCard } from './InfoHubCards'
+import {
+  AnnouncementHubCard,
+  EventHubCard,
+  RegistrationHubCard,
+} from './InfoHubCards'
 import { ResourceGrid } from './InfoBlocks'
-import { DomainEmpty, DomainError, FOCUS_RING, InfoSection, PageIntro } from './infoUi'
+import { DomainEmpty, DomainError, InfoSection } from './infoUi'
 
-const SUGGESTIONS = ['stypendium', 'rejestracja', 'lektorat', 'egzamin', 'odwołane', 'konferencja', 'poczta', 'sala']
+import '../../styles/info-search.css'
+
+const SUGGESTIONS = [
+  { query: 'stypendium', label: 'Stypendia', icon: GraduationCap },
+  { query: 'rejestracja', label: 'Rejestracje', icon: ClipboardList },
+  { query: 'lektorat', label: 'Lektoraty', icon: Languages },
+  { query: 'egzamin', label: 'Egzaminy', icon: BookOpen },
+  { query: 'odwołane', label: 'Odwołane zajęcia', icon: AlarmClock },
+  { query: 'konferencja', label: 'Konferencje', icon: CalendarDays },
+  { query: 'poczta', label: 'Poczta', icon: Mail },
+  { query: 'sala', label: 'Sale i budynki', icon: MapPin },
+] as const
+const DESTINATIONS = [
+  {
+    href: '/komunikaty',
+    label: 'Komunikaty',
+    detail: 'Ogłoszenia wydziałów',
+    icon: Megaphone,
+  },
+  {
+    href: '/rejestracje',
+    label: 'Rejestracje',
+    detail: 'Terminy zapisów',
+    icon: ClipboardList,
+  },
+  {
+    href: '/wydarzenia',
+    label: 'Wydarzenia',
+    detail: 'Kalendarz UJ',
+    icon: CalendarDays,
+  },
+] as const
 
 export default function InfoSearchPage({
   faculty,
@@ -40,7 +94,10 @@ export default function InfoSearchPage({
   useEffect(() => {
     const next = search.debouncedQuery
     if (next === urlQuery) return
-    setParams(next ? { q: next } : {}, { replace: true, state: navigationState })
+    setParams(next ? { q: next } : {}, {
+      replace: true,
+      state: navigationState,
+    })
   }, [search.debouncedQuery, urlQuery, setParams, navigationState])
 
   const onSubmit = (event: FormEvent) => {
@@ -50,7 +107,8 @@ export default function InfoSearchPage({
 
   const data = search.data
   const showResults = search.enabled && data !== undefined
-  const loading = search.enabled && (search.isFetching || search.isTyping) && !data
+  const loading =
+    search.enabled && (search.isFetching || search.isTyping) && !data
   const counts = data
     ? {
         announcements: data.announcements.items.length,
@@ -59,27 +117,39 @@ export default function InfoSearchPage({
         resources: data.resources.length,
       }
     : null
-  const total = counts ? counts.announcements + counts.registrations + counts.events + counts.resources : 0
+  const total = counts
+    ? counts.announcements +
+      counts.registrations +
+      counts.events +
+      counts.resources
+    : 0
   const allFailed =
     data !== undefined &&
     data.announcements.status === 'error' &&
     data.registrations.status === 'error' &&
     data.events.status === 'error'
-  const facultyShort = faculty.faculty ? (facultyShortLabel(faculty.faculty) ?? faculty.faculty) : null
+  const facultyShort = faculty.faculty
+    ? (facultyShortLabel(faculty.faculty) ?? faculty.faculty)
+    : null
 
   return (
-    <div className="campus-search-page mx-auto flex w-full max-w-4xl flex-col gap-4">
-      <PageIntro
-        title="Szukaj"
-        description="Komunikaty wydziałów, rejestracje z USOSweb, wydarzenia UJ i narzędzia — bez zakładania konta."
-      />
+    <div className="campus-search-page info-search-workspace">
+      <header className="info-search-heading">
+        <Search size={24} strokeWidth={1.75} aria-hidden />
+        <h1>Szukaj na UJ</h1>
+      </header>
 
-      <form role="search" onSubmit={onSubmit} className="flex flex-col gap-2 px-1">
+      <form role="search" onSubmit={onSubmit} className="info-search-form">
         <label htmlFor="info-search-input" className="sr-only">
           Szukaj informacji na UJ
         </label>
-        <div className="relative">
-          <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-ink dark:text-zinc-400" aria-hidden />
+        <div className="info-search-field">
+          <Search
+            size={22}
+            strokeWidth={1.75}
+            className="info-search-glyph"
+            aria-hidden
+          />
           <input
             ref={inputRef}
             id="info-search-input"
@@ -92,7 +162,7 @@ export default function InfoSearchPage({
             spellCheck={false}
             enterKeyHint="search"
             autoFocus={!urlQuery}
-            className={`ujverse-search-input h-12 w-full rounded-2xl border border-zinc-200 bg-white/85 pl-11 pr-11 text-base text-zinc-900 shadow-sm placeholder:text-zinc-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100 ${FOCUS_RING}`}
+            className="ujverse-search-input"
           />
           {input ? (
             <button
@@ -102,14 +172,22 @@ export default function InfoSearchPage({
                 inputRef.current?.focus()
               }}
               aria-label="Wyczyść wyszukiwanie"
-              className={`absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-zinc-500 hover:bg-black/5 dark:text-zinc-400 dark:hover:bg-white/10 ${FOCUS_RING}`}
+              className="info-search-clear"
             >
               <X size={16} aria-hidden />
             </button>
           ) : null}
+          <button
+            type="submit"
+            className="info-search-submit"
+            aria-label="Szukaj"
+          >
+            <span>Szukaj</span>
+            <ArrowRight size={18} aria-hidden />
+          </button>
         </div>
         {facultyShort ? (
-          <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 self-start text-xs font-medium text-zinc-700 dark:text-zinc-300">
+          <label className="info-search-faculty">
             <input
               type="checkbox"
               checked={onlyFaculty}
@@ -130,23 +208,56 @@ export default function InfoSearchPage({
       </div>
 
       {!search.enabled ? (
-        <div className="flex flex-col gap-3 px-1">
-          {input.trim().length > 0 && input.trim().length < MIN_QUERY_LENGTH ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Wpisz co najmniej {MIN_QUERY_LENGTH} znaki.</p>
-          ) : null}
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Popularne wyszukiwania:</p>
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                onClick={() => setInput(suggestion)}
-                className={`inline-flex min-h-9 items-center rounded-full border border-zinc-200 bg-white/70 px-3 text-sm text-zinc-700 hover:border-brand-ink/35 dark:border-white/15 dark:bg-white/[0.04] dark:text-zinc-200 dark:hover:border-brand-gold-bright/45 ${FOCUS_RING}`}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
+        <div className="info-search-start">
+          <section
+            className="info-search-topics"
+            aria-labelledby="search-topics-heading"
+          >
+            <h2 id="search-topics-heading">Czego szukasz?</h2>
+            {input.trim().length > 0 &&
+            input.trim().length < MIN_QUERY_LENGTH ? (
+              <p className="info-search-hint">
+                Wpisz co najmniej {MIN_QUERY_LENGTH} znaki.
+              </p>
+            ) : null}
+            <div className="info-search-topic-grid">
+              {SUGGESTIONS.map(({ query, label, icon: Icon }) => (
+                <button
+                  key={query}
+                  type="button"
+                  onClick={() => setInput(query)}
+                  aria-label={`Szukaj: ${query}`}
+                >
+                  <Icon size={21} strokeWidth={1.75} aria-hidden />
+                  <span>{label}</span>
+                  <ArrowRight size={15} aria-hidden />
+                </button>
+              ))}
+            </div>
+          </section>
+          <aside
+            className="info-search-shortcuts"
+            aria-labelledby="search-shortcuts-heading"
+          >
+            <h2 id="search-shortcuts-heading">Przejdź od razu</h2>
+            <nav aria-label="Zbiory informacji na UJ">
+              {DESTINATIONS.map(({ href, label, detail, icon: Icon }) => (
+                <Link key={href} to={href}>
+                  <Icon size={20} strokeWidth={1.75} aria-hidden />
+                  <span>
+                    <strong>{label}</strong>
+                    <small>{detail}</small>
+                  </span>
+                  <ArrowRight size={16} aria-hidden />
+                </Link>
+              ))}
+            </nav>
+            <Link to="/niezbednik" className="info-search-toolkit">
+              <Link2 size={17} aria-hidden />
+              Niezbędnik studenta
+              <ArrowRight size={15} aria-hidden />
+            </Link>
+          </aside>
         </div>
       ) : null}
 
@@ -158,38 +269,59 @@ export default function InfoSearchPage({
       ) : null}
 
       {search.isError && !data ? (
-        <DomainError what="wyniki wyszukiwania" onRetry={() => void search.refetch()} />
+        <DomainError
+          what="wyniki wyszukiwania"
+          onRetry={() => void search.refetch()}
+        />
       ) : null}
 
       {showResults && data ? (
-        <div className={`flex flex-col gap-4 ${search.isFetching || search.isTyping ? 'opacity-70' : ''}`}>
-          {data.announcementsEngine === 'fallback' ? (
-            <p role="status" className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-              Pełnotekstowa wyszukiwarka jest chwilowo niedostępna — komunikaty dopasowujemy prostym wyszukiwaniem fragmentu tekstu,
-              więc literówki mogą nie zostać rozpoznane.
-            </p>
-          ) : null}
-
+        <div
+          className={`info-search-results ${search.isFetching || search.isTyping ? 'opacity-70' : ''}`}
+        >
+          <div className="info-search-results-heading">
+            <h2>
+              Wyniki <span>{total}</span>
+            </h2>
+            <span>„{data.query}”</span>
+          </div>
           {total === 0 && !allFailed ? (
             <DomainEmpty>
-              Nic nie znaleźliśmy dla „{data.query}". Spróbuj krótszego słowa, innej formy (np. „stypendi") albo nazwy
-              wydziału.
+              Nic nie znaleźliśmy dla „{data.query}". Spróbuj krótszego słowa,
+              innej formy (np. „stypendi") albo nazwy wydziału.
             </DomainEmpty>
           ) : null}
 
-          {allFailed ? <DomainError what="wyniki wyszukiwania" onRetry={() => void search.refetch()} /> : null}
+          {allFailed ? (
+            <DomainError
+              what="wyniki wyszukiwania"
+              onRetry={() => void search.refetch()}
+            />
+          ) : null}
 
           {data.announcements.status === 'error' && !allFailed ? (
-            <InfoSection icon={Megaphone} title="Komunikaty">
-              <DomainError what="komunikaty" onRetry={() => void search.refetch()} />
+            <InfoSection
+              className="info-search-result-group"
+              icon={Megaphone}
+              title="Komunikaty"
+            >
+              <DomainError
+                what="komunikaty"
+                onRetry={() => void search.refetch()}
+              />
             </InfoSection>
           ) : counts && counts.announcements > 0 ? (
             <InfoSection
+              className="info-search-result-group"
               icon={Megaphone}
               title={`Komunikaty (${counts.announcements})`}
-              subtitle={scopeFaculty ? `Tylko ${facultyShort}` : 'Wszystkie wydziały, także starsze niż 30 dni'}
+              subtitle={
+                scopeFaculty
+                  ? `Tylko ${facultyShort}`
+                  : 'Wszystkie wydziały, także starsze niż 30 dni'
+              }
             >
-              <ul className="space-y-2.5" role="list">
+              <ul className="info-search-result-list" role="list">
                 {data.announcements.items.map((item) => (
                   <li key={item.id}>
                     <AnnouncementHubCard item={item} now={now} />
@@ -200,15 +332,31 @@ export default function InfoSearchPage({
           ) : null}
 
           {data.registrations.status === 'error' && !allFailed ? (
-            <InfoSection icon={AlarmClock} title="Rejestracje">
-              <DomainError what="rejestracje" onRetry={() => void search.refetch()} />
+            <InfoSection
+              className="info-search-result-group"
+              icon={AlarmClock}
+              title="Rejestracje"
+            >
+              <DomainError
+                what="rejestracje"
+                onRetry={() => void search.refetch()}
+              />
             </InfoSection>
           ) : counts && counts.registrations > 0 ? (
-            <InfoSection icon={AlarmClock} title={`Rejestracje (${counts.registrations})`} subtitle="Trwające i nadchodzące, z USOSweb">
-              <ul className="space-y-2.5" role="list">
+            <InfoSection
+              className="info-search-result-group"
+              icon={AlarmClock}
+              title={`Rejestracje (${counts.registrations})`}
+              subtitle="Trwające i nadchodzące, z USOSweb"
+            >
+              <ul className="info-search-result-list" role="list">
                 {data.registrations.items.map((item) => (
                   <li key={item.id}>
-                    <RegistrationHubCard item={item} now={now} latestVerifiedAt={latestRegistrationRun} />
+                    <RegistrationHubCard
+                      item={item}
+                      now={now}
+                      latestVerifiedAt={latestRegistrationRun}
+                    />
                   </li>
                 ))}
               </ul>
@@ -216,12 +364,24 @@ export default function InfoSearchPage({
           ) : null}
 
           {data.events.status === 'error' && !allFailed ? (
-            <InfoSection icon={CalendarDays} title="Wydarzenia">
-              <DomainError what="wydarzenia" onRetry={() => void search.refetch()} />
+            <InfoSection
+              className="info-search-result-group"
+              icon={CalendarDays}
+              title="Wydarzenia"
+            >
+              <DomainError
+                what="wydarzenia"
+                onRetry={() => void search.refetch()}
+              />
             </InfoSection>
           ) : counts && counts.events > 0 ? (
-            <InfoSection icon={CalendarDays} title={`Wydarzenia (${counts.events})`} subtitle="Z kalendarza uj.edu.pl (także z ostatnich 90 dni)">
-              <ul className="space-y-2.5" role="list">
+            <InfoSection
+              className="info-search-result-group"
+              icon={CalendarDays}
+              title={`Wydarzenia (${counts.events})`}
+              subtitle="Z kalendarza uj.edu.pl (także z ostatnich 90 dni)"
+            >
+              <ul className="info-search-result-list" role="list">
                 {data.events.items.map((item) => (
                   <li key={item.id}>
                     <EventHubCard item={item} now={now} />
@@ -232,19 +392,31 @@ export default function InfoSearchPage({
           ) : null}
 
           {counts && counts.resources > 0 ? (
-            <InfoSection icon={Link2} title={`Narzędzia (${counts.resources})`}>
-              <ResourceGrid resources={data.resources} isAuthenticated={isAuthenticated} columns="sm:grid-cols-2" />
+            <InfoSection
+              className="info-search-result-group"
+              icon={Link2}
+              title={`Narzędzia (${counts.resources})`}
+            >
+              <ResourceGrid
+                resources={data.resources}
+                isAuthenticated={isAuthenticated}
+                columns="sm:grid-cols-2"
+              />
             </InfoSection>
           ) : null}
         </div>
       ) : null}
 
       {isAuthenticated ? (
-        <p className="flex items-center gap-2 px-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="info-search-community">
           <Users size={14} aria-hidden />
           Szukasz osób, wpisów albo wiadomości z Auli?{' '}
           <Link
-            to={input.trim() ? `/search?q=${encodeURIComponent(input.trim())}` : '/search'}
+            to={
+              input.trim()
+                ? `/search?q=${encodeURIComponent(input.trim())}`
+                : '/search'
+            }
             className="font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright"
           >
             Szukaj w społeczności

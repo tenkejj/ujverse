@@ -19,7 +19,6 @@ import {
   InfoHubCardGrid,
   InfoHubSection,
   InfoHubShell,
-  InfoHubTitle,
   InfoHubToolbar,
 } from './InfoHubShell'
 import { DomainEmpty, DomainError, RowSkeletons } from './infoUi'
@@ -67,10 +66,7 @@ export default function RegistrationsPage({
   ]
   return (
     <InfoHubShell>
-      <InfoHubTitle
-        title="Rejestracje USOS"
-        description="Sprawdź terminy. Zapisz się w USOSweb."
-      />
+      <h1 className="sr-only">Rejestracje</h1>
       <DataFreshness
         iso={latestRun}
         kind="registrations"

@@ -1,0 +1,99 @@
+/* Quiet entry boundaries; colour describes a labelled state or source topic. */
+.semantic-item,
+.semantic-label {
+  --item-accent: var(--campus-accent, var(--brand-ink));
+}
+[data-tone='cancelled'],
+[data-tone='urgent'] {
+  --item-accent: #b42335;
+}
+[data-tone='remote'],
+[data-tone='upcoming'] {
+  --item-accent: #175cd3;
+}
+[data-tone='duty'] {
+  --item-accent: #985b08;
+}
+[data-tone='scholarship'] {
+  --item-accent: #7134ad;
+}
+[data-tone='event'] {
+  --item-accent: #087970;
+}
+[data-tone='open'] {
+  --item-accent: #13744a;
+}
+.dark [data-tone='cancelled'],
+.dark [data-tone='urgent'] {
+  --item-accent: #fda4af;
+}
+.dark [data-tone='remote'],
+.dark [data-tone='upcoming'] {
+  --item-accent: #93c5fd;
+}
+.dark [data-tone='duty'] {
+  --item-accent: #fcd58a;
+}
+.dark [data-tone='scholarship'] {
+  --item-accent: #d8b4fe;
+}
+.dark [data-tone='event'] {
+  --item-accent: #82d9d0;
+}
+.dark [data-tone='open'] {
+  --item-accent: #86dfad;
+}
+html .campus-page article.semantic-item {
+  padding: 14px 16px;
+  border: 1px solid
+    color-mix(in srgb, var(--campus-muted) 28%, var(--campus-line));
+  border-inline-start-width: 2px;
+  border-radius: 10px;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+html .campus-page article.semantic-item:not([data-tone='info']) {
+  border-inline-start-color: color-mix(
+    in srgb,
+    var(--item-accent) 65%,
+    var(--campus-line)
+  );
+}
+.semantic-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--item-accent) 9%, transparent);
+  color: var(--item-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.semantic-label svg {
+  flex: none;
+}
+html .campus-page .semantic-item .campus-phase {
+  color: var(--item-accent);
+}
+html .campus-page .semantic-item .info-entry-meta > .semantic-label {
+  color: var(--item-accent);
+}
+@media (max-width: 767px) {
+  html .campus-page article.semantic-item {
+    padding: 12px;
+  }
+}
+@media (forced-colors: active) {
+  html .campus-page article.semantic-item {
+    border-color: CanvasText;
+  }
+  .semantic-label {
+    border: 1px solid CanvasText;
+    color: CanvasText;
+  }
+}

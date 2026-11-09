@@ -1,6 +1,7 @@
 import { ArrowUpRight, Lock } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 import { Link } from 'react-router-dom'
+import { announcementPresentation } from '../../lib/info/presentation'
 import { canShowCountdown, registrationTiming } from '../../lib/info/relevance'
 import {
   formatDateTime,
@@ -15,7 +16,7 @@ import type {
 } from '../../lib/info/types'
 import type { InfoResource } from '../../lib/info/resources'
 import {
-  AnnouncementStatusPill,
+  AnnouncementCategoryPill,
   ExternalSourceLink,
   SaveToggle,
 } from './infoUi'
@@ -36,7 +37,10 @@ export function AnnouncementHubCard({
 }) {
   const added = parseIsoDate(item.addedAt)
   return (
-    <article className="info-entry">
+    <article
+      className="info-entry semantic-item"
+      data-tone={announcementPresentation(item).tone}
+    >
       <div className="info-entry-content">
         <div className="info-entry-meta">
           <span>
@@ -44,9 +48,7 @@ export function AnnouncementHubCard({
               item.sourceLabel ||
               'Uniwersytet Jagielloński'}
           </span>
-          {item.status !== 'info' ? (
-            <AnnouncementStatusPill status={item.status} />
-          ) : null}
+          <AnnouncementCategoryPill item={item} />
           {added ? (
             <time
               dateTime={added.toISOString()}
@@ -114,7 +116,14 @@ export function RegistrationHubCard({
         : `Od ${formatDateTime(opens, now)}`
   return (
     <article
-      className={`deadline-entry ${compact ? 'deadline-entry-compact' : ''}`}
+      className={`deadline-entry semantic-item ${compact ? 'deadline-entry-compact' : ''}`}
+      data-tone={
+        countdown && timing.urgency === 'closing-critical'
+          ? 'urgent'
+          : timing.phase === 'open'
+            ? 'open'
+            : 'upcoming'
+      }
     >
       <div className="info-entry-content">
         <div className="info-entry-meta">

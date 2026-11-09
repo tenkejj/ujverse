@@ -325,3 +325,11 @@
     border: 1px solid ButtonText;
   }
 }
+
+/* Theme palettes lift the navy pixels, while preserving the transparent silhouette. */
+.dark .versu-mark > picture > img {
+  filter: var(--versu-dark-filter);
+}
+html.theme-uj .versu-mark > picture > img {
+  filter: var(--versu-uj-filter);
+}

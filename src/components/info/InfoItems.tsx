@@ -22,11 +22,16 @@ import {
   parseIsoDate,
   warsawDayKey,
 } from '../../lib/info/time'
-import type { InfoAnnouncement, InfoEvent, InfoRegistration } from '../../lib/info/types'
+import type {
+  InfoAnnouncement,
+  InfoEvent,
+  InfoRegistration,
+} from '../../lib/info/types'
 import type { SavedItem } from '../../lib/info/saved'
+import { announcementPresentation } from '../../lib/info/presentation'
 import { REGISTRATION_KIND_META } from '../../types/usosRegistrations'
 import {
-  AnnouncementStatusPill,
+  AnnouncementCategoryPill,
   ExternalSourceLink,
   FOCUS_RING,
   INFO_FEED_ROW_CLS,
@@ -42,7 +47,9 @@ const ADDED_MEANING =
   'Dodano do UJverse (moment pobrania ze strony wydziału, może różnić się od daty publikacji)'
 
 function sameText(a: string, b: string): boolean {
-  return a.replace(/\W+/g, '').toLowerCase() === b.replace(/\W+/g, '').toLowerCase()
+  return (
+    a.replace(/\W+/g, '').toLowerCase() === b.replace(/\W+/g, '').toLowerCase()
+  )
 }
 
 function hostLabel(url: string | null): string | null {
@@ -74,9 +81,14 @@ export function AnnouncementItem({
   const [loadingBody, setLoadingBody] = useState(false)
   const [bodyError, setBodyError] = useState(false)
 
-  const showExcerpt = variant === 'compact' && item.excerpt.length > 0 && !sameText(item.excerpt, item.title)
+  const showExcerpt =
+    variant === 'compact' &&
+    item.excerpt.length > 0 &&
+    !sameText(item.excerpt, item.title)
   const body = fullBody ?? item.body
-  const canExpand = variant === 'full' && (item.body.length > item.excerpt.length || item.mayHaveFullBody)
+  const canExpand =
+    variant === 'full' &&
+    (item.body.length > item.excerpt.length || item.mayHaveFullBody)
 
   const toggleExpanded = () => {
     const next = !expanded
@@ -92,25 +104,39 @@ export function AnnouncementItem({
       .finally(() => setLoadingBody(false))
   }
 
-  const meta = [item.facultyShort ?? null, item.sourceLabel].filter(Boolean).join(' · ')
-  const sourceLabel = item.sourceIsListing ? 'Lista komunikatów wydziału' : 'Sprawdź w źródle'
+  const meta = [item.facultyShort ?? null, item.sourceLabel]
+    .filter(Boolean)
+    .join(' · ')
+  const sourceLabel = item.sourceIsListing
+    ? 'Lista komunikatów wydziału'
+    : 'Sprawdź w źródle'
   const sourceTitle = item.sourceIsListing
     ? 'Ten komunikat nie ma osobnego adresu — otwieramy listę komunikatów wydziału'
     : undefined
 
   if (variant === 'feed') {
     return (
-      <article className={INFO_FEED_ROW_CLS}>
+      <article
+        className={`${INFO_FEED_ROW_CLS} semantic-item`}
+        data-tone={announcementPresentation(item).tone}
+      >
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <AnnouncementStatusPill status={item.status} />
+              <AnnouncementCategoryPill item={item} />
               {meta ? <span className={INFO_META_CLS}>{meta}</span> : null}
               <span className={INFO_META_CLS}>
-                <TimeStamp iso={item.addedAt} prefix="dodano" meaning={ADDED_MEANING} now={now} />
+                <TimeStamp
+                  iso={item.addedAt}
+                  prefix="dodano"
+                  meaning={ADDED_MEANING}
+                  now={now}
+                />
               </span>
             </div>
-            <Heading className={`${INFO_TITLE_CLS} line-clamp-2 break-words`}>{item.title}</Heading>
+            <Heading className={`${INFO_TITLE_CLS} line-clamp-2 break-words`}>
+              {item.title}
+            </Heading>
             <div className="mt-1.5">
               <ExternalSourceLink href={item.sourceUrl} title={sourceTitle}>
                 {sourceLabel}
@@ -124,23 +150,35 @@ export function AnnouncementItem({
   }
 
   return (
-    <BaseCard as="article" variant="inner" className="m-0 p-3">
+    <BaseCard
+      as="article"
+      variant="inner"
+      className="m-0 p-3 semantic-item"
+      data-tone={announcementPresentation(item).tone}
+    >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <AnnouncementStatusPill status={item.status} />
+            <AnnouncementCategoryPill item={item} />
             {meta ? <span className={INFO_META_CLS}>{meta}</span> : null}
           </div>
-          <Heading className={`${INFO_TITLE_CLS} break-words`}>{item.title}</Heading>
+          <Heading className={`${INFO_TITLE_CLS} break-words`}>
+            {item.title}
+          </Heading>
 
           {variant === 'full' && item.summary ? (
             <div className="mt-2">
-              <AnnouncementTldr summary={{ text: item.summary, source: 'ai' }} variant="card" />
+              <AnnouncementTldr
+                summary={{ text: item.summary, source: 'ai' }}
+                variant="card"
+              />
             </div>
           ) : null}
 
           {showExcerpt ? (
-            <p className={`${INFO_TEXT_CLS} mt-1 line-clamp-2 break-words`}>{item.excerpt}</p>
+            <p className={`${INFO_TEXT_CLS} mt-1 line-clamp-2 break-words`}>
+              {item.excerpt}
+            </p>
           ) : null}
 
           {variant === 'full' && body ? (
@@ -153,7 +191,12 @@ export function AnnouncementItem({
 
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <span className={INFO_META_CLS}>
-              <TimeStamp iso={item.addedAt} prefix="dodano" meaning={ADDED_MEANING} now={now} />
+              <TimeStamp
+                iso={item.addedAt}
+                prefix="dodano"
+                meaning={ADDED_MEANING}
+                now={now}
+              />
             </span>
             <ExternalSourceLink href={item.sourceUrl} title={sourceTitle}>
               {sourceLabel}
@@ -168,7 +211,11 @@ export function AnnouncementItem({
                 {expanded ? 'Zwiń' : 'Pokaż całość'}
               </button>
             ) : null}
-            {loadingBody ? <span className={INFO_META_CLS} role="status">Wczytuję pełną treść…</span> : null}
+            {loadingBody ? (
+              <span className={INFO_META_CLS} role="status">
+                Wczytuję pełną treść…
+              </span>
+            ) : null}
             {bodyError ? (
               <span className={INFO_META_CLS} role="status">
                 Nie udało się pobrać pełnej treści — zajrzyj do źródła.
@@ -210,10 +257,12 @@ export function RegistrationItem({
   let phaseCls: string
   if (timing.phase === 'open') {
     phaseLabel = 'Trwa'
-    phaseCls = 'border-emerald-600/40 text-emerald-800 dark:border-emerald-400/40 dark:text-emerald-300'
+    phaseCls =
+      'border-emerald-600/40 text-emerald-800 dark:border-emerald-400/40 dark:text-emerald-300'
   } else {
     phaseLabel = 'Nadchodząca'
-    phaseCls = 'border-sky-600/40 text-sky-800 dark:border-sky-400/40 dark:text-sky-300'
+    phaseCls =
+      'border-sky-600/40 text-sky-800 dark:border-sky-400/40 dark:text-sky-300'
   }
 
   let deadline: string
@@ -222,25 +271,35 @@ export function RegistrationItem({
     if (!closes) {
       deadline = 'Bez podanego terminu zamknięcia'
     } else if (countdown && timing.msUntilClose !== null) {
-      deadline = variant === 'feed'
-        ? `Zamyka się za ${formatDurationShort(timing.msUntilClose)}`
-        : `Zamyka się za ${formatDurationShort(timing.msUntilClose)} · ${formatDateTime(closes, now)}`
-      if (timing.urgency === 'closing-critical') deadlineTone = 'text-rose-700 dark:text-rose-300 font-semibold'
-      else if (timing.urgency === 'closing-soon') deadlineTone = 'text-amber-800 dark:text-amber-300 font-semibold'
+      deadline =
+        variant === 'feed'
+          ? `Zamyka się za ${formatDurationShort(timing.msUntilClose)}`
+          : `Zamyka się za ${formatDurationShort(timing.msUntilClose)} · ${formatDateTime(closes, now)}`
+      if (timing.urgency === 'closing-critical')
+        deadlineTone = 'text-rose-700 dark:text-rose-300 font-semibold'
+      else if (timing.urgency === 'closing-soon')
+        deadlineTone = 'text-amber-800 dark:text-amber-300 font-semibold'
     } else {
       deadline = `Otwarta do ${formatDateTime(closes, now)}`
     }
   } else if (countdown) {
-    deadline = variant === 'feed'
-      ? `Otwiera się za ${formatDurationShort(timing.msUntilOpen)}`
-      : `Otwiera się za ${formatDurationShort(timing.msUntilOpen)} · ${formatDateTime(opens, now)}`
-    if (timing.urgency === 'opening-soon') deadlineTone = 'text-sky-800 dark:text-sky-300 font-semibold'
+    deadline =
+      variant === 'feed'
+        ? `Otwiera się za ${formatDurationShort(timing.msUntilOpen)}`
+        : `Otwiera się za ${formatDurationShort(timing.msUntilOpen)} · ${formatDateTime(opens, now)}`
+    if (timing.urgency === 'opening-soon')
+      deadlineTone = 'text-sky-800 dark:text-sky-300 font-semibold'
   } else {
     deadline = `Otwarcie ${formatDateTime(opens, now)}${closes ? ` · do ${formatDate(closes, now)}` : ''}`
   }
 
-  const kindLabel = item.registrationKind !== 'inne' ? REGISTRATION_KIND_META[item.registrationKind].label : null
-  const unitLine = [showUnit ? item.unitName : null, item.facultyShort].filter(Boolean).join(' · ')
+  const kindLabel =
+    item.registrationKind !== 'inne'
+      ? REGISTRATION_KIND_META[item.registrationKind].label
+      : null
+  const unitLine = [showUnit ? item.unitName : null, item.facultyShort]
+    .filter(Boolean)
+    .join(' · ')
   const verifiedDate = parseIsoDate(item.verifiedAt)
   const phasePill = (
     <span
@@ -252,20 +311,44 @@ export function RegistrationItem({
 
   if (variant === 'feed') {
     return (
-      <article className={INFO_FEED_ROW_CLS}>
+      <article
+        className={`${INFO_FEED_ROW_CLS} semantic-item`}
+        data-tone={
+          countdown && timing.urgency === 'closing-critical'
+            ? 'urgent'
+            : timing.phase === 'open'
+              ? 'open'
+              : 'upcoming'
+        }
+      >
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
               {phasePill}
-              {kindLabel ? <span className={INFO_META_CLS}>{kindLabel}</span> : null}
+              {kindLabel ? (
+                <span className={INFO_META_CLS}>{kindLabel}</span>
+              ) : null}
             </div>
-            <Heading className={`${INFO_TITLE_CLS} line-clamp-2 break-words`}>{item.title}</Heading>
+            <Heading className={`${INFO_TITLE_CLS} line-clamp-2 break-words`}>
+              {item.title}
+            </Heading>
             <p className={`mt-1 text-xs ${deadlineTone}`}>
-              <time dateTime={(timing.phase === 'open' ? closes ?? opens : opens).toISOString()}>{deadline}</time>
-              {unitLine ? <span className={` ${INFO_META_CLS}`}> · {unitLine}</span> : null}
+              <time
+                dateTime={(timing.phase === 'open'
+                  ? (closes ?? opens)
+                  : opens
+                ).toISOString()}
+              >
+                {deadline}
+              </time>
+              {unitLine ? (
+                <span className={` ${INFO_META_CLS}`}> · {unitLine}</span>
+              ) : null}
             </p>
             <div className="mt-1.5">
-              <ExternalSourceLink href={item.url}>Otwórz w USOSweb</ExternalSourceLink>
+              <ExternalSourceLink href={item.url}>
+                Otwórz w USOSweb
+              </ExternalSourceLink>
             </div>
           </div>
           <SaveToggle item={item} />
@@ -275,23 +358,52 @@ export function RegistrationItem({
   }
 
   return (
-    <BaseCard as="article" variant="inner" className="m-0 p-3">
+    <BaseCard
+      as="article"
+      variant="inner"
+      className="m-0 p-3 semantic-item"
+      data-tone={
+        countdown && timing.urgency === 'closing-critical'
+          ? 'urgent'
+          : timing.phase === 'open'
+            ? 'open'
+            : 'upcoming'
+      }
+    >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             {phasePill}
-            {kindLabel ? <span className={INFO_META_CLS}>{kindLabel}</span> : null}
-            {unitLine ? <span className={`${INFO_META_CLS} min-w-0 break-words`}>{unitLine}</span> : null}
+            {kindLabel ? (
+              <span className={INFO_META_CLS}>{kindLabel}</span>
+            ) : null}
+            {unitLine ? (
+              <span className={`${INFO_META_CLS} min-w-0 break-words`}>
+                {unitLine}
+              </span>
+            ) : null}
           </div>
-          <Heading className={`${INFO_TITLE_CLS} break-words`}>{item.title}</Heading>
+          <Heading className={`${INFO_TITLE_CLS} break-words`}>
+            {item.title}
+          </Heading>
           <p className={`mt-1 text-xs ${deadlineTone}`}>
-            <time dateTime={(timing.phase === 'open' ? closes ?? opens : opens).toISOString()}>{deadline}</time>
+            <time
+              dateTime={(timing.phase === 'open'
+                ? (closes ?? opens)
+                : opens
+              ).toISOString()}
+            >
+              {deadline}
+            </time>
           </p>
           {variant === 'full' ? (
             <p className={`${INFO_META_CLS} mt-1`}>
               {item.code ? <>Kod: {item.code} · </> : null}
               {verified && verifiedDate ? (
-                <time dateTime={verifiedDate.toISOString()} title={`Ostatnio potwierdzone w USOSweb: ${formatFull(verifiedDate)}`}>
+                <time
+                  dateTime={verifiedDate.toISOString()}
+                  title={`Ostatnio potwierdzone w USOSweb: ${formatFull(verifiedDate)}`}
+                >
                   potwierdzone w USOSweb {formatRelativePast(verifiedDate, now)}
                 </time>
               ) : (
@@ -302,7 +414,9 @@ export function RegistrationItem({
             </p>
           ) : null}
           <div className="mt-2">
-            <ExternalSourceLink href={item.url}>Otwórz w USOSweb</ExternalSourceLink>
+            <ExternalSourceLink href={item.url}>
+              Otwórz w USOSweb
+            </ExternalSourceLink>
           </div>
         </div>
         <SaveToggle item={item} />
@@ -371,7 +485,8 @@ export function EventPreviewTile({
   )
   return (
     <article
-      className={`event-preview${compact ? ' event-preview-compact' : ''}`}
+      className={`event-preview semantic-item${compact ? ' event-preview-compact' : ''}`}
+      data-tone="event"
     >
       {item.url ? (
         <a
@@ -428,16 +543,24 @@ export function EventItem({
 
   if (variant === 'feed') {
     return (
-      <article className={INFO_FEED_ROW_CLS}>
+      <article className={`${INFO_FEED_ROW_CLS} semantic-item`} data-tone="event">
         <div className="flex items-start gap-3">
           {dateBlock}
           <div className="min-w-0 flex-1">
             <p className={INFO_META_CLS}>
-              <time dateTime={item.dayKey}>{isPast ? `Minione · ${dayLabel}` : dayLabel}</time>
+              <time dateTime={item.dayKey}>
+                {isPast ? `Minione · ${dayLabel}` : dayLabel}
+              </time>
             </p>
-            <Heading className={`${INFO_TITLE_CLS} mt-0.5 line-clamp-2 break-words`}>{item.title}</Heading>
+            <Heading
+              className={`${INFO_TITLE_CLS} mt-0.5 line-clamp-2 break-words`}
+            >
+              {item.title}
+            </Heading>
             <div className="mt-1.5">
-              <ExternalSourceLink href={item.url}>Szczegóły{host ? ` na ${host}` : ''}</ExternalSourceLink>
+              <ExternalSourceLink href={item.url}>
+                Szczegóły{host ? ` na ${host}` : ''}
+              </ExternalSourceLink>
             </div>
           </div>
           <SaveToggle item={item} />
@@ -447,12 +570,14 @@ export function EventItem({
   }
 
   return (
-    <BaseCard as="article" variant="inner" className="m-0 p-3">
+    <BaseCard as="article" variant="inner" className="m-0 p-3 semantic-item" data-tone="event">
       <div className="flex items-start gap-3">
         {dateBlock}
         <div className="min-w-0 flex-1">
           <p className={INFO_META_CLS}>
-            <time dateTime={item.dayKey}>{isPast ? `Minione · ${dayLabel}` : dayLabel}</time>
+            <time dateTime={item.dayKey}>
+              {isPast ? `Minione · ${dayLabel}` : dayLabel}
+            </time>
             {item.location ? (
               <span className="inline-flex items-center gap-1">
                 {' · '}
@@ -461,12 +586,18 @@ export function EventItem({
               </span>
             ) : null}
           </p>
-          <Heading className={`${INFO_TITLE_CLS} mt-0.5 break-words`}>{item.title}</Heading>
+          <Heading className={`${INFO_TITLE_CLS} mt-0.5 break-words`}>
+            {item.title}
+          </Heading>
           {variant === 'full' && item.description ? (
-            <p className={`${INFO_TEXT_CLS} mt-1 line-clamp-3 break-words`}>{item.description}</p>
+            <p className={`${INFO_TEXT_CLS} mt-1 line-clamp-3 break-words`}>
+              {item.description}
+            </p>
           ) : null}
           <div className="mt-2">
-            <ExternalSourceLink href={item.url}>Szczegóły{host ? ` na ${host}` : ' w źródle'}</ExternalSourceLink>
+            <ExternalSourceLink href={item.url}>
+              Szczegóły{host ? ` na ${host}` : ' w źródle'}
+            </ExternalSourceLink>
           </div>
         </div>
         <SaveToggle item={item} />
@@ -498,16 +629,24 @@ export function SavedItemRow({
       due = formatDayLabel(item.dueAt, now)
     } else {
       const date = parseIsoDate(item.dueAt)
-      if (date) due = date.getTime() < now.getTime() ? `termin minął ${formatDate(date, now)}` : `do ${formatDateTime(date, now)}`
+      if (date)
+        due =
+          date.getTime() < now.getTime()
+            ? `termin minął ${formatDate(date, now)}`
+            : `do ${formatDateTime(date, now)}`
     }
   }
   const body = (
     <>
       <div className="min-w-0 flex-1">
         <p className={INFO_META_CLS}>
-          {[SAVED_KIND_LABEL[item.kind], item.context, due].filter(Boolean).join(' · ')}
+          {[SAVED_KIND_LABEL[item.kind], item.context, due]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
-        <h3 className={`${INFO_TITLE_CLS} mt-0.5 line-clamp-2 break-words`}>{item.title}</h3>
+        <h3 className={`${INFO_TITLE_CLS} mt-0.5 line-clamp-2 break-words`}>
+          {item.title}
+        </h3>
         <div className="mt-1.5">
           <ExternalSourceLink href={item.url}>Otwórz źródło</ExternalSourceLink>
         </div>
@@ -524,10 +663,18 @@ export function SavedItemRow({
     </>
   )
   if (variant === 'feed') {
-    return <article className={`${INFO_FEED_ROW_CLS} flex items-start gap-2`}>{body}</article>
+    return (
+      <article className={`${INFO_FEED_ROW_CLS} flex items-start gap-2`}>
+        {body}
+      </article>
+    )
   }
   return (
-    <BaseCard as="article" variant="inner" className="m-0 flex items-start gap-2 p-3">
+    <BaseCard
+      as="article"
+      variant="inner"
+      className="m-0 flex items-start gap-2 p-3"
+    >
       {body}
     </BaseCard>
   )

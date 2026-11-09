@@ -3,35 +3,63 @@
  * widżety feedu (BaseCard + nagłówki sekcji w kolorze marki).
  */
 import { useId, type ComponentType, type ReactNode, type SVGProps } from 'react'
-import { AlertTriangle, ArrowUpRight, Bookmark, BookmarkCheck, Inbox, RotateCcw } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Bookmark,
+  BookmarkCheck,
+  CalendarDays,
+  CircleX,
+  Clock3,
+  GraduationCap,
+  Inbox,
+  Monitor,
+  RotateCcw,
+} from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
 import { Skeleton } from '../ui/Skeleton'
-import { sectionTitleCls, sideMutedCls, widgetGoldCls } from '../../lib/sidePanelStyles'
+import {
+  sectionTitleCls,
+  sideMutedCls,
+  widgetGoldCls,
+} from '../../lib/sidePanelStyles'
 import {
   ANNOUNCEMENT_STATUS_BADGE,
   ANNOUNCEMENT_STATUS_DOT,
   ANNOUNCEMENT_STATUS_LABEL,
 } from '../../lib/announcementStatusStyles'
 import type { AnnouncementStatus } from '../../types/content'
-import { formatFull, formatRelativePast, parseIsoDate } from '../../lib/info/time'
-import type { InfoItem } from '../../lib/info/types'
-import { toggleSavedInfoItem, useInfoStore } from '../../hooks/useInfoPreferences'
+import {
+  formatFull,
+  formatRelativePast,
+  parseIsoDate,
+} from '../../lib/info/time'
+import { announcementPresentation } from '../../lib/info/presentation'
+import '../../styles/semantic-items.css'
+import type { InfoAnnouncement, InfoItem } from '../../lib/info/types'
+import {
+  toggleSavedInfoItem,
+  useInfoStore,
+} from '../../hooks/useInfoPreferences'
 import { isSaved } from '../../lib/info/saved'
 
-type Icon = ComponentType<SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }>
+type Icon = ComponentType<
+  SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }
+>
 
 export const FOCUS_RING =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/35 dark:focus-visible:ring-brand-gold/45'
 
-export const INFO_TITLE_CLS = 'text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100'
-export const INFO_META_CLS = 'text-[11px] leading-snug text-zinc-500 dark:text-zinc-400'
-export const INFO_TEXT_CLS = 'text-xs leading-relaxed text-zinc-600 dark:text-zinc-400'
+export const INFO_TITLE_CLS =
+  'text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100'
+export const INFO_META_CLS =
+  'text-[11px] leading-snug text-zinc-500 dark:text-zinc-400'
+export const INFO_TEXT_CLS =
+  'text-xs leading-relaxed text-zinc-600 dark:text-zinc-400'
 
-export const INFO_LINK_CLS =
-  `inline-flex items-center gap-1 rounded text-xs font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright ${FOCUS_RING}`
+export const INFO_LINK_CLS = `inline-flex items-center gap-1 rounded text-xs font-semibold text-brand-ink underline-offset-2 hover:underline dark:text-brand-gold-bright ${FOCUS_RING}`
 
-export const INFO_ACTION_LINK_CLS =
-  `inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-logo-navy/70 transition-colors hover:bg-black/[0.04] hover:text-brand-ink dark:text-slate-300 dark:hover:bg-white/[0.05] dark:hover:text-brand-gold-bright ${FOCUS_RING}`
+export const INFO_ACTION_LINK_CLS = `inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-logo-navy/70 transition-colors hover:bg-black/[0.04] hover:text-brand-ink dark:text-slate-300 dark:hover:bg-white/[0.05] dark:hover:text-brand-gold-bright ${FOCUS_RING}`
 
 export const INFO_ROW_CLS = 'm-0 min-w-0 p-3'
 
@@ -62,8 +90,16 @@ export function InfoSection({
   const headingId = useId()
   const header = (
     <div className="flex min-w-0 items-baseline gap-2">
-      <SectionIcon size={14} strokeWidth={2} className={`${widgetGoldCls} mt-0.5 shrink-0`} aria-hidden />
-      <h2 id={headingId} className={`${sectionTitleCls} min-w-0 flex-1 break-words leading-snug`}>
+      <SectionIcon
+        size={14}
+        strokeWidth={2}
+        className={`${widgetGoldCls} mt-0.5 shrink-0`}
+        aria-hidden
+      />
+      <h2
+        id={headingId}
+        className={`${sectionTitleCls} min-w-0 flex-1 break-words leading-snug`}
+      >
         {title}
       </h2>
       {action}
@@ -71,28 +107,56 @@ export function InfoSection({
   )
   if (variant === 'feed') {
     return (
-      <section aria-labelledby={headingId} aria-busy={busy || undefined} className={`min-w-0 ${className}`}>
+      <section
+        aria-labelledby={headingId}
+        aria-busy={busy || undefined}
+        className={`min-w-0 ${className}`}
+      >
         {header}
-        {subtitle ? <div className={`mt-1 pl-[1.375rem] text-xs ${sideMutedCls}`}>{subtitle}</div> : null}
-        <div className="mt-1 border-t border-zinc-200/80 pt-1 dark:border-white/10">{children}</div>
+        {subtitle ? (
+          <div className={`mt-1 pl-[1.375rem] text-xs ${sideMutedCls}`}>
+            {subtitle}
+          </div>
+        ) : null}
+        <div className="mt-1 border-t border-zinc-200/80 pt-1 dark:border-white/10">
+          {children}
+        </div>
       </section>
     )
   }
   return (
-    <section aria-labelledby={headingId} aria-busy={busy || undefined} className={`min-w-0 ${className}`}>
-      <BaseCard variant="default" className="flex h-full min-w-0 flex-col gap-3 p-4 sm:p-5">
+    <section
+      aria-labelledby={headingId}
+      aria-busy={busy || undefined}
+      className={`min-w-0 ${className}`}
+    >
+      <BaseCard
+        variant="default"
+        className="flex h-full min-w-0 flex-col gap-3 p-4 sm:p-5"
+      >
         {header}
-        {subtitle ? <div className={`-mt-1 text-xs ${sideMutedCls}`}>{subtitle}</div> : null}
+        {subtitle ? (
+          <div className={`-mt-1 text-xs ${sideMutedCls}`}>{subtitle}</div>
+        ) : null}
         {children}
       </BaseCard>
     </section>
   )
 }
 
-export function RowSkeletons({ count = 3, variant = 'panel' }: { count?: number; variant?: 'panel' | 'feed' }) {
+export function RowSkeletons({
+  count = 3,
+  variant = 'panel',
+}: {
+  count?: number
+  variant?: 'panel' | 'feed'
+}) {
   if (variant === 'feed') {
     return (
-      <div className="divide-y divide-zinc-200/80 dark:divide-white/10" aria-hidden>
+      <div
+        className="divide-y divide-zinc-200/80 dark:divide-white/10"
+        aria-hidden
+      >
         {Array.from({ length: count }, (_, i) => (
           <div key={i} className="space-y-2 py-3.5">
             <Skeleton className="h-3 w-24" />
@@ -133,9 +197,12 @@ export function DomainError({
       <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold">Nie udało się pobrać: {what}.</p>
-        {!compact ? <p className="mt-0.5 text-xs opacity-80">
-          To problem z połączeniem lub serwerem, a nie brak informacji. Pozostałe sekcje działają niezależnie.
-        </p> : null}
+        {!compact ? (
+          <p className="mt-0.5 text-xs opacity-80">
+            To problem z połączeniem lub serwerem, a nie brak informacji.
+            Pozostałe sekcje działają niezależnie.
+          </p>
+        ) : null}
       </div>
       {onRetry ? (
         <button
@@ -171,7 +238,11 @@ export function DomainEmpty({
   }
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-dashed border-zinc-200 p-3 dark:border-white/10">
-      <Inbox size={16} className={`mt-0.5 shrink-0 ${sideMutedCls}`} aria-hidden />
+      <Inbox
+        size={16}
+        className={`mt-0.5 shrink-0 ${sideMutedCls}`}
+        aria-hidden
+      />
       <div className="min-w-0 flex-1 space-y-2">
         <p className={INFO_TEXT_CLS}>{children}</p>
         {action}
@@ -222,26 +293,64 @@ export function TimeStamp({
   const date = parseIsoDate(iso)
   if (!date) return null
   return (
-    <time dateTime={date.toISOString()} title={`${meaning}: ${formatFull(date)}`}>
+    <time
+      dateTime={date.toISOString()}
+      title={`${meaning}: ${formatFull(date)}`}
+    >
       {prefix} {formatRelativePast(date, now)}
     </time>
   )
 }
 
 /** Pigułka statusu — tylko dla statusów niosących informację (bez „Komunikat"). */
-export function AnnouncementStatusPill({ status }: { status: AnnouncementStatus }) {
+export function AnnouncementStatusPill({
+  status,
+}: {
+  status: AnnouncementStatus
+}) {
   if (status === 'info') return null
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border bg-transparent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${ANNOUNCEMENT_STATUS_BADGE[status]}`}
     >
-      <span className={`inline-block size-1.5 rounded-full ${ANNOUNCEMENT_STATUS_DOT[status]}`} aria-hidden />
-      {status === 'cancelled' ? 'Odwołane zajęcia' : ANNOUNCEMENT_STATUS_LABEL[status]}
+      <span
+        className={`inline-block size-1.5 rounded-full ${ANNOUNCEMENT_STATUS_DOT[status]}`}
+        aria-hidden
+      />
+      {status === 'cancelled'
+        ? 'Odwołane zajęcia'
+        : ANNOUNCEMENT_STATUS_LABEL[status]}
     </span>
   )
 }
 
-export function SaveToggle({ item, className = '' }: { item: InfoItem; className?: string }) {
+/** Topic/status labels remain readable without relying on colour alone. */
+export function AnnouncementCategoryPill({ item }: { item: InfoAnnouncement }) {
+  const presentation = announcementPresentation(item)
+  if (!presentation.label) return null
+  const Glyph = {
+    cancelled: CircleX,
+    remote: Monitor,
+    duty: Clock3,
+    scholarship: GraduationCap,
+    event: CalendarDays,
+    info: CalendarDays,
+  }[presentation.icon]
+  return (
+    <span className="semantic-label" data-tone={presentation.tone}>
+      <Glyph size={13} strokeWidth={1.8} aria-hidden />
+      {presentation.label}
+    </span>
+  )
+}
+
+export function SaveToggle({
+  item,
+  className = '',
+}: {
+  item: InfoItem
+  className?: string
+}) {
   const { saved } = useInfoStore()
   const active = isSaved(saved, item.kind, item.id)
   const Glyph = active ? BookmarkCheck : Bookmark
@@ -250,8 +359,14 @@ export function SaveToggle({ item, className = '' }: { item: InfoItem; className
       type="button"
       onClick={() => toggleSavedInfoItem(item)}
       aria-pressed={active}
-      aria-label={active ? `Usuń z zapisanych: ${item.title}` : `Zapisz na później: ${item.title}`}
-      title={active ? 'Usuń z zapisanych' : 'Zapisz na później (na tym urządzeniu)'}
+      aria-label={
+        active
+          ? `Usuń z zapisanych: ${item.title}`
+          : `Zapisz na później: ${item.title}`
+      }
+      title={
+        active ? 'Usuń z zapisanych' : 'Zapisz na później (na tym urządzeniu)'
+      }
       className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
         active
           ? 'text-brand-ink dark:text-brand-gold-bright'
@@ -275,10 +390,18 @@ export function PageIntro({
   return (
     <header className="flex flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-xl font-extrabold leading-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">{title}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
+        <h1 className="text-xl font-extrabold leading-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
+          {title}
+        </h1>
+        <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+          {description}
+        </p>
       </div>
-      {children ? <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div> : null}
+      {children ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {children}
+        </div>
+      ) : null}
     </header>
   )
 }

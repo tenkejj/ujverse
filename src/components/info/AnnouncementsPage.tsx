@@ -16,7 +16,6 @@ import {
   InfoHubCardGrid,
   InfoHubSection,
   InfoHubShell,
-  InfoHubTitle,
   InfoHubToolbar,
 } from './InfoHubShell'
 import { DomainEmpty, DomainError, RowSkeletons } from './infoUi'
@@ -93,10 +92,7 @@ export default function AnnouncementsPage({
 
   return (
     <InfoHubShell>
-      <InfoHubTitle
-        title="Komunikaty"
-        description="Ogłoszenia z wydziałów. Najnowsze informacje zawsze na początku."
-      />
+      <h1 className="sr-only">Komunikaty</h1>
       <DataFreshness
         iso={
           query.isPlaceholderData

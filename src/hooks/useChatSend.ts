@@ -18,12 +18,48 @@ import { LLMService, LLMServiceError } from '../services/ai/LLMService'
 import { useChatStore } from '../store/useChatStore'
 import { toast } from '../lib/appToast'
 import type { ChatMessage } from '../types/ai'
+import {
+  getUserPreferences,
+  subscribePreferences,
+} from '../lib/userPreferences'
 
 // Persona and tool context are owned by the server.
 
 export type UseChatSendResult = {
   sendMessage: (rawContent: string) => Promise<void>
   cancel: () => void
+}
+
+/** A bounded presentation settle, not model inference time or a token-rate metric. */
+function settleReceivedText(
+  delayMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  if (typeof window === 'undefined' || signal.aborted || delayMs <= 0)
+    return Promise.resolve()
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
+  if (motion.matches || getUserPreferences().reducedMotion)
+    return Promise.resolve()
+  return new Promise((resolve) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let unsubscribePreferences = () => {}
+    const finish = () => {
+      if (timer !== undefined) clearTimeout(timer)
+      signal.removeEventListener('abort', finish)
+      motion.removeEventListener('change', onMotion)
+      unsubscribePreferences()
+      resolve()
+    }
+    const onMotion = () => {
+      if (motion.matches) finish()
+    }
+    signal.addEventListener('abort', finish, { once: true })
+    motion.addEventListener('change', onMotion)
+    unsubscribePreferences = subscribePreferences((prefs) => {
+      if (prefs.reducedMotion) finish()
+    })
+    timer = setTimeout(finish, Math.min(450, delayMs))
+  })
 }
 
 export function useChatSend(): UseChatSendResult {
@@ -70,6 +106,8 @@ export function useChatSend(): UseChatSendResult {
       abortRef.current = controller
       useChatStore.getState().setTyping(true)
       useChatStore.getState().setResponsePhase('thinking')
+      let lastDeltaAt = 0
+      let lastDeltaLength = 0
 
       try {
         const stream = await LLMService.sendMessage(historyForApi, {
@@ -109,8 +147,30 @@ export function useChatSend(): UseChatSendResult {
           ) {
             useChatStore.getState().setResponsePhase('answering')
           }
+          if (event.content) {
+            lastDeltaAt = performance.now()
+            lastDeltaLength = event.content.length
+          }
           useChatStore.getState().appendAssistantMessage(event.content)
         }
+        // Ready/cached replies can put a delta and [DONE] in one browser task.
+        // Keep answering active just long enough for a short visual reveal,
+        // never more than 450ms after the last received delta.
+        const settleMs = Math.min(
+          450,
+          Math.max(80, Math.ceil(lastDeltaLength / 12) * 40),
+        )
+        if (lastDeltaLength > 0) {
+          await settleReceivedText(
+            settleMs - (performance.now() - lastDeltaAt),
+            controller.signal,
+          )
+        }
+        if (
+          controller.signal.aborted ||
+          useChatStore.getState().generation !== generation
+        )
+          return
         const last = useChatStore.getState().messages.at(-1)
         if (
           !controller.signal.aborted &&

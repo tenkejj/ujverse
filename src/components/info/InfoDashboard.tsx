@@ -158,25 +158,23 @@ export default function InfoDashboard({
   return (
     <div className="campus-home student-dashboard">
       <div className="dashboard-opening">
-
-
         <VersusEntry />
       </div>
 
-        <header className="dashboard-heading">
-          <div>
-            {firstName ? (
-              <p className="dashboard-greeting">Cześć, {firstName}</p>
-            ) : null}
-            <h1>Co słychać na UJ?</h1>
-            <p className="dashboard-context">
-              <CalendarDays size={14} aria-hidden /> {dateLabel}
-              <span aria-hidden> · </span>
-              {short ?? 'Wszystkie wydziały'}
-            </p>
-          </div>
-          <CustomizeButton hidden={prefs.hiddenSections} />
-        </header>
+      <header className="dashboard-heading">
+        <div>
+          {firstName ? (
+            <p className="dashboard-greeting">Cześć, {firstName}</p>
+          ) : null}
+          <h1 className="sr-only">Informacje z UJ</h1>
+          <p className="dashboard-context">
+            <CalendarDays size={14} aria-hidden /> {dateLabel}
+            <span aria-hidden> · </span>
+            {short ?? 'Wszystkie wydziały'}
+          </p>
+        </div>
+        <CustomizeButton hidden={prefs.hiddenSections} />
+      </header>
 
       {priority ? (
         <section
@@ -307,9 +305,6 @@ export default function InfoDashboard({
                     <ul className="dashboard-stories">
                       {announcements.slice(0, 3).map((item) => (
                         <li key={item.id}>
-                          <span className="dashboard-story-icon" aria-hidden>
-                            <Megaphone size={18} strokeWidth={1.75} />
-                          </span>
                           <AnnouncementHubCard item={item} now={now} compact />
                         </li>
                       ))}
