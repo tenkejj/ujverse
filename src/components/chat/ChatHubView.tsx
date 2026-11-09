@@ -36,7 +36,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
+import {
+  CHAT_ASSISTANT_NAME,
+  CHAT_MODEL_LABEL,
+  CHAT_PROVIDER_LABEL,
+} from '../../lib/chatModel'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { VersusEntryState } from '../../lib/versusEntry'
 import { useChatStore } from '../../store/useChatStore'
@@ -235,7 +239,10 @@ export default function ChatHubView({
             ) : null}
             <div className="min-w-0">
               <h1>
-                Versuś <span>AI</span>
+                Versuś{' '}
+                <span>
+                  {CHAT_MODEL_LABEL} · {CHAT_PROVIDER_LABEL}
+                </span>
               </h1>
               <p className="versus-chat-caption">
                 {activity === 'answering'

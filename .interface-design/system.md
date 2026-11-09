@@ -2,7 +2,7 @@
 
 Intent: a student quickly checking university news, deadlines and dates, with an accessible AI assistant. Preserve `public/logo.png`, system typography and existing light/dark/UJ tokens. Use the established navy, gold, neutral surfaces and text roles; no replacement font, main logo or decorative gradient.
 
-The signature is an original slender pixel-art creature with tall ear fins, cream muzzle, intelligent eyes and a book. The AI identity stands openly beside one question field, with no surrounding card or inner identity panel. On phones the identity and heading share a row, then the labelled form spans the width. Sending precedes optional examples. The question field is the primary task; controls use native semantics and reuse existing components.
+The signature is an original slender pixel-art creature with tall ear fins, cream muzzle, intelligent eyes and a book. The AI identity and heading form a row above a three-line question field in a bounded 880 px introduction, with no surrounding card or inner identity panel. On phones the identity and heading share a row, then the labelled form spans the width. Sending precedes optional examples. The question field is the primary task; controls use native semantics and reuse existing components.
 
 Hierarchy: page heading 28 px (25 phone), assistant heading 25 px (22/20 phone), section heading 20 px (18 phone), preview titles 17 px, body 14–16 px, metadata 11–12 px. Four-pixel spacing base, 24–32 px surface padding and 24–32 px between groups. Primary actions 48 px, secondary controls 44 px. Homepage content maximum 1640 px; sidebar 224 px. Header logo is centred on the viewport, not on the remaining content column.
 
@@ -20,8 +20,10 @@ The footer has two named navigation groups with semantic icons. Keep the full to
 
 Current sources were fetched through MCP UI Skills: interface-design, better-layout and better-ui. Decisions and verification limits: `docs/design/campus-workspace.md`. These are implemented patterns, not a usability study. The user requested no automated test suites for visual iterations.
 
-Versuś conversation: natural questions without slash menus, stable Markdown, truthful activity labels, 40 ms word/grapheme rendering groups, a bounded ready-reply presentation settle, and immediate stop/reduced-motion flushing, and user-controlled scroll anchoring. See `docs/design/versus-refresh.md` for scope and verification limits.
+Versuś conversation: natural questions without slash menus, stable Markdown, truthful activity labels, 40 ms word/grapheme rendering groups, a slower nominal 60-character/s rhythm with bounded 2.2-second ready-reply catch-up, and immediate stop/reduced-motion flushing, and user-controlled scroll anchoring. See `docs/design/versus-refresh.md` for scope and verification limits.
 
 Current open-layout refinement: `docs/design/open-campus.md`. Portraits crop transparent padding and use larger unframed marks; full companion art is 184px on the homepage and 160px in the chat welcome. Event images originate from the actual UJ event catalogue, with honest fallback for missing/failed photos.
 
 Latest refinement: `docs/design/semantic-ui-tweaks.md`. Keep the catalogue introductions and generic overview heading visually absent. Search uses useful icon topics and a two-column item grid on desktop. The companion has readable rectangular gold glasses and theme-specific static palettes; never show fabricated inference/TPS metrics.
+
+Current Versuś refinements: `docs/design/versus-reading-and-portraits.md`. Use zero-intercept linear theme colours to retain the dark pixel contour. Show GPT-OSS · Groq as model/provider, preserve current server routing, and offer three native-radio resting portrait options behind the homepage disclosure. Actual activity always overrides a decorative resting portrait; reduced motion updates live.

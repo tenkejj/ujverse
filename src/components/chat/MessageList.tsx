@@ -23,6 +23,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from 'react'
@@ -38,7 +39,15 @@ import {
 import type { ChatMessage } from '../../types/ai'
 import type { Profile } from '../../types'
 import { toast } from '../../lib/appToast'
+import {
+  readSystemChatReducedMotion,
+  subscribeSystemChatReducedMotion,
+} from '../../lib/chatPresentation'
 import { useChatFeedback } from '../../hooks/useChatFeedback'
+import {
+  getUserPreferences,
+  subscribePreferences,
+} from '../../lib/userPreferences'
 import UserAvatar from '../UserAvatar'
 import AnimatedBot from './AnimatedBot'
 import type { VersuActivity } from './VersuMark'
@@ -472,7 +481,20 @@ function FollowUpChips({
   )
 }
 
-/** A truthful status until the first text delta arrives. */
+const THINKING_PHRASES = [
+  'Przygotowuję odpowiedź…',
+  'Pracuję nad Twoim pytaniem…',
+  'Zastanawiam się nad odpowiedzią…',
+  'Układam odpowiedź…',
+  'Jeszcze chwilę nad tym myślę…',
+  'Opracowuję odpowiedź…',
+  'Dobieram wyjaśnienie…',
+  'Skupiam się na Twoim pytaniu…',
+] as const
+const readReducedMotion = () => getUserPreferences().reducedMotion
+const serverReducedMotion = () => true
+
+/** Generic wording describes the reply stage, never a made-up tool operation. */
 function TypingIndicator({
   variant,
   actionLabel,
@@ -483,6 +505,35 @@ function TypingIndicator({
   replayKey?: string
 }) {
   const tokens = VARIANT_TOKENS[variant]
+  const reducedMotion = useSyncExternalStore(
+    subscribePreferences,
+    readReducedMotion,
+    serverReducedMotion,
+  )
+  const systemReducedMotion = useSyncExternalStore(
+    subscribeSystemChatReducedMotion,
+    readSystemChatReducedMotion,
+    serverReducedMotion,
+  )
+  const [phraseIndex, setPhraseIndex] = useState(
+    () =>
+      [...(replayKey ?? '')].reduce(
+        (sum, char) => sum + char.charCodeAt(0),
+        0,
+      ) % THINKING_PHRASES.length,
+  )
+  useEffect(() => {
+    if (actionLabel || reducedMotion || systemReducedMotion) return
+    const timer = window.setInterval(
+      () => setPhraseIndex((index) => (index + 1) % THINKING_PHRASES.length),
+      2800,
+    )
+    return () => window.clearInterval(timer)
+  }, [actionLabel, reducedMotion, systemReducedMotion])
+  const phrase =
+    reducedMotion || systemReducedMotion
+      ? THINKING_PHRASES[0]
+      : THINKING_PHRASES[phraseIndex]
   return (
     <div className={`flex items-center ${tokens.rowGap}`} role="status">
       <BotBadge
@@ -490,8 +541,11 @@ function TypingIndicator({
         activity="thinking"
         replayKey={replayKey}
       />
-      <span className="text-sm text-fg-secondary">
-        {actionLabel || 'Przygotowuję odpowiedź…'}
+      <span className="sr-only">
+        {actionLabel || 'Versuś przygotowuje odpowiedź.'}
+      </span>
+      <span className="text-sm text-fg-secondary" aria-hidden="true">
+        {actionLabel || phrase}
       </span>
     </div>
   )

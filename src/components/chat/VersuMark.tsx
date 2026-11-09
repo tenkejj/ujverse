@@ -8,6 +8,13 @@ import '../../styles/versus-chat.css'
 
 const readReducedMotion = () => getUserPreferences().reducedMotion
 const serverReducedMotion = () => true
+const readPortrait = () => getUserPreferences().versusPortrait
+const serverPortrait = () => 'classic' as const
+const PORTRAIT_POSES = {
+  classic: 'idle',
+  curious: 'listening',
+  scholar: 'thinking',
+} as const
 
 export type VersuMarkVariant = 'brand' | 'onAccent'
 export type VersuActivity =
@@ -44,9 +51,21 @@ export default function VersuMark({
     readReducedMotion,
     serverReducedMotion,
   )
+  const portraitChoice = useSyncExternalStore(
+    subscribePreferences,
+    readPortrait,
+    serverPortrait,
+  )
   // Small avatars use a face crop; the full pose keeps gestures readable.
   const isPortrait = portrait ?? size < 72
-  const asset = isPortrait ? `face-${activity}` : activity
+  const pose =
+    isPortrait && activity === 'idle'
+      ? PORTRAIT_POSES[portraitChoice]
+      : activity
+  const staticArt =
+    reducedMotion ||
+    (isPortrait && activity === 'idle' && portraitChoice !== 'classic')
+  const asset = isPortrait ? `face-${pose}` : activity
   const source = `/versus/${asset}`
   const replayQuery = `?v=glasses1${replayKey ? `&turn=${encodeURIComponent(replayKey)}` : ''}`
 
@@ -76,16 +95,16 @@ export default function VersuMark({
         <defs>
           <filter id={`${paletteId}-dark`} colorInterpolationFilters="sRGB">
             <feComponentTransfer>
-              <feFuncR type="gamma" exponent="0.65" />
-              <feFuncG type="gamma" exponent="0.65" />
-              <feFuncB type="gamma" exponent="0.60" />
+              <feFuncR type="linear" slope="1.25" intercept="0" />
+              <feFuncG type="linear" slope="1.25" intercept="0" />
+              <feFuncB type="linear" slope="1.25" intercept="0" />
             </feComponentTransfer>
           </filter>
           <filter id={`${paletteId}-uj`} colorInterpolationFilters="sRGB">
             <feComponentTransfer>
-              <feFuncR type="gamma" exponent="0.85" />
-              <feFuncG type="gamma" exponent="0.65" />
-              <feFuncB type="gamma" exponent="0.45" />
+              <feFuncR type="linear" slope="1.1" intercept="0" />
+              <feFuncG type="linear" slope="1.25" intercept="0" />
+              <feFuncB type="linear" slope="1.5" intercept="0" />
             </feComponentTransfer>
           </filter>
         </defs>
@@ -95,12 +114,12 @@ export default function VersuMark({
         className="block h-full w-full"
       >
         <source
-          media={reducedMotion ? 'all' : '(prefers-reduced-motion: reduce)'}
+          media={staticArt ? 'all' : '(prefers-reduced-motion: reduce)'}
           srcSet={`${source}.png`}
         />
         <source type="image/webp" srcSet={`${source}.webp${replayQuery}`} />
         <img
-          src={reducedMotion ? `${source}.png` : `${source}.gif${replayQuery}`}
+          src={staticArt ? `${source}.png` : `${source}.gif${replayQuery}`}
           alt=""
           width={size}
           height={size}

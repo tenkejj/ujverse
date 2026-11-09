@@ -1,0 +1,88 @@
+/* Small local appearance choices; the native radio state supplies semantics. */
+.versu-portrait-picker {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.versu-portrait-picker > legend {
+  margin-block-end: 8px;
+  padding: 0;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 12px;
+  line-height: 1.5;
+}
+.versu-portrait-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.versu-portrait-option {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.versu-portrait-option > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.versu-portrait-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 72px;
+  min-height: 72px;
+  padding: 4px 8px 6px;
+  border: 1px solid var(--campus-line, var(--border-app));
+  border-radius: 10px;
+  background: transparent;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 12px;
+  line-height: 1.4;
+}
+.versu-portrait-preview {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+}
+.versu-portrait-preview > img {
+  position: absolute;
+  width: 117.073171%;
+  height: 117.073171%;
+  max-width: none;
+  inset-inline-start: -14.634146%;
+  inset-block-start: -12.195122%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.versu-portrait-option > input:checked + .versu-portrait-choice {
+  border-color: var(--campus-accent, var(--brand-ink));
+  background: var(--campus-tint, var(--bg-card));
+  color: var(--campus-text, var(--text-primary));
+}
+.versu-portrait-option > input:focus-visible + .versu-portrait-choice {
+  outline: 2px solid var(--campus-accent, var(--brand-ink));
+  outline-offset: 3px;
+}
+@media (hover: hover) {
+  .versu-portrait-option:hover > .versu-portrait-choice {
+    border-color: var(--campus-accent, var(--brand-ink));
+  }
+}
+@media (forced-colors: active) {
+  .versu-portrait-option > input:checked + .versu-portrait-choice {
+    border-color: Highlight;
+    outline: 1px solid Highlight;
+  }
+}

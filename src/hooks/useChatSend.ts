@@ -19,6 +19,10 @@ import { useChatStore } from '../store/useChatStore'
 import { toast } from '../lib/appToast'
 import type { ChatMessage } from '../types/ai'
 import {
+  chatPresentationWindow,
+  CHAT_MAX_REVEAL_LAG_MS,
+} from '../lib/chatPresentation'
+import {
   getUserPreferences,
   subscribePreferences,
 } from '../lib/userPreferences'
@@ -58,7 +62,7 @@ function settleReceivedText(
     unsubscribePreferences = subscribePreferences((prefs) => {
       if (prefs.reducedMotion) finish()
     })
-    timer = setTimeout(finish, Math.min(450, delayMs))
+    timer = setTimeout(finish, Math.min(CHAT_MAX_REVEAL_LAG_MS, delayMs))
   })
 }
 
@@ -155,11 +159,8 @@ export function useChatSend(): UseChatSendResult {
         }
         // Ready/cached replies can put a delta and [DONE] in one browser task.
         // Keep answering active just long enough for a short visual reveal,
-        // never more than 450ms after the last received delta.
-        const settleMs = Math.min(
-          450,
-          Math.max(80, Math.ceil(lastDeltaLength / 12) * 40),
-        )
+        // within the shared bounded reading window after the last received delta.
+        const settleMs = chatPresentationWindow(lastDeltaLength)
         if (lastDeltaLength > 0) {
           await settleReceivedText(
             settleMs - (performance.now() - lastDeltaAt),

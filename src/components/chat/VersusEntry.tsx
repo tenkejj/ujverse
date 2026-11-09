@@ -4,11 +4,14 @@ import {
   ArrowUpRight,
   CalendarDays,
   ClipboardList,
+  ChevronDown,
   LockOpen,
   Megaphone,
   Send,
 } from 'lucide-react'
 import VersuMark from './VersuMark'
+import VersuPortraitPicker from './VersuPortraitPicker'
+import { CHAT_MODEL_LABEL, CHAT_PROVIDER_LABEL } from '../../lib/chatModel'
 import { PUBLIC_CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
 import { versusEntryState } from '../../lib/versusEntry'
 
@@ -42,7 +45,7 @@ export default function VersusEntry() {
         onBlur={() => setGreeting(false)}
       >
         <VersuMark
-          size={184}
+          size={192}
           activity={isFocused ? 'listening' : isGreeting ? 'greeting' : 'idle'}
         />
       </Link>
@@ -50,7 +53,10 @@ export default function VersusEntry() {
         <header className="versus-entry-header">
           <div className="versus-entry-title-row">
             <Link to="/chat" className="versus-entry-name">
-              Versuś <span>AI</span>
+              Versuś{' '}
+              <span>
+                {CHAT_MODEL_LABEL} · {CHAT_PROVIDER_LABEL}
+              </span>
               <ArrowUpRight size={14} aria-hidden />
             </Link>
             <span className="versus-entry-access">
@@ -79,7 +85,7 @@ export default function VersusEntry() {
                 e.currentTarget.style.height = `${Math.min(160, e.currentTarget.scrollHeight)}px`
               }}
               maxLength={4000}
-              rows={1}
+              rows={3}
               onKeyDown={(event) => {
                 if (
                   event.key === 'Enter' &&
@@ -125,6 +131,12 @@ export default function VersusEntry() {
           </div>
         </form>
       </div>
+      <details className="versus-entry-portrait-settings">
+        <summary>
+          Portret w rozmowie <ChevronDown size={14} aria-hidden />
+        </summary>
+        <VersuPortraitPicker />
+      </details>
     </section>
   )
 }

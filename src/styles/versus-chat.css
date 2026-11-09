@@ -326,7 +326,7 @@
   }
 }
 
-/* Theme palettes lift the navy pixels, while preserving the transparent silhouette. */
+/* Zero-intercept linear palettes lift the body without washing out the dark contour. */
 .dark .versu-mark > picture > img {
   filter: var(--versu-dark-filter);
 }

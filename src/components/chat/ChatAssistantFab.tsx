@@ -20,7 +20,11 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Send, Square, X } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_ASSISTANT_NAME } from '../../lib/chatModel'
+import {
+  CHAT_ASSISTANT_NAME,
+  CHAT_MODEL_LABEL,
+  CHAT_PROVIDER_LABEL,
+} from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
@@ -228,7 +232,7 @@ export default function ChatAssistantFab({
                 {CHAT_ASSISTANT_NAME}
               </h2>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Asystent studencki AI
+                {CHAT_MODEL_LABEL} · {CHAT_PROVIDER_LABEL}
               </p>
             </div>
           </div>

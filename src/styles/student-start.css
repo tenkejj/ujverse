@@ -624,3 +624,99 @@
     font-size: 21px;
   }
 }
+
+/* A taller, bounded first conversation rather than a wide single-line banner. */
+.student-dashboard .versus-entry {
+  grid-template-columns: 192px minmax(0, 1fr);
+  max-width: 880px;
+  margin-inline: auto;
+  gap: 20px 32px;
+  padding-block: 28px 32px;
+}
+.versus-entry-workspace {
+  display: contents;
+}
+.versus-entry-persona {
+  min-height: 192px;
+}
+.versus-entry-header {
+  grid-column: 2;
+  align-self: center;
+}
+.versus-entry h2 {
+  max-width: 24ch;
+  font-size: 34px;
+  line-height: 1.25;
+}
+.versus-entry-form {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+.versus-entry-input {
+  min-height: 120px;
+  padding: 12px;
+}
+.versus-entry-input textarea {
+  min-height: 88px;
+  padding: 0 4px;
+}
+.versus-entry-input .versus-entry-submit {
+  align-self: flex-end;
+}
+.versus-entry-portrait-settings {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.versus-entry-portrait-settings > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--campus-muted);
+  font-size: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.versus-entry-portrait-settings > summary::-webkit-details-marker {
+  display: none;
+}
+.versus-entry-portrait-settings[open] > summary > svg {
+  rotate: 180deg;
+}
+.versus-entry-portrait-settings > .versu-portrait-picker {
+  margin-top: 8px;
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .versus-entry-persona > .versu-mark {
+    width: 192px !important;
+    height: 192px !important;
+  }
+}
+@media (max-width: 767px) {
+  .student-dashboard .versus-entry {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 16px;
+    padding-block: 12px 20px;
+  }
+  .versus-entry-persona {
+    min-height: 112px;
+  }
+  .versus-entry h2 {
+    font-size: 23px;
+  }
+  .versus-entry-form {
+    margin-top: 4px;
+  }
+  .versus-entry-input {
+    min-height: 116px;
+  }
+}
+@media (max-width: 379px) {
+  .student-dashboard .versus-entry {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .versus-entry h2 {
+    font-size: 21px;
+  }
+}

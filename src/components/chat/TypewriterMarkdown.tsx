@@ -1,6 +1,5 @@
 /** Reveal received text in short readable groups; never keep a finished reply waiting. */
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { useReducedMotion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -8,13 +7,19 @@ import {
   subscribePreferences,
 } from '../../lib/userPreferences'
 import { MARKDOWN_COMPONENTS } from './markdownComponents'
+import {
+  CHAT_REVEAL_FRAME_MS as FRAME_MS,
+  CHAT_MAX_REVEAL_LAG_MS as MAX_REVEAL_LAG_MS,
+  CHAT_REVEAL_CHARACTERS_PER_SECOND,
+  readSystemChatReducedMotion,
+  subscribeSystemChatReducedMotion,
+} from '../../lib/chatPresentation'
 
 const readReducedMotion = () => getUserPreferences().reducedMotion
 const serverReducedMotion = () => true
 const REMARK_PLUGINS = [remarkGfm]
-const FRAME_MS = 40
-const MAX_REVEAL_LAG_MS = 450
-const BASE_CHARACTERS_PER_FRAME = 6
+const BASE_CHARACTERS_PER_FRAME =
+  (CHAT_REVEAL_CHARACTERS_PER_SECOND * FRAME_MS) / 1000
 const graphemes =
   typeof Intl.Segmenter === 'function'
     ? new Intl.Segmenter('pl', { granularity: 'grapheme' })
@@ -27,8 +32,14 @@ function readableEnd(
   characters: number,
 ): number {
   let end = Math.min(content.length, start + characters)
-  const wordLimit = Math.min(content.length, end + 12)
-  while (end < wordLimit && !/\s/.test(content.charAt(end))) end++
+  // Prefer an earlier word boundary within this budget. Extending every frame
+  // to the next word made the nominal character rate much faster in practice.
+  if (end < content.length && !/\s/.test(content.charAt(end))) {
+    let wordStart = end
+    while (wordStart > start && !/\s/.test(content.charAt(wordStart - 1)))
+      wordStart--
+    if (wordStart > start) end = wordStart
+  }
   if (graphemes) {
     for (const part of graphemes.segment(content)) {
       const boundary = part.index + part.segment.length
@@ -69,7 +80,11 @@ export default function TypewriterMarkdown({
     readReducedMotion,
     serverReducedMotion,
   )
-  const systemReducedMotion = useReducedMotion()
+  const systemReducedMotion = useSyncExternalStore(
+    subscribeSystemChatReducedMotion,
+    readSystemChatReducedMotion,
+    serverReducedMotion,
+  )
   const immediate = reducedMotion || systemReducedMotion || !isStreaming
   const initialContent = isStreaming ? '' : content
   const [buffered, setBuffered] = useState(initialContent)
@@ -103,8 +118,8 @@ export default function TypewriterMarkdown({
       pendingSince.current ??= now
       const remaining = MAX_REVEAL_LAG_MS - (now - pendingSince.current)
       const backlog = target.length - current
-      // Larger bursts catch up within one short window, rather than adding
-      // seconds of fake typing after the network has already delivered them.
+      // Larger bursts gently catch up within the bounded reading window;
+      // ordinary small chunks use the slower, steady reading rhythm.
       const characters =
         remaining <= FRAME_MS
           ? backlog

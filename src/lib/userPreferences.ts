@@ -11,9 +11,13 @@
  * reagować na zmiany bez globalnego store'a.
  */
 
+export type VersuPortraitChoice = 'classic' | 'curious' | 'scholar'
+
 export type UserPreferences = {
   /** Ogranicza animacje / transitions w całej apce. */
   reducedMotion: boolean
+  /** Local choice of the resting small Versuś portrait; activity poses remain independent. */
+  versusPortrait: VersuPortraitChoice
   /** Globalny przełącznik dźwięku przy nowych powiadomieniach. */
   notificationSound: boolean
   /** Pokaż mój profil w wyszukiwarce (filtr klienta). */
@@ -26,6 +30,7 @@ const STORAGE_KEY = 'uj_user_prefs_v1'
 
 const DEFAULTS: UserPreferences = {
   reducedMotion: false,
+  versusPortrait: 'classic',
   notificationSound: true,
   showProfileInSearch: true,
   showDepartmentOnPosts: true,
@@ -36,6 +41,10 @@ const listeners = new Set<Listener>()
 
 let cached: UserPreferences | null = null
 
+function isVersuPortraitChoice(value: unknown): value is VersuPortraitChoice {
+  return value === 'classic' || value === 'curious' || value === 'scholar'
+}
+
 function safeRead(): UserPreferences {
   if (typeof window === 'undefined') return { ...DEFAULTS }
   try {
@@ -44,11 +53,21 @@ function safeRead(): UserPreferences {
     const parsed = JSON.parse(raw) as Partial<UserPreferences> | null
     if (!parsed || typeof parsed !== 'object') return { ...DEFAULTS }
     return {
-      reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULTS.reducedMotion,
+      reducedMotion:
+        typeof parsed.reducedMotion === 'boolean'
+          ? parsed.reducedMotion
+          : DEFAULTS.reducedMotion,
+      versusPortrait: isVersuPortraitChoice(parsed.versusPortrait)
+        ? parsed.versusPortrait
+        : DEFAULTS.versusPortrait,
       notificationSound:
-        typeof parsed.notificationSound === 'boolean' ? parsed.notificationSound : DEFAULTS.notificationSound,
+        typeof parsed.notificationSound === 'boolean'
+          ? parsed.notificationSound
+          : DEFAULTS.notificationSound,
       showProfileInSearch:
-        typeof parsed.showProfileInSearch === 'boolean' ? parsed.showProfileInSearch : DEFAULTS.showProfileInSearch,
+        typeof parsed.showProfileInSearch === 'boolean'
+          ? parsed.showProfileInSearch
+          : DEFAULTS.showProfileInSearch,
       showDepartmentOnPosts:
         typeof parsed.showDepartmentOnPosts === 'boolean'
           ? parsed.showDepartmentOnPosts
@@ -106,7 +125,9 @@ export function subscribePreferences(listener: Listener): () => void {
  * (selektor `html[data-reduced-motion="true"]`) mógł wymusić odpowiednie
  * reguły bez konieczności przepuszczania prefs przez setki komponentów.
  */
-export function applyVisualPreferences(prefs: UserPreferences = getUserPreferences()) {
+export function applyVisualPreferences(
+  prefs: UserPreferences = getUserPreferences(),
+) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   if (prefs.reducedMotion) {
