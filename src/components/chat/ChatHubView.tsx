@@ -303,11 +303,11 @@ export default function ChatHubView({
               className="versus-conversation-hero-mark"
             />
             <div className="versus-conversation-welcome-copy">
-              <h2>Co dziś sprawdzamy?</h2>
+              <h2>Co sprawdzić na UJ?</h2>
               <p>
                 {isAuthenticated
-                  ? 'Komunikaty z uczelni, terminy czy Twój plan — pytaj po swojemu.'
-                  : 'Komunikaty, rejestracje i wydarzenia na UJ. Zapytaj po swojemu.'}
+                  ? 'Komunikaty z uczelni, terminy czy Twój plan — konkretnie, bez ściany tekstu.'
+                  : 'Komunikaty, rejestracje i wydarzenia. Możesz zacząć bez konta.'}
               </p>
             </div>
           </div>

@@ -1,11 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useSyncExternalStore, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowUpRight,
   CalendarDays,
-  ClipboardList,
   ChevronDown,
-  LockOpen,
+  ClipboardList,
   Megaphone,
   Send,
 } from 'lucide-react'
@@ -14,12 +13,26 @@ import VersuPortraitPicker from './VersuPortraitPicker'
 import { CHAT_MODEL_LABEL, CHAT_PROVIDER_LABEL } from '../../lib/chatModel'
 import { PUBLIC_CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
 import { versusEntryState } from '../../lib/versusEntry'
+import {
+  getUserPreferences,
+  subscribePreferences,
+  type VersuPortraitChoice,
+} from '../../lib/userPreferences'
 
 const SUGGESTIONS = [
-  { label: 'Komunikaty', Icon: Megaphone },
+  { label: 'Nowe komunikaty', Icon: Megaphone },
   { label: 'Rejestracje', Icon: ClipboardList },
-  { label: 'Kalendarz', Icon: CalendarDays },
+  { label: 'Ten tydzień', Icon: CalendarDays },
 ] as const
+
+const PORTRAIT_FACE: Record<VersuPortraitChoice, string> = {
+  classic: 'face-idle',
+  curious: 'face-listening',
+  scholar: 'face-thinking',
+}
+
+const readPortrait = () => getUserPreferences().versusPortrait
+const serverPortrait = (): VersuPortraitChoice => 'classic'
 
 /** A useful first action, not a second chat implementation or a latency promise. */
 export default function VersusEntry() {
@@ -27,12 +40,19 @@ export default function VersusEntry() {
   const [isFocused, setFocused] = useState(false)
   const [isGreeting, setGreeting] = useState(false)
   const navigate = useNavigate()
+  const portrait = useSyncExternalStore(
+    subscribePreferences,
+    readPortrait,
+    serverPortrait,
+  )
+
   const ask = (prompt: string) =>
     navigate('/chat', { state: versusEntryState(prompt.trim()) })
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (question.trim()) ask(question)
   }
+
   return (
     <section className="versus-entry" aria-labelledby="versus-entry-heading">
       <Link
@@ -45,10 +65,11 @@ export default function VersusEntry() {
         onBlur={() => setGreeting(false)}
       >
         <VersuMark
-          size={192}
+          size={280}
           activity={isFocused ? 'listening' : isGreeting ? 'greeting' : 'idle'}
         />
       </Link>
+
       <div className="versus-entry-workspace">
         <header className="versus-entry-header">
           <div className="versus-entry-title-row">
@@ -59,23 +80,40 @@ export default function VersusEntry() {
               </span>
               <ArrowUpRight size={14} aria-hidden />
             </Link>
-            <span className="versus-entry-access">
-              <LockOpen size={13} aria-hidden /> Bez logowania
-            </span>
           </div>
-          <h2 id="versus-entry-heading">Co mogę dla Ciebie sprawdzić?</h2>
+          <h2 id="versus-entry-heading">Co sprawdzić na UJ?</h2>
         </header>
+
         <form onSubmit={submit} className="versus-entry-form">
           <label className="sr-only" htmlFor="versus-question">
             Twoje pytanie do Versusia
           </label>
-          <div className="versus-entry-input">
+
+          <div className="versus-entry-input versus-entry-input--with-portrait">
+            <details className="versus-entry-portrait-settings">
+              <summary
+                aria-label="Wybierz wygląd Versusia w rozmowie"
+                title="Wygląd Versusia"
+              >
+                <img
+                  src={`/versus/${PORTRAIT_FACE[portrait]}.png?v=portrait1`}
+                  alt=""
+                  width={28}
+                  height={28}
+                  draggable={false}
+                  className="versus-entry-portrait-face"
+                />
+                <ChevronDown size={14} aria-hidden />
+              </summary>
+              <VersuPortraitPicker />
+            </details>
+
             <textarea
               id="versus-question"
               name="question"
               autoComplete="off"
               enterKeyHint="send"
-              placeholder="O co chcesz zapytać?"
+              placeholder="Komunikat, rejestracja, termin…"
               value={question}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
@@ -102,12 +140,13 @@ export default function VersusEntry() {
               className="versus-entry-submit"
               type="submit"
               disabled={!question.trim()}
-              aria-label="Zapytaj Versusia"
+              aria-label="Wyślij pytanie do Versusia"
             >
-              <span>Zapytaj</span>
+              <span>Wyślij</span>
               <Send size={18} aria-hidden />
             </button>
           </div>
+
           <div className="versus-entry-actions">
             <div
               className="versus-entry-suggestions"
@@ -128,15 +167,10 @@ export default function VersusEntry() {
                 )
               })}
             </div>
+            <p className="versus-entry-access-note">Możesz zacząć bez konta</p>
           </div>
         </form>
       </div>
-      <details className="versus-entry-portrait-settings">
-        <summary>
-          Portret w rozmowie <ChevronDown size={14} aria-hidden />
-        </summary>
-        <VersuPortraitPicker />
-      </details>
     </section>
   )
 }
