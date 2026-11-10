@@ -47,149 +47,6 @@
   border-radius: 9px;
   flex-shrink: 0;
 }
-.student-dashboard .versus-entry {
-  display: grid;
-  grid-template-columns: 184px minmax(0, 1fr);
-  align-items: center;
-  gap: 28px;
-  width: 100%;
-  padding: 12px 0 18px;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-.versus-entry-persona {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 184px;
-  border-radius: 12px;
-}
-.versus-entry-workspace {
-  min-width: 0;
-  max-width: 960px;
-}
-.versus-entry-title-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-bottom: 8px;
-}
-.versus-entry-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--campus-accent);
-  min-height: 28px;
-}
-.versus-entry-name > span {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--campus-muted);
-}
-.versus-entry-access {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--campus-muted);
-  font-size: 11px;
-}
-.versus-entry h2 {
-  font-size: 27px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.3;
-  text-wrap: pretty;
-}
-.versus-entry-form {
-  margin-top: 16px;
-}
-.versus-entry-input {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  min-height: 58px;
-  padding: 6px 7px 6px 16px;
-  border: 1px solid color-mix(in srgb, var(--campus-muted) 60%, transparent);
-  border-radius: 14px;
-  background: var(--campus-bg);
-}
-.versus-entry-input:focus-within {
-  outline: 2px solid var(--campus-accent);
-  outline-offset: 3px;
-}
-.versus-entry-input textarea {
-  flex: 1;
-  display: block;
-  min-width: 0;
-  min-height: 28px;
-  max-height: 160px;
-  padding: 8px 0;
-  resize: none;
-  outline: none;
-  font: inherit;
-  font-size: 16px;
-  line-height: 28px;
-  color: var(--campus-text);
-  background: transparent;
-  border: 0;
-}
-.versus-entry-input textarea::placeholder {
-  color: var(--campus-muted);
-  opacity: 1;
-}
-.versus-entry-input textarea:focus-visible {
-  outline: none;
-}
-.versus-entry-submit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 46px;
-  min-height: 46px;
-  padding: 10px 16px;
-  border-radius: 9px;
-  flex-shrink: 0;
-  color: var(--campus-bg);
-  background: var(--campus-accent);
-  font-size: 13px;
-  font-weight: 600;
-  -webkit-tap-highlight-color: transparent;
-}
-.versus-entry-submit:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.versus-entry-actions {
-  margin-top: 10px;
-}
-.versus-entry-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.versus-entry-suggestions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 8px 12px;
-  color: var(--campus-muted);
-  background: var(--campus-tint);
-  border: 1px solid transparent;
-  border-radius: 20px;
-  font-size: 12px;
-  text-align: start;
-  -webkit-tap-highlight-color: transparent;
-}
-.versus-entry-suggestions svg {
-  flex: none;
-  color: var(--campus-accent);
-}
 .dashboard-content {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -454,27 +311,16 @@
 }
 
 @media (hover: hover) {
-  .versus-entry-submit:not(:disabled):hover {
-    opacity: 0.85;
-  }
-  .versus-entry-suggestions button:hover {
-    color: var(--campus-accent);
-    background: var(--campus-hover);
-  }
   .dashboard-switcher button:not([aria-pressed='true']):hover {
     background: var(--campus-hover);
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .versus-entry button,
   .dashboard-switcher button {
     transition:
       background-color 150ms ease-out,
       opacity 150ms ease-out,
       scale 150ms ease-out;
-  }
-  .versus-entry button:not(:disabled):active {
-    scale: 0.96;
   }
 }
 @media (max-width: 1199px) {
@@ -484,17 +330,6 @@
   .dashboard-content-with-events {
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
-  }
-  .student-dashboard .versus-entry {
-    grid-template-columns: 152px minmax(0, 1fr);
-    gap: 20px;
-  }
-  .versus-entry-persona > span {
-    width: 152px !important;
-    height: 152px !important;
-  }
-  .versus-entry h2 {
-    font-size: 25px;
   }
 }
 @media (max-width: 767px) {
@@ -515,53 +350,6 @@
   .dashboard-heading > button {
     padding-inline: 10px;
     font-size: 11px;
-  }
-  .student-dashboard .versus-entry {
-    grid-template-columns: 104px minmax(0, 1fr);
-    gap: 12px 14px;
-    padding-block: 0 8px;
-  }
-  .versus-entry-persona {
-    min-height: 104px;
-  }
-  .versus-entry-persona > span {
-    width: 112px !important;
-    height: 112px !important;
-  }
-  .versus-entry-workspace {
-    display: contents;
-  }
-  .versus-entry-header {
-    min-width: 0;
-  }
-  .versus-entry-title-row {
-    gap: 4px 10px;
-    margin-bottom: 5px;
-  }
-  .versus-entry h2 {
-    font-size: 21px;
-  }
-  .versus-entry-form {
-    grid-column: 1 / -1;
-    margin-top: 2px;
-  }
-  .versus-entry-input {
-    gap: 6px;
-    padding-inline-start: 12px;
-  }
-  .versus-entry-submit {
-    padding-inline: 12px;
-  }
-  .versus-entry-submit > span {
-    display: none;
-  }
-  .versus-entry-suggestions {
-    gap: 5px;
-  }
-  .versus-entry-suggestions button {
-    padding-inline: 9px;
-    font-size: 11px;
-    gap: 5px;
   }
   .dashboard-overview-heading,
   .dashboard-discover-heading {
@@ -606,117 +394,7 @@
   .campus-app .campus-page:has(.student-dashboard) {
     padding-inline: 16px;
   }
-  .student-dashboard .versus-entry {
-    grid-template-columns: 84px minmax(0, 1fr);
-    gap: 10px;
-  }
-  .versus-entry-persona {
-    min-height: 92px;
-  }
-  .versus-entry-persona > span {
-    width: 96px !important;
-    height: 96px !important;
-  }
-  .versus-entry h2 {
-    font-size: 20px;
-  }
   .dashboard-heading h1 {
-    font-size: 21px;
-  }
-}
-
-/* A taller, bounded first conversation rather than a wide single-line banner. */
-.student-dashboard .versus-entry {
-  grid-template-columns: 192px minmax(0, 1fr);
-  max-width: 880px;
-  margin-inline: auto;
-  gap: 20px 32px;
-  padding-block: 28px 32px;
-}
-.versus-entry-workspace {
-  display: contents;
-}
-.versus-entry-persona {
-  min-height: 192px;
-}
-.versus-entry-header {
-  grid-column: 2;
-  align-self: center;
-}
-.versus-entry h2 {
-  max-width: 24ch;
-  font-size: 34px;
-  line-height: 1.25;
-}
-.versus-entry-form {
-  grid-column: 1 / -1;
-  margin-top: 0;
-}
-.versus-entry-input {
-  min-height: 120px;
-  padding: 12px;
-}
-.versus-entry-input textarea {
-  min-height: 88px;
-  padding: 0 4px;
-}
-.versus-entry-input .versus-entry-submit {
-  align-self: flex-end;
-}
-.versus-entry-portrait-settings {
-  grid-column: 1 / -1;
-  min-width: 0;
-}
-.versus-entry-portrait-settings > summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  color: var(--campus-muted);
-  font-size: 12px;
-  cursor: pointer;
-  list-style: none;
-}
-.versus-entry-portrait-settings > summary::-webkit-details-marker {
-  display: none;
-}
-.versus-entry-portrait-settings[open] > summary > svg {
-  rotate: 180deg;
-}
-.versus-entry-portrait-settings > .versu-portrait-picker {
-  margin-top: 8px;
-}
-@media (min-width: 768px) and (max-width: 1199px) {
-  .versus-entry-persona > .versu-mark {
-    width: 192px !important;
-    height: 192px !important;
-  }
-}
-@media (max-width: 767px) {
-  .student-dashboard .versus-entry {
-    grid-template-columns: 112px minmax(0, 1fr);
-    gap: 16px;
-    padding-block: 12px 20px;
-  }
-  .versus-entry-persona {
-    min-height: 112px;
-  }
-  .versus-entry h2 {
-    font-size: 23px;
-  }
-  .versus-entry-form {
-    margin-top: 4px;
-  }
-  .versus-entry-input {
-    min-height: 116px;
-  }
-}
-@media (max-width: 379px) {
-  .student-dashboard .versus-entry {
-    grid-template-columns: 84px minmax(0, 1fr);
-    gap: 12px;
-  }
-  .versus-entry h2 {
     font-size: 21px;
   }
 }
