@@ -11,13 +11,9 @@
  * reagować na zmiany bez globalnego store'a.
  */
 
-export type VersuPortraitChoice = 'classic' | 'curious' | 'scholar'
-
 export type UserPreferences = {
   /** Ogranicza animacje / transitions w całej apce. */
   reducedMotion: boolean
-  /** Local choice of the resting small Versuś portrait; activity poses remain independent. */
-  versusPortrait: VersuPortraitChoice
   /** Globalny przełącznik dźwięku przy nowych powiadomieniach. */
   notificationSound: boolean
   /** Pokaż mój profil w wyszukiwarce (filtr klienta). */
@@ -30,7 +26,6 @@ const STORAGE_KEY = 'uj_user_prefs_v1'
 
 const DEFAULTS: UserPreferences = {
   reducedMotion: false,
-  versusPortrait: 'classic',
   notificationSound: true,
   showProfileInSearch: true,
   showDepartmentOnPosts: true,
@@ -40,10 +35,6 @@ type Listener = (prefs: UserPreferences) => void
 const listeners = new Set<Listener>()
 
 let cached: UserPreferences | null = null
-
-function isVersuPortraitChoice(value: unknown): value is VersuPortraitChoice {
-  return value === 'classic' || value === 'curious' || value === 'scholar'
-}
 
 function safeRead(): UserPreferences {
   if (typeof window === 'undefined') return { ...DEFAULTS }
@@ -57,9 +48,6 @@ function safeRead(): UserPreferences {
         typeof parsed.reducedMotion === 'boolean'
           ? parsed.reducedMotion
           : DEFAULTS.reducedMotion,
-      versusPortrait: isVersuPortraitChoice(parsed.versusPortrait)
-        ? parsed.versusPortrait
-        : DEFAULTS.versusPortrait,
       notificationSound:
         typeof parsed.notificationSound === 'boolean'
           ? parsed.notificationSound

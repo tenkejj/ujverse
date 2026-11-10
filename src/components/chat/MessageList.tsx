@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import type { ChatMessage } from '../../types/ai'
 import type { Profile } from '../../types'
+import { useChatStore } from '../../store/useChatStore'
 import { toast } from '../../lib/appToast'
 import {
   readSystemChatReducedMotion,
@@ -197,6 +198,7 @@ function MessageBubble({
   isStreaming,
   isLastUser,
   isLastAssistant,
+  activity,
   myProfile,
   displayName,
   onEditUser,
@@ -210,6 +212,8 @@ function MessageBubble({
   isLastUser: boolean
   /** Czy to OSTATNIA assistant message — tylko wtedy „Spróbuj ponownie". */
   isLastAssistant: boolean
+  /** Actual latest-turn phase overrides decorative resting expressions. */
+  activity: VersuActivity
   myProfile?: Profile | null
   displayName?: string
   /** Callback do edycji ostatniej user message (parent wkłada tekst do composera). */
@@ -266,7 +270,7 @@ function MessageBubble({
       <span className="versus-message-identity">
         <BotBadge
           size={tokens.botIcon}
-          activity={isStreaming ? 'answering' : 'idle'}
+          activity={activity}
           replayKey={message.id}
         />
       </span>
@@ -605,6 +609,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
   },
   forwardedRef,
 ) {
+  const responsePhase = useChatStore((state) => state.responsePhase)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const stickToBottomRef = useRef(true)
@@ -694,6 +699,18 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
                   isStreaming={isLastAssistant && isTyping}
                   isLastUser={isLastUser}
                   isLastAssistant={isLastAssistant}
+                  activity={
+                    !isLastAssistant
+                      ? 'idle'
+                      : isTyping
+                        ? m.content
+                          ? 'answering'
+                          : 'thinking'
+                        : responsePhase === 'success' ||
+                            responsePhase === 'error'
+                          ? responsePhase
+                          : 'idle'
+                  }
                   myProfile={myProfile}
                   displayName={displayName}
                   onEditUser={onEditLastUser}

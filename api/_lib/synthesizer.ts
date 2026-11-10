@@ -19,7 +19,7 @@ import type { GroqMessage } from './types.js'
 
 /**
  * Wynik `buildToolFacts`. Albo gotowa odpowiedź ('direct' — empty/error/
- * passthrough), albo fakty do syntezy ('synthesize' — Llama 8B robi resztę).
+ * passthrough), albo fakty do syntezy ('synthesize' — mniejszy model robi resztę).
  */
 export type ToolFactsResult =
   | { kind: 'direct'; text: string }
@@ -32,7 +32,7 @@ export type ToolFactsResult =
 
 /**
  * Kompaktowa synteza bez LLM — gdy jest dokładnie 1 krótki fakt.
- * Oszczędza call Llama 8B przy prostych wynikach (1 ogłoszenie, 1 wydarzenie).
+ * Oszczędza wywołanie mniejszego modelu przy pojedynczym krótkim wyniku.
  */
 export function tryCompactSynthesis(
   _userQuery: string,
@@ -57,7 +57,7 @@ export function polishAssistantReply(text: string): string {
   return softenTranslationese(text)
 }
 
-/** 1 wynik → compact (bez LLM). 2–3 → synteza LLM. 4+ → lista markdown. */
+/** Remaining unstructured facts: 1 → compact, 2–3 → model, 4+ → list. Common catalogues bypass this as direct replies. */
 export const LLM_SYNTHESIS_MIN_LINES = 2
 export const LLM_SYNTHESIS_MAX_LINES = 3
 export const LIST_FORMAT_MIN_LINES = 4
@@ -80,18 +80,39 @@ export function shouldFormatAsBulletList(facts: string): boolean {
 
 function conversationalListLead(topicHint: string): string {
   if (/rejestracje USOS/i.test(topicHint))
-    return 'Trwające i nadchodzące rejestracje USOS:'
+    return 'W pobranych terminach znalazłem te rejestracje. Przy każdej podaję, kiedy można się zapisać:'
   if (/oficjalne wydarzenia/i.test(topicHint))
-    return 'Nadchodzące wydarzenia UJ:'
-  if (/plan zajęć/i.test(topicHint)) return 'W Twoim planie:'
+    return 'Znalazłem te wydarzenia w kalendarzu UJ. Zerknij, co pasuje Ci terminem:'
+  if (/plan zajęć/i.test(topicHint))
+    return 'Zajrzałem do Twojego zapisanego planu. W wybranym terminie widzę:'
   if (/ogłoszenia wykładowcy /i.test(topicHint))
-    return `${topicHint.trim().replace(/\.$/, '')}:`
-  if (/ogłosze|komunikat/i.test(topicHint)) return 'Komunikaty:'
-  if (/kalendarz/i.test(topicHint)) return 'W kalendarzu:'
-  if (/zniżki/i.test(topicHint)) return 'Zniżki studenckie:'
-  if (/wykładowc/i.test(topicHint)) return 'Wykładowcy:'
-  if (/wydarzenia/i.test(topicHint)) return 'Wydarzenia:'
-  return 'Wyniki:'
+    return `${topicHint.trim().replace(/\.$/, '')}. Znalazłem te wpisy:`
+  if (/ogłosze|komunikat/i.test(topicHint))
+    return 'Znalazłem te komunikaty. Przy każdym zostawiam link, żeby łatwo sprawdzić szczegóły:'
+  if (/kalendarz/i.test(topicHint))
+    return 'Zajrzałem do kalendarza — w tym zakresie znalazłem:'
+  if (/zniżki/i.test(topicHint))
+    return 'Mam kilka propozycji z bazy zniżek. Przed skorzystaniem sprawdź warunki oferty:'
+  if (/wykładowc/i.test(topicHint))
+    return 'Znalazłem te osoby w bazie wykładowców:'
+  if (/wydarzenia/i.test(topicHint))
+    return 'Znalazłem te wydarzenia pasujące do pytania:'
+  return 'Oto, co udało mi się znaleźć:'
+}
+
+/** Common catalogues need a helpful voice, not a second model call to paraphrase dates. */
+function catalogueReply(
+  facts: string,
+  hint: string | null,
+  topicHint: string,
+): ToolFactsResult {
+  const lines = facts.split('\n').filter((line) => line.trim().length > 0)
+  const body =
+    lines.length === 1 ? lines[0] : lines.map((line) => `- ${line}`).join('\n')
+  return {
+    kind: 'direct',
+    text: `${conversationalListLead(topicHint)}\n\n${body}${formatListClosingHint(hint)}`,
+  }
 }
 
 function formatListClosingHint(hint: string | null): string {
@@ -166,12 +187,10 @@ export type SynthesisResult = {
 }
 
 /**
- * Wykonuje wywołanie Groq Llama 8B z faktami i pytaniem. Non-streaming
+ * Wywołuje mniejszy model Groq z faktami i pytaniem. Non-streaming
  * (`completeWithTools` z pustą tablicą tooli zachowuje się jak chat completion).
  *
- * Failure mode: gdy Groq odpowie pustym/blankowym contentem, fallback
- * do `facts.fallbackText` (caller musi przekazać). To rzadkie ale chroni
- * UX — lepiej zwrócić surowe fakty niż "" do klienta.
+ * Przy pustym wyniku caller może wyświetlić lokalnie sformatowane fakty.
  */
 export async function synthesizeAnswer(
   opts: SynthesisOptions,
@@ -196,10 +215,7 @@ export async function synthesizeAnswer(
     },
   ]
 
-  // `withGroqRetry`: 3 próby z exp. backoff dla 429/5xx. Llama 8B free tier
-  // = 30 RPM — szybki burst zapytań od jednego usera potrafi wpaść w 429,
-  // a tutaj jesteśmy już PO tool call, więc fallback na surowe fakty
-  // wyglądałby topornie. Cichy retry ratuje doświadczenie.
+  // Shared retry policy retries transient failures; quota errors are not retried.
   const result = await withGroqRetry(() =>
     provider.completeWithTools(messages, [], {
       model: GROQ_SMALLTALK_MODEL,
@@ -226,18 +242,16 @@ export async function synthesizeAnswer(
 }
 
 /**
- * Streaming wariant `synthesizeAnswer` — emituje delty Llama 8B w locie,
- * zamiast czekać na cały tekst. Caller (orchestrator w `api/chat.ts`)
- * konsumuje delty SSE i przepisuje je w swoim formacie do klienta —
- * **pierwsze tokeny widoczne u usera ~200-400ms zamiast ~1500ms TTFB**.
+ * Streaming wariant `synthesizeAnswer` — emituje delty mniejszego modelu w locie.
+ * Caller (`api/chat.ts`) przekazuje je klientowi w formacie SSE.
  *
  * Zwraca AsyncGenerator `GroqStreamChunk` (delta / done / error). Caller
  * powinien buforować całość do KV cache + markdown guard po `done`.
  *
  * NIE używamy `withGroqRetry` w streamie — retry SSE jest skomplikowany
  * (już mogliśmy wysłać delty do klienta). Caller decyduje o fallbacku:
- * przy wyjątku z `streamAnswer` wraca do non-streaming `synthesizeAnswer`
- * i robi normalny chunked fallback.
+ * przy błędzie przed pierwszą deltą caller formatuje dostępne fakty lokalnie.
+ * Nie ponawia syntezy kolejnym wywołaniem modelu po wyczerpaniu limitu.
  */
 export async function* streamAnswer(
   opts: SynthesisOptions,
@@ -301,6 +315,12 @@ export function buildToolFacts(
 ): ToolFactsResult {
   // Surowy string z toola (np. weekly briefing) — passthrough.
   if (typeof result === 'string') {
+    if (
+      toolName === 'get_my_classes_in_range' &&
+      result.trim() === 'Brak zajęć w tym zakresie'
+    ) {
+      return buildMyClassesFacts({ items: [] })
+    }
     return { kind: 'direct', text: result }
   }
   if (isToolErrorObject(result)) {
@@ -470,16 +490,13 @@ function buildSearchEventsFacts(result: unknown): ToolFactsResult {
     })
     .join('\n')
 
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint:
-      remaining > 0
-        ? `jeszcze ${remaining} w bazie, zerknij na zakładkę Wydarzenia`
-        : null,
-    topicHint:
-      'Wydarzenia w Krakowie (UJ + studenckie) — data, miejsce, link w faktach.',
-  }
+    remaining > 0
+      ? `To część wyników. Pozostałe ${remaining} znajdziesz w zakładce Wydarzenia.`
+      : null,
+    'Wydarzenia w Krakowie (UJ + studenckie).',
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -491,7 +508,7 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Brak komunikatów UJ dla tego zapytania.',
+      text: 'Nie znalazłem komunikatów pasujących do tego pytania w pobranych danych. Możesz podać wydział lub krótsze hasło — spróbujemy zawęzić szukanie.',
     }
   }
   const items = rawItems.slice(0, MAX_ANNOUNCEMENTS)
@@ -523,13 +540,13 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
     })
     .join('\n')
 
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
-    topicHint:
-      'Publiczne komunikaty wydziałów UJ. Daty oznaczają dodanie do UJverse. Kieruj do źródła lub publicznej listy /komunikaty.',
-  }
+    remaining > 0
+      ? `To część wyników — pozostałe ${remaining} znajdziesz w [komunikatach](/komunikaty). Daty oznaczają dodanie do UJverse.`
+      : 'Daty oznaczają dodanie do UJverse; ważne terminy potwierdź w źródle.',
+    'Publiczne komunikaty wydziałów UJ.',
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -688,48 +705,117 @@ function buildCalendarFacts(result: unknown): ToolFactsResult {
 // get_my_classes_in_range
 // -----------------------------------------------------------------------------
 
+const timetableDayFormat = new Intl.DateTimeFormat('pl-PL', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'Europe/Warsaw',
+})
+const timetableTimeFormat = new Intl.DateTimeFormat('pl-PL', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Europe/Warsaw',
+})
+const timetableDateKey = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: 'Europe/Warsaw',
+})
+
+function timetableWhen(startIso: string | null, endIso: string | null): string {
+  const start = startIso ? new Date(startIso) : null
+  if (!start || !Number.isFinite(start.getTime()))
+    return 'brak potwierdzonej godziny'
+  const end = endIso ? new Date(endIso) : null
+  const endValid =
+    end && Number.isFinite(end.getTime()) && end.getTime() >= start.getTime()
+  const starts = `${timetableDayFormat.format(start)}, ${timetableTimeFormat.format(start)}`
+  if (!endValid) return starts
+  const ends =
+    timetableDateKey.format(start) === timetableDateKey.format(end)
+      ? timetableTimeFormat.format(end)
+      : `${timetableDayFormat.format(end)}, ${timetableTimeFormat.format(end)}`
+  return `${starts}–${ends}`
+}
+
 function buildMyClassesFacts(result: unknown): ToolFactsResult {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Wolne, nic nie masz w planie. Jeśli to błąd — wpadnij na „Mój Plan" i odśwież import z USOSweb.',
+      text: 'W zapisanym planie nie widzę zajęć w tym terminie. To nie musi oznaczać wolnego dnia — jeśli coś się nie zgadza, sprawdź import w [Moim planie](/moj-plan).',
     }
   }
   const items = rawItems.slice(0, MAX_CLASSES)
   const remaining = rawItems.length - items.length
-
-  const facts = items
-    .map((item) => {
-      const summary = pickString(item, 'summary') || 'zajęcia'
-      const start = pickStringOrNull(item, 'start_time')
-      const lecturer = pickStringOrNull(item, 'lecturer_name')
-      const location = pickStringOrNull(item, 'location')
-      const cancelledBody = pickStringOrNull(
-        item,
-        'cancelled_announcement_body',
-      )
-
-      const ctx = eventDateContext(start)
-      const datePart = start
-        ? ctx
-          ? `${ctx} (${formatDateShort(start)})`
-          : formatDateShort(start)
-        : 'bez daty'
-      const lec = lecturer ? `, ${lecturer}` : ''
-      const sala = location ? ` — sala ${location}` : ''
-      const cancelTag = cancelledBody ? ' [ODWOŁANE]' : ''
-      return `${summary}${cancelTag} ${datePart}${lec}${sala}`
-    })
-    .join('\n')
-
-  return {
-    kind: 'synthesize',
-    facts,
-    hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
-    topicHint:
-      'Plan zajęć usera (z USOSweb, z naszymi powiadomieniami o odwołaniach).',
+  const hasCancellation = items.some((item) =>
+    Boolean(pickStringOrNull(item, 'cancelled_announcement_body')),
+  )
+  const times = items.map((item) => ({
+    start: new Date(pickString(item, 'start_time')),
+    end: new Date(pickString(item, 'end_time')),
+  }))
+  const completeSameDay =
+    remaining === 0 &&
+    pickNumber(result, 'count') === rawItems.length &&
+    !hasCancellation &&
+    times.every(
+      ({ start, end }) =>
+        Number.isFinite(start.getTime()) &&
+        Number.isFinite(end.getTime()) &&
+        end.getTime() >= start.getTime() &&
+        timetableDateKey.format(start) ===
+          timetableDateKey.format(times[0]!.start) &&
+        timetableDateKey.format(end) ===
+          timetableDateKey.format(times[0]!.start),
+    )
+  let daySummary: string | null = null
+  if (completeSameDay) {
+    const first = new Date(
+      Math.min(...times.map(({ start }) => start.getTime())),
+    )
+    const last = new Date(Math.max(...times.map(({ end }) => end.getTime())))
+    const start = timetableTimeFormat.format(first)
+    const end = timetableTimeFormat.format(last)
+    daySummary =
+      items.length === 1
+        ? `Według zapisanego planu masz jedne zajęcia, od **${start}** do **${end}**.`
+        : `Według zapisanego planu masz ${items.length} ${items.length < 5 ? 'zajęcia' : 'zajęć'}. Zaczynasz o **${start}**, a ostatnie kończą się o **${end}**.`
   }
+  const lines = items.map((item) => {
+    const summary = factLink(pickString(item, 'summary') || 'zajęcia', null)
+    const lecturer = pickStringOrNull(item, 'lecturer_name')
+    const location = pickStringOrNull(item, 'location')
+    const cancelledBody = pickStringOrNull(item, 'cancelled_announcement_body')
+    const when = timetableWhen(
+      pickStringOrNull(item, 'start_time'),
+      pickStringOrNull(item, 'end_time'),
+    )
+    const details = [when]
+    if (location) details.push(`miejsce: ${factLink(location, null)}`)
+    if (lecturer) details.push(`prowadzący: ${factLink(lecturer, null)}`)
+    const warning = cancelledBody ? ' · **komunikat o odwołaniu**' : ''
+    return `**${summary}** — ${details.join(' · ')}${warning}`
+  })
+  const lead =
+    daySummary ??
+    (hasCancellation
+      ? 'Zajrzałem do Twojego zapisanego planu. Uwaga: przy części zajęć jest komunikat o odwołaniu — potwierdź, czy dotyczy tego terminu.'
+      : lines.length === 1
+        ? 'Zajrzałem do Twojego zapisanego planu — w tym terminie widzę jedne zajęcia:'
+        : 'Zajrzałem do Twojego zapisanego planu. Tak układają się zajęcia w wybranym terminie:')
+  const body =
+    lines.length <= 3
+      ? lines.join('\n\n')
+      : lines.map((line) => `- ${line}`).join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nPokazuję pierwsze ${items.length} z ${rawItems.length} wpisów. Pozostałe znajdziesz w [Moim planie](/moj-plan).`
+      : ''
+  return { kind: 'direct', text: `${lead}\n\n${body}${tail}` }
 }
 
 // -----------------------------------------------------------------------------
@@ -807,12 +893,11 @@ function buildUpcomingUsosFacts(result: unknown): ToolFactsResult {
       return `${title}${program ? ` (${program})` : ''} — ${timing}`
     })
     .join('\n')
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint: 'Godziny w czasie polskim. Terminy i zasady potwierdź w USOSweb.',
-    topicHint: 'Trwające i nadchodzące rejestracje USOS.',
-  }
+    'Godziny podaję w czasie polskim. Przed zapisami potwierdź termin i zasady w USOSweb.',
+    'Trwające i nadchodzące rejestracje USOS.',
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -824,7 +909,7 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'W pobranym kalendarzu nie ma nadchodzących wydarzeń. Pełny kalendarz znajdziesz na stronie UJ.',
+      text: 'W pobranym kalendarzu nie znalazłem nadchodzących wydarzeń. Możesz jeszcze zerknąć do pełnego kalendarza na stronie UJ — źródło mogło się już zmienić.',
     }
   }
   const items = rawItems.slice(0, 5)
@@ -844,15 +929,13 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
       return `${factLink(title, pickStringOrNull(item, 'event_url'))} — ${datePart}${where}`
     })
     .join('\n')
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint:
-      remaining > 0
-        ? `jeszcze ${remaining} dalej, zerknij na Kalendarz UJ`
-        : null,
-    topicHint: 'Oficjalne wydarzenia z kalendarza UJ.',
-  }
+    remaining > 0
+      ? `To część wyników — pozostałe ${remaining} znajdziesz w [wydarzeniach](/wydarzenia).`
+      : null,
+    'Oficjalne wydarzenia z kalendarza UJ.',
+  )
 }
 
 // -----------------------------------------------------------------------------

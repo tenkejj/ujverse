@@ -38,15 +38,16 @@ type CachedProfile = {
 
 const PROFILE_CACHE_TTL_SECONDS = 300
 
-const DAY_NAMES_PL = [
-  'niedziela',
-  'poniedziałek',
-  'wtorek',
-  'środa',
-  'czwartek',
-  'piątek',
-  'sobota',
-] as const
+const WARSAW_CLOCK = new Intl.DateTimeFormat('pl-PL', {
+  timeZone: 'Europe/Warsaw',
+  weekday: 'long',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
 
 /**
  * Pora dnia w PL — granice świadomie luźne, dopasowane do rytmu studenta:
@@ -70,9 +71,10 @@ function partOfDay(hour: number): string {
  */
 function computeStudyYear(yearStarted: number | null): number | null {
   if (yearStarted == null) return null
-  const now = new Date()
-  const academicYear =
-    now.getMonth() >= 9 ? now.getFullYear() : now.getFullYear() - 1
+  const parts = WARSAW_CLOCK.formatToParts(new Date())
+  const year = Number(parts.find((part) => part.type === 'year')?.value)
+  const month = Number(parts.find((part) => part.type === 'month')?.value)
+  const academicYear = month >= 10 ? year : year - 1
   const diff = academicYear - yearStarted + 1
   if (diff < 1) return 1
   if (diff > 10) return null
@@ -133,17 +135,13 @@ export async function buildAutoContext(
   admin: SupabaseClient,
 ): Promise<string> {
   const now = new Date()
-  const dayName = DAY_NAMES_PL[now.getDay()]
-  const dateStr = now.toLocaleDateString('pl-PL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-  const hour = now.getHours()
-  const minute = now.getMinutes()
-  const hourStr = `${hour.toString().padStart(2, '0')}:${minute
-    .toString()
-    .padStart(2, '0')}`
+  const clock = WARSAW_CLOCK.formatToParts(now)
+  const partValue = (type: Intl.DateTimeFormatPartTypes) =>
+    clock.find((part) => part.type === type)?.value ?? ''
+  const dayName = partValue('weekday')
+  const dateStr = `${partValue('day')}.${partValue('month')}.${partValue('year')}`
+  const hour = Number(partValue('hour'))
+  const hourStr = `${partValue('hour')}:${partValue('minute')}`
   const part = partOfDay(hour)
 
   const parts: string[] = []
@@ -163,7 +161,9 @@ export async function buildAutoContext(
       if (profile.department) studyBits.push(profile.department)
 
       if (profile.displayName && studyBits.length > 0) {
-        parts.push(`Rozmawiasz z ${profile.displayName} (${studyBits.join(', ')}).`)
+        parts.push(
+          `Rozmawiasz z ${profile.displayName} (${studyBits.join(', ')}).`,
+        )
       } else if (profile.displayName) {
         parts.push(`Rozmawiasz z ${profile.displayName}.`)
       } else if (studyBits.length > 0) {

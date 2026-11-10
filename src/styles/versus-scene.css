@@ -3,11 +3,18 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding-block: 24px 32px;
+}
+.versus-scene-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   width: 100%;
   min-width: 0;
-  min-height: clamp(560px, 62svh, 760px);
-  padding-block: 24px 32px;
+  min-height: calc(clamp(560px, 62svh, 760px) - 108px);
 }
 .versus-scene-persona {
   display: flex;
@@ -131,52 +138,6 @@
   flex: none;
   color: var(--campus-accent);
 }
-.versus-scene-details {
-  width: min(100%, 1120px);
-  min-width: 0;
-  margin-top: 8px;
-  text-align: center;
-}
-.versus-scene-details > summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  color: var(--campus-muted);
-  font-size: 12px;
-  list-style: none;
-  cursor: pointer;
-}
-.versus-scene-details > summary::-webkit-details-marker {
-  display: none;
-}
-.versus-scene-details[open] > summary > svg {
-  rotate: 180deg;
-}
-.versus-scene-details-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding-block: 8px 16px;
-}
-.versus-scene-details-content > p {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 20px;
-  color: var(--campus-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-.versus-scene-details-content > p > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.versus-scene-details .versu-portrait-options {
-  justify-content: center;
-}
 @media (hover: hover) {
   .versus-scene-send:not(:disabled):hover {
     opacity: 0.85;
@@ -184,9 +145,6 @@
   .versus-scene-suggestions button:hover {
     background: var(--campus-hover);
     color: var(--campus-accent);
-  }
-  .versus-scene-details > summary:hover {
-    color: var(--campus-text);
   }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -199,8 +157,10 @@
 }
 @media (max-width: 767px) {
   .versus-scene {
-    min-height: 0;
     padding-block: 8px 16px;
+  }
+  .versus-scene-main {
+    min-height: 0;
   }
   .versus-scene-persona > .versu-mark {
     --versu-mark-size: 144px;

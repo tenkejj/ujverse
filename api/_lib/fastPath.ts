@@ -19,10 +19,11 @@
  * (model czegoś nie powie).
  *
  * Ranges (`get_*_in_range`, `get_calendar_in_range`) — generujemy świeże ISO
- * w UTC w handlerze. Per-tool cache i tak wpada na ten sam klucz (args są
- * deterministyczne dla tego samego dnia), więc cache layer w `runWithCache`
- * dalej działa.
+ * według dni kalendarzowych Europe/Warsaw. Wynik jest ISO w UTC. Per-tool cache
+ * wpada na ten sam klucz dla tego samego dnia, więc `runWithCache` dalej działa.
  */
+
+import { warsawDayRangeISO } from './warsawDay.js'
 
 export type FastPathMatch = {
   toolName: string
@@ -38,73 +39,28 @@ type FastPathRule = {
   reason: string
 }
 
-/** Zwraca ISO 8601 dla początku i końca dzisiaj w UTC. */
-export function todayRangeISO(): { start: string; end: string } {
-  const now = new Date()
-  const start = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-    ),
-  )
-  const end = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      23,
-      59,
-      59,
-    ),
-  )
-  return { start: start.toISOString(), end: end.toISOString() }
+/** Dzisiejszy dzień w Warszawie; wyniki ISO obejmują także ostatnią milisekundę. */
+export function todayRangeISO(now: Date = new Date()): {
+  start: string
+  end: string
+} {
+  return warsawDayRangeISO(now)
 }
 
-/** Zwraca ISO 8601 dla zakresu next 7 days od dziś (UTC). */
-function nextSevenDaysISO(): { start: string; end: string } {
-  const now = new Date()
-  const start = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-    ),
-  )
-  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
-  return { start: start.toISOString(), end: end.toISOString() }
+/** Siedem kolejnych dni kalendarzowych od dziś, także przy zmianie czasu. */
+export function nextSevenDaysISO(now: Date = new Date()): {
+  start: string
+  end: string
+} {
+  return warsawDayRangeISO(now, 0, 7)
 }
 
-/** Zwraca ISO 8601 dla zakresu jutra (UTC). */
-function tomorrowRangeISO(): { start: string; end: string } {
-  const now = new Date()
-  const start = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      0,
-      0,
-      0,
-    ),
-  )
-  const end = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      23,
-      59,
-      59,
-    ),
-  )
-  return { start: start.toISOString(), end: end.toISOString() }
+/** Jutro w Warszawie, niezależnie od daty UTC serwera. */
+export function tomorrowRangeISO(now: Date = new Date()): {
+  start: string
+  end: string
+} {
+  return warsawDayRangeISO(now, 1)
 }
 
 /**

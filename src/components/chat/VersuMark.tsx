@@ -8,13 +8,15 @@ import '../../styles/versus-chat.css'
 
 const readReducedMotion = () => getUserPreferences().reducedMotion
 const serverReducedMotion = () => true
-const readPortrait = () => getUserPreferences().versusPortrait
-const serverPortrait = () => 'classic' as const
-const PORTRAIT_POSES = {
-  classic: 'idle',
-  curious: 'listening',
-  scholar: 'thinking',
-} as const
+
+/** Completed turns keep a calm, curious or thoughtful face without a looping gesture.
+ * A stable message id varies the expression once, rather than on every streamed chunk.
+ */
+function restingPortrait(messageId: string): 'idle' | 'listening' | 'thinking' {
+  let hash = 0
+  for (const char of messageId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
+  return (['idle', 'listening', 'thinking'] as const)[hash % 3]
+}
 
 export type VersuMarkVariant = 'brand' | 'onAccent'
 export type VersuActivity =
@@ -51,20 +53,13 @@ export default function VersuMark({
     readReducedMotion,
     serverReducedMotion,
   )
-  const portraitChoice = useSyncExternalStore(
-    subscribePreferences,
-    readPortrait,
-    serverPortrait,
-  )
   // Small avatars use a face crop; the full pose keeps gestures readable.
   const isPortrait = portrait ?? size < 72
+  const isRestingMessage =
+    isPortrait && activity === 'idle' && Boolean(replayKey)
   const pose =
-    isPortrait && activity === 'idle'
-      ? PORTRAIT_POSES[portraitChoice]
-      : activity
-  const staticArt =
-    reducedMotion ||
-    (isPortrait && activity === 'idle' && portraitChoice !== 'classic')
+    isRestingMessage && replayKey ? restingPortrait(replayKey) : activity
+  const staticArt = reducedMotion || isRestingMessage
   const asset = isPortrait ? `face-${pose}` : activity
   const source = `/versus/${asset}`
   const replayQuery = `?v=glasses1${replayKey ? `&turn=${encodeURIComponent(replayKey)}` : ''}`
@@ -74,6 +69,7 @@ export default function VersuMark({
       aria-hidden="true"
       data-variant={variant}
       data-activity={activity}
+      data-expression={pose}
       data-portrait={isPortrait}
       className={`versu-mark relative inline-flex shrink-0 items-center justify-center ${className}`}
       style={

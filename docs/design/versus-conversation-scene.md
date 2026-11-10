@@ -1,5 +1,7 @@
 # Versuś as the homepage conversation
 
+Follow-up: `versus-persona-and-budget.md` replaces the portrait picker with an explanation of the assistant and automatic expressions. The greeting subtitle now identifies Versuś as an AI assistant. The scene's minimum height is held by its core so expanding the explanation does not move its trigger.
+
 The previous 880 px introduction still separated an illustration from a form. This revision puts the companion, greeting, message and optional topics on one vertical axis. The scene spans the existing content area, with only the composer limited to 1120 px. A desktop minimum height of `clamp(560px, 62svh, 760px)` gives the main action presence while leaving the information overview below it. Mobile uses natural height and a 144 px companion; desktop retains the 192 px, 2× native artwork.
 
 “Cześć, tu Versuś.” and “Co dziś sprawdzamy na UJ?” lead to “Napisz do mnie…”. The composer starts with one line and grows to 160 px. Its icon-only send button has the accessible name “Wyślij wiadomość do Versusia”. The three existing quick questions retain their exact payloads and backend fast paths. GPT-OSS · Groq, anonymous access and the existing native-radio portrait picker remain available inside one native “O Versusiu” disclosure rather than the main greeting.

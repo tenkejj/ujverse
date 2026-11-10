@@ -111,12 +111,30 @@ export type GroqToolDescriptor = {
 
 export class GroqProviderError extends Error {
   readonly status: number | null
+  /** Provider backoff, retained for the UI; a 429 is never retried in a tight loop. */
+  readonly retryAfterMs: number | null
 
-  constructor(message: string, status: number | null = null) {
+  constructor(
+    message: string,
+    status: number | null = null,
+    retryAfterMs: number | null = null,
+  ) {
     super(message)
     this.name = 'GroqProviderError'
     this.status = status
+    this.retryAfterMs = retryAfterMs
   }
+}
+
+/** Retry-After allows fractional seconds or an HTTP date. Ignore malformed values. */
+function retryAfterMs(response: Response): number | null {
+  const value = response.headers.get('retry-after')?.trim()
+  if (!value) return null
+  const seconds = Number(value)
+  if (Number.isFinite(seconds))
+    return seconds >= 0 ? Math.ceil(seconds * 1000) : null
+  const date = Date.parse(value)
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : null
 }
 
 /** Kształt odpowiedzi Groq w trybie non-streaming (OpenAI-compat). */
@@ -246,6 +264,7 @@ export class GroqProvider implements LLMProvider {
           ? `Groq API ${response.status}: ${text.slice(0, 500)}`
           : `Groq API returned ${response.status}`,
         response.status,
+        retryAfterMs(response),
       )
     }
 
@@ -408,6 +427,7 @@ export class GroqProvider implements LLMProvider {
           ? `Groq API ${response.status}: ${text.slice(0, 500)}`
           : `Groq API returned ${response.status}`,
         response.status,
+        retryAfterMs(response),
       )
     }
 
@@ -510,6 +530,7 @@ export class GroqProvider implements LLMProvider {
           ? `Groq API ${response.status}: ${text.slice(0, 500)}`
           : `Groq API returned ${response.status}`,
         response.status,
+        retryAfterMs(response),
       )
     }
 

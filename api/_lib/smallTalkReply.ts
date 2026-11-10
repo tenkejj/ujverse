@@ -2,7 +2,7 @@
  * Small-Talk Reply — zero-tokenowe odpowiedzi na czyste przywitania / podziękowania.
  *
  * Gdy `shouldUseTools()` zwraca false, zamiast wołać Llamę 8B (small-talk path)
- * odpowiadamy z rotacji pre-baked tekstów w tonie Versusia. Oszczędność:
+ * odpowiadamy krótkim gotowym tekstem w tonie Versusia. Oszczędność:
  * ~800–1200 tok input + ~50–150 tok output per „cześć" / „dzięki".
  */
 
@@ -72,10 +72,10 @@ function classify(text: string): Bucket | null {
 
 const REPLIES: Record<Bucket, string> = {
   greeting:
-    'Cześć! Co chcesz sprawdzić na UJ? Możesz zapytać o komunikaty, rejestracje lub wydarzenia.',
-  thanks: 'Nie ma za co! Jeśli pojawi się kolejne pytanie, pisz.',
+    'Cześć, tu Versuś. Co dziś sprawdzamy na UJ — jakiś termin, komunikat czy wydarzenie?',
+  thanks: 'Nie ma za co!',
   bye: 'Do zobaczenia!',
-  ack: 'Jasne. Jeśli chcesz coś jeszcze sprawdzić, napisz.',
+  ack: 'Jasne.',
   slang: 'Jestem tutaj. Co chcesz sprawdzić?',
 }
 

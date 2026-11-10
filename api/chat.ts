@@ -89,9 +89,25 @@ const CONTENT_TOO_LONG_USER_MESSAGE =
  * Cel: ograniczyć koszt tokenów na żądanie i ryzyko 429 z Groqa.
  */
 const MAX_HISTORY_MESSAGES = 8
-/** Komunikat zwracany użytkownikowi gdy Groq odpowie 429 (rate limit / quota). */
-const RATE_LIMIT_USER_MESSAGE =
-  'Za dużo pytań naraz. Daj mi minutę i spróbuj jeszcze raz.'
+/** Character budget, not a tokenizer or a guarantee about an account's token limits. */
+const MAX_HISTORY_CHARS = 6000
+const MAX_RECENT_ASSISTANT_CHARS = 3000
+const INPUT_BUDGET_USER_MESSAGE =
+  'To pytanie z kontekstem jest za obszerne dla obecnego limitu AI. Wyślij krótszy fragment albo zacznij nową rozmowę — nie chcę ucinać Twojego pytania.'
+
+/** Honor provider backoff without multiplying rate-limited requests in the same turn. */
+function rateLimitUserMessage(error?: GroqProviderError | null): string {
+  const retryMs = error?.retryAfterMs
+  return retryMs != null && retryMs > 0
+    ? `Muszę chwilę odczekać przez limit usługi AI. Spróbuj ponownie za ${Math.ceil(retryMs / 1000)}s.`
+    : 'Muszę chwilę odczekać przez limit usługi AI. Spróbuj ponownie za chwilę.'
+}
+
+/** Extra background inference is optional on a limited Groq plan. */
+function isMemoryExtractionEnabled(): boolean {
+  const value = process.env.VERSUS_MEMORY_EXTRACTION?.trim().toLowerCase()
+  return value === '1' || value === 'true' || value === 'yes'
+}
 /**
  * Gdy model po retry nadal nie odpowie (5xx, transport, złe żądanie),
  * klient dostaje to zdanie w SSE 200. Puste 502 „Proxy Error" zostawiało
@@ -120,22 +136,8 @@ const CIRCUIT_OPEN_MESSAGE_TEMPLATE = (retryAfterSec: number): string =>
 const ALLOWED_ROLES = new Set<ChatRole>(['system', 'user', 'assistant'])
 
 /**
- * Response cache TTL (sekundy) — finalna odpowiedź dla danej pary
- * (lastUserText, useTools) jest cache'owana w Vercel KV (Upstash Redis).
- *
- * Świadoma decyzja produktowa: trzymamy tylko **60s** (zamiast typowych
- * 300s), żeby asystent NIE odpowiadał z cache zbyt często — chcemy aby
- * Groq był faktycznie używany, a userzy widzieli świeże/zmieniające się
- * odpowiedzi. Z synthesizerem (Llama 8B) generującym wariancje per request,
- * 30s to kompromis: anty-spam przy double-tap, ale mniej powtórnych
- * wywołań Qwen3 niż przy 15s. Synteza Llama i tak daje wariancję po miss.
- *
- * Per-tool cache (TTL_FOR_TOOL w `registry.ts`) zostaje — to jest cache
- * danych ze Supabase, nie odpowiedzi LLM, i ten OK zostać agresywny
- * (60-300s zależnie od narzędzia). Synteza dalej dostanie te same fakty,
- * ale model je inaczej ułoży.
- *
- * Fast-path też pisze do response-cache (też przez tę stałą).
+ * Response-cache TTLs live in chatResponseCache.ts. Keys include access scope
+ * and the bounded conversation; tool caches keep their own data freshness TTLs.
  */
 
 /**
@@ -347,44 +349,90 @@ function synthesizeChunkedSSEStream(
  * (~3-4k znaków = ~1k tokenów). Dla starszych odpowiedzi (NIE tej tuż przed
  * nowym pytaniem) trzymamy tylko `STALE_ASSISTANT_KEEP` znaków + `…`.
  *
- * Najnowsza assistant message ZAWSZE leci pełna — to ona jest kontekstem
- * dla follow-upu typu "powiedz więcej o tym", "a co z piątkiem".
+ * Najnowsza odpowiedź ma osobny, większy budżet 3000 znaków, żeby zachować
+ * kontekst follow-upu bez ponownego wysyłania bardzo długich list.
  */
 const STALE_ASSISTANT_KEEP = 240
 
 /**
- * Token Budgeting helper:
- *   1. Przycina historię konwersacji do ostatnich `MAX_HISTORY_MESSAGES`.
- *   2. Kompresuje stare assistant messages (każdą poza najświeższą) do
- *      `STALE_ASSISTANT_KEEP` znaków.
- *
- * System prompt nie liczy się do tego budżetu — `withPersona` dokleja
- * personę po przycięciu, więc tnie się czysta historia user/assistant.
+ * Shorten assistant context at a complete line or sentence where possible.
+ * The explicit marker tells the model it does not have the entire earlier answer.
  */
-export function pruneHistory(messages: GroqMessage[]): GroqMessage[] {
-  const trimmed =
-    messages.length <= MAX_HISTORY_MESSAGES
-      ? messages
-      : messages.slice(-MAX_HISTORY_MESSAGES)
-
-  // Index ostatniej assistant message — tylko ona leci pełna.
-  let lastAssistantIdx = -1
-  for (let i = trimmed.length - 1; i >= 0; i--) {
-    if (trimmed[i].role === 'assistant') {
-      lastAssistantIdx = i
-      break
+function assistantContext(content: string, limit: number): string {
+  if (content.length <= limit) return content
+  const marker = '\n[Dalsza część wcześniejszej odpowiedzi pominięta.]'
+  const prefix = content.slice(0, Math.max(0, limit - marker.length))
+  const lineEnd = prefix.lastIndexOf('\n')
+  let excerpt = lineEnd > 0 ? prefix.slice(0, lineEnd) : prefix
+  if (lineEnd <= 0) {
+    const sentenceEnds = [...excerpt.matchAll(/[.!?](?=\s|$)/g)]
+    const sentenceEnd = sentenceEnds[sentenceEnds.length - 1]?.index
+    if (sentenceEnd != null) excerpt = excerpt.slice(0, sentenceEnd + 1)
+    // Do not leave a partial Markdown link/URL in the retained context.
+    const linkStart = excerpt.lastIndexOf('[')
+    if (
+      linkStart > excerpt.lastIndexOf(']') ||
+      excerpt.lastIndexOf('](') > excerpt.lastIndexOf(')')
+    ) {
+      excerpt = excerpt.slice(0, Math.max(0, linkStart))
     }
   }
+  return excerpt.trimEnd() + marker
+}
 
-  return trimmed.map((m, i) => {
-    if (m.role !== 'assistant') return m
-    if (i === lastAssistantIdx) return m
-    if (m.content === null || m.content.length <= STALE_ASSISTANT_KEEP) return m
-    return {
-      ...m,
-      content: `${m.content.slice(0, STALE_ASSISTANT_KEEP - 1)}…`,
+/**
+ * Keep at most eight messages and a bounded recent context, with no extra LLM
+ * summary. The latest user message is always complete, even when it alone
+ * exceeds the soft character budget (the existing 16k API limit still applies).
+ * Client system messages never spend the conversation budget or replace persona.
+ */
+export function pruneHistory(messages: GroqMessage[]): GroqMessage[] {
+  const trimmed = messages
+    .filter(
+      (message) => message.role === 'user' || message.role === 'assistant',
+    )
+    .slice(-MAX_HISTORY_MESSAGES)
+  let lastUserIdx = -1
+  let lastAssistantIdx = -1
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    if (lastUserIdx < 0 && trimmed[i].role === 'user') lastUserIdx = i
+    if (lastAssistantIdx < 0 && trimmed[i].role === 'assistant')
+      lastAssistantIdx = i
+  }
+  const latestUser = lastUserIdx >= 0 ? trimmed[lastUserIdx]! : null
+  let remaining = Math.max(
+    0,
+    MAX_HISTORY_CHARS - (latestUser?.content?.length ?? 0),
+  )
+  const kept: GroqMessage[] = []
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    const message = trimmed[i]!
+    if (i === lastUserIdx) {
+      kept.push(message)
+      continue
     }
-  })
+    const candidate =
+      message.role === 'assistant' && message.content != null
+        ? {
+            ...message,
+            content: assistantContext(
+              message.content,
+              i === lastAssistantIdx
+                ? MAX_RECENT_ASSISTANT_CHARS
+                : STALE_ASSISTANT_KEEP,
+            ),
+          }
+        : message
+    const size = candidate.content?.length ?? 0
+    // Retain a contiguous recent suffix: skipping a large old question could
+    // otherwise pair an answer with the wrong earlier question.
+    if (size > remaining) break
+    kept.push(candidate)
+    remaining -= size
+  }
+  // Defensive for a nonstandard request ending in assistant messages.
+  if (latestUser && !kept.includes(latestUser)) kept.push(latestUser)
+  return kept.reverse()
 }
 
 /**
@@ -889,10 +937,38 @@ function streamSynthesizedAnswer(opts: {
           '[streamSynthesizedAnswer] stream failed:',
           err instanceof Error ? err.message : err,
         )
-        // Jeszcze nic nie poszło → wyślij fallback message jako delta.
+        const groqError = groqErrorFrom(err)
+        if (groqError?.status === 429) {
+          void cbRecordError({ status: 429, reason: 'rate_limit' })
+        }
+        // Facts are already available: recover locally, never start another
+        // inference after a failed/limited stream or cache its error message.
         if (!emittedAnything) {
+          const factFallback =
+            facts?.kind === 'synthesize'
+              ? validateMarkdown(
+                  enrichWithEntityLinks(
+                    toolName ?? '',
+                    result,
+                    polishAssistantReply(
+                      formatFactsFallback(
+                        userQuery,
+                        facts.facts,
+                        facts.hint,
+                        facts.topicHint,
+                      ),
+                    ),
+                  ),
+                )
+              : null
           const fallback =
-            'Nie udało się przygotować odpowiedzi. Spróbuj ponownie za chwilę.'
+            factFallback && factFallback !== MARKDOWN_GUARD_ERROR
+              ? factFallback
+              : groqError?.status === 429
+                ? rateLimitUserMessage(groqError)
+                : groqError?.status === 413
+                  ? INPUT_BUDGET_USER_MESSAGE
+                  : PROVIDER_FAILURE_MESSAGE
           const payload = JSON.stringify({
             choices: [{ delta: { content: fallback } }],
           })
@@ -1420,6 +1496,8 @@ export default async function handler(req: Request): Promise<Response> {
    * tak jakby model sam to powiedział.
    */
   let rateLimited = false
+  let rateLimitReply = rateLimitUserMessage()
+  let inputTooLarge = false
   /** Model po retry nie oddał odpowiedzi — zdanie po polsku, bez cache. */
   let providerFailed = false
   /** Puste / awaryjne treści nie mogą utknąć w KV na kolejną turę. */
@@ -1504,10 +1582,8 @@ export default async function handler(req: Request): Promise<Response> {
       void incrCounter('groq:cb:probe')
     }
     try {
-      // Wrap w `withGroqRetry`: 3 próby z exponential backoff dla 429/5xx +
-      // transport errors. Free tier Groqa ma niskie RPM (Llama 8B = 30/min),
-      // więc szybki burst zapytań od jednego usera potrafi wpaść w 429.
-      // Cichy retry (~500ms / ~1s / ~2s) zwykle ten window oczekuje.
+      // Retry only transient 5xx/transport failures. A quota/rate-limit 429
+      // returns immediately with Retry-After instead of spending two more calls.
       completion = await withGroqRetry(() =>
         provider.completeWithTools(conversation, effectiveTools, completeOpts),
       )
@@ -1524,7 +1600,10 @@ export default async function handler(req: Request): Promise<Response> {
           '[api/chat] Groq 429 after retry — graceful degrade for user',
         )
         rateLimited = true
+        rateLimitReply = rateLimitUserMessage(groqErr)
         void cbRecordError({ status: 429, reason: 'rate_limit' })
+      } else if (status === 413) {
+        inputTooLarge = true
       } else if (status !== null && status >= 500) {
         console.error(
           '[api/chat] Groq',
@@ -1619,18 +1698,18 @@ export default async function handler(req: Request): Promise<Response> {
                 model: resolvedModel,
               })
             }
-            // Memory update fire-and-forget — co N tur ekstrahujemy
-            // preferencje usera (dieta, mieszkanie, hobby) do KV.
-            // Throttled wewnatrz updateUserMemory (modulo 6 user messages),
-            // wiec to nie kazdy request triggeruje LLM call.
-            void updateUserMemory({
-              userId: ctx.userId,
-              conversation: [
-                ...conversation,
-                { role: 'assistant', content: fullText },
-              ],
-              provider,
-            })
+            // Optional extra inference, disabled by default on a limited plan.
+            // Existing profile, class tools and previously saved memory remain.
+            if (isMemoryExtractionEnabled()) {
+              void updateUserMemory({
+                userId: ctx.userId,
+                conversation: [
+                  ...conversation,
+                  { role: 'assistant', content: fullText },
+                ],
+                provider,
+              })
+            }
           },
         })
       } else {
@@ -1665,7 +1744,10 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (rateLimited) {
-      finalContent = RATE_LIMIT_USER_MESSAGE
+      finalContent = rateLimitReply
+      suppressResponseCache = true
+    } else if (inputTooLarge) {
+      finalContent = INPUT_BUDGET_USER_MESSAGE
       suppressResponseCache = true
     } else if (providerFailed) {
       finalContent = PROVIDER_FAILURE_MESSAGE
@@ -1689,7 +1771,11 @@ export default async function handler(req: Request): Promise<Response> {
     if (groqErr?.status === 429) {
       void cbRecordError({ status: 429, reason: 'rate_limit' })
       void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
-      return streamFinalContentChunked(RATE_LIMIT_USER_MESSAGE, null)
+      return streamFinalContentChunked(rateLimitUserMessage(groqErr), null)
+    }
+    if (groqErr?.status === 413) {
+      void pushLatency('chat:total_ms', Date.now() - requestStartedAt)
+      return streamFinalContentChunked(INPUT_BUDGET_USER_MESSAGE, null)
     }
     if (groqErr?.status && groqErr.status >= 500) {
       void cbRecordError({ status: groqErr.status, reason: 'server_error' })

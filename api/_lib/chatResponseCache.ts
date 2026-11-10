@@ -5,6 +5,7 @@
 import { buildToolCacheKey } from './cache.js'
 import { tryFastPath } from './fastPath.js'
 import { chatResponseScope } from './chatAccess.js'
+import { warsawCivilDate } from './warsawDay.js'
 import {
   buildToolFacts,
   formatListedFacts,
@@ -31,12 +32,15 @@ export function buildResponseCacheKey(
   useTools: boolean,
   userId?: string | null,
   conversation?: readonly { role: string; content?: string | null }[],
+  now: Date = new Date(),
 ): string {
   const normalized = lastUserText.trim().toLowerCase().replace(/\s+/g, ' ')
-  return buildToolCacheKey('chat_response_v4', {
+  return buildToolCacheKey('chat_response_v5', {
     text: normalized,
     useTools,
     scope: chatResponseScope(userId),
+    // Relative questions and prewarmed replies expire together at Warsaw midnight.
+    day: warsawCivilDate(now),
     // The same follow-up can refer to different information in each conversation.
     ...(conversation && conversation.length > 1
       ? { context: conversation.slice(0, -1) }
@@ -46,7 +50,7 @@ export function buildResponseCacheKey(
 
 /**
  * Formatuje wynik narzędzia do zapisu w KV (prewarm / offline cache).
- * Bez wywołania Llama 8B — direct, kompakt lub surowe fakty.
+ * Bez wywołania modelu — direct, kompakt lub surowe fakty.
  */
 export function formatToolResultForCache(
   toolName: string,
