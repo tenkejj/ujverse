@@ -1,9 +1,6 @@
-/* Source-backed tasks lead; the companion stays an open, useful conversation. */
-.student-dashboard > .dashboard-heading {
-  margin-block: 4px 12px;
-}
+/* The companion opens Start; guides and university information follow. */
 .student-dashboard .dashboard-assistant-support {
-  margin-block: 20px 32px;
+  margin-block: 0 12px;
   padding-block-end: 20px;
   border-bottom: 1px solid var(--campus-line);
 }
@@ -16,7 +13,7 @@
 .dashboard-assistant-support .versus-scene-persona > .versu-mark {
   --versu-mark-size: 128px;
 }
-.dashboard-assistant-support .versus-scene-greeting h2 {
+.dashboard-assistant-support .versus-scene-greeting h1 {
   font-size: 28px;
 }
 .dashboard-assistant-support .versus-scene-form {
@@ -31,7 +28,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 20px;
-  margin-block: 20px 8px;
+  margin-block: 12px 24px;
   color: var(--campus-accent);
   font-size: 13px;
 }
@@ -60,6 +57,22 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.dashboard-overview-heading {
+  flex-wrap: wrap;
+}
+.dashboard-overview-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.dashboard-overview-tools {
+  margin-inline-start: auto;
+}
+.dashboard-overview-tools > span {
+  color: var(--campus-muted);
+  font-size: 12px;
+}
 @media (max-width: 639px) {
   .dashboard-guide-links {
     gap: 4px 14px;
@@ -70,7 +83,7 @@
   .dashboard-assistant-support .versus-scene-persona > .versu-mark {
     --versu-mark-size: 112px;
   }
-  .dashboard-assistant-support .versus-scene-greeting h2 {
+  .dashboard-assistant-support .versus-scene-greeting h1 {
     font-size: 26px;
   }
 }

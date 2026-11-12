@@ -47,7 +47,7 @@ export default function VersusEntry() {
           />
         </button>
         <header className="versus-scene-greeting">
-          <h2 id="versus-scene-heading">Cześć, tu Versuś.</h2>
+          <h1 id="versus-scene-heading">Cześć, tu Versuś.</h1>
           <p>Twój asystent AI do spraw na UJ. Pytaj po swojemu.</p>
         </header>
         <form onSubmit={submit} className="versus-scene-form">

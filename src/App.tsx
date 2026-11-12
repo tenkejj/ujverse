@@ -1738,7 +1738,6 @@ function App() {
   const sessionUserId = session?.user?.id ?? null
   const displayName =
     myProfile?.full_name || session?.user?.email?.split('@')[0] || 'Użytkownik'
-  const firstName = myProfile?.full_name?.trim().split(/\s+/)[0] || null
   const viewedHandle = routeProfileHandle ?? activeProfileHandle
   const currentPathWithQuery = `${location.pathname}${location.search}`
   const loginHref = loginPathFor(currentPathWithQuery)
@@ -1827,7 +1826,6 @@ function App() {
           <InfoDashboard
             faculty={facultyPreference}
             isAuthenticated={isAuthenticated}
-            firstName={firstName}
           />
         )
       case 'komunikaty':

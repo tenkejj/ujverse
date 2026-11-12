@@ -8,163 +8,168 @@
 
 <h1 align="center">UJverse</h1>
 
-<p align="center">
-  Everything that matters at UJ, in one place.
-</p>
+<p align="center">University announcements, deadlines and help with student life at UJ.</p>
 
 <p align="center">
-  <a href="https://ujverse.vercel.app/">ujverse.vercel.app</a>
-  ·
-  <a href="mailto:franciszek.dranka@student.uj.edu.pl">franciszek.dranka@student.uj.edu.pl</a>
-  ·
-  <a href="./LICENSE">License</a>
+  <a href="https://ujverse.vercel.app/">Open UJverse</a> ·
+  <a href="https://github.com/tenkejj/ujverse">GitHub</a> ·
+  <a href="LICENSE">License</a>
 </p>
 
----
+UJverse is an independent service for students of Jagiellonian University. It combines information from official university websites with the Versuś assistant, search and student tools. Announcements, registrations, events and guides are available **without creating an account**.
 
-UJverse is an independent information hub for students of Jagiellonian University. It aggregates faculty announcements, USOSweb registrations and university events from official sources, lets you pick your faculty and search across it all — **without creating an account**. An account is only needed for personal features (timetable, Aula, community).
+The project is not affiliated with or endorsed by UJ. Confirm important deadlines and rules using the linked official source.
 
-This project is not affiliated with, endorsed by, or sponsored by Jagiellonian University. Data is collected automatically from public UJ websites — always check the source for anything important.
+## What is available
 
-The 11 November 2026 audit assessed deployed commit `1a29c24` from `codex/info-ui-research`. Current remediation status, verification evidence and production dependencies are recorded in the [pre-deploy audit snapshot](docs/audit/2026-11-11-status.md). Audit changes were prepared on `codex/audit-2026-11-11` for integration and authorized production publication. Current local verification passed: 150 tests in 39 suites, 34 browser checks, the frontend build, disposable public-RLS tests and 9 Aula assertion groups. The [detailed Polish release summary](docs/audit/2026-11-12-release-summary.md) separates those results, the user-confirmed Aula migration and deployment status. Check Vercel history and the final user report for the actual deployed commit; historical pivot results remain separate.
+| Feature | What it provides | Route |
+| --- | --- | --- |
+| Start | Entry to a conversation with Versuś, university information, a calendar and saved items | `/` |
+| Versuś | Conversation about announcements, registration, events and student matters | `/chat` |
+| Announcements | Faculty notices, category filters, full content and original sources | `/komunikaty` |
+| Registrations | Current and upcoming rounds from the public USOSweb catalogue | `/rejestracje` |
+| Events | Calendar, day selection and university events | `/wydarzenia` |
+| Search | Search across information, guides and tools | `/szukaj` |
+| Guides | Rector's scholarship, student housing and USOS registration procedures | `/poradniki` |
+| Toolkit | USOSweb, PEGAZ, student email and useful links | `/niezbednik` |
+| Find a room | Room and building search | `/sale` |
 
-## Available without an account
+A labelled faculty selector is available in the header. The selection and saved information stay in the browser without changing account details. Light, dark and UJ themes are available, with preferences at `/settings`.
 
-**Start** (`/`) — “Nie przegap” comes first: registrations and recent class changes with an official source, next action and local “Sprawdzone” acknowledgement. Guides, compact Versuś assistance, announcements, registrations, calendar, saved items and data freshness follow. Checking an item does not enroll you or complete a university procedure.
+Guides explain applicability, preparation, steps, deadlines, contacts and official sources. Their local checklists do not submit applications or register students in USOSweb.
 
-**Faculty selection** — takes seconds, no sign-up; stored in the browser (`localStorage`, key `ujverse.infoPrefs.v1`). Signed-in users get their profile faculty by default; a device-level choice never changes the profile.
+### Features that require an account
 
-**Programme pilot** — device-local selection of Elektroniczne przetwarzanie informacji (WZiKS) or Filozofia (Faculty of Philosophy), first / second degree and year. Both verified full-time programmes last 3 / 2 years respectively. Current announcement and registration records lack verified programme, degree or year audiences, so information remains faculty-wide. [Scope and sources](docs/design/study-profile-pilot.md).
+- **My timetable** (`/moj-plan`) — ICS import from USOSweb, day and week views, exams and briefings.
+- **Aula** (`/aula`) — cohort channels, messages, reactions, polls, attachments, notes and tasks.
+- **Community** (`/spolecznosc`) — posts, comments, profiles, following and community events.
+- **Registration reminders** (`/usos`) — reminders before rounds and community submissions.
+- **Couponek UJ** (`/znizki`), **Study spaces** (`/miejsca`) and **Notifications** (`/notifications`).
 
-**Guides** (`/poradniki`) — rector’s scholarship, dormitory applications and USOS registrations: applicability, preparation, steps, official deadline/status information and contacts. Sources were checked on 11 November 2026; progress stays on this device. The dormitory guide identifies a separate CM procedure. Direct routes: `/poradniki/stypendium-rektora`, `/poradniki/akademik`, `/poradniki/rejestracje-usos`.
+Opening a personal feature without a session leads to sign-in with a return to the requested view. Local settings are available without an account; account settings require a session.
 
-**Announcements** (`/komunikaty`) — posts from 16 official faculty websites (last 30 days), type filters (cancelled classes, remote, office hours, events), full text on demand and a link to the original. AI summaries are labelled as AI.
+## Versuś
 
-**Registrations** (`/rejestracje`) — open and upcoming rounds from the public USOSweb catalogue, grouped by faculty (derived from the USOS unit code), times in Europe/Warsaw. Closed registrations are never shown as active.
+Versuś uses UJverse data and GPT-OSS models served by **Groq**. The default configuration uses GPT-OSS 20B for lighter tasks and composing answers, and GPT-OSS 120B for a broader set of tools. Server environment variables can override these models.
 
-**Events** (`/wydarzenia`) — university-wide events from the uj.edu.pl calendar (dates; times and venues in the source).
+Simple questions, including some procedural questions, receive prepared replies without another model call. When a model is needed, Groq receives the question, the necessary conversation context and the information used in the answer. “O Versusiu” explains the assistant's sources, operation and limitations.
 
-**Search** (`/szukaj`, Ctrl/Cmd+K) — announcements, registrations, events and tools. Public search does not query profiles, posts or Aula. Supabase reads are subject to server-enforced RLS; private search uses the user's session.
+Public questions do not require sign-in. Access to a saved timetable and other account data requires a verified session. Versuś does not complete USOS formalities or search the entire internet for every question. Responses can contain mistakes or rely on delayed information.
 
-**Essentials** (`/niezbednik`) — USOSweb, PEGAZ, email, registration catalogue, UJ calendar and UJverse tools (the room finder works without an account).
+## Sources and freshness
 
-**Save for later** — bookmark announcements, registrations and events; the list lives on this device only.
+| Data | Source | Scheduled collection |
+| --- | --- | --- |
+| Announcements | Official UJ faculty websites | 06:00, 14:00 and 20:00 UTC |
+| Registrations | Public USOSweb catalogue | 06:15 and 19:00 UTC |
+| Events | Calendar at uj.edu.pl | 05:00 UTC |
 
-**Versuś** (`/chat`) — an AI assistant for university information, also available without signing in. It uses GPT-OSS models hosted by Groq and UJverse data. The “O Versusiu” disclosure explains models, sources, transmitted data and limitations. Personal timetable and account tools require a verified session. Some simple questions use ready replies without a model call, including matched procedural questions with guide/official-source links; these replies do not determine individual eligibility.
+Schedules are defined in [vercel.json](vercel.json). Data is not collected live, and a schedule does not guarantee a successful refresh. Interface dates use Europe/Warsaw. The service distinguishes announcement addition, registration confirmation and event ingestion. Stale registration data receives a warning and countdowns are hidden.
 
-**Optional pilot measurement** — the “Pomóż sprawdzić UJverse” panel requires explicit opt-in. It retains visit days, source-opening counts and task timings on this device for up to 28 days. Participants can download or delete the JSON report; nothing is transmitted automatically. A recorded click does not establish source correctness or completion of a university procedure. [Research materials](docs/research/README.md) are ready for recruitment; there are no participants, completed interviews or measured retention yet.
-
-## With a UJverse account
-
-**My Plan** (`/moj-plan`), **Aula** (`/aula`), **registration alarms** (`/usos`), **discounts** (`/znizki`) and **study spots** (`/miejsca`). Visiting them without a session shows why an account is needed and a sign-in button; after signing in you return to the same page. `/settings` exposes device preferences to guests and account settings after authentication.
-
-## Community (kept, secondary)
-
-The feed moved from `/` to `/spolecznosc` and lives in the "Twoje konto" navigation group. Profiles, follows, `/thread/:id`, `/profile/:handle`, zones (`/wydzialy/:slug`, `/strefy/:slug`), community events with RSVP and calendar (`/events`), community search (`/search`) and notifications work as before. No data or tables were removed.
-
-## Anonymous access and security
-
-- Public views read only data copied by scrapers from public websites: `announcements`, `official_events`, and the `usos_registrations` rows that come from USOSweb (`source_usos_tura_id IS NOT NULL`). Community and seed rows remain visible to signed-in users only.
-- Profiles, posts, Aula messages and account data must be authorized by Supabase RLS independently of interface filters. Hiding a link or filtering a cohort in the browser is not an authorization boundary.
-- The Supabase client uses a publishable/anon key and the available session; service-role credentials stay in the API. Browser search must not receive a Meilisearch key that grants access to private indexes.
-
-> **Deployment dependency to verify:** the repository contains
-> [`supabase/migrations/20261104120000_public_information_read_access.sql`](supabase/migrations/20261104120000_public_information_read_access.sql)
-> with narrowly scoped public `SELECT` policies. Read-only production checks on 12 November confirmed anonymous access to all three public domains and no visible non-USOS registrations, Aula messages, timetable entries or notifications where administrative checks confirmed data exists. These reads do not establish exact remote policy definitions or isolation between signed-in cohorts; those checks remain open in the audit report. On 12 November the user confirmed successful execution of `20261112120000_aula_scope_integrity.sql` in Supabase SQL Editor; the agent has not independently inspected the remote policy catalog. Local migration check: `bash scripts/pivot-rls-check/run.sh`; record local and production evidence separately.
-
-## Data sources and freshness
-
-| Data | Source | Schedule (cron) | Meaning of the date in the UI |
-| --- | --- | --- | --- |
-| Announcements | 16 faculty websites ([`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts)) | 3× daily | "dodano" = first ingested by UJverse, not the publication date |
-| Registrations | public USOSweb catalogue ([`api/scrape-usos-registrations.ts`](api/scrape-usos-registrations.ts)) | 2× daily | dates from USOSweb; "potwierdzone w USOSweb" = last scraper run |
-| Events | uj.edu.pl calendar ([`api/scrape-uj-events.ts`](api/scrape-uj-events.ts)) | daily | event day; "sprawdzone" = last fetch |
-
-Data is not real-time. If the registration scraper has not refreshed data for more than 36 h, the UI warns that it may be outdated and hides countdowns.
-
-## Stack
+## Technology and structure
 
 | Layer | Technologies |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS v4, Framer Motion, React Router 7, TanStack Query |
-| Backend | Supabase (Postgres + RLS, Auth, Storage, Realtime) |
-| API | Vercel serverless / Edge — scrapers, chat, search sync |
-| Search | Supabase/PostgREST + RLS; optional server-side Meilisearch index synchronization |
-| AI | Groq, Vercel KV (cache + rate limit) |
+| Interface | React 19, TypeScript, Vite 7, Tailwind CSS 4, Framer Motion, Lucide |
+| Navigation and state | React Router 7, TanStack Query, Zustand |
+| Database and accounts | Supabase: PostgreSQL, RLS, Auth, Storage, Realtime |
+| API and scheduled jobs | Vercel Functions, Edge and Cron |
+| Assistant | Groq, caching and rate limits using Vercel KV |
+| Search | Bounded Supabase/PostgREST queries with current-session permissions |
 
-UI data flows through [`DataService`](src/services/DataService.ts) and adapters; the information layer is [`PublicInfoAdapter`](src/services/adapters/PublicInfoAdapter.ts) plus pure modules in [`src/lib/info/`](src/lib/info/). Schema: [`supabase/migrations/`](supabase/migrations/). Pivot docs: [`docs/pivot/`](docs/pivot/).
+```text
+src/components/       views and shared interface components
+src/hooks/            data fetching and preferences
+src/lib/info/         information and guide logic
+src/services/         DataService, adapters and assistant client
+api/                  chat, scrapers and server functions
+supabase/migrations/  database schema and access policies
+scripts/              maintenance tools
+public/               logo, mascot and other assets
+```
 
 ## Local development
 
+Requirements: **Node.js 24**, npm and access to a configured Supabase project. These instructions are for the project owner and authorized collaborators; use of the source is governed by [LICENSE](LICENSE).
+
 ```bash
+git clone https://github.com/tenkejj/ujverse.git
+cd ujverse
 npm ci
-cp .env.example .env.local   # set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+cp .env.example .env.local
+```
+
+Set the project URL and its **public** Supabase key in `.env.local`:
+
+```dotenv
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key
+```
+
+The legacy `VITE_SUPABASE_ANON_KEY` name is also accepted. The database needs the schema and access policies from the [migrations](supabase/migrations/). Copying placeholder values alone does not connect any data.
+
+```bash
 npm run dev
 ```
 
+Open **http://localhost:5173**. If that port is occupied, use the address printed in the terminal. This starts the Vite frontend and Supabase reads; **it does not start functions in `api/`**.
+
+For local chat and other API functionality, configure server variables, authenticate and link Vercel CLI to the project, then run this instead of standalone Vite:
+
 ```bash
-npm run build          # tsc (strict) + production build
-npm run lint
-npm test               # information-layer unit tests (node:test + tsx)
-npm run chat:prewarm   # prewarm assistant cache
-bash scripts/pivot-rls-check/run.sh            # local RLS policy test (needs PostgreSQL)
-bash scripts/aula-security-check/run.sh       # local Aula isolation/integrity assertions
-node scripts/audit-browser-checks.mjs          # current flows; Chrome/Playwright setup in file header
+npx vercel dev --listen 3000
 ```
 
-### Environment variables
+Open **http://localhost:3000**. The development chat client defaults to this API address; `VITE_API_BASE_URL` can override the chat API location.
 
-| Variable | Where | Purpose |
-| --- | --- | --- |
-| `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` (alias `VITE_SUPABASE_ANON_KEY`) | client | Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | API | scrapers, AI tools |
-| `GROQ_API_KEY` | Edge | `/api/chat` |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Edge | cache + rate limit |
-| `MEILI_HOST` / `MEILI_MASTER_KEY` | serverless | optional sync + resync; never in `VITE_*` or browser code |
-| `SEARCH_INDEX_SYNC_ENABLED` | serverless | explicitly enable optional public-announcement synchronization; off by default |
-| `MEILI_PUBLIC_INDEX` | serverless | separate public index; defaults to `ujverse_public_information` |
-| `CRON_SECRET` | cron | job authorization |
+### Environment configuration
 
-Application search uses bounded database text queries and does not depend on Meilisearch availability. It currently lacks the old index's typo tolerance. Optional synchronization covers public announcements only; it does not recreate profile, post or Aula indexes. Check its configuration separately from Supabase reads. Supabase `sync-search` compatibility source was also updated; its production endpoint returned 404 `NOT_FOUND`, confirming the legacy function is not installed in the configured project. Vercel does not deploy Supabase functions; no separate rollout is needed there. Removing an old key from a new client bundle does not revoke previously distributed keys at the provider.
+Start with [.env.example](.env.example). Keep secrets in `.env.local` or Vercel environment settings.
 
-## Deploy
+| Variable | Purpose |
+| --- | --- |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | Public client configuration |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Server-side Supabase access for API functions |
+| `GROQ_API_KEY` | Chat API access to Groq |
+| `GROQ_MODEL`, `GROQ_SMALLTALK_MODEL` | Optional assistant model overrides |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Shared cache and rate limits |
+| `CRON_SECRET` | Scheduled job authorization |
+| `SECRET_WEBHOOK_KEY` | Synchronization webhook authorization |
 
-Production runs on Vercel as a **prebuilt artifact** — remote `vercel build` sometimes fails to register some `api/` files, so deploy locally:
+`VITE_*` variables are exposed to the browser. Never use them for a service-role key, Groq key or other secrets. Application search uses Supabase and does not require Meilisearch; optional server-side synchronization of public announcements is disabled by default.
 
-```powershell
-./deploy.ps1
-# or
+### Useful commands
+
+```bash
+npm run build    # TypeScript checks and production frontend build
+npm run preview  # local preview of the built frontend
+npm test         # application module tests
+```
+
+`npm run preview` does not start the API either. Local disposable PostgreSQL access-policy checks are described in the [public RLS script](scripts/pivot-rls-check/run.sh) and [Aula checks](scripts/aula-security-check/README.md).
+
+## Deploying to Vercel
+
+The project uses a **prebuilt** deployment to ship the frontend and the complete set of API functions together. After authenticating Vercel CLI under the intended account:
+
+```bash
+npx vercel link
+npx vercel pull --yes --environment=production
 npm run deploy:prod
 ```
 
-Before publishing, establish the intended branch and commit and inspect Vercel Git integration. Merging `main` may trigger an automatic deployment; check that dependency before combining it with a separate manual release. Verify that production aliases serve the commit and artifacts that were checked. Data-access requirements are documented above and in the audit report.
+The PowerShell script [deploy.ps1](deploy.ps1) is also available. Database migrations are applied separately in Supabase; Vercel deployment does not run them. Server variables must be configured in the target Vercel environment.
 
-### Crons ([`vercel.json`](vercel.json))
+## Privacy and access
 
-| Endpoint | Schedule |
-| --- | --- |
-| `/api/scrape-uj-events` | daily 05:00 UTC |
-| `/api/scrape-faculty-announcements` | 06:00, 14:00, 20:00 UTC |
-| `/api/scrape-usos-registrations` | 06:15, 19:00 UTC |
-| `/api/extract-usos-registrations` | 06:30 UTC |
-| `/api/generate-briefings` | Monday 06:00 UTC |
-| `/api/scrape-discounts` | expire 03:00, scrape 04:00 UTC |
+Public pages use university information. Timetables, Aula messages and other personal data require a session and database/API authorization. RLS policies enforce access independently of visible controls and interface filters.
 
-## Roadmap
+Faculty selection, saved items and guide progress stay in the browser. The optional “Pomóż sprawdzić UJverse” measurement requires separate consent, stays on the device for up to 28 days and supports export or deletion. It never sends a report automatically. General site analytics are a separate mechanism.
 
-- Sync saved items and faculty choice across devices (signed-in users)
-- Verification and release of actionable deadlines, guides and the programme pilot — status in the [audit report](docs/audit/2026-11-11-status.md)
-- Useful-action and seven-day return research; results only after an actual student pilot
-- Event times from UJ calendar detail pages
-- Web Push on top of existing notifications
+## Author and license
 
-## Author
+**Franciszek Dranka** · [franciszek.dranka@student.uj.edu.pl](mailto:franciszek.dranka@student.uj.edu.pl)
 
-**Franciszek Dranka** — personal project, independent of UJ.
+The source is available for inspection under a [proprietary license](LICENSE), rather than an open-source license. Other uses, commercial licensing or white-label arrangements require contacting the author.
 
-- Email: [franciszek.dranka@student.uj.edu.pl](mailto:franciszek.dranka@student.uj.edu.pl)
-- Repo: [github.com/tenkejj/ujverse](https://github.com/tenkejj/ujverse)
-
-Commercial licensing, white-label, and use beyond source review — contact the author. See [LICENSE](./LICENSE).
-
-Copyright © 2026 Franciszek Dranka. The name **UJverse** and logo are the author's marks (unregistered).
+Copyright © 2026 Franciszek Dranka. The UJverse name and logo are the author's marks.

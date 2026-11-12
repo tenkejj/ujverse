@@ -8,7 +8,7 @@ description: Remove redundant framing, competing actions and unnecessary informa
 Project adaptation of Impeccable's distill workflow. The primary task is finding useful university information, either directly or by asking Versuś. Preserve the original themes, logo, system font and access rules.
 
 1. Identify duplicated labels, repeated questions, unexplained counts, decorative frames and competing primary actions.
-2. Keep source-backed next actions first, followed by one compact AI action. Do not bury “Nie przegap” or guide access behind the assistant. Suggestions must be readable questions and should reduce typing. Do not repeat the same prompt menu in the sidebar and main content.
+2. Start opens with one centred Versuś conversation entry, then guide access and university information. Do not restore the removed heading, programme picker or “Nie przegap” radar. Suggestions must be readable questions and should reduce typing. Do not repeat the same prompt menu in the sidebar and main content.
 3. Remove unnecessary section cards and row dividers. Group with space and alignment. Use a border for an input or a meaningful boundary, not around every content group.
 4. Show a bounded editorial preview; keep complete catalogues one clear link away. Preserve source attribution, saved items, customization, filters and unavailable-data notices.
 5. Keep all form labels, keyboard operation and visible focus. Simpler presentation never means hidden or icon-only primary actions.

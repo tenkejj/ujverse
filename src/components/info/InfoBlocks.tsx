@@ -389,7 +389,7 @@ function CustomizeDialog({ hidden, onClose }: { hidden: readonly DashboardSectio
               Co pokazywać na stronie startowej
             </h2>
             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-              Ustawienie zapisuje się na tym urządzeniu. „Ważne teraz" pokazujemy zawsze, gdy coś pilnego dotyczy Twojego wydziału.
+              Wybierz sekcje, które chcesz widzieć na Start. Ustawienie zapisuje się na tym urządzeniu.
             </p>
           </div>
           <button

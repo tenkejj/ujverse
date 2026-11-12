@@ -37,7 +37,7 @@
   max-width: 100%;
   text-align: center;
 }
-.versus-scene-greeting h2 {
+.versus-scene-greeting h1 {
   margin: 0;
   font-size: clamp(30px, 3vw, 40px);
   font-weight: 600;
@@ -165,7 +165,7 @@
   .versus-scene-persona > .versu-mark {
     --versu-mark-size: 144px;
   }
-  .versus-scene-greeting h2 {
+  .versus-scene-greeting h1 {
     font-size: 30px;
   }
   .versus-scene-greeting p {

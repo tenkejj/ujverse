@@ -8,184 +8,168 @@
 
 <h1 align="center">UJverse</h1>
 
-<p align="center">
-  Wszystko, co ważne na UJ, w jednym miejscu.
-</p>
+<p align="center">Komunikaty, terminy i pomoc w sprawach studenckich na UJ.</p>
 
 <p align="center">
-  <a href="https://ujverse.vercel.app/">ujverse.vercel.app</a>
-  ·
-  <a href="mailto:franciszek.dranka@student.uj.edu.pl">franciszek.dranka@student.uj.edu.pl</a>
-  ·
-  <a href="./LICENSE">License</a>
+  <a href="https://ujverse.vercel.app/">Otwórz UJverse</a> ·
+  <a href="https://github.com/tenkejj/ujverse">GitHub</a> ·
+  <a href="LICENSE">Licencja</a>
 </p>
 
----
+UJverse to niezależny serwis dla studentów Uniwersytetu Jagiellońskiego. Łączy informacje z oficjalnych stron uczelni z asystentem Versusiem, wyszukiwarką i narzędziami studenckimi. Komunikaty, rejestracje, wydarzenia i poradniki są dostępne **bez zakładania konta**.
 
-UJverse to niezależny serwis informacyjny dla studentów Uniwersytetu Jagiellońskiego. Zbiera komunikaty wydziałów, rejestracje z USOSweb i wydarzenia uczelni z oficjalnych źródeł, pozwala wybrać swój wydział i znaleźć to, czego potrzebujesz — **bez zakładania konta**. Konto przydaje się dopiero do funkcji osobistych (plan zajęć, Aula, społeczność).
+Projekt nie jest powiązany z UJ ani zatwierdzony przez uczelnię. Ważne terminy i zasady potwierdzaj w podlinkowanym źródle.
 
-Projekt nie jest powiązany z UJ, sponsorowany ani zatwierdzony przez uczelnię. Informacje pobieramy automatycznie z publicznych stron UJ — w sprawach ważnych zawsze sprawdź w źródle.
+## Co znajdziesz w serwisie
 
-Audyt z 11 listopada 2026 r. dotyczył wdrożonego commita `1a29c24` z gałęzi `codex/info-ui-research`. Stan prac po audycie, dowody sprawdzeń i otwarte zależności produkcyjne są opisane w [snapshocie audytu przed wydaniem](docs/audit/2026-11-11-status.md). Zmiany z audytu przygotowano na `codex/audit-2026-11-11` do włączenia do `main` i publikacji. Opis funkcji poniżej obejmuje tę wersję; aktualny commit produkcji sprawdzaj w historii Vercel. Bieżąca weryfikacja lokalna: 150 testów w 39 zestawach, 34 sprawdzenia przeglądarkowe, build frontendu oraz testy publicznego RLS i 9 grup asercji Auli na tymczasowym PostgreSQL — wszystkie przeszły. [Pełne podsumowanie po polsku](docs/audit/2026-11-12-release-summary.md) rozdziela te wyniki, potwierdzoną przez użytkownika migrację Auli i status publikacji. Historyczne wyniki pivotu pozostają osobnym raportem.
-
-## Dostępne bez konta
-
-**Start** (`/`) — najpierw „Nie przegap”: rejestracje i niedawne odwołania / zmiany zajęć z oficjalnym źródłem, następnym krokiem i lokalnym oznaczeniem „Sprawdzone”. Poniżej są poradniki, pomoc Versusia, komunikaty, rejestracje i kalendarz, zapisane elementy oraz aktualność danych. Odhaczenie punktu nie zapisuje na zajęcia ani nie załatwia formalności.
-
-**Wybór wydziału** — w kilka sekund, bez rejestracji; zapisuje się w przeglądarce (`localStorage`, klucz `ujverse.infoPrefs.v1`). Zalogowanym domyślnie podpowiadamy wydział z profilu, a wybór na urządzeniu nigdy nie zmienia profilu.
-
-**Kierunek — pilotaż** — lokalny wybór elektronicznego przetwarzania informacji (WZiKS) lub filozofii (Wydział Filozoficzny), studiów I / II stopnia i roku. Oba zweryfikowane programy stacjonarne trwają odpowiednio 3 / 2 lata. Obecne komunikaty i rejestracje nie mają potwierdzonego przypisania do kierunku, stopnia ani roku, więc pozostają filtrowane według wydziału. [Zakres i źródła](docs/design/study-profile-pilot.md).
-
-**Poradniki** (`/poradniki`) — stypendium rektora, akademik i rejestracje USOS: dla kogo, co przygotować, kolejne kroki, gdzie sprawdzić termin i status oraz kontakt. Oficjalne źródła sprawdzono 11 listopada 2026 r.; postęp jest lokalny. Poradnik akademików UJ wyraźnie odsyła CM do osobnej procedury.
-
-**Komunikaty** (`/komunikaty`) — ogłoszenia z 16 oficjalnych stron wydziałów (ostatnie 30 dni), filtry rodzaju (odwołane zajęcia, zdalnie, dyżury, wydarzenia), pełna treść na żądanie i link do oryginału. Streszczenia AI są oznaczone jako AI.
-
-**Rejestracje** (`/rejestracje`) — trwające i nadchodzące tury z publicznego katalogu USOSweb, pogrupowane po wydziałach (na podstawie kodu jednostki USOS), z terminami w czasie warszawskim. Zakończone rejestracje nie są pokazywane jako aktywne.
-
-**Wydarzenia** (`/wydarzenia`) — wydarzenia ogólnouczelniane z kalendarza uj.edu.pl (daty; godziny i miejsce w źródle).
-
-**Szukaj** (`/szukaj`, Ctrl/Cmd+K) — komunikaty, rejestracje, wydarzenia i narzędzia. Wyszukiwarka publiczna nie przeszukuje profili, wpisów ani Auli. Odczyt danych przez klienta Supabase podlega politykom RLS po stronie serwera; prywatne wyszukiwanie używa sesji użytkownika.
-
-**Niezbędnik** (`/niezbednik`) — USOSweb, PEGAZ, poczta, katalog rejestracji, kalendarz UJ oraz narzędzia UJverse (Znajdź salę działa bez konta).
-
-**Zapisz na później** — zakładka przy każdym komunikacie, rejestracji i wydarzeniu; lista żyje tylko na tym urządzeniu.
-
-**Versuś** (`/chat`) — asystent AI do informacji o uczelni, dostępny także bez logowania. Korzysta z modeli GPT-OSS uruchamianych przez Groq oraz danych UJverse. „O Versusiu” wyjaśnia modele, źródła, przekazywane dane i ograniczenia. Do odczytu planu i innych danych osobistych wymagana jest zweryfikowana sesja. Część prostych pytań otrzymuje gotową odpowiedź bez wywołania modelu, w tym dopasowane pytania proceduralne z linkiem do poradnika i oficjalnych zasad; to nie jest decyzja o uprawnieniach studenta.
-
-**Dobrowolny pomiar pilotażu** — panel „Pomóż sprawdzić UJverse” wymaga świadomego włączenia. Przez maksymalnie 28 dni przechowuje na urządzeniu dni odwiedzin, liczniki otwarć źródeł i czas zadania. Raport JSON można pobrać lub usunąć; nic nie jest wysyłane automatycznie. Pomiar nie potwierdza poprawności znalezionego źródła ani wykonania formalności. [Materiały badań](docs/research/README.md) są gotowe do rekrutacji; nie ma jeszcze uczestników, wywiadów ani wyników retencji.
-
-## Z kontem UJverse
-
-**Mój Plan** (`/moj-plan`) — plan z USOSweb (import ICS), widok dnia i tygodnia, egzaminy, tygodniowy briefing, komunikaty subskrybowanych wykładowców.
-
-**Aula** (`/aula`) — czaty roczników: kanały, wiadomości realtime, reakcje, ankiety, załączniki, notatki i zadania.
-
-**Alarmy rejestracji** (`/usos`) — przypomnienia przed turami i wpisy społeczności (dawny widok „Rejestracje USOS").
-
-**Couponek UJ** (`/znizki`), **Miejsca do nauki** (`/miejsca`) — zniżki i miejsca nauki współtworzone przez studentów.
-
-Wejście na te strony bez sesji pokazuje krótkie wyjaśnienie, dlaczego potrzebne jest konto, i przycisk logowania; po zalogowaniu wracasz na tę samą stronę.
-
-## Społeczność (funkcje zachowane, drugoplanowe)
-
-Feed z wpisami, komentarzami i polubieniami jest teraz pod `/spolecznosc` (dawniej `/`), a w nawigacji w grupie „Twoje konto". Bez zmian działają profile i obserwowanie, wpisy `/thread/:id`, profile `/profile/:handle`, strefy `/wydzialy/:slug` i `/strefy/:slug`, wydarzenia społeczności z RSVP i kalendarzem (`/events`), wyszukiwarka społeczności (`/search`) i powiadomienia. Żadne dane ani tabele nie zostały usunięte.
-
-## Dostęp bez logowania i bezpieczeństwo
-
-- Widoki publiczne czytają wyłącznie dane przepisane przez scrapery z publicznych stron: `announcements`, `official_events` i te wiersze `usos_registrations`, które pochodzą z katalogu USOSweb (`source_usos_tura_id IS NOT NULL`). Wpisy społeczności i przykładowe dane (seed) widzą tylko zalogowani.
-- Odczyt profili, wpisów, wiadomości Auli i danych konta musi być autoryzowany przez polityki RLS w Supabase, niezależnie od filtrów interfejsu. Samo ukrycie linku lub filtr rocznika w przeglądarce nie stanowi zabezpieczenia.
-- Klient Supabase używa klucza publicznego (publishable/anon) i dostępnej sesji; klucz service-role zostaje po stronie API. Wyszukiwanie przeglądarkowe nie powinno otrzymywać klucza Meilisearch z dostępem do prywatnych indeksów.
-
-> **Zależność wdrożenia do sprawdzenia:** repozytorium zawiera migrację
-> [`supabase/migrations/20261104120000_public_information_read_access.sql`](supabase/migrations/20261104120000_public_information_read_access.sql)
-> z ograniczonym publicznym `SELECT`. Odczyty produkcyjne z 12 listopada potwierdziły publiczny dostęp `anon` do trzech domen oraz brak widocznych wierszy rejestracji spoza USOS, wiadomości Auli, planów i powiadomień, przy istniejących danych potwierdzonych administracyjnie. Nie potwierdza to dokładnych definicji zdalnych polityk ani izolacji między zalogowanymi rocznikami; te sprawdzenia pozostają otwarte w raporcie audytu. 12 listopada użytkownik potwierdził wykonanie bez błędów dodatkowej migracji integralności Auli `20261112120000_aula_scope_integrity.sql`; nie jest to niezależny odczyt katalogu polityk przez agenta. Lokalna kontrola migracji: `bash scripts/pivot-rls-check/run.sh`; wyniki lokalne i produkcyjne zapisuj osobno.
-
-## Skąd pochodzą dane i jak są świeże
-
-| Dane | Źródło | Harmonogram (cron) | Co oznacza data w UI |
-| --- | --- | --- | --- |
-| Komunikaty | 16 stron wydziałów ([`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts)) | 3× dziennie | „dodano" = pierwsze pobranie przez UJverse, nie data publikacji |
-| Rejestracje | publiczny katalog USOSweb ([`api/scrape-usos-registrations.ts`](api/scrape-usos-registrations.ts)) | 2× dziennie | terminy z USOSweb; „potwierdzone w USOSweb" = ostatni przebieg scrapera |
-| Wydarzenia | kalendarz uj.edu.pl ([`api/scrape-uj-events.ts`](api/scrape-uj-events.ts)) | codziennie | dzień wydarzenia; „sprawdzone" = ostatnie pobranie |
-
-Dane nie są „na żywo". Jeśli scraper rejestracji nie zaktualizował danych przez ponad 36 h, UI ostrzega, że mogą być nieaktualne, i nie pokazuje odliczania.
-
-## Trasy
-
-| Ścieżka | Widok | Konto |
+| Funkcja | Co oferuje | Adres |
 | --- | --- | --- |
-| `/` | Start (informacje) | nie |
-| `/komunikaty`, `/rejestracje`, `/wydarzenia`, `/szukaj`, `/niezbednik`, `/sale` | strony informacyjne, Znajdź salę | nie |
-| `/poradniki`, `/poradniki/stypendium-rektora`, `/poradniki/akademik`, `/poradniki/rejestracje-usos` | poradniki procedur | nie |
-| `/chat` | Versuś — publiczne pytania; narzędzia konta wymagają sesji | nie dla informacji publicznych |
-| `/logowanie` | logowanie / rejestracja (`?next=` = powrót) | — |
-| `/spolecznosc`, `/thread/:id`, `/profile`, `/profile/:handle`, `/events`, `/search`, `/notifications` | społeczność | tak |
-| `/moj-plan` (`/dzis`, `/briefing`), `/aula`, `/usos`, `/znizki`, `/miejsca`, `/admin/*` | funkcje konta | tak |
-| `/settings` | preferencje lokalne; ustawienia konta po zalogowaniu | zależnie od sekcji |
+| Start | Wejście do rozmowy z Versusiem, podgląd informacji z uczelni, kalendarz i zapisane elementy | `/` |
+| Versuś | Rozmowa o komunikatach, zapisach, wydarzeniach i sprawach studenckich | `/chat` |
+| Komunikaty | Ogłoszenia wydziałów, filtry rodzaju, treść i odnośnik do oryginału | `/komunikaty` |
+| Rejestracje | Trwające i nadchodzące tury z publicznego katalogu USOSweb | `/rejestracje` |
+| Wydarzenia | Kalendarz, wybór dnia i wydarzenia ogólnouczelniane | `/wydarzenia` |
+| Wyszukiwanie | Wspólne wyszukiwanie informacji, poradników i narzędzi | `/szukaj` |
+| Poradniki | Stypendium rektora, akademik i rejestracje USOS krok po kroku | `/poradniki` |
+| Niezbędnik | USOSweb, PEGAZ, poczta i pozostałe przydatne odnośniki | `/niezbednik` |
+| Znajdź salę | Wyszukiwanie sal i budynków | `/sale` |
 
-## Stack
+Wydział wybierzesz w widocznym selektorze w nagłówku. Wybór i zapisane informacje zostają w przeglądarce; nie zmieniają danych konta. Dostępne są motywy jasny, ciemny i UJ oraz ustawienia pod `/settings`.
+
+Poradniki zawierają zakres zastosowania, przygotowanie, kolejne kroki, terminy, kontakty i oficjalne źródła. Ich lokalne listy kontrolne nie zastępują złożenia wniosku ani zapisu w USOSweb.
+
+### Funkcje po zalogowaniu
+
+- **Mój Plan** (`/moj-plan`) — import planu z USOSweb przez ICS, dzień i tydzień, egzaminy oraz briefing.
+- **Aula** (`/aula`) — kanały rocznika, wiadomości, reakcje, ankiety, załączniki, notatki i zadania.
+- **Społeczność** (`/spolecznosc`) — wpisy, komentarze, profile, obserwowanie i wydarzenia społeczności.
+- **Alarmy rejestracji** (`/usos`) — przypomnienia przed turami i informacje dodawane przez społeczność.
+- **Couponek UJ** (`/znizki`), **Miejsca do nauki** (`/miejsca`) i **Powiadomienia** (`/notifications`).
+
+Próba wejścia do funkcji osobistej bez sesji prowadzi do logowania z możliwością powrotu do wybranego widoku. Lokalne preferencje w ustawieniach są dostępne bez konta; ustawienia konta wymagają sesji.
+
+## Versuś
+
+Versuś korzysta z danych UJverse i modeli GPT-OSS uruchamianych przez **Groq**. Domyślna konfiguracja to GPT-OSS 20B do lżejszych zadań i układania odpowiedzi oraz GPT-OSS 120B do pracy z szerszym zestawem narzędzi. Modele można zmienić zmiennymi serwerowymi.
+
+Proste pytania, w tym część pytań o procedury, otrzymują gotową odpowiedź bez dodatkowego wywołania modelu. Gdy model jest potrzebny, do Groq trafiają pytanie, potrzebny fragment rozmowy i dane użyte do odpowiedzi. Panel „O Versusiu” opisuje źródła, działanie i ograniczenia asystenta.
+
+Pytania o informacje publiczne nie wymagają logowania. Odczyt zapisanego planu i innych danych konta wymaga zweryfikowanej sesji. Versuś nie wykonuje formalności w USOS i nie przeszukuje całego internetu przy każdym pytaniu. Odpowiedzi mogą zawierać błędy lub opierać się na opóźnionych danych.
+
+## Źródła i aktualność danych
+
+| Dane | Źródło | Planowane pobieranie |
+| --- | --- | --- |
+| Komunikaty | Oficjalne strony wydziałów UJ | 06:00, 14:00 i 20:00 UTC |
+| Rejestracje | Publiczny katalog USOSweb | 06:15 i 19:00 UTC |
+| Wydarzenia | Kalendarz na uj.edu.pl | 05:00 UTC |
+
+Harmonogramy definiuje [vercel.json](vercel.json). Pobieranie nie odbywa się na żywo; harmonogram nie gwarantuje udanego odświeżenia. Daty w interfejsie są prezentowane w strefie Europe/Warsaw. Serwis rozróżnia dodanie komunikatu, potwierdzenie terminu rejestracji i pobranie wydarzenia. Przy nieaktualnych danych rejestracji pokazuje ostrzeżenie i ukrywa odliczanie.
+
+## Technologia i struktura
 
 | Warstwa | Technologie |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS v4, Framer Motion, React Router 7, TanStack Query |
-| Backend | Supabase (Postgres + RLS, Auth, Storage, Realtime) |
-| API | Vercel serverless / Edge — scrapery, chat, sync wyszukiwarki |
-| Search | Supabase/PostgREST + RLS; opcjonalna synchronizacja indeksu Meilisearch po stronie serwera |
-| AI | Groq, Vercel KV (cache + rate limit) |
+| Interfejs | React 19, TypeScript, Vite 7, Tailwind CSS 4, Framer Motion, Lucide |
+| Nawigacja i dane | React Router 7, TanStack Query, Zustand |
+| Baza i konto | Supabase: PostgreSQL, RLS, Auth, Storage, Realtime |
+| API i zadania cykliczne | Vercel Functions, Edge i Cron |
+| Asystent | Groq, pamięć podręczna i limity z użyciem Vercel KV |
+| Wyszukiwanie | Ograniczone zapytania Supabase/PostgREST z uprawnieniami bieżącej sesji |
 
-Dane w UI idą przez [`DataService`](src/services/DataService.ts) i adaptery; warstwa informacyjna to [`PublicInfoAdapter`](src/services/adapters/PublicInfoAdapter.ts) + czyste moduły w [`src/lib/info/`](src/lib/info/). Schemat bazy: [`supabase/migrations/`](supabase/migrations/). Dokumentacja pivotu: [`docs/pivot/`](docs/pivot/).
+```text
+src/components/       widoki i współdzielone elementy interfejsu
+src/hooks/            pobieranie danych i preferencje
+src/lib/info/         logika informacji i poradników
+src/services/         DataService, adaptery i klient asystenta
+api/                  czat, scrapery i funkcje serwerowe
+supabase/migrations/  schemat bazy i polityki dostępu
+scripts/              narzędzia utrzymania
+public/               logo, maskotka i pozostałe zasoby
+```
 
 ## Uruchomienie lokalne
 
+Wymagania: **Node.js 24**, npm oraz dostęp do skonfigurowanego projektu Supabase. Instrukcje dotyczą właściciela projektu i uprawnionych współpracowników; warunki użycia kodu określa [LICENSE](LICENSE).
+
 ```bash
+git clone https://github.com/tenkejj/ujverse.git
+cd ujverse
 npm ci
-cp .env.example .env.local   # uzupełnij VITE_SUPABASE_URL i VITE_SUPABASE_PUBLISHABLE_KEY
+cp .env.example .env.local
+```
+
+W `.env.local` ustaw adres projektu i jego **publiczny** klucz Supabase:
+
+```dotenv
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key
+```
+
+Akceptowana jest też starsza nazwa `VITE_SUPABASE_ANON_KEY`. Baza musi mieć schemat i polityki dostępu z [migracji](supabase/migrations/). Samo skopiowanie przykładowych wartości nie podłącza danych.
+
+```bash
 npm run dev
 ```
 
+Otwórz **http://localhost:5173**. Jeśli port jest zajęty, użyj adresu wypisanego w terminalu. Ten tryb uruchamia frontend Vite i odczyty Supabase; **nie uruchamia funkcji z `api/`**.
+
+Do lokalnego działania czatu i pozostałego API uzupełnij zmienne serwerowe, zaloguj i podłącz Vercel CLI do projektu, a następnie zamiast samego Vite uruchom:
+
 ```bash
-npm run build          # tsc (strict) + produkcyjny build
-npm run lint
-npm test               # Node 22.8+ (zalecany 24): node:test + tsx
-npm run chat:prewarm   # prewarm cache asystenta
-bash scripts/pivot-rls-check/run.sh            # lokalny test polityk RLS (wymaga PostgreSQL)
-bash scripts/aula-security-check/run.sh       # lokalna izolacja kohort i integralność Auli
-node scripts/audit-browser-checks.mjs         # aktualne scenariusze; wymaga playwright-core i Chromium
+npx vercel dev --listen 3000
 ```
 
-### Zmienne środowiskowe
+Otwórz **http://localhost:3000**. Klient czatu w trybie deweloperskim domyślnie korzysta z API pod tym adresem; inne położenie API czatu można ustawić przez `VITE_API_BASE_URL`.
 
-| Zmienna | Gdzie | Po co |
-| --- | --- | --- |
-| `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` (alias `VITE_SUPABASE_ANON_KEY`) | klient | Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | API | scrapery, narzędzia AI |
-| `GROQ_API_KEY` | Edge | `/api/chat` |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Edge | cache + rate limit |
-| `MEILI_HOST` / `MEILI_MASTER_KEY` | serverless | opcjonalny publiczny mirror; nigdy w `VITE_*` ani w kodzie klienta |
-| `SEARCH_INDEX_SYNC_ENABLED` | serverless | jawne włączenie opcjonalnej synchronizacji publicznych komunikatów; domyślnie wyłączona |
-| `MEILI_PUBLIC_INDEX` | serverless | osobny publiczny indeks; domyślnie `ujverse_public_information` |
-| `CRON_SECRET` | cron | autoryzacja jobów |
+### Konfiguracja środowiska
 
-Wyszukiwanie aplikacji korzysta z ograniczonych zapytań tekstowych do bazy i nie zależy od dostępności Meilisearch. Nie ma obecnie tolerancji literówek dawnego indeksu. Opcjonalna synchronizacja obejmuje wyłącznie komunikaty; indeksy profili, wpisów i Auli nie są odtwarzane przez tę ścieżkę. Konfigurację i stan synchronizacji sprawdzaj osobno od odczytów Supabase. Zmieniono także zgodnościowy kod Supabase `sync-search`; odczyt produkcyjnego endpointu zwrócił 404 `NOT_FOUND`, więc ta stara funkcja nie jest zainstalowana w skonfigurowanym projekcie. Publikacja Vercel nie wdraża funkcji Supabase; osobne wdrożenie nie jest tu potrzebne. Usunięcie starego klucza z nowego pakietu klienta nie odwołuje wcześniej rozpowszechnionych kluczy u dostawcy.
+Punkt wyjścia stanowi [.env.example](.env.example). Sekrety przechowuj w `.env.local` albo w ustawieniach środowiska Vercel.
 
-## Deploy
+| Zmienna | Zastosowanie |
+| --- | --- |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | Publiczna konfiguracja klienta |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Serwerowy dostęp do Supabase dla funkcji API |
+| `GROQ_API_KEY` | Dostęp API czatu do Groq |
+| `GROQ_MODEL`, `GROQ_SMALLTALK_MODEL` | Opcjonalna zmiana modeli asystenta |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Współdzielona pamięć podręczna i limity |
+| `CRON_SECRET` | Autoryzacja zadań cyklicznych |
+| `SECRET_WEBHOOK_KEY` | Autoryzacja webhooka synchronizacji |
 
-Produkcja idzie na Vercel jako **prebuilt artifact** — zdalny `vercel build` czasem nie rejestruje części plików z `api/`, więc deploy robimy lokalnie:
+Zmienne `VITE_*` trafiają do przeglądarki. Nigdy nie umieszczaj w nich klucza service-role, klucza Groq ani innych sekretów. Wyszukiwanie działa przez Supabase i nie wymaga Meilisearch; opcjonalna serwerowa synchronizacja publicznych komunikatów jest domyślnie wyłączona.
 
-```powershell
-./deploy.ps1
-# lub
+### Przydatne polecenia
+
+```bash
+npm run build    # kontrola TypeScript i produkcyjny build frontendu
+npm run preview  # lokalny podgląd gotowego frontendu
+npm test         # testy modułów aplikacji
+```
+
+`npm run preview` również nie uruchamia API. Sprawdzenie polityk dostępu na tymczasowej lokalnej bazie PostgreSQL opisują [skrypt publicznego RLS](scripts/pivot-rls-check/run.sh) i [kontrola Auli](scripts/aula-security-check/README.md).
+
+## Publikacja na Vercel
+
+Projekt publikuje się jako **prebuilt**, aby dostarczyć razem frontend i komplet funkcji API. Po zalogowaniu do Vercel CLI i wskazaniu właściwego konta:
+
+```bash
+npx vercel link
+npx vercel pull --yes --environment=production
 npm run deploy:prod
 ```
 
-Przed publikacją ustal docelową gałąź i commit oraz sprawdź konfigurację Git integration w Vercelu. Merge do `main` może uruchomić automatyczne wdrożenie; nie łącz go bez sprawdzenia tej zależności z osobnym ręcznym wydaniem. Weryfikuj, że alias produkcyjny wskazuje ten sam commit i pliki, które sprawdzono. Kontrola dostępu do danych jest opisana w sekcji „Dostęp bez logowania i bezpieczeństwo” oraz w raporcie audytu.
+Dostępny jest też skrypt PowerShell [deploy.ps1](deploy.ps1). Migracje bazy stosuje się oddzielnie w Supabase; publikacja Vercel ich nie wykonuje. Zmienne serwerowe muszą być ustawione w docelowym środowisku Vercel.
 
-### Crony ([`vercel.json`](vercel.json))
+## Prywatność i dostęp
 
-| Endpoint | Harmonogram |
-| --- | --- |
-| `/api/scrape-uj-events` | codziennie 05:00 UTC |
-| `/api/scrape-faculty-announcements` | 06:00, 14:00, 20:00 UTC |
-| `/api/scrape-usos-registrations` | 06:15, 19:00 UTC |
-| `/api/extract-usos-registrations` | 06:30 UTC |
-| `/api/generate-briefings` | poniedziałek 06:00 UTC |
-| `/api/scrape-discounts` | expire 03:00, scrape 04:00 UTC |
+Publiczne strony korzystają z danych uczelni. Plan, wiadomości Auli i inne dane osobiste wymagają sesji oraz uprawnień bazy/API. Polityki RLS wymuszają dostęp niezależnie od widoczności przycisków i filtrów interfejsu.
 
-## Roadmap
+Wybór wydziału, zapisane elementy i postęp poradników przechowuje przeglądarka. Opcjonalny pomiar „Pomóż sprawdzić UJverse” wymaga osobnej zgody, pozostaje na urządzeniu do 28 dni i umożliwia eksport lub usunięcie danych. Nie wysyła raportu automatycznie. Ogólna analityka witryny jest odrębnym mechanizmem.
 
-- Synchronizacja zapisanych elementów i wyboru wydziału między urządzeniami (dla zalogowanych)
-- Weryfikacja i wydanie „Nie przegap”, poradników i pilotażu kierunków — status w [raporcie audytu](docs/audit/2026-11-11-status.md)
-- Badania użytecznych działań i powrotów po siedmiu dniach; wyniki dopiero po rzeczywistym pilotażu
-- Godziny wydarzeń z podstron kalendarza UJ
-- Web Push na bazie istniejących notyfikacji
+## Autor i licencja
 
-## Autor
+**Franciszek Dranka** · [franciszek.dranka@student.uj.edu.pl](mailto:franciszek.dranka@student.uj.edu.pl)
 
-**Franciszek Dranka** — projekt osobisty, niezależny od UJ.
+Kod jest udostępniony do wglądu na warunkach [licencji własnościowej](LICENSE), nie jako projekt open source. Inne wykorzystanie, licencja komercyjna lub white-label wymagają kontaktu z autorem.
 
-- Email: [franciszek.dranka@student.uj.edu.pl](mailto:franciszek.dranka@student.uj.edu.pl)
-- Repo: [github.com/tenkejj/ujverse](https://github.com/tenkejj/ujverse)
-
-Licencja komercyjna, white-label i użycie poza podglądem kodu — kontakt z autorem. Szczegóły w [LICENSE](./LICENSE).
-
-Copyright © 2026 Franciszek Dranka. Nazwa **UJverse** i logo są znakami autora (niezarejestrowane).
+Copyright © 2026 Franciszek Dranka. Nazwa UJverse i logo są znakami autora.
