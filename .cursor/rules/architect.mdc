@@ -33,6 +33,14 @@ Anchor detail: [.cursor/ARCHITECT_MAP.md](.cursor/ARCHITECT_MAP.md). Prefer exte
 
 13. **Schema source** — Treat [`supabase/migrations/`](supabase/migrations/) as the versioned contract; [`supabase_setup.sql`](supabase_setup.sql) is bootstrap / possibly divergent. See [Known drift](.cursor/ARCHITECT_MAP.md#known-drift).
 
-14. **RPC vs reality** — `get_replies_engagement_snapshot` references **`comment_likes`** / **`comment_replies`**; migrations do not define them — fix schema or drop RPC. Same section covers **hardcoded** [`supabaseClient.ts`](src/supabaseClient.ts).
+14. **RPC vs reality** — `get_replies_engagement_snapshot` references **`comment_likes`** / **`comment_replies`**; migrations do not define them — fix schema or drop RPC. Same section covers environment-configured [`supabaseClient.ts`](src/supabaseClient.ts).
 
-15. **API** — [`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts) is a Vercel serverless default export iterating over 16 sources via 3 parser adapters in [`api/_lib/scrapers/`](api/_lib/scrapers/); [`vercel.json`](vercel.json) is minimal — env vars are deployment-owned. See [API surface](.cursor/ARCHITECT_MAP.md#api-surface).
+15. **API** — [`api/scrape-faculty-announcements.ts`](api/scrape-faculty-announcements.ts) is a Vercel serverless default export iterating over 16 sources via 3 parser adapters in [`api/_lib/scrapers/`](api/_lib/scrapers/); [`vercel.json`](vercel.json) records SPA rewrites, cron schedules and function limits — env vars are deployment-owned. See [API surface](.cursor/ARCHITECT_MAP.md#api-surface).
+
+16. **Information hub** — `/` is the public dashboard ([`InfoDashboard`](src/components/info/InfoDashboard.tsx)); feed lives at `/spolecznosc`. Pure logic in [`src/lib/info/`](src/lib/info/); reads via [`PublicInfoAdapter`](src/services/adapters/PublicInfoAdapter.ts) + DataService. Faculty prefs: `localStorage` `ujverse.infoPrefs.v1` — never write `profiles.department`. See [Information layer](.cursor/ARCHITECT_MAP.md#information-layer-pivot-2026-11).
+
+17. **Public vs protected** — `PUBLIC_VIEWS` render without session; other views use [`AuthRequired`](src/components/info/AuthRequired.tsx) and keep the URL. Sign-in: `/logowanie?next=` + [`postAuth.ts`](src/lib/info/postAuth.ts). Anon RLS: migration `20261104120000` (SELECT-only; usos scraper rows only) — do not apply to prod without authorization.
+
+18. **Hub dates & honesty** — user-facing info times use `Europe/Warsaw`; closed registrations never shown as active; search uses Supabase anon/session reads with RLS and bounded requests; no browser Meilisearch client or private index key; do not mix community `events` into `/wydarzenia`.
+
+19. **Audit pilot scope** — source-backed “Nie przegap” precedes compact Versuś; `/poradniki` serves three verified guides. Local programme context covers only EPI/WZiKS and philosophy (I 3 years / II 2 years), with no inferred programme deadlines. Pilot measurement requires explicit opt-in, stays on the device for up to 28 days and never proves completed formalities or research results. Current verification/release status: [`docs/audit/2026-11-11-status.md`](docs/audit/2026-11-11-status.md).

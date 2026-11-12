@@ -1,0 +1,400 @@
+/* Open student workspace: original theme, compact actions, visible companion and real photos. */
+.student-dashboard {
+  max-width: 1640px;
+  margin-inline: auto;
+  padding-bottom: 16px;
+  color: var(--campus-text);
+  -webkit-font-smoothing: antialiased;
+}
+.campus-app .campus-page:has(.student-dashboard) {
+  max-width: 1760px;
+  padding: 20px 36px 48px;
+}
+.dashboard-opening {
+  margin-bottom: 24px;
+}
+.dashboard-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+.dashboard-heading h1 {
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+}
+.dashboard-greeting {
+  color: var(--campus-muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.dashboard-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--campus-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 7px;
+}
+.dashboard-heading > button {
+  min-height: 44px;
+  font-size: 12px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+.dashboard-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+.dashboard-content-with-events {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 40px;
+}
+.dashboard-overview {
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.dashboard-overview-heading,
+.dashboard-discover-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin-bottom: 10px;
+}
+.dashboard-overview-heading h2,
+.dashboard-discover-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 19px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.dashboard-overview-heading > span {
+  color: var(--campus-muted);
+  font-size: 12px;
+}
+.dashboard-section-icon {
+  display: inline-flex;
+  color: var(--campus-accent);
+}
+.dashboard-discover-heading h2 > svg {
+  flex: none;
+  color: var(--campus-accent);
+}
+.dashboard-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dashboard-switcher button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: var(--campus-tint);
+  color: var(--campus-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dashboard-switcher button[aria-pressed='true'] {
+  background: var(--campus-accent);
+  color: var(--campus-bg);
+}
+.dashboard-switcher-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  opacity: 0.85;
+}
+.dashboard-freshness {
+  margin-block: 12px 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.dashboard-freshness .data-freshness-copy {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+}
+.dashboard-grid,
+.dashboard-panel,
+.dashboard-discover {
+  min-width: 0;
+}
+.dashboard-discover > .data-freshness {
+  margin-block: 4px 14px;
+}
+.dashboard-photo-events {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 14px;
+  padding: 0;
+  list-style: none;
+}
+.dashboard-photo-events > li {
+  min-width: 0;
+}
+.dashboard-stories,
+.dashboard-deadlines {
+  display: grid;
+  gap: 20px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.dashboard-stories > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+.dashboard-story-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--campus-accent);
+  background: var(--campus-tint);
+}
+.student-dashboard .info-entry,
+.student-dashboard .deadline-entry {
+  min-width: 0;
+  padding: 0;
+  gap: 8px;
+  flex: 1;
+}
+.student-dashboard .info-entry h3,
+.student-dashboard .deadline-entry h3 {
+  margin: 5px 0;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.student-dashboard .info-entry-meta {
+  gap: 4px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.student-dashboard .info-entry-meta > time {
+  margin-inline-start: 0;
+}
+.student-dashboard .info-entry-meta > span:first-child {
+  color: var(--campus-accent);
+}
+.student-dashboard .info-entry-content > a {
+  min-height: 32px;
+  font-size: 11px;
+}
+.student-dashboard .info-entry > button {
+  width: 44px;
+  height: 44px;
+}
+.student-dashboard .deadline-time {
+  margin-top: 5px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dashboard-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 12px;
+}
+.dashboard-panel-heading p {
+  color: var(--campus-muted);
+  font-size: 11px;
+}
+.dashboard-panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  color: var(--campus-accent);
+  font-size: 12px;
+  flex: none;
+}
+.dashboard-priority {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 10px 0 10px 14px;
+  border-inline-start: 3px solid var(--campus-accent);
+}
+.dashboard-priority h2 {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--campus-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dashboard-priority p {
+  font-size: 12px;
+  color: var(--campus-muted);
+  margin-top: 3px;
+}
+.dashboard-priority h3 {
+  font-size: 14px;
+  margin-top: 3px;
+  line-height: 1.5;
+}
+.dashboard-priority > a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--campus-accent);
+  font-size: 12px;
+}
+.dashboard-saved {
+  padding: 0;
+  margin-top: 28px;
+}
+.campus-open-entries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px;
+  list-style: none;
+  padding: 16px 0;
+}
+.campus-open-entries > li {
+  min-width: 0;
+}
+.campus-open-entries :where(.info-entry, .deadline-entry, .event-entry) {
+  padding: 0;
+}
+.campus-open-entries h3 {
+  font-size: 19px;
+  line-height: 1.5;
+  margin: 10px 0;
+  text-wrap: pretty;
+}
+.campus-open-entries .info-entry-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.campus-open-entries .info-entry-content > a {
+  min-height: 44px;
+  font-size: 13px;
+}
+
+@media (hover: hover) {
+  .dashboard-switcher button:not([aria-pressed='true']):hover {
+    background: var(--campus-hover);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-switcher button {
+    transition:
+      background-color 150ms ease-out,
+      opacity 150ms ease-out,
+      scale 150ms ease-out;
+  }
+}
+@media (max-width: 1199px) {
+  .campus-app .campus-page:has(.student-dashboard) {
+    padding-inline: 24px;
+  }
+  .dashboard-content-with-events {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+@media (max-width: 767px) {
+  .campus-app .campus-page:has(.student-dashboard) {
+    padding: 18px 20px calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+  .dashboard-heading {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .dashboard-heading h1 {
+    font-size: 23px;
+  }
+  .dashboard-context {
+    font-size: 11px;
+  }
+  .dashboard-heading > button {
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+  .dashboard-overview-heading,
+  .dashboard-discover-heading {
+    gap: 8px;
+  }
+  .dashboard-overview-heading h2,
+  .dashboard-discover-heading h2 {
+    font-size: 18px;
+  }
+  .dashboard-discover-heading .dashboard-panel-link {
+    font-size: 11px;
+  }
+  .dashboard-switcher {
+    gap: 5px;
+  }
+  .dashboard-switcher button {
+    padding: 10px 6px;
+    gap: 4px;
+    font-size: 11px;
+  }
+  .dashboard-switcher-count {
+    font-size: 10px;
+  }
+  .dashboard-switcher button > svg {
+    width: 15px;
+    height: 15px;
+  }
+  .dashboard-photo-events {
+    gap: 14px;
+  }
+  .dashboard-priority {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .campus-open-entries {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+@media (max-width: 379px) {
+  .campus-app .campus-page:has(.student-dashboard) {
+    padding-inline: 16px;
+  }
+  .dashboard-heading h1 {
+    font-size: 21px;
+  }
+}

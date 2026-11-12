@@ -1,0 +1,76 @@
+/* Source-backed tasks lead; the companion stays an open, useful conversation. */
+.student-dashboard > .dashboard-heading {
+  margin-block: 4px 12px;
+}
+.student-dashboard .dashboard-assistant-support {
+  margin-block: 20px 32px;
+  padding-block-end: 20px;
+  border-bottom: 1px solid var(--campus-line);
+}
+.dashboard-assistant-support .versus-scene {
+  padding-block: 12px 8px;
+}
+.dashboard-assistant-support .versus-scene-main {
+  min-height: 0;
+}
+.dashboard-assistant-support .versus-scene-persona > .versu-mark {
+  --versu-mark-size: 128px;
+}
+.dashboard-assistant-support .versus-scene-greeting h2 {
+  font-size: 28px;
+}
+.dashboard-assistant-support .versus-scene-form {
+  margin-top: 20px;
+}
+.dashboard-assistant-support .versus-scene-composer {
+  min-height: 76px;
+  padding-block: 12px;
+}
+.dashboard-guide-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  margin-block: 20px 8px;
+  color: var(--campus-accent);
+  font-size: 13px;
+}
+.dashboard-guide-links > svg {
+  flex: none;
+}
+.dashboard-guide-links > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dashboard-guide-links > .dashboard-panel-link {
+  margin-inline-start: auto;
+}
+.campus-guide-intro {
+  margin-block: 0 24px;
+  color: var(--campus-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.campus-guide-intro > a {
+  color: var(--campus-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 639px) {
+  .dashboard-guide-links {
+    gap: 4px 14px;
+  }
+  .dashboard-guide-links > .dashboard-panel-link {
+    margin-inline-start: 0;
+  }
+  .dashboard-assistant-support .versus-scene-persona > .versu-mark {
+    --versu-mark-size: 112px;
+  }
+  .dashboard-assistant-support .versus-scene-greeting h2 {
+    font-size: 26px;
+  }
+}

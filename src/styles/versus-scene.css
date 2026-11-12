@@ -1,0 +1,201 @@
+/* One conversation scene; only the message composer has an enclosing boundary. */
+.versus-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding-block: 24px 32px;
+}
+.versus-scene-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(clamp(560px, 62svh, 760px) - 108px);
+}
+.versus-scene-persona {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.versus-scene-persona > .versu-mark {
+  /* Changing the animated picture on focus must not replace the click target. */
+  pointer-events: none;
+}
+.versus-scene-greeting {
+  max-width: 100%;
+  text-align: center;
+}
+.versus-scene-greeting h2 {
+  margin: 0;
+  font-size: clamp(30px, 3vw, 40px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+.versus-scene-greeting p {
+  margin-top: 8px;
+  color: var(--campus-muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.versus-scene-form {
+  width: min(100%, 1120px);
+  min-width: 0;
+  margin-top: 28px;
+}
+.versus-scene-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  min-height: 88px;
+  padding-block: 18px;
+  padding-inline: 24px 16px;
+  border: 1px solid color-mix(in srgb, var(--campus-muted) 60%, transparent);
+  border-radius: 20px;
+  background: var(--campus-bg);
+}
+.versus-scene-composer:focus-within {
+  outline: 2px solid var(--campus-accent);
+  outline-offset: 3px;
+}
+.versus-scene-composer textarea {
+  display: block;
+  align-self: center;
+  flex: 1;
+  min-width: 0;
+  min-height: 28px;
+  max-height: 160px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--campus-text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 28px;
+}
+.versus-scene-composer textarea::placeholder {
+  color: var(--campus-muted);
+  opacity: 1;
+}
+.versus-scene-composer textarea:focus-visible {
+  outline: none;
+}
+.versus-scene-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--campus-accent);
+  color: var(--campus-bg);
+  -webkit-tap-highlight-color: transparent;
+}
+.versus-scene-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.versus-scene-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.versus-scene-suggestions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--campus-line);
+  border-radius: 24px;
+  background: transparent;
+  color: var(--campus-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+.versus-scene-suggestions svg {
+  flex: none;
+  color: var(--campus-accent);
+}
+@media (hover: hover) {
+  .versus-scene-send:not(:disabled):hover {
+    opacity: 0.85;
+  }
+  .versus-scene-suggestions button:hover {
+    background: var(--campus-hover);
+    color: var(--campus-accent);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .versus-scene-send,
+  .versus-scene-suggestions button {
+    transition:
+      background-color 150ms ease-out,
+      opacity 150ms ease-out;
+  }
+}
+@media (max-width: 767px) {
+  .versus-scene {
+    padding-block: 8px 16px;
+  }
+  .versus-scene-main {
+    min-height: 0;
+  }
+  .versus-scene-persona > .versu-mark {
+    --versu-mark-size: 144px;
+  }
+  .versus-scene-greeting h2 {
+    font-size: 30px;
+  }
+  .versus-scene-greeting p {
+    font-size: 15px;
+  }
+  .versus-scene-form {
+    margin-top: 24px;
+  }
+  .versus-scene-composer {
+    min-height: 80px;
+    gap: 12px;
+    padding-block: 14px;
+    padding-inline: 16px 12px;
+    border-radius: 18px;
+  }
+  .versus-scene-suggestions {
+    gap: 8px;
+  }
+  .versus-scene-suggestions button {
+    gap: 6px;
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+}
+@media (max-width: 379px) {
+  .versus-scene-suggestions {
+    gap: 8px 6px;
+  }
+  .versus-scene-suggestions button {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+}

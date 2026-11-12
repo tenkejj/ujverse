@@ -7,6 +7,8 @@
 
 /** Mapowanie `announcements.status` enum → polskie nazwy widoczne dla usera. */
 export const ANNOUNCEMENT_STATUS_PL: Record<string, string> = {
+  info: 'komunikat',
+  event: 'wydarzenie',
   cancelled: 'odwołane',
   remote: 'zdalnie',
   duty: 'dyżur',

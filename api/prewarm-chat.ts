@@ -1,7 +1,7 @@
 /**
  * `/api/prewarm-chat` — warmuje response cache dla popularnych zapytań.
  *
- * Cron: na planie Hobby Vercel tylko 1×/dzień — nie dodawaj `*/N * * * *`.
+ * Cron: na planie Hobby Vercel tylko 1×/dzień — nie dodawaj harmonogramu co N minut.
  * Po deployu odpal ręcznie: `npm run chat:prewarm` (albo curl z CRON_SECRET).
  */
 
@@ -10,6 +10,7 @@ import {
   formatToolResultForCache,
   RESPONSE_CACHE_FAST_PATH_TTL_SECONDS,
 } from './_lib/chatResponseCache.js'
+import { canUseChatTool } from './_lib/chatAccess.js'
 import { tryFastPath } from './_lib/fastPath.js'
 import { kvSetSafe } from './_lib/kvCache.js'
 import { getSupabaseAdmin } from './_lib/supabaseAdmin.js'
@@ -51,6 +52,7 @@ async function prewarmOne(
   if (!fast) {
     return { query, status: 'skipped', reason: 'no fast-path match' }
   }
+  if (!canUseChatTool(fast.toolName, ctx.userId)) return { query, status: 'skipped', reason: 'requires account' }
   const entry = getToolEntry(fast.toolName)
   if (!entry) {
     return { query, status: 'skipped', reason: `unknown tool: ${fast.toolName}` }

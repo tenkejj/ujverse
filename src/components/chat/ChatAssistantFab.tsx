@@ -20,17 +20,24 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Send, Square, X } from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL } from '../../lib/chatModel'
+import {
+  CHAT_ASSISTANT_NAME,
+  CHAT_MODEL_LABEL,
+  CHAT_PROVIDER_LABEL,
+} from '../../lib/chatModel'
 import { theme } from '../../styles/theme'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
+import { useVersuActivity } from '../../hooks/useVersuActivity'
 import AnimatedBot from './AnimatedBot'
 import ChatVoiceButton from './ChatVoiceButton'
 import MessageList from './MessageList'
+import { useDialogA11y } from '../info/useDialogA11y'
 
 type Props = {
   /** Gdy `true` — komponent nic nie renderuje (kolizja z innym sheetem). */
   hidden?: boolean
+  isAuthenticated?: boolean
   /** Profil zalogowanego użytkownika — awatar w wierszach jego wiadomości. */
   myProfile?: Profile | null
   /** Fallback inicjału awatara, gdy `myProfile` brak. */
@@ -49,10 +56,14 @@ const SHEET_GLASS_CLS = [
   'border-t',
 ].join(' ')
 
-import { CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
+import {
+  CHAT_QUICK_PROMPTS,
+  PUBLIC_CHAT_QUICK_PROMPTS,
+} from '../../lib/chatQuickPrompts'
 
 export default function ChatAssistantFab({
   hidden = false,
+  isAuthenticated = false,
   myProfile,
   displayName,
 }: Props) {
@@ -64,6 +75,9 @@ export default function ChatAssistantFab({
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
+  const [isFocused, setFocused] = useState(false)
+  const activity = useVersuActivity(isFocused && draft.trim().length > 0)
+  const sheetRef = useRef<HTMLElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -71,26 +85,16 @@ export default function ChatAssistantFab({
     const el = scrollRef.current
     if (!el || !isOpen) return
     el.scrollTop = el.scrollHeight
-  }, [messages, isTyping, isOpen])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isOpen, setOpen])
-
-  useEffect(() => {
-    if (!isOpen) return
-    const t = window.setTimeout(() => inputRef.current?.focus(), 80)
-    return () => window.clearTimeout(t)
   }, [isOpen])
 
   const handleClose = useCallback(() => {
     setOpen(false)
   }, [setOpen])
+
+  useDialogA11y(isOpen && !hidden, sheetRef, handleClose, inputRef)
+  useEffect(() => {
+    if (hidden && isOpen) setOpen(false)
+  }, [hidden, isOpen, setOpen])
 
   const hasMessages = useMemo(
     () => messages.some((m) => m.role !== 'system'),
@@ -148,6 +152,7 @@ export default function ChatAssistantFab({
 
   const onKeyDownTextarea = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         void handleSend(draft)
@@ -164,16 +169,22 @@ export default function ChatAssistantFab({
       type="button"
       onClick={() => setOpen(true)}
       aria-label="Otwórz Versusia"
-      className="fixed right-4 z-200 flex h-14 w-14 items-center justify-center rounded-full bg-brand-ink text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-2 ring-white/25 transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950 dark:ring-[#0b1220]/55 dark:shadow-[0_12px_36px_rgba(0,0,0,0.55),0_0_0_1px_rgba(232,201,122,0.35)]"
+      className="fixed right-4 z-200 flex h-12 items-center justify-center gap-2 px-4 rounded-full bg-brand-ink text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-2 ring-white/25 transition-shadow hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)] lg:hidden dark:bg-brand-gold-bright dark:text-zinc-950 dark:ring-[#0b1220]/55 dark:shadow-[0_12px_36px_rgba(0,0,0,0.55),0_0_0_1px_rgba(232,201,122,0.35)]"
       style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.94 }}
+      whileTap={{ scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
     >
-      <AnimatedBot size={22} intensity="idle" variant="onAccent" />
+      <AnimatedBot
+        size={36}
+        activity={isTyping ? activity : 'idle'}
+        replayKey={messages.at(-1)?.id}
+        variant="onAccent"
+      />
+      <span className="text-sm font-semibold">Versuś</span>
     </motion.button>
   )
 
@@ -192,6 +203,8 @@ export default function ChatAssistantFab({
         onClick={handleClose}
       />
       <motion.section
+        ref={sheetRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={CHAT_ASSISTANT_NAME}
@@ -206,10 +219,11 @@ export default function ChatAssistantFab({
 
         <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-1">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-ink text-white dark:bg-brand-gold-bright dark:text-zinc-950">
+            <span className="versus-sheet-identity">
               <AnimatedBot
-                size={16}
-                intensity={isTyping ? 'active' : 'idle'}
+                size={56}
+                activity={activity}
+                replayKey={messages.at(-1)?.id}
                 variant="onAccent"
               />
             </span>
@@ -217,7 +231,9 @@ export default function ChatAssistantFab({
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                 {CHAT_ASSISTANT_NAME}
               </h2>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{CHAT_MODEL_LABEL}</p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                {CHAT_MODEL_LABEL} · {CHAT_PROVIDER_LABEL}
+              </p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -227,7 +243,7 @@ export default function ChatAssistantFab({
               disabled={!canClear}
               title="Nowa rozmowa"
               aria-label="Rozpocznij nową rozmowę z asystentem"
-              className="inline-flex items-center gap-1 rounded-full border border-logo-navy/25 bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10"
+              className="inline-flex min-h-11 items-center gap-1 rounded-full border border-logo-navy/25 bg-transparent px-2.5 py-1.5 text-[11px] font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10"
             >
               <Plus size={15} strokeWidth={2.25} aria-hidden />
               <span>Nowa</span>
@@ -236,7 +252,7 @@ export default function ChatAssistantFab({
               type="button"
               onClick={handleClose}
               aria-label="Zamknij asystenta"
-              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
+              className="flex h-11 w-11 items-center justify-center rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100"
             >
               <X size={20} strokeWidth={2} />
             </button>
@@ -263,7 +279,10 @@ export default function ChatAssistantFab({
             role="group"
             aria-label="Szybkie pytania"
           >
-            {CHAT_QUICK_PROMPTS.map((prompt) => (
+            {(isAuthenticated
+              ? CHAT_QUICK_PROMPTS
+              : PUBLIC_CHAT_QUICK_PROMPTS
+            ).map((prompt) => (
               <button
                 key={prompt}
                 type="button"
@@ -292,12 +311,16 @@ export default function ChatAssistantFab({
           <textarea
             ref={inputRef}
             value={draft}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDownTextarea}
-            placeholder="Napisz wiadomość..."
+            aria-label="Wiadomość do Versusia"
+            name="message"
+            placeholder="Zapytaj Versusia…"
             rows={1}
             disabled={isTyping}
-            className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
+            className={`max-h-32 min-h-11 flex-1 resize-none rounded-2xl border bg-white/80 px-3 py-2 text-base text-zinc-900 outline-none transition-colors focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/15 disabled:opacity-60 dark:bg-zinc-900/70 dark:text-zinc-100 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20 ${theme.colors.border.base}`}
           />
           {isTyping ? (
             <button
@@ -305,7 +328,7 @@ export default function ChatAssistantFab({
               onClick={cancel}
               aria-label="Zatrzymaj odpowiedź"
               title="Zatrzymaj odpowiedź"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
             >
               <Square size={14} strokeWidth={2.5} fill="currentColor" />
             </button>
@@ -314,7 +337,7 @@ export default function ChatAssistantFab({
               type="submit"
               aria-label="Wyślij wiadomość"
               disabled={draft.trim().length === 0}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-ink text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-ink text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
             >
               <Send size={17} strokeWidth={2} />
             </button>

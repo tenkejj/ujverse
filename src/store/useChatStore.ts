@@ -18,10 +18,16 @@ type NewMessage = {
   content: string
 }
 
+export type ChatResponsePhase =
+  'idle' | 'thinking' | 'answering' | 'success' | 'error'
+
 type ChatState = {
+  generation: number
   messages: ChatMessage[]
   isTyping: boolean
   error: string | null
+  /** Visual response phase; completion is explicit so cancelling never celebrates success. */
+  responsePhase: ChatResponsePhase
   /** Stan otwarcia mobilnego bottom-sheetu (FAB). Desktop wyspa nie używa. */
   isOpen: boolean
   /**
@@ -53,6 +59,7 @@ type ChatState = {
   setMessageFeedback: (id: string, value: 'up' | 'down' | null) => void
   setTyping: (value: boolean) => void
   setError: (value: string | null) => void
+  setResponsePhase: (value: ChatResponsePhase) => void
   setOpen: (value: boolean) => void
   setActionLabel: (value: string | null) => void
   /**
@@ -75,16 +82,21 @@ type ChatState = {
 }
 
 function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
     return crypto.randomUUID()
   }
   return `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
 }
 
 export const useChatStore = create<ChatState>((set) => ({
+  generation: 0,
   messages: [],
   isTyping: false,
   error: null,
+  responsePhase: 'idle',
   isOpen: false,
   actionLabel: null,
 
@@ -113,7 +125,10 @@ export const useChatStore = create<ChatState>((set) => ({
       if (lastIndex === -1) return state
       const target = state.messages[lastIndex]
       if (!target) return state
-      const updated: ChatMessage = { ...target, content: target.content + chunk }
+      const updated: ChatMessage = {
+        ...target,
+        content: target.content + chunk,
+      }
       const nextMessages = state.messages.slice()
       nextMessages[lastIndex] = updated
       return { messages: nextMessages }
@@ -176,6 +191,7 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setTyping: (value) => set({ isTyping: value }),
   setError: (value) => set({ error: value }),
+  setResponsePhase: (value) => set({ responsePhase: value }),
   setOpen: (value) => set({ isOpen: value }),
   setActionLabel: (value) => set({ actionLabel: value }),
 
@@ -212,7 +228,7 @@ export const useChatStore = create<ChatState>((set) => ({
       if (lastUserIdx !== -1) drop.add(lastUserIdx)
       if (drop.size === 0) return state
       const next = msgs.filter((_, i) => !drop.has(i))
-      return { messages: next }
+      return { messages: next, responsePhase: 'idle' }
     })
     return { lastUserText }
   },
@@ -227,5 +243,13 @@ export const useChatStore = create<ChatState>((set) => ({
   },
 
   clearHistory: () =>
-    set({ messages: [], error: null, isTyping: false, actionLabel: null }),
+    set((state) => ({
+      generation: state.generation + 1,
+      messages: [],
+      error: null,
+      isTyping: false,
+      actionLabel: null,
+      isOpen: false,
+      responsePhase: 'idle',
+    })),
 }))

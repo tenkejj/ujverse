@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Archive, Calendar, CalendarClock, CalendarDays, Plus, Radio, Search, Sparkles, User } from 'lucide-react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { type UJEvent } from '../data/mockEvents'
 import { useEvents } from '../hooks/useEvents'
 import { DataService } from '../services/DataService'
@@ -41,11 +41,16 @@ const BUCKET_ICON: Record<EventTimeBucket, typeof Calendar> = {
 
 type Props = {
   currentUserId: string
+  guestMode?: boolean
   /** Otwiera profil po `username` (np. z modala uczestników wydarzenia). */
   onNavigateToProfileHandle?: (handle: string) => void
 }
 
-export default function EventsView({ currentUserId, onNavigateToProfileHandle }: Props) {
+export default function EventsView({
+  currentUserId,
+  guestMode = false,
+  onNavigateToProfileHandle,
+}: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -63,6 +68,11 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
   const [deepLinkEvent, setDeepLinkEvent] = useState<UJEvent | null>(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<UJEvent | null>(null)
+
+  const visibleFilters = useMemo(
+    () => (guestMode ? FILTERS.filter((f) => f.key !== 'mine') : FILTERS),
+    [guestMode],
+  )
 
   useEffect(() => {
     const state = location.state as { openEventId?: string } | null
@@ -155,7 +165,7 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
   // Liczniki kategorii pod side-rail (zawsze z pełnej listy, nie z `filtered`).
   const sideFilters = useMemo<SideRailFilter[]>(() => {
     const mine = events.filter((ev) => ev.user_id === currentUserId).length
-    return FILTERS.map((f) => {
+    return visibleFilters.map((f) => {
       if (f.key === 'all') return { key: f.key, label: f.label, count: events.length }
       if (f.key === 'mine') return { key: f.key, label: f.label, count: mine }
       return {
@@ -164,7 +174,7 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
         count: events.filter((ev) => ev.category === f.key).length,
       }
     })
-  }, [events, currentUserId])
+  }, [events, currentUserId, visibleFilters])
 
   const isEmpty = filtered.length === 0
   const isFilteredOrSearching = filter !== 'all' || searchQuery.trim().length > 0
@@ -180,7 +190,7 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
         <div className={EVENTS_HUB.toolbar.stickyWrapClass}>
           <div className={EVENTS_HUB.toolbar.rowClass}>
             <div className={EVENTS_HUB.toolbar.pillsWrapClass}>
-              {FILTERS.map(({ key, label }) => {
+              {visibleFilters.map(({ key, label }) => {
                 const active = filter === key
                 return (
                   <button
@@ -234,17 +244,24 @@ export default function EventsView({ currentUserId, onNavigateToProfileHandle }:
                   aria-label="Szukaj wydarzeń po nazwie"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditTarget(null)
-                  setIsCreateOpen(true)
-                }}
-                className={EVENTS_TOOLBAR.createBtn}
-              >
-                <Plus size={18} strokeWidth={2} aria-hidden />
-                Dodaj wydarzenie
-              </button>
+              {guestMode ? (
+                <Link to="/logowanie?next=%2Fwydarzenia" className={EVENTS_TOOLBAR.createBtn}>
+                  <Plus size={18} strokeWidth={2} aria-hidden />
+                  Zaloguj, by dodać
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditTarget(null)
+                    setIsCreateOpen(true)
+                  }}
+                  className={EVENTS_TOOLBAR.createBtn}
+                >
+                  <Plus size={18} strokeWidth={2} aria-hidden />
+                  Dodaj wydarzenie
+                </button>
+              )}
             </div>
           </div>
         </div>

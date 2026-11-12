@@ -1,13 +1,13 @@
 /**
  * Fast-Path Bypass — najgrubsza optymalizacja kosztu Groqa.
  *
- * Idea: dla zapytań o WYSOKIEJ pewności (slash commands z `chatSlashCommands.ts`,
+ * Idea: dla zapytań o WYSOKIEJ pewności (popularne pytania,
  * exact-match popularnych pytań) nie wołamy LLM-a wcale. Klasyfikator regex
  * decyduje, które narzędzie odpalić, jakimi argumentami — i przekazujemy
  * to bezpośrednio do `getToolEntry(name).execute(args, ctx)`. Wynik
  * formattujemy server-side i streamujemy SSE jak normalna odpowiedź.
  *
- * Zysk per slash-command query:
+ * Zysk przy popularnym pytaniu:
  *   - 0 input tokenów do Groqa (~1100 saved)
  *   - 0 output tokenów do Groqa (~200 saved)
  *   - Latency: ~50ms vs ~1500ms (Groq round-trip eliminated)
@@ -19,10 +19,11 @@
  * (model czegoś nie powie).
  *
  * Ranges (`get_*_in_range`, `get_calendar_in_range`) — generujemy świeże ISO
- * w UTC w handlerze. Per-tool cache i tak wpada na ten sam klucz (args są
- * deterministyczne dla tego samego dnia), więc cache layer w `runWithCache`
- * dalej działa.
+ * według dni kalendarzowych Europe/Warsaw. Wynik jest ISO w UTC. Per-tool cache
+ * wpada na ten sam klucz dla tego samego dnia, więc `runWithCache` dalej działa.
  */
+
+import { warsawDayRangeISO } from './warsawDay.js'
 
 export type FastPathMatch = {
   toolName: string
@@ -38,56 +39,32 @@ type FastPathRule = {
   reason: string
 }
 
-/** Zwraca ISO 8601 dla początku i końca dzisiaj w UTC. */
-export function todayRangeISO(): { start: string; end: string } {
-  const now = new Date()
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0),
-  )
-  const end = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      23,
-      59,
-      59,
-    ),
-  )
-  return { start: start.toISOString(), end: end.toISOString() }
+/** Dzisiejszy dzień w Warszawie; wyniki ISO obejmują także ostatnią milisekundę. */
+export function todayRangeISO(now: Date = new Date()): {
+  start: string
+  end: string
+} {
+  return warsawDayRangeISO(now)
 }
 
-/** Zwraca ISO 8601 dla zakresu next 7 days od dziś (UTC). */
-function nextSevenDaysISO(): { start: string; end: string } {
-  const now = new Date()
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0),
-  )
-  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
-  return { start: start.toISOString(), end: end.toISOString() }
+/** Siedem kolejnych dni kalendarzowych od dziś, także przy zmianie czasu. */
+export function nextSevenDaysISO(now: Date = new Date()): {
+  start: string
+  end: string
+} {
+  return warsawDayRangeISO(now, 0, 7)
 }
 
-/** Zwraca ISO 8601 dla zakresu jutra (UTC). */
-function tomorrowRangeISO(): { start: string; end: string } {
-  const now = new Date()
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0),
-  )
-  const end = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      23,
-      59,
-      59,
-    ),
-  )
-  return { start: start.toISOString(), end: end.toISOString() }
+/** Jutro w Warszawie, niezależnie od daty UTC serwera. */
+export function tomorrowRangeISO(now: Date = new Date()): {
+  start: string
+  end: string
+} {
+  return warsawDayRangeISO(now, 1)
 }
 
 /**
- * Reguły fast-path. Pokrywa slash commands + popularne warianty bez dopisków.
+ * Reguły fast-path. Pokrywa popularne pytania bez dopisków.
  *
  * Kolejność reguł nie ma znaczenia — first-match wygrywa, ale patterny
  * są wzajemnie wykluczające.
@@ -409,52 +386,6 @@ const RULES: readonly FastPathRule[] = [
   },
 ]
 
-/** Mapowanie `/slug` → tool (gdy user wysyła sam slug bez pełnego pytania). */
-const SLASH_SLUG_RULES: Record<
-  string,
-  { toolName: string; buildArgs: () => Record<string, unknown> }
-> = {
-  feed: { toolName: 'get_latest_posts', buildArgs: () => ({}) },
-  oglosznia: { toolName: 'get_latest_announcements', buildArgs: () => ({}) },
-  tydzien: {
-    toolName: 'get_calendar_in_range',
-    buildArgs: () => {
-      const r = nextSevenDaysISO()
-      return { range_start: r.start, range_end: r.end }
-    },
-  },
-  naukowe: { toolName: 'search_events', buildArgs: () => ({ query: 'nauk' }) },
-  zniski: { toolName: 'search_discounts', buildArgs: () => ({}) },
-  trending: { toolName: 'get_trending_discounts', buildArgs: () => ({}) },
-  plan: {
-    toolName: 'get_my_classes_in_range',
-    buildArgs: () => {
-      const r = todayRangeISO()
-      return { range_start: r.start, range_end: r.end }
-    },
-  },
-  brief: { toolName: 'get_my_weekly_briefing', buildArgs: () => ({}) },
-  rejestracje: {
-    toolName: 'get_upcoming_usos_registrations',
-    buildArgs: () => ({}),
-  },
-  wziks: { toolName: 'get_latest_announcements', buildArgs: () => ({}) },
-  aula: { toolName: 'get_my_aula_overview', buildArgs: () => ({}) },
-  jutro: {
-    toolName: 'get_my_classes_in_range',
-    buildArgs: () => {
-      const r = tomorrowRangeISO()
-      return { range_start: r.start, range_end: r.end }
-    },
-  },
-  wykladowcy: { toolName: 'get_my_followed_lecturers', buildArgs: () => ({}) },
-  powiadomienia: {
-    toolName: 'get_unread_notifications',
-    buildArgs: () => ({ limit: 10 }),
-  },
-  przegapilem: { toolName: 'get_co_przegapilem', buildArgs: () => ({}) },
-}
-
 /**
  * Sprawdza, czy ostatnia wiadomość użytkownika pasuje do reguły fast-path.
  * Zwraca dopasowanie lub `null` (idziemy normalną ścieżką do Groqa).
@@ -465,19 +396,6 @@ const SLASH_SLUG_RULES: Record<
 export function tryFastPath(userMessage: string): FastPathMatch | null {
   const text = userMessage.trim().replace(/\s+/g, ' ')
   if (text.length === 0 || text.length > 120) return null
-
-  const slashMatch = text.match(/^\/([a-z0-9_-]+)$/i)
-  if (slashMatch) {
-    const slug = slashMatch[1]!.toLowerCase()
-    const slashRule = SLASH_SLUG_RULES[slug]
-    if (slashRule) {
-      return {
-        toolName: slashRule.toolName,
-        args: slashRule.buildArgs(),
-        reason: `slash:${slug}`,
-      }
-    }
-  }
 
   for (const rule of RULES) {
     for (const pattern of rule.patterns) {

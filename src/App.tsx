@@ -2,6 +2,9 @@
  * UJverse — root application component (session, routing, feed orchestration).
  * Copyright © 2026 Franciszek Dranka. All rights reserved.
  * License: Proprietary — see LICENSE in repo root.
+ *
+ * Widoki informacyjne (`PUBLIC_VIEWS`) działają bez konta; pozostałe wymagają
+ * sesji i bez niej pokazują `AuthRequired` zamiast pełnoekranowego logowania.
  */
 import {
   lazy,
@@ -15,26 +18,17 @@ import {
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { PenSquare } from 'lucide-react'
 import { toast } from './lib/appToast'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase } from './supabaseClient'
-import Auth from './Auth'
 import type { AppNotification, Comment, Post, Profile } from './types'
 import Header from './components/Header'
 import SideNav from './components/SideNav'
 import MobileDrawer from './components/MobileDrawer'
-import ProfileModal from './components/ProfileModal'
-import FeedView from './components/FeedView'
-import EventsHub from './components/EventsHub'
 import { EventsProvider } from './hooks/useEvents'
-import ProfilePage from './pages/Profile'
 import ResetPassword from './pages/ResetPassword'
 import BottomNav from './components/BottomNav'
-import NotificationsView from './components/NotificationsView'
-import SinglePostView from './components/SinglePostView'
-import ComposeBox from './components/ComposeBox'
-import SettingsView from './components/SettingsView'
-import NotificationPopup from './components/notifications/NotificationPopup'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
 import { extractPostTags } from './lib/postTags'
@@ -46,30 +40,79 @@ import { useFeedMutations } from './hooks/useFeedMutations'
 import { useAulaUnread } from './hooks/useAulaUnread'
 import { useMyCohort } from './hooks/useMyCohort'
 import { playNotificationPing } from './lib/notificationSound'
-import SearchPageView from './components/SearchPageView'
-import GroupView from './components/GroupView'
-import GroupsIndexView from './components/GroupsIndexView'
-import MojPlanView from './components/MojPlanView'
-import AdminDiagView from './components/admin/AdminDiagView'
-import AdminReportsView from './components/admin/AdminReportsView'
 import { LecturerSubscriptionsProvider } from './lib/lecturerSubscriptionsContext'
 import { useOnboarding } from './hooks/useOnboarding'
-import {
-  isGroupIndexPath,
-  slugFromGroupPath,
-} from './lib/groupPaths'
+import { useFacultyPreference } from './hooks/useInfoPreferences'
+import { consumePostAuthPath, loginPathFor } from './lib/info/postAuth'
+import { sanitizeNextPath } from './lib/info/links'
+import type { NavTarget } from './components/nav/navModel'
+import InfoDashboard from './components/info/InfoDashboard'
+import AnnouncementsPage from './components/info/AnnouncementsPage'
+import RegistrationsPage from './components/info/RegistrationsPage'
+import ToolsPage from './components/info/ToolsPage'
+import InfoSearchPage from './components/info/InfoSearchPage'
+import { recordPilotVisit } from './lib/info/productMetrics'
+import { useChatStore } from './store/useChatStore'
+import AuthRequired from './components/info/AuthRequired'
+import { PROTECTED_FEATURES } from './components/info/protectedFeatures'
+import { RowSkeletons } from './components/info/infoUi'
+import { isGroupIndexPath, slugFromGroupPath } from './lib/groupPaths'
 
-const ChatAssistantFab = lazy(() => import('./components/chat/ChatAssistantFab'))
+// Widoki konta i społeczności ładowane dopiero przy wejściu — strona startowa
+// nie pobiera kodu feedu, profili ani powiadomień.
+const Auth = lazy(() => import('./Auth'))
+const FeedView = lazy(() => import('./components/FeedView'))
+const EventsHub = lazy(() => import('./components/EventsHub'))
+const ProfilePage = lazy(() => import('./pages/Profile'))
+const NotificationsView = lazy(() => import('./components/NotificationsView'))
+const SinglePostView = lazy(() => import('./components/SinglePostView'))
+const ComposeBox = lazy(() => import('./components/ComposeBox'))
+const SettingsView = lazy(() => import('./components/SettingsView'))
+const NotificationPopup = lazy(
+  () => import('./components/notifications/NotificationPopup'),
+)
+const ProfileModal = lazy(() => import('./components/ProfileModal'))
+const SearchPageView = lazy(() => import('./components/SearchPageView'))
+const GroupView = lazy(() => import('./components/GroupView'))
+const GroupsIndexView = lazy(() => import('./components/GroupsIndexView'))
+const MojPlanView = lazy(() => import('./components/MojPlanView'))
+const AdminDiagView = lazy(() => import('./components/admin/AdminDiagView'))
+const AdminReportsView = lazy(
+  () => import('./components/admin/AdminReportsView'),
+)
+const OfficialEventsPage = lazy(
+  () => import('./components/info/OfficialEventsPage'),
+)
+const StudentGuides = lazy(() => import('./components/info/StudentGuides'))
+const ChatAssistantFab = lazy(
+  () => import('./components/chat/ChatAssistantFab'),
+)
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 const AulaView = lazy(() => import('./components/aula/AulaView'))
-const SaleFinderView = lazy(() => import('./components/sale-finder/SaleFinderView'))
+const SaleFinderView = lazy(
+  () => import('./components/sale-finder/SaleFinderView'),
+)
 const ZniskiView = lazy(() => import('./components/discounts/ZniskiView'))
-const UsosRegistrationsView = lazy(() => import('./components/usos/UsosRegistrationsView'))
+const UsosRegistrationsView = lazy(
+  () => import('./components/usos/UsosRegistrationsView'),
+)
 const UsosAlarmBanner = lazy(() => import('./components/usos/UsosAlarmBanner'))
-const MiejscaNaukiView = lazy(() => import('./components/study-spots/MiejscaNaukiView'))
-const OnboardingTour = lazy(() => import('./components/onboarding/OnboardingTour'))
+const MiejscaNaukiView = lazy(
+  () => import('./components/study-spots/MiejscaNaukiView'),
+)
+const OnboardingTour = lazy(
+  () => import('./components/onboarding/OnboardingTour'),
+)
 
 type AppShellView =
+  | 'home'
+  | 'komunikaty'
+  | 'rejestracje'
+  | 'wydarzenia'
+  | 'szukaj'
+  | 'niezbednik'
+  | 'poradniki'
+  | 'login'
   | 'feed'
   | 'profile'
   | 'notifications'
@@ -88,6 +131,64 @@ type AppShellView =
   | 'miejsca'
   | 'adminDiag'
   | 'adminReports'
+
+/** Widoki publiczne i lokalne preferencje; ustawienia konta chroni SettingsView. */
+const PUBLIC_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
+  'home',
+  'komunikaty',
+  'rejestracje',
+  'wydarzenia',
+  'szukaj',
+  'niezbednik',
+  'poradniki',
+  'sale',
+  'chat',
+  'settings',
+  'login',
+])
+
+/** Widoki korzystające z kontekstu wydarzeń społeczności (`useEvents`). */
+const EVENTS_CONTEXT_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
+  'feed',
+  'events',
+  'profile',
+  'userProfile',
+])
+
+/** Widoki renderujące posty — tylko tu pobieramy feed. */
+const POST_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
+  'feed',
+  'profile',
+  'userProfile',
+  'search',
+  'group',
+  'post',
+])
+
+/** Kanoniczne ścieżki widoków bez parametrów (aliasy obsługuje `parseAppRoute`). */
+const VIEW_PATHS: Partial<Record<AppShellView, string>> = {
+  home: '/',
+  komunikaty: '/komunikaty',
+  rejestracje: '/rejestracje',
+  wydarzenia: '/wydarzenia',
+  szukaj: '/szukaj',
+  niezbednik: '/niezbednik',
+  poradniki: '/poradniki',
+  login: '/logowanie',
+  feed: '/spolecznosc',
+  profile: '/profile',
+  events: '/events',
+  notifications: '/notifications',
+  search: '/search',
+  chat: '/chat',
+  aula: '/aula',
+  mojPlan: '/moj-plan',
+  sale: '/sale',
+  znizki: '/znizki',
+  usos: '/usos',
+  miejsca: '/miejsca',
+  settings: '/settings',
+}
 
 function normalizePathname(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/'
@@ -114,19 +215,30 @@ function isResetPasswordPath(pathname: string): boolean {
  * `getAppContentShellClass` — wcześniej cała ramka 80rem ucinała header.
  */
 function getAppShellClass(_view: AppShellView): string {
-  return 'w-full lg:ml-[18rem] lg:w-[calc(100%-18rem)]'
+  return 'w-full lg:ml-56 lg:w-[calc(100%-14rem)]'
 }
 
 /** Wspólny `max-w` + padding dla `<main>` — mieści się w kolumnie obok SideNav. */
 function getAppContentShellClass(view: AppShellView): string {
   if (view === 'chat' || view === 'aula') return 'w-full px-4 lg:px-6'
-  if (view === 'events' || view === 'miejsca' || view === 'notifications') {
+  if (
+    view === 'home' ||
+    view === 'events' ||
+    view === 'wydarzenia' ||
+    view === 'komunikaty' ||
+    view === 'rejestracje' ||
+    view === 'niezbednik' ||
+    view === 'poradniki' ||
+    view === 'miejsca' ||
+    view === 'notifications'
+  ) {
     return 'mx-auto w-full max-w-[1800px] px-4 lg:px-6 xl:px-8'
   }
   if (view === 'mojPlan') {
     return 'mx-auto w-full max-w-[1600px] px-4 lg:px-8 xl:px-12'
   }
   if (
+    view === 'szukaj' ||
     view === 'feed' ||
     view === 'profile' ||
     view === 'userProfile' ||
@@ -152,15 +264,22 @@ function getMainLayoutClass(view: AppShellView): string {
   if (view === 'profile' || view === 'userProfile') return `${base} space-y-4`
   // Wąskie widoki (post, thread itd.) — jak dawniej `max-w-2xl space-y-3`.
   const shellWideViews: AppShellView[] = [
+    'home',
+    'komunikaty',
+    'rejestracje',
+    'szukaj',
+    'niezbednik',
+    'poradniki',
     'feed',
     'search',
     'group',
+    'wydarzenia',
+    'events',
     'sale',
     'znizki',
     'usos',
     'adminDiag',
     'adminReports',
-    'events',
     'miejsca',
     'notifications',
     'mojPlan',
@@ -179,7 +298,30 @@ type RouteParseOk = {
 type RouteParseUnknown = { kind: 'unknown' }
 
 /** Single place that maps pathname → shell view + mirrored state (listener + effectiveActiveView). */
-function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown {
+function parseAppRoute(
+  normalizedPath: string,
+): RouteParseOk | RouteParseUnknown {
+  const simple = (view: AppShellView): RouteParseOk => ({
+    kind: 'ok',
+    view,
+    profileHandle: null,
+    postId: null,
+  })
+  // Warstwa informacyjna (publiczna).
+  if (normalizedPath === '/') return simple('home')
+  if (normalizedPath === '/komunikaty') return simple('komunikaty')
+  if (normalizedPath === '/rejestracje') return simple('rejestracje')
+  if (normalizedPath === '/wydarzenia') return simple('wydarzenia')
+  if (normalizedPath === '/szukaj') return simple('szukaj')
+  if (normalizedPath === '/niezbednik') return simple('niezbednik')
+  if (
+    normalizedPath === '/poradniki' ||
+    /^\/poradniki\/[a-z0-9-]+$/.test(normalizedPath)
+  )
+    return simple('poradniki')
+  if (normalizedPath === '/logowanie') return simple('login')
+  // Feed społeczności — dawniej pod `/`.
+  if (normalizedPath === '/spolecznosc') return simple('feed')
   if (normalizedPath === '/settings') {
     return { kind: 'ok', view: 'settings', profileHandle: null, postId: null }
   }
@@ -201,7 +343,12 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
     return { kind: 'ok', view: 'events', profileHandle: null, postId: null }
   }
   if (normalizedPath === '/notifications') {
-    return { kind: 'ok', view: 'notifications', profileHandle: null, postId: null }
+    return {
+      kind: 'ok',
+      view: 'notifications',
+      profileHandle: null,
+      postId: null,
+    }
   }
   if (normalizedPath === '/search') {
     return { kind: 'ok', view: 'search', profileHandle: null, postId: null }
@@ -228,7 +375,9 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   if (normalizedPath === '/znizki') {
     return { kind: 'ok', view: 'znizki', profileHandle: null, postId: null }
   }
-  if (normalizedPath === '/usos' || normalizedPath === '/rejestracje') {
+  // Alarmy i wpisy społeczności (wymaga konta). `/rejestracje` to od pivotu
+  // publiczna lista z USOSweb (wyżej).
+  if (normalizedPath === '/usos') {
     return { kind: 'ok', view: 'usos', profileHandle: null, postId: null }
   }
   if (normalizedPath === '/miejsca' || normalizedPath === '/sale-nauki') {
@@ -237,10 +386,7 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   // Admin diag dashboard — token-gated po stronie serwera, sam URL nie
   // wymaga roli `admin` (każdy zalogowany może otworzyć, ale bez tokena
   // nie pobierze danych z `/api/diag/*`).
-  if (
-    normalizedPath === '/admin/cache' ||
-    normalizedPath === '/admin/diag'
-  ) {
+  if (normalizedPath === '/admin/cache' || normalizedPath === '/admin/diag') {
     return { kind: 'ok', view: 'adminDiag', profileHandle: null, postId: null }
   }
   // Panel zgłoszeń — gate'owany po stronie klienta po
@@ -250,7 +396,12 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
     normalizedPath === '/admin/reports' ||
     normalizedPath === '/admin/zgloszenia'
   ) {
-    return { kind: 'ok', view: 'adminReports', profileHandle: null, postId: null }
+    return {
+      kind: 'ok',
+      view: 'adminReports',
+      profileHandle: null,
+      postId: null,
+    }
   }
   if (isGroupIndexPath(normalizedPath)) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
@@ -259,9 +410,6 @@ function parseAppRoute(normalizedPath: string): RouteParseOk | RouteParseUnknown
   if (groupSlug) {
     return { kind: 'ok', view: 'group', profileHandle: null, postId: null }
   }
-  if (normalizedPath === '/') {
-    return { kind: 'ok', view: 'feed', profileHandle: null, postId: null }
-  }
   return { kind: 'unknown' }
 }
 
@@ -269,13 +417,21 @@ function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const [session, setSession] = useState<Session | null>(null)
+  /** `false` dopóki `getSession()` nie odpowie — widoki publiczne nie czekają, chronione pokazują szkielet. */
+  const [authReady, setAuthReady] = useState(false)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
+  const facultyPreference = useFacultyPreference({
+    sessionUserId: session?.user?.id ?? null,
+    profileDepartment: myProfile?.department ?? null,
+  })
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   const [activePostId, setActivePostId] = useState<string | null>(null)
-  const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(null)
+  const [activeProfileHandle, setActiveProfileHandle] = useState<string | null>(
+    null,
+  )
   const [selectedDepartment, setSelectedDepartment] = useState('')
   /** Raz na sesję: po załadowaniu profilu ustawiamy filtr na `profiles.department`. */
   const departmentDefaultFromProfileRef = useRef<string | null>(null)
@@ -288,9 +444,28 @@ function App() {
   const [bellRingTick, setBellRingTick] = useState(0)
   const notificationsAnchorRef = useRef<HTMLButtonElement | null>(null)
 
+  const normalizedPath = useMemo(
+    () => normalizePathname(location.pathname),
+    [location.pathname],
+  )
+  useEffect(() => {
+    recordPilotVisit()
+  }, [normalizedPath])
+  const routeSnapshot = useMemo(
+    () => parseAppRoute(normalizedPath),
+    [normalizedPath],
+  )
+  const effectiveActiveView: AppShellView = useMemo(() => {
+    if (routeSnapshot.kind === 'unknown') return 'home'
+    return routeSnapshot.view
+  }, [routeSnapshot])
+
   // Posts — single React Query cache `['feed', viewerId]` (patrz `useFeedQuery`).
   // Wszystko (lista, likes, comments count) idzie z jednego RPC `get_feed_snapshot`.
-  const feedQuery = useFeedQuery(session?.user?.id ?? null)
+  // Pobierane tylko na widokach z postami — strona startowa ich nie potrzebuje.
+  const feedQuery = useFeedQuery(
+    POST_VIEWS.has(effectiveActiveView) ? (session?.user?.id ?? null) : null,
+  )
   const feedMutations = useFeedMutations(session?.user?.id ?? null)
   const posts = feedQuery.posts as Post[]
   const postsLoading = feedQuery.isLoading
@@ -300,9 +475,15 @@ function App() {
   // z konkretnej strefy mogą być starsze niż pierwsza strona feedu). Mapy
   // feedQuery są autorytatywne dla aktualnie pobranych stron feedu; overlay
   // dorzuca enrichment dla pozostałych.
-  const [extraLikesCountByPost, setExtraLikesCountByPost] = useState<Record<string, number>>({})
-  const [extraLikedPostIds, setExtraLikedPostIds] = useState<Record<string, boolean>>({})
-  const [extraCommentsCountByPost, setExtraCommentsCountByPost] = useState<Record<string, number>>({})
+  const [extraLikesCountByPost, setExtraLikesCountByPost] = useState<
+    Record<string, number>
+  >({})
+  const [extraLikedPostIds, setExtraLikedPostIds] = useState<
+    Record<string, boolean>
+  >({})
+  const [extraCommentsCountByPost, setExtraCommentsCountByPost] = useState<
+    Record<string, number>
+  >({})
   const likesCountByPost = useMemo(
     () => ({ ...extraLikesCountByPost, ...feedQuery.likesCountByPost }),
     [extraLikesCountByPost, feedQuery.likesCountByPost],
@@ -320,20 +501,30 @@ function App() {
   const [isComposing, setIsComposing] = useState(false)
   const [createBody, setCreateBody] = useState('')
   const [createImageFile, setCreateImageFile] = useState<File | null>(null)
-  const [createImagePreview, setCreateImagePreview] = useState<string | null>(null)
+  const [createImagePreview, setCreateImagePreview] = useState<string | null>(
+    null,
+  )
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
   // Likes UI state (poza React Query — tylko per-post loading + heart pop animation).
-  const [likeLoadingByPost, setLikeLoadingByPost] = useState<Record<string, boolean>>({})
+  const [likeLoadingByPost, setLikeLoadingByPost] = useState<
+    Record<string, boolean>
+  >({})
   const [heartPopPostId, setHeartPopPostId] = useState<string | null>(null)
   const heartPopTimeout = useRef<number | null>(null)
 
   // Comments
-  const [commentsByPost, setCommentsByPost] = useState<Record<string, Comment[]>>({})
-  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
+  const [commentsByPost, setCommentsByPost] = useState<
+    Record<string, Comment[]>
+  >({})
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(
+    new Set(),
+  )
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
-  const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({})
+  const [commentSubmitting, setCommentSubmitting] = useState<
+    Record<string, boolean>
+  >({})
   const [commentReplyTargetByPost, setCommentReplyTargetByPost] = useState<
     Record<string, { commentId: number; username: string } | null>
   >({})
@@ -341,20 +532,29 @@ function App() {
     Record<string, Record<number, boolean>>
   >({})
   /** true while initial/user-triggered fetch runs; realtime refetches use silent mode (no flag). */
-  const [commentsLoadingByPost, setCommentsLoadingByPost] = useState<Record<string, boolean>>({})
-  const [profileHandleByUserId, setProfileHandleByUserId] = useState<Record<string, string>>({})
+  const [commentsLoadingByPost, setCommentsLoadingByPost] = useState<
+    Record<string, boolean>
+  >({})
+  const [profileHandleByUserId, setProfileHandleByUserId] = useState<
+    Record<string, string>
+  >({})
 
   const expandedCommentsRef = useRef(expandedComments)
   // Set of postIds where the current user just submitted a comment (1.5 s cooldown window)
   const recentlySubmittedRef = useRef<Set<string>>(new Set())
   // Mirror of commentsByPost state — lets realtime closures read current IDs without stale captures
   const commentsByPostRef = useRef(commentsByPost)
-  useEffect(() => { expandedCommentsRef.current = expandedComments }, [expandedComments])
-  useEffect(() => { commentsByPostRef.current = commentsByPost }, [commentsByPost])
+  useEffect(() => {
+    expandedCommentsRef.current = expandedComments
+  }, [expandedComments])
+  useEffect(() => {
+    commentsByPostRef.current = commentsByPost
+  }, [commentsByPost])
 
   const sortCommentsForThread = useCallback((items: Comment[]): Comment[] => {
     const withStableOrder = [...items].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     )
     const children = new Map<number, Comment[]>()
     const roots: Comment[] = []
@@ -382,7 +582,10 @@ function App() {
   }, [])
 
   const postIds = useMemo(
-    () => posts.map((p) => p?.id).filter((id): id is string => id !== undefined && id !== null),
+    () =>
+      posts
+        .map((p) => p?.id)
+        .filter((id): id is string => id !== undefined && id !== null),
     [posts],
   )
 
@@ -390,22 +593,18 @@ function App() {
     () => notifications.filter((n) => !n.is_read).length,
     [notifications],
   )
-  const normalizedPath = useMemo(() => normalizePathname(location.pathname), [location.pathname])
   const routeProfileHandle = useMemo(() => {
     const h = profileHandleFromPath(normalizedPath)
     return h ? h.toLowerCase() : null
   }, [normalizedPath])
-  const routeThreadPostId = useMemo(() => threadPostIdFromPath(normalizedPath), [normalizedPath])
+  const routeThreadPostId = useMemo(
+    () => threadPostIdFromPath(normalizedPath),
+    [normalizedPath],
+  )
   const routeGroupSlug = useMemo(
     () => slugFromGroupPath(normalizedPath),
     [normalizedPath],
   )
-  const routeSnapshot = useMemo(() => parseAppRoute(normalizedPath), [normalizedPath])
-  const effectiveActiveView: AppShellView = useMemo(() => {
-    if (routeSnapshot.kind === 'unknown') return 'feed'
-    return routeSnapshot.view
-  }, [routeSnapshot])
-
   // Unread badge dla Auli — lekka subskrypcja cohort_messages (poza widokiem
   // Auli; gdy user na niej jest, hook się sam wycisza i marker się resetuje).
   const { hasUnread: aulaHasUnread, markSeen: markAulaSeen } = useAulaUnread({
@@ -447,7 +646,6 @@ function App() {
   /** Keep navigation-related state aligned with the URL (hybrid shell). */
   useEffect(() => {
     if (isResetPasswordPath(location.pathname)) return
-    if (!session) return
     const parsed = parseAppRoute(normalizedPath)
     if (parsed.kind === 'unknown') {
       navigate('/', { replace: true })
@@ -462,7 +660,7 @@ function App() {
       const next = postId
       return prev === next ? prev : next
     })
-  }, [normalizedPath, navigate, session])
+  }, [location.pathname, normalizedPath, navigate])
 
   const fetchProfileHandleByUserId = useCallback(
     async (userId: string): Promise<string | null> => {
@@ -487,7 +685,10 @@ function App() {
   // ── Image preview URL management ──────────────────────────────────────────
 
   useEffect(() => {
-    if (!createImageFile) { setCreateImagePreview(null); return }
+    if (!createImageFile) {
+      setCreateImagePreview(null)
+      return
+    }
     const url = URL.createObjectURL(createImageFile)
     setCreateImagePreview(url)
     return () => URL.revokeObjectURL(url)
@@ -498,7 +699,9 @@ function App() {
   const fetchMyProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned, is_searchable, show_department, study_program, year_started, study_mode, onboarding_completed_at, onboarding_skipped_at')
+      .select(
+        'id, full_name, username, avatar_url, banner_url, bio, department, role, is_banned, is_searchable, show_department, study_program, year_started, study_mode, onboarding_completed_at, onboarding_skipped_at',
+      )
       .eq('id', userId)
       .single()
     if (data) {
@@ -507,102 +710,125 @@ function App() {
         const normalized = String(data.username).trim().toLowerCase()
         if (normalized) {
           setProfileHandleByUserId((prev) =>
-            prev[userId] === normalized ? prev : { ...prev, [userId]: normalized },
+            prev[userId] === normalized
+              ? prev
+              : { ...prev, [userId]: normalized },
           )
         }
       }
     }
   }, [])
 
-  const fetchCommentsForPost = useCallback(async (postId: string, opts?: { silent?: boolean }) => {
-    const silent = opts?.silent ?? false
-    if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: true }))
-    try {
-      const commentsQ = await supabase
-        .from('comments')
-        .select('id, post_id, user_id, content, created_at, parent_id, profiles(id, full_name, username, avatar_url, department)')
-        .eq('post_id', Number(postId))
-        .order('created_at', { ascending: true })
+  const fetchCommentsForPost = useCallback(
+    async (postId: string, opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false
+      if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: true }))
+      try {
+        const commentsQ = await supabase
+          .from('comments')
+          .select(
+            'id, post_id, user_id, content, created_at, parent_id, profiles(id, full_name, username, avatar_url, department)',
+          )
+          .eq('post_id', Number(postId))
+          .order('created_at', { ascending: true })
 
-      if (commentsQ.error) {
-        console.error('[fetchCommentsForPost] comments query error:', commentsQ.error)
-      }
-      if (commentsQ.error) return
-
-      const commentsNormalized: Comment[] = (commentsQ.data ?? []).map((c) => ({
-        id: Number(c.id),
-        post_id: String(c.post_id ?? postId),
-        user_id: String(c.user_id ?? ''),
-        content: String(c.content ?? ''),
-        created_at: String(c.created_at ?? new Date().toISOString()),
-        parent_id: Number(c.parent_id ?? 0) || null,
-        is_reply: Boolean(c.parent_id),
-        can_like: true,
-        profiles: Array.isArray(c.profiles)
-          ? ((c.profiles[0] ?? null) as Profile | null)
-          : ((c.profiles ?? null) as Profile | null),
-      }))
-
-      const commentIds = commentsNormalized
-        .map((comment) => Number(comment.id))
-        .filter((commentId) => Number.isFinite(commentId) && commentId > 0)
-
-      const { data: likesRows } = commentIds.length
-        ? await supabase
-            .from('comment_likes')
-            .select('comment_id, user_id')
-            .in('comment_id', commentIds)
-        : { data: [] as Array<{ comment_id: number; user_id: string | null }> }
-
-      const likesCountByComment: Record<number, number> = {}
-      const likedByMe: Record<number, boolean> = {}
-      for (const row of likesRows ?? []) {
-        const commentId = Number(row.comment_id)
-        if (!Number.isFinite(commentId) || commentId <= 0) continue
-        likesCountByComment[commentId] = (likesCountByComment[commentId] ?? 0) + 1
-        if (row.user_id === session?.user?.id) {
-          likedByMe[commentId] = true
+        if (commentsQ.error) {
+          console.error(
+            '[fetchCommentsForPost] comments query error:',
+            commentsQ.error,
+          )
         }
-      }
+        if (commentsQ.error) return
 
-      const commentsWithLikes: Comment[] = commentsNormalized.map((comment) => ({
-        ...comment,
-        likes_count: likesCountByComment[comment.id] ?? 0,
-        is_liked: Boolean(likedByMe[comment.id]),
-      }))
+        const commentsNormalized: Comment[] = (commentsQ.data ?? []).map(
+          (c) => ({
+            id: Number(c.id),
+            post_id: String(c.post_id ?? postId),
+            user_id: String(c.user_id ?? ''),
+            content: String(c.content ?? ''),
+            created_at: String(c.created_at ?? new Date().toISOString()),
+            parent_id: Number(c.parent_id ?? 0) || null,
+            is_reply: Boolean(c.parent_id),
+            can_like: true,
+            profiles: Array.isArray(c.profiles)
+              ? ((c.profiles[0] ?? null) as Profile | null)
+              : ((c.profiles ?? null) as Profile | null),
+          }),
+        )
 
-      const normalized = sortCommentsForThread(commentsWithLikes)
-      setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
-    } finally {
-      if (!silent) setCommentsLoadingByPost((p) => ({ ...p, [postId]: false }))
-    }
-  }, [session?.user?.id, sortCommentsForThread])
+        const commentIds = commentsNormalized
+          .map((comment) => Number(comment.id))
+          .filter((commentId) => Number.isFinite(commentId) && commentId > 0)
 
-  const fetchNotifications = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!session?.user?.id) return
-    const silent = opts?.silent ?? false
-    if (!silent) setNotificationsLoading(true)
-    const { data, error } = await DataService.listNotificationsForUser(session.user.id)
-    if (error) {
-      console.error('[fetchNotifications]', error.message)
-    } else {
-      const next = data ?? []
-      setNotifications(next)
-      setProfileHandleByUserId((prev) => {
-        let changed = false
-        const merged = { ...prev }
-        for (const item of next) {
-          const actorId = item.actor?.id
-          const handle = item.actor?.username?.trim().toLowerCase()
-          if (!actorId || !handle || merged[actorId] === handle) continue
-          merged[actorId] = handle
-          changed = true
+        const { data: likesRows } = commentIds.length
+          ? await supabase
+              .from('comment_likes')
+              .select('comment_id, user_id')
+              .in('comment_id', commentIds)
+          : {
+              data: [] as Array<{ comment_id: number; user_id: string | null }>,
+            }
+
+        const likesCountByComment: Record<number, number> = {}
+        const likedByMe: Record<number, boolean> = {}
+        for (const row of likesRows ?? []) {
+          const commentId = Number(row.comment_id)
+          if (!Number.isFinite(commentId) || commentId <= 0) continue
+          likesCountByComment[commentId] =
+            (likesCountByComment[commentId] ?? 0) + 1
+          if (row.user_id === session?.user?.id) {
+            likedByMe[commentId] = true
+          }
         }
-        return changed ? merged : prev
-      })
-    }
-    if (!silent) setNotificationsLoading(false)
-  }, [session])
+
+        const commentsWithLikes: Comment[] = commentsNormalized.map(
+          (comment) => ({
+            ...comment,
+            likes_count: likesCountByComment[comment.id] ?? 0,
+            is_liked: Boolean(likedByMe[comment.id]),
+          }),
+        )
+
+        const normalized = sortCommentsForThread(commentsWithLikes)
+        setCommentsByPost((prev) => ({ ...prev, [postId]: normalized }))
+      } finally {
+        if (!silent)
+          setCommentsLoadingByPost((p) => ({ ...p, [postId]: false }))
+      }
+    },
+    [session?.user?.id, sortCommentsForThread],
+  )
+
+  const fetchNotifications = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!session?.user?.id) return
+      const silent = opts?.silent ?? false
+      if (!silent) setNotificationsLoading(true)
+      const { data, error } = await DataService.listNotificationsForUser(
+        session.user.id,
+      )
+      if (error) {
+        console.error('[fetchNotifications]', error.message)
+      } else {
+        const next = data ?? []
+        setNotifications(next)
+        setProfileHandleByUserId((prev) => {
+          let changed = false
+          const merged = { ...prev }
+          for (const item of next) {
+            const actorId = item.actor?.id
+            const handle = item.actor?.username?.trim().toLowerCase()
+            if (!actorId || !handle || merged[actorId] === handle) continue
+            merged[actorId] = handle
+            changed = true
+          }
+          return changed ? merged : prev
+        })
+      }
+      if (!silent) setNotificationsLoading(false)
+    },
+    [session],
+  )
 
   // Cache username handles from feed posts (used by routing/profile-link logic).
   // React Query trzyma listę postów; my po prostu mapujemy `profiles.username` na
@@ -628,17 +854,73 @@ function App() {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => setSession(s))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: s } }) => setSession(s))
+      .catch((err) => console.warn('[auth] getSession failed', err))
+      .finally(() => setAuthReady(true))
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
+      setAuthReady(true)
       if (event === 'PASSWORD_RECOVERY') {
         const p = (window.location.pathname || '/').replace(/\/+$/, '') || '/'
         if (p !== '/reset-password') {
           navigate('/reset-password', { replace: true })
         }
+        return
+      }
+      // Powrót tam, skąd użytkownik przyszedł do logowania (także po OAuth,
+      // który wraca na `/`). Cel jest zapisywany tylko przez stronę `/logowanie`.
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && s) {
+        const next = consumePostAuthPath()
+        if (next) navigate(next, { replace: true })
       }
     })
     return () => subscription.unsubscribe()
+  }, [navigate])
+
+  // Zalogowany użytkownik na `/logowanie` (np. zaraz po zalogowaniu hasłem)
+  // wraca pod `?next=` albo na stronę startową.
+  useEffect(() => {
+    if (!authReady || !session || normalizedPath !== '/logowanie') return
+    const next = sanitizeNextPath(
+      new URLSearchParams(location.search).get('next'),
+    )
+    navigate(next ?? '/', { replace: true })
+  }, [authReady, session, normalizedPath, location.search, navigate])
+
+  const chatIdentity = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    if (!authReady) return
+    const next = session?.user.id ?? null
+    if (chatIdentity.current !== undefined && chatIdentity.current !== next) {
+      useChatStore.getState().clearHistory()
+    }
+    chatIdentity.current = next
+  }, [authReady, session?.user.id])
+
+  // Po wylogowaniu (lub wygaśnięciu sesji) czyścimy stan konta — widoki
+  // publiczne działają dalej, chronione pokażą `AuthRequired`.
+  useEffect(() => {
+    if (session) return
+    setMyProfile(null)
+    setNotifications([])
+    setNotificationsPanelOpen(false)
+    setMenuOpen(false)
+    setProfileModalOpen(false)
+    setIsMobileComposeOpen(false)
+  }, [session])
+
+  const handleSignOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      toast.error('Nie udało się wylogować. Spróbuj ponownie.')
+      return
+    }
+    useChatStore.getState().clearHistory()
+    navigate('/')
   }, [navigate])
 
   /**
@@ -652,7 +934,8 @@ function App() {
    */
   useEffect(() => {
     if (!session?.user) return
-    const provider = (session.user.app_metadata?.provider as string | undefined) ?? null
+    const provider =
+      (session.user.app_metadata?.provider as string | undefined) ?? null
     if (provider !== 'google') return
     const email = session.user.email ?? ''
     const isAllowed =
@@ -674,18 +957,24 @@ function App() {
     void fetchNotifications()
     const channel = supabase
       .channel('user-notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${session.user.id}`,
-      }, () => {
-        setBellRingTick((t) => t + 1)
-        playNotificationPing()
-        void fetchNotifications({ silent: true })
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        () => {
+          setBellRingTick((t) => t + 1)
+          playNotificationPing()
+          void fetchNotifications({ silent: true })
+        },
+      )
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+    return () => {
+      void supabase.removeChannel(channel)
+    }
   }, [session?.user?.id, fetchNotifications])
 
   // ── Create post ───────────────────────────────────────────────────────────
@@ -707,8 +996,8 @@ function App() {
 
     if (createImageFile) {
       const safeName = createImageFile.name.replace(/[^\w.-]/g, '_')
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage.from('media')
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('media')
         .upload(`${userId}/${Date.now()}-${safeName}`, createImageFile)
       if (uploadError) {
         setCreateError(uploadError.message)
@@ -716,7 +1005,8 @@ function App() {
         setCreateLoading(false)
         return
       }
-      imageUrl = supabase.storage.from('media').getPublicUrl(uploadData.path).data.publicUrl
+      imageUrl = supabase.storage.from('media').getPublicUrl(uploadData.path)
+        .data.publicUrl
     }
 
     const postContent = content || ''
@@ -752,91 +1042,60 @@ function App() {
 
   // ── Notifications ─────────────────────────────────────────────────────────
 
-  const navigateToPost = useCallback((postId: string) => {
-    navigate(`/thread/${encodeURIComponent(postId)}`)
-  }, [navigate])
+  const navigateToPost = useCallback(
+    (postId: string) => {
+      navigate(`/thread/${encodeURIComponent(postId)}`)
+    },
+    [navigate],
+  )
 
-  const navigateToMainView = useCallback((
-    view: AppShellView,
-  ) => {
-    const p = normalizePathname(location.pathname)
-    if (view === 'profile') {
-      if (p !== '/profile') navigate('/profile')
-      return
-    }
-    if (view === 'feed') {
+  const navigateToMainView = useCallback(
+    (view: AppShellView) => {
+      const p = normalizePathname(location.pathname)
+      const simplePath = VIEW_PATHS[view]
+      if (simplePath) {
+        if (p !== simplePath) navigate(simplePath)
+        return
+      }
+      const currentHandle = activeProfileHandle ?? routeProfileHandle
+      if (view === 'userProfile' && currentHandle) {
+        const target = `/profile/${encodeURIComponent(currentHandle)}`
+        if (p !== target) navigate(target)
+        return
+      }
+      if (view === 'post' && activePostId) {
+        const target = `/thread/${encodeURIComponent(activePostId)}`
+        if (p !== target) navigate(target)
+        return
+      }
       if (p !== '/') navigate('/')
-      return
-    }
-    if (view === 'events') {
-      if (p !== '/events') navigate('/events')
-      return
-    }
-    if (view === 'notifications') {
-      if (p !== '/notifications') navigate('/notifications')
-      return
-    }
-    if (view === 'search') {
-      if (p !== '/search') navigate('/search')
-      return
-    }
-    if (view === 'chat') {
-      if (p !== '/chat') navigate('/chat')
-      return
-    }
-    if (view === 'aula') {
-      if (p !== '/aula') navigate('/aula')
-      return
-    }
-    if (view === 'mojPlan') {
-      if (p !== '/moj-plan') navigate('/moj-plan')
-      return
-    }
-    if (view === 'sale') {
-      if (p !== '/sale') navigate('/sale')
-      return
-    }
-    if (view === 'znizki') {
-      if (p !== '/znizki') navigate('/znizki')
-      return
-    }
-    if (view === 'usos') {
-      if (p !== '/usos') navigate('/usos')
-      return
-    }
-    if (view === 'miejsca') {
-      if (p !== '/miejsca') navigate('/miejsca')
-      return
-    }
-    if (view === 'settings') {
-      if (p !== '/settings') navigate('/settings')
-      return
-    }
-    const currentHandle = activeProfileHandle ?? routeProfileHandle
-    if (view === 'userProfile' && currentHandle) {
-      const target = `/profile/${encodeURIComponent(currentHandle)}`
-      if (p !== target) navigate(target)
-      return
-    }
-    if (view === 'post' && activePostId) {
-      const target = `/thread/${encodeURIComponent(activePostId)}`
-      if (p !== target) navigate(target)
-      return
-    }
-    if (p !== '/') navigate('/')
-  }, [location.pathname, navigate, activeProfileHandle, routeProfileHandle, activePostId])
+    },
+    [
+      location.pathname,
+      navigate,
+      activeProfileHandle,
+      routeProfileHandle,
+      activePostId,
+    ],
+  )
 
-  const navigateToUser = useCallback(async (userId: string) => {
-    const handle = await fetchProfileHandleByUserId(userId)
-    if (!handle) return
-    navigate(`/profile/${encodeURIComponent(handle)}`)
-  }, [fetchProfileHandleByUserId, navigate])
+  const navigateToUser = useCallback(
+    async (userId: string) => {
+      const handle = await fetchProfileHandleByUserId(userId)
+      if (!handle) return
+      navigate(`/profile/${encodeURIComponent(handle)}`)
+    },
+    [fetchProfileHandleByUserId, navigate],
+  )
 
-  const navigateToProfileByHandle = useCallback((handle: string) => {
-    const normalized = handle.trim().toLowerCase()
-    if (!normalized) return
-    navigate(`/profile/${encodeURIComponent(normalized)}`)
-  }, [navigate])
+  const navigateToProfileByHandle = useCallback(
+    (handle: string) => {
+      const normalized = handle.trim().toLowerCase()
+      if (!normalized) return
+      navigate(`/profile/${encodeURIComponent(normalized)}`)
+    },
+    [navigate],
+  )
 
   const openSettings = useCallback(() => {
     if (normalizePathname(location.pathname) !== '/settings') {
@@ -844,10 +1103,13 @@ function App() {
     }
   }, [location.pathname, navigate])
 
-  const navigateToPostFromNotificationsPanel = useCallback((postId: string) => {
-    setNotificationsPanelOpen(false)
-    navigate(`/thread/${encodeURIComponent(postId)}`)
-  }, [navigate])
+  const navigateToPostFromNotificationsPanel = useCallback(
+    (postId: string) => {
+      setNotificationsPanelOpen(false)
+      navigate(`/thread/${encodeURIComponent(postId)}`)
+    },
+    [navigate],
+  )
 
   const goBackInHistory = useCallback(() => {
     navigate(-1)
@@ -865,7 +1127,10 @@ function App() {
       if (numericIds.length === 0) return
 
       const [likesQ, commentsQ] = await Promise.all([
-        supabase.from('likes').select('post_id, user_id').in('post_id', numericIds),
+        supabase
+          .from('likes')
+          .select('post_id, user_id')
+          .in('post_id', numericIds),
         supabase.from('comments').select('post_id').in('post_id', numericIds),
       ])
 
@@ -889,10 +1154,13 @@ function App() {
     [session?.user?.id],
   )
 
-  const navigateToUserFromNotificationsPanel = useCallback(async (userId: string) => {
-    setNotificationsPanelOpen(false)
-    await navigateToUser(userId)
-  }, [navigateToUser])
+  const navigateToUserFromNotificationsPanel = useCallback(
+    async (userId: string) => {
+      setNotificationsPanelOpen(false)
+      await navigateToUser(userId)
+    },
+    [navigateToUser],
+  )
 
   const markNotificationRead = useCallback(
     async (id: string) => {
@@ -931,7 +1199,9 @@ function App() {
   const clearAllNotifications = useCallback(async () => {
     if (!session?.user?.id) return
     setNotifications([])
-    const { error } = await DataService.clearAllNotificationsForUser(session.user.id)
+    const { error } = await DataService.clearAllNotificationsForUser(
+      session.user.id,
+    )
     if (error) {
       console.error('[clearAllNotifications]', error.message)
       toast.error('Nie udało się wyczyścić powiadomień.')
@@ -953,13 +1223,6 @@ function App() {
     setNotificationsPanelOpen(false)
   }, [])
 
-  const openNotificationsPanel = useCallback(() => {
-    setMenuOpen(false)
-    setNotificationsPanelOpen(true)
-    void fetchNotifications()
-  }, [fetchNotifications])
-
-
   // ── Likes ─────────────────────────────────────────────────────────────────
 
   const toggleLike = useCallback(
@@ -971,13 +1234,19 @@ function App() {
       if (!alreadyLiked) {
         setHeartPopPostId(postId)
         if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current)
-        heartPopTimeout.current = window.setTimeout(() => setHeartPopPostId(null), 450)
+        heartPopTimeout.current = window.setTimeout(
+          () => setHeartPopPostId(null),
+          450,
+        )
       }
 
       setLikeLoadingByPost((p) => ({ ...p, [postId]: true }))
 
       // Post jest w feed cache → mutacja przez React Query (optimistic + rollback).
-      if (postId in feedQuery.likesCountByPost || postId in feedQuery.likedPostIds) {
+      if (
+        postId in feedQuery.likesCountByPost ||
+        postId in feedQuery.likedPostIds
+      ) {
         try {
           await feedMutations.toggleLike.mutateAsync({
             postId,
@@ -990,7 +1259,11 @@ function App() {
         // Post spoza feed cache (np. GroupCard) — patch overlay + direct supabase.
         setExtraLikesCountByPost((p) => ({
           ...p,
-          [postId]: Math.max(0, (p[postId] ?? likesCountByPost[postId] ?? 0) + (alreadyLiked ? -1 : 1)),
+          [postId]: Math.max(
+            0,
+            (p[postId] ?? likesCountByPost[postId] ?? 0) +
+              (alreadyLiked ? -1 : 1),
+          ),
         }))
         setExtraLikedPostIds((p) => ({ ...p, [postId]: !alreadyLiked }))
         if (alreadyLiked) {
@@ -1059,15 +1332,24 @@ function App() {
             : {
                 ...item,
                 is_liked: !currentlyLiked,
-                likes_count: Math.max(0, Number(item.likes_count ?? 0) + likeDelta),
+                likes_count: Math.max(
+                  0,
+                  Number(item.likes_count ?? 0) + likeDelta,
+                ),
               },
         ),
       }))
 
       const query = supabase.from('comment_likes')
       const { error } = currentlyLiked
-        ? await query.delete().eq('comment_id', commentId).eq('user_id', session.user.id)
-        : await query.insert({ comment_id: commentId, user_id: session.user.id })
+        ? await query
+            .delete()
+            .eq('comment_id', commentId)
+            .eq('user_id', session.user.id)
+        : await query.insert({
+            comment_id: commentId,
+            user_id: session.user.id,
+          })
 
       if (error) {
         setCommentsByPost((prev) => ({
@@ -1078,7 +1360,10 @@ function App() {
               : {
                   ...item,
                   is_liked: currentlyLiked,
-                  likes_count: Math.max(0, Number(item.likes_count ?? 0) - likeDelta),
+                  likes_count: Math.max(
+                    0,
+                    Number(item.likes_count ?? 0) - likeDelta,
+                  ),
                 },
           ),
         }))
@@ -1095,7 +1380,8 @@ function App() {
   const setReplyTarget = useCallback((postId: string, comment: Comment) => {
     const targetId = comment.id
     if (!targetId) return
-    const usernameRaw = comment.profiles?.username || comment.profiles?.full_name || 'uzytkownik'
+    const usernameRaw =
+      comment.profiles?.username || comment.profiles?.full_name || 'uzytkownik'
     const username = usernameRaw.trim().replace(/^@+/, '') || 'uzytkownik'
     setCommentReplyTargetByPost((prev) => ({
       ...prev,
@@ -1136,10 +1422,16 @@ function App() {
 
       setCommentsByPost((p) => ({
         ...p,
-        [postId]: sortCommentsForThread([...(p[postId] ?? []), optimisticComment]),
+        [postId]: sortCommentsForThread([
+          ...(p[postId] ?? []),
+          optimisticComment,
+        ]),
       }))
       feedMutations.updateCommentsCount(postId, (n) => n + 1)
-      setExtraCommentsCountByPost((p) => ({ ...p, [postId]: (p[postId] ?? 0) + 1 }))
+      setExtraCommentsCountByPost((p) => ({
+        ...p,
+        [postId]: (p[postId] ?? 0) + 1,
+      }))
       setExpandedComments((prev) => new Set([...prev, postId]))
       setCommentInput((p) => ({ ...p, [postId]: '' }))
       setCommentReplyTargetByPost((prev) => ({ ...prev, [postId]: null }))
@@ -1166,18 +1458,26 @@ function App() {
         setCommentsByPost((p) => ({
           ...p,
           [postId]: (p[postId] ?? []).map((c) =>
-            c.id === optimisticComment.id ? { ...c, id: nextId } : c
+            c.id === optimisticComment.id ? { ...c, id: nextId } : c,
           ),
         }))
       } else if (insertError) {
         console.error('[submitComment] Błąd INSERT:', insertError)
         setCommentsByPost((p) => ({
           ...p,
-          [postId]: (p[postId] ?? []).filter((c) => c.id !== optimisticComment.id),
+          [postId]: (p[postId] ?? []).filter(
+            (c) => c.id !== optimisticComment.id,
+          ),
         }))
         feedMutations.updateCommentsCount(postId, (n) => n - 1)
-        setExtraCommentsCountByPost((p) => ({ ...p, [postId]: Math.max(0, (p[postId] ?? 1) - 1) }))
-        setCommentReplyTargetByPost((prev) => ({ ...prev, [postId]: replyTarget ?? null }))
+        setExtraCommentsCountByPost((p) => ({
+          ...p,
+          [postId]: Math.max(0, (p[postId] ?? 1) - 1),
+        }))
+        setCommentReplyTargetByPost((prev) => ({
+          ...prev,
+          [postId]: replyTarget ?? null,
+        }))
       }
       setCommentSubmitting((p) => ({ ...p, [postId]: false }))
     },
@@ -1202,56 +1502,91 @@ function App() {
         console.error('[handleDeletePost] Błąd Supabase:', err)
         return
       }
-      setExtraLikesCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-      setExtraLikedPostIds((prev) => { const next = { ...prev }; delete next[postId]; return next })
-      setExtraCommentsCountByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-      setCommentsByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-      setCommentReplyTargetByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
-      setCommentLikeLoadingByPost((prev) => { const next = { ...prev }; delete next[postId]; return next })
+      setExtraLikesCountByPost((prev) => {
+        const next = { ...prev }
+        delete next[postId]
+        return next
+      })
+      setExtraLikedPostIds((prev) => {
+        const next = { ...prev }
+        delete next[postId]
+        return next
+      })
+      setExtraCommentsCountByPost((prev) => {
+        const next = { ...prev }
+        delete next[postId]
+        return next
+      })
+      setCommentsByPost((prev) => {
+        const next = { ...prev }
+        delete next[postId]
+        return next
+      })
+      setCommentReplyTargetByPost((prev) => {
+        const next = { ...prev }
+        delete next[postId]
+        return next
+      })
+      setCommentLikeLoadingByPost((prev) => {
+        const next = { ...prev }
+        delete next[postId]
+        return next
+      })
     },
     [feedMutations],
   )
 
-  const handleDeleteComment = useCallback(async (commentId: number, postId: string) => {
-    const { error } = await supabase.from('comments').delete().eq('id', commentId)
-    if (error) { console.error('[handleDeleteComment]', error); return }
-    const currentComments = commentsByPostRef.current[postId] ?? []
-    const childrenMap = new Map<number, number[]>()
-    for (const item of currentComments) {
-      if (!item.parent_id) continue
-      const bucket = childrenMap.get(item.parent_id) ?? []
-      bucket.push(item.id)
-      childrenMap.set(item.parent_id, bucket)
-    }
-    const cascadeIds = new Set<number>()
-    const queue: number[] = [commentId]
-    while (queue.length > 0) {
-      const current = queue.shift()
-      if (!current || cascadeIds.has(current)) continue
-      cascadeIds.add(current)
-      for (const childId of childrenMap.get(current) ?? []) queue.push(childId)
-    }
-    const removedCount = currentComments.filter((c) => cascadeIds.has(c.id)).length || 1
-    setCommentsByPost((prev) => {
-      const before = prev[postId] ?? []
-      const filtered = before.filter((c) => !cascadeIds.has(c.id))
-      return {
-        ...prev,
-        [postId]: filtered,
+  const handleDeleteComment = useCallback(
+    async (commentId: number, postId: string) => {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+      if (error) {
+        console.error('[handleDeleteComment]', error)
+        return
       }
-    })
-    feedMutations.updateCommentsCount(postId, (n) => n - removedCount)
-    setExtraCommentsCountByPost((prev) => ({
-      ...prev,
-      [postId]: Math.max(0, (prev[postId] ?? 1) - removedCount),
-    }))
-    setCommentReplyTargetByPost((prev) => {
-      const target = prev[postId]
-      if (!target) return prev
-      if (!cascadeIds.has(target.commentId)) return prev
-      return { ...prev, [postId]: null }
-    })
-  }, [feedMutations])
+      const currentComments = commentsByPostRef.current[postId] ?? []
+      const childrenMap = new Map<number, number[]>()
+      for (const item of currentComments) {
+        if (!item.parent_id) continue
+        const bucket = childrenMap.get(item.parent_id) ?? []
+        bucket.push(item.id)
+        childrenMap.set(item.parent_id, bucket)
+      }
+      const cascadeIds = new Set<number>()
+      const queue: number[] = [commentId]
+      while (queue.length > 0) {
+        const current = queue.shift()
+        if (!current || cascadeIds.has(current)) continue
+        cascadeIds.add(current)
+        for (const childId of childrenMap.get(current) ?? [])
+          queue.push(childId)
+      }
+      const removedCount =
+        currentComments.filter((c) => cascadeIds.has(c.id)).length || 1
+      setCommentsByPost((prev) => {
+        const before = prev[postId] ?? []
+        const filtered = before.filter((c) => !cascadeIds.has(c.id))
+        return {
+          ...prev,
+          [postId]: filtered,
+        }
+      })
+      feedMutations.updateCommentsCount(postId, (n) => n - removedCount)
+      setExtraCommentsCountByPost((prev) => ({
+        ...prev,
+        [postId]: Math.max(0, (prev[postId] ?? 1) - removedCount),
+      }))
+      setCommentReplyTargetByPost((prev) => {
+        const target = prev[postId]
+        if (!target) return prev
+        if (!cascadeIds.has(target.commentId)) return prev
+        return { ...prev, [postId]: null }
+      })
+    },
+    [feedMutations],
+  )
 
   // ── Realtime ──────────────────────────────────────────────────────────────
   //
@@ -1276,121 +1611,137 @@ function App() {
           filter: `user_id=eq.${viewerId}`,
         },
         () => {
-          if (likesInvalidateTimer !== null) window.clearTimeout(likesInvalidateTimer)
+          if (likesInvalidateTimer !== null)
+            window.clearTimeout(likesInvalidateTimer)
           likesInvalidateTimer = window.setTimeout(() => {
             feedMutations.invalidateFeed()
             likesInvalidateTimer = null
           }, 1500)
         },
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comment_likes' }, (payload) => {
-        const row = payload.eventType === 'DELETE' ? payload.old : payload.new
-        const changedCommentId = Number(row?.comment_id ?? 0)
-        const actorId = String(row?.user_id ?? '')
-        if (!Number.isFinite(changedCommentId) || changedCommentId <= 0) return
-        if (actorId === session?.user?.id) return
-        for (const pid of Object.keys(commentsByPostRef.current)) {
-          const comments = commentsByPostRef.current[pid] ?? []
-          if (!comments.some((comment) => comment.id === changedCommentId)) continue
-          setCommentsByPost((prev) => ({
-            ...prev,
-            [pid]: (prev[pid] ?? []).map((comment) => {
-              if (comment.id !== changedCommentId) return comment
-              const isInsert = payload.eventType === 'INSERT'
-              const nextLikes = Math.max(
-                0,
-                Number(comment.likes_count ?? 0) + (isInsert ? 1 : -1),
-              )
-              return {
-                ...comment,
-                likes_count: nextLikes,
-                is_liked: comment.is_liked,
-              }
-            }),
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comment_likes' },
+        (payload) => {
+          const row = payload.eventType === 'DELETE' ? payload.old : payload.new
+          const changedCommentId = Number(row?.comment_id ?? 0)
+          const actorId = String(row?.user_id ?? '')
+          if (!Number.isFinite(changedCommentId) || changedCommentId <= 0)
+            return
+          if (actorId === session?.user?.id) return
+          for (const pid of Object.keys(commentsByPostRef.current)) {
+            const comments = commentsByPostRef.current[pid] ?? []
+            if (!comments.some((comment) => comment.id === changedCommentId))
+              continue
+            setCommentsByPost((prev) => ({
+              ...prev,
+              [pid]: (prev[pid] ?? []).map((comment) => {
+                if (comment.id !== changedCommentId) return comment
+                const isInsert = payload.eventType === 'INSERT'
+                const nextLikes = Math.max(
+                  0,
+                  Number(comment.likes_count ?? 0) + (isInsert ? 1 : -1),
+                )
+                return {
+                  ...comment,
+                  likes_count: nextLikes,
+                  is_liked: comment.is_liked,
+                }
+              }),
+            }))
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'comments' },
+        (payload) => {
+          const pid = String(payload.new?.post_id)
+          const commentAuthorId = String(payload.new?.user_id)
+          const incomingId = payload.new?.id
+          console.log('[Realtime] comment INSERT received', {
+            pid,
+            commentAuthorId,
+            currentUserId: session?.user?.id,
+            incomingId,
+          })
+
+          if (!postIds.includes(pid)) return
+
+          // Guard 1: skip own comment events (should already be covered, but be explicit)
+          if (commentAuthorId === session?.user?.id) {
+            console.log('[Realtime] skipping own comment event')
+            return
+          }
+
+          // Guard 2: cooldown — skip if we just submitted to this post (trigger latency buffer)
+          if (recentlySubmittedRef.current.has(pid)) {
+            console.log(
+              '[Realtime] cooldown active, skipping realtime fetch for',
+              pid,
+            )
+            return
+          }
+
+          // Guard 3: de-duplication — skip if this comment ID already exists in local state
+          const existing = commentsByPostRef.current[pid] ?? []
+          if (
+            incomingId !== undefined &&
+            existing.some((c) => String(c.id) === String(incomingId))
+          ) {
+            console.log('[Realtime] duplicate comment, skipping', incomingId)
+            return
+          }
+
+          feedMutations.updateCommentsCount(pid, (n) => n + 1)
+          setExtraCommentsCountByPost((p) => ({
+            ...p,
+            [pid]: (p[pid] ?? 0) + 1,
           }))
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, (payload) => {
-        const pid = String(payload.new?.post_id)
-        const commentAuthorId = String(payload.new?.user_id)
-        const incomingId = payload.new?.id
-        console.log('[Realtime] comment INSERT received', { pid, commentAuthorId, currentUserId: session?.user?.id, incomingId })
-
-        if (!postIds.includes(pid)) return
-
-        // Guard 1: skip own comment events (should already be covered, but be explicit)
-        if (commentAuthorId === session?.user?.id) {
-          console.log('[Realtime] skipping own comment event')
-          return
-        }
-
-        // Guard 2: cooldown — skip if we just submitted to this post (trigger latency buffer)
-        if (recentlySubmittedRef.current.has(pid)) {
-          console.log('[Realtime] cooldown active, skipping realtime fetch for', pid)
-          return
-        }
-
-        // Guard 3: de-duplication — skip if this comment ID already exists in local state
-        const existing = commentsByPostRef.current[pid] ?? []
-        if (incomingId !== undefined && existing.some((c) => String(c.id) === String(incomingId))) {
-          console.log('[Realtime] duplicate comment, skipping', incomingId)
-          return
-        }
-
-        feedMutations.updateCommentsCount(pid, (n) => n + 1)
-        setExtraCommentsCountByPost((p) => ({ ...p, [pid]: (p[pid] ?? 0) + 1 }))
-        if (expandedCommentsRef.current.has(pid)) void fetchCommentsForPost(pid, { silent: true })
-      })
+          if (expandedCommentsRef.current.has(pid))
+            void fetchCommentsForPost(pid, { silent: true })
+        },
+      )
       .subscribe()
     return () => {
-      if (likesInvalidateTimer !== null) window.clearTimeout(likesInvalidateTimer)
+      if (likesInvalidateTimer !== null)
+        window.clearTimeout(likesInvalidateTimer)
       void supabase.removeChannel(channel)
     }
   }, [session?.user?.id, postIds, feedMutations, fetchCommentsForPost])
 
-  useEffect(() => () => { if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current) }, [])
+  useEffect(
+    () => () => {
+      if (heartPopTimeout.current) clearTimeout(heartPopTimeout.current)
+    },
+    [],
+  )
 
-  // ── Auth guard ────────────────────────────────────────────────────────────
+  // ── Widoki: publiczne vs wymagające konta ─────────────────────────────────
 
   if (isResetPasswordPath(location.pathname)) {
     return <ResetPassword />
   }
 
-  if (!session) return <Auth />
+  if (effectiveActiveView === 'login') {
+    // Zalogowanego przenosi efekt `/logowanie` wyżej — formularza nie montujemy,
+    // żeby nie zapisać zbędnego celu powrotu.
+    if (!authReady || session) return null
+    return (
+      <Suspense fallback={null}>
+        <Auth />
+      </Suspense>
+    )
+  }
 
-  const displayName = myProfile?.full_name || session.user.email?.split('@')[0] || 'Użytkownik'
+  const isAuthenticated = Boolean(session)
+  const sessionUserId = session?.user?.id ?? null
+  const displayName =
+    myProfile?.full_name || session?.user?.email?.split('@')[0] || 'Użytkownik'
+  const firstName = myProfile?.full_name?.trim().split(/\s+/)[0] || null
   const viewedHandle = routeProfileHandle ?? activeProfileHandle
-
-  // SideNav i Header dostają ten sam `navActiveView`. `aula` zostaje (SideNav
-  // ma pozycję „Aula" — chcemy ją podświetlać). Tylko widoki techniczne
-  // (post/userProfile/search/group/chat/sale) mapujemy na 'feed', a
-  // 'settings' i 'adminDiag' na 'profile' (avatar w headerze podświetlony —
-  // admin-diag dashboard nie ma reprezentacji w nawigacji, więc pada pod
-  // tę samą bramkę co settings).
-  const navActiveView =
-    effectiveActiveView === 'post' || effectiveActiveView === 'userProfile'
-      ? 'feed'
-      : effectiveActiveView === 'search' ||
-          effectiveActiveView === 'group' ||
-          effectiveActiveView === 'chat' ||
-          effectiveActiveView === 'sale'
-        ? 'feed'
-      : effectiveActiveView === 'settings' || effectiveActiveView === 'adminDiag' || effectiveActiveView === 'adminReports'
-        ? 'profile'
-        : effectiveActiveView
-
-  // BottomNav (mobile) ma 5 slotów: Strona, Plan, +, Alerty, Profil.
-  // Sekcje, dla których nie ma dedykowanego taba (Wydarzenia, Aula,
-  // Zniżki, USOS, Miejsca), żyją w MobileDrawer i podświetlają „Strona".
-  // `mojPlan` ma własny tab — NIE mapujemy go na `feed`.
-  const bottomNavActiveView =
-    navActiveView === 'znizki' ||
-    navActiveView === 'usos' ||
-    navActiveView === 'miejsca' ||
-    navActiveView === 'aula' ||
-    navActiveView === 'events'
-      ? 'feed'
-      : navActiveView
+  const currentPathWithQuery = `${location.pathname}${location.search}`
+  const loginHref = loginPathFor(currentPathWithQuery)
 
   const contentShellClass = getAppContentShellClass(effectiveActiveView)
   const appShellClass = getAppShellClass(effectiveActiveView)
@@ -1399,7 +1750,7 @@ function App() {
   const sharedPostProps = {
     myProfile,
     displayName,
-    currentUserId: session.user.id,
+    currentUserId: sessionUserId ?? '',
     likesCountByPost,
     likedPostIds,
     heartPopPostId,
@@ -1423,49 +1774,170 @@ function App() {
     onDeleteComment: handleDeleteComment,
   }
 
-  const mainViewContent: ReactNode = (() => {
+  const navigateToTarget = (target: NavTarget) => navigateToMainView(target)
+  const recoverHome = () => navigateToMainView('home')
+  const openMobileCompose = () => {
+    setCreateError(null)
+    setCreateBody('')
+    setCreateImageFile(null)
+    setIsMobileComposeOpen(true)
+  }
+
+  const viewFallback = (
+    <div className="mx-auto w-full max-w-3xl" aria-busy="true">
+      <RowSkeletons count={3} />
+    </div>
+  )
+
+  const renderPublicView = (): ReactNode => {
+    switch (effectiveActiveView) {
+      case 'settings':
+        return (
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <Suspense fallback={viewFallback}>
+              <SettingsView
+                key={
+                  isAuthenticated
+                    ? (session?.user.id ?? 'authenticated')
+                    : 'guest'
+                }
+                isAuthenticated={isAuthenticated}
+                email={isAuthenticated ? session?.user.email : undefined}
+                myProfile={isAuthenticated ? myProfile : null}
+                onProfilePatch={(patch) =>
+                  setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
+                }
+                onBack={goBackInHistory}
+              />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
+      case 'chat':
+        return (
+          <Suspense fallback={viewFallback}>
+            <ChatHubView
+              displayName={isAuthenticated ? displayName : ''}
+              myProfile={myProfile}
+              isAuthenticated={isAuthenticated}
+            />
+          </Suspense>
+        )
+      case 'home':
+        return (
+          <InfoDashboard
+            faculty={facultyPreference}
+            isAuthenticated={isAuthenticated}
+            firstName={firstName}
+          />
+        )
+      case 'komunikaty':
+        return <AnnouncementsPage faculty={facultyPreference} />
+      case 'rejestracje':
+        return (
+          <RegistrationsPage
+            faculty={facultyPreference}
+            isAuthenticated={isAuthenticated}
+          />
+        )
+      case 'wydarzenia':
+        return (
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <Suspense fallback={viewFallback}>
+              <OfficialEventsPage isAuthenticated={isAuthenticated} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
+      case 'szukaj':
+        // Nowe wyszukiwanie z nagłówka/menu niesie `searchNonce` — zmiana klucza
+        // resetuje pole do frazy z URL bez synchronizacji w efekcie.
+        return (
+          <InfoSearchPage
+            key={String(
+              (location.state as { searchNonce?: number } | null)
+                ?.searchNonce ?? 'szukaj',
+            )}
+            faculty={facultyPreference}
+            isAuthenticated={isAuthenticated}
+          />
+        )
+      case 'niezbednik':
+        return <ToolsPage isAuthenticated={isAuthenticated} />
+      case 'poradniki':
+        return (
+          <Suspense fallback={viewFallback}>
+            <StudentGuides slug={normalizedPath.split('/')[2] ?? null} />
+          </Suspense>
+        )
+      case 'sale':
+        return (
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <Suspense fallback={viewFallback}>
+              <SaleFinderView onBack={goBackInHistory} />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
+      default:
+        return null
+    }
+  }
+
+  const renderProtectedView = (s: Session): ReactNode => {
     switch (effectiveActiveView) {
       case 'feed':
         return (
-          <FeedView
-            {...sharedPostProps}
-            posts={
-              selectedDepartment
-                ? posts.filter(
-                    (p) =>
-                      canonicalDepartment(p.profiles?.department) ===
-                      canonicalDepartment(selectedDepartment),
-                  )
-                : posts
-            }
-            postsLoading={postsLoading}
-            postsError={postsError}
-            hasNextPage={feedQuery.hasNextPage}
-            isFetchingNextPage={feedQuery.isFetchingNextPage}
-            onFetchNextPage={feedQuery.fetchNextPage}
-            selectedDepartment={selectedDepartment}
-            onDepartmentChange={setSelectedDepartment}
-            isComposing={isComposing}
-            createBody={createBody}
-            createImageFile={createImageFile}
-            createImagePreview={createImagePreview}
-            createLoading={createLoading}
-            createError={createError}
-            onBodyChange={setCreateBody}
-            onImageFileChange={setCreateImageFile}
-            onComposeOpen={() => { setCreateError(null); setIsComposing(true) }}
-            onComposeReset={resetCompose}
-            onCreatePost={handleCreatePost}
-            onNavigateToPost={navigateToPost}
-            onNavigateToUser={navigateToUser}
-            onNavigateToEvents={() => navigateToMainView('events')}
-            onNavigateToProfileHandle={navigateToProfileByHandle}
-          />
+          <>
+            <FeedView
+              {...sharedPostProps}
+              posts={
+                selectedDepartment
+                  ? posts.filter(
+                      (p) =>
+                        canonicalDepartment(p.profiles?.department) ===
+                        canonicalDepartment(selectedDepartment),
+                    )
+                  : posts
+              }
+              postsLoading={postsLoading}
+              postsError={postsError}
+              hasNextPage={feedQuery.hasNextPage}
+              isFetchingNextPage={feedQuery.isFetchingNextPage}
+              onFetchNextPage={feedQuery.fetchNextPage}
+              selectedDepartment={selectedDepartment}
+              onDepartmentChange={setSelectedDepartment}
+              isComposing={isComposing}
+              createBody={createBody}
+              createImageFile={createImageFile}
+              createImagePreview={createImagePreview}
+              createLoading={createLoading}
+              createError={createError}
+              onBodyChange={setCreateBody}
+              onImageFileChange={setCreateImageFile}
+              onComposeOpen={() => {
+                setCreateError(null)
+                setIsComposing(true)
+              }}
+              onComposeReset={resetCompose}
+              onCreatePost={handleCreatePost}
+              onNavigateToPost={navigateToPost}
+              onNavigateToUser={navigateToUser}
+              onNavigateToEvents={() => navigateToMainView('events')}
+              onNavigateToProfileHandle={navigateToProfileByHandle}
+            />
+            {/* Pisanie wpisu na telefonie — dawniej środkowy przycisk dolnego paska. */}
+            <button
+              type="button"
+              onClick={openMobileCompose}
+              className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white shadow-lg transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 md:hidden dark:bg-gradient-to-br dark:from-brand-gold-bright dark:to-brand-gold dark:text-zinc-900"
+            >
+              <PenSquare size={18} strokeWidth={2.25} aria-hidden />
+              Nowy wpis
+            </button>
+          </>
         )
       case 'events':
         return (
           <EventsHub
-            currentUserId={session.user.id}
+            currentUserId={s.user.id}
             onNavigateToProfileHandle={navigateToProfileByHandle}
           />
         )
@@ -1479,11 +1951,13 @@ function App() {
             {...sharedPostProps}
             posts={posts}
             postsLoading={postsLoading}
-            viewedHandle={effectiveActiveView === 'userProfile' ? viewedHandle! : null}
+            viewedHandle={
+              effectiveActiveView === 'userProfile' ? viewedHandle! : null
+            }
             onNavigateToPost={navigateToPost}
             joinedAtLabel={
-              session.user.created_at
-                ? new Date(session.user.created_at).toLocaleDateString('pl-PL', {
+              s.user.created_at
+                ? new Date(s.user.created_at).toLocaleDateString('pl-PL', {
                     month: 'long',
                     year: 'numeric',
                   })
@@ -1494,10 +1968,14 @@ function App() {
             onNavigateToProfileHandle={navigateToProfileByHandle}
             onNavigateToEvents={() => navigateToMainView('events')}
             onAvatarUpdate={(url) =>
-              setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
+              setMyProfile((prev) =>
+                prev ? { ...prev, avatar_url: url } : prev,
+              )
             }
             onBannerUpdate={(url) =>
-              setMyProfile((prev) => (prev ? { ...prev, banner_url: url } : prev))
+              setMyProfile((prev) =>
+                prev ? { ...prev, banner_url: url } : prev,
+              )
             }
           />
         )
@@ -1550,325 +2028,314 @@ function App() {
             onNavigateToUser={navigateToUser}
           />
         )
-      case 'settings':
-        return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <SettingsView
-              email={session.user?.email ?? undefined}
-              myProfile={myProfile}
-              onProfilePatch={(patch) =>
-                setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
-              }
-              onBack={goBackInHistory}
-            />
-          </ViewErrorBoundary>
-        )
-      case 'chat':
-        return (
-          <Suspense fallback={null}>
-            <ChatHubView displayName={displayName} myProfile={myProfile} />
-          </Suspense>
-        )
       case 'aula':
         return (
-          <Suspense fallback={null}>
-            <AulaView
-              currentUserId={session.user.id}
-              myProfile={myProfile}
-              onProfilePatch={(patch) =>
-                setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
-              }
-              onAulaSeen={markAulaSeen}
-            />
-          </Suspense>
+          <AulaView
+            currentUserId={s.user.id}
+            myProfile={myProfile}
+            onProfilePatch={(patch) =>
+              setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
+            }
+            onAulaSeen={markAulaSeen}
+          />
         )
       case 'mojPlan':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+          <ViewErrorBoundary onRecover={recoverHome}>
             <MojPlanView
-              userId={session.user.id}
+              userId={s.user.id}
               myProfile={myProfile}
               cohort={myCohort}
             />
           </ViewErrorBoundary>
         )
-      case 'sale':
-        return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <SaleFinderView onBack={goBackInHistory} />
-            </Suspense>
-          </ViewErrorBoundary>
-        )
       case 'znizki':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <ZniskiView userId={session.user.id} />
-            </Suspense>
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <ZniskiView userId={s.user.id} />
           </ViewErrorBoundary>
         )
       case 'usos':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <UsosRegistrationsView
-                userId={session.user.id}
-                studyProgram={myProfile?.study_program ?? null}
-                yearStarted={myProfile?.year_started ?? null}
-              />
-            </Suspense>
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <UsosRegistrationsView
+              userId={s.user.id}
+              studyProgram={myProfile?.study_program ?? null}
+              yearStarted={myProfile?.year_started ?? null}
+            />
           </ViewErrorBoundary>
         )
       case 'miejsca':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
-            <Suspense fallback={null}>
-              <MiejscaNaukiView
-                session={session}
-                onNavigateToProfile={navigateToProfileByHandle}
-              />
-            </Suspense>
+          <ViewErrorBoundary onRecover={recoverHome}>
+            <MiejscaNaukiView
+              session={s}
+              onNavigateToProfile={navigateToProfileByHandle}
+            />
           </ViewErrorBoundary>
         )
       case 'adminDiag':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+          <ViewErrorBoundary onRecover={recoverHome}>
             <AdminDiagView />
           </ViewErrorBoundary>
         )
       case 'adminReports':
         return (
-          <ViewErrorBoundary onRecover={() => navigateToMainView('feed')}>
+          <ViewErrorBoundary onRecover={recoverHome}>
             <AdminReportsView myProfile={myProfile} onBack={goBackInHistory} />
           </ViewErrorBoundary>
         )
       default:
         return null
     }
+  }
+
+  const mainViewContent: ReactNode = (() => {
+    if (PUBLIC_VIEWS.has(effectiveActiveView)) return renderPublicView()
+    // Sesja jeszcze nieznana — szkielet zamiast mignięcia ekranu logowania.
+    if (!authReady) return viewFallback
+    if (!session) {
+      const copy = PROTECTED_FEATURES[effectiveActiveView] ?? {
+        feature: 'Ta część UJverse',
+        reason: 'Ta funkcja jest dostępna po zalogowaniu.',
+      }
+      return <AuthRequired copy={copy} nextPath={currentPathWithQuery} />
+    }
+    return (
+      <Suspense fallback={viewFallback}>
+        {renderProtectedView(session)}
+      </Suspense>
+    )
   })()
 
+  const animatedMain = (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={`${effectiveActiveView}:${viewedHandle ?? ''}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+      >
+        {mainViewContent}
+      </motion.div>
+    </AnimatePresence>
+  )
+
   return (
-    <EventsProvider>
-    <LecturerSubscriptionsProvider userId={session.user.id}>
-    <>
-      <Analytics />
-      <AppOnboardingGate
-        userId={session.user.id}
-        myProfile={myProfile}
-        onProfilePatch={(patch) =>
-          setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
-        }
-      />
-      {profileModalOpen && (
-        <ProfileModal
-          session={session}
-          profile={myProfile}
-          onClose={() => setProfileModalOpen(false)}
-          onSaved={(u) => { setMyProfile(u); feedMutations.invalidateFeed() }}
-          onAvatarUpdate={(url) =>
-            setMyProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))
-          }
+    <LecturerSubscriptionsProvider userId={sessionUserId}>
+      <>
+        <Analytics
+          beforeSend={(event) => {
+            // Search text and account handles are not useful pageview dimensions.
+            const url = new URL(event.url)
+            url.search = ''
+            url.hash = ''
+            if (url.pathname.startsWith('/profile/')) url.pathname = '/profile'
+            if (url.pathname.startsWith('/thread/')) url.pathname = '/thread'
+            return { ...event, url: url.toString() }
+          }}
         />
-      )}
-
-      <AnimatePresence>
-        {isMobileComposeOpen && (
-          <motion.div
-            key="mobile-compose-overlay"
-            className="fixed inset-0 z-320 md:hidden flex flex-col justify-end"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div
-              className="flex-1 bg-black/55 backdrop-blur-[2px]"
-              aria-hidden
-              onClick={resetCompose}
-            />
-            <motion.div
-              className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-t border-zinc-200 bg-white px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-[0_-12px_40px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_-16px_48px_rgba(0,0,0,0.5)]"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            >
-              <div className="mx-auto mb-2 h-1.5 w-12 shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-              <ComposeBox
-                sheetMode
-                myProfile={myProfile}
-                displayName={displayName}
-                isComposing={true}
-                body={createBody}
-                imageFile={createImageFile}
-                imagePreview={createImagePreview}
-                isLoading={createLoading}
-                error={createError}
-                onBodyChange={setCreateBody}
-                onImageFileChange={setCreateImageFile}
-                onOpen={() => { setCreateError(null) }}
-                onReset={resetCompose}
-                onSubmit={async () => { await handleCreatePost(); setIsMobileComposeOpen(false) }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
-        <div className={`relative min-h-dvh ${appShellClass}`}>
-        <SideNav
-          activeView={navActiveView}
-          unreadCount={unreadCount}
-          aulaHasUnread={aulaHasUnread}
-          onNavigateToFeed={() => navigateToMainView('feed')}
-          onNavigateToEvents={() => navigateToMainView('events')}
-          onNavigateToAula={() => navigateToMainView('aula')}
-          onNavigateToNotifications={() => navigateToMainView('notifications')}
-          onNavigateToProfile={() => navigateToMainView('profile')}
-          onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
-          onNavigateToZnizki={() => navigateToMainView('znizki')}
-          onNavigateToUsos={() => navigateToMainView('usos')}
-          onNavigateToMiejsca={() => navigateToMainView('miejsca')}
-          onNavigateToSettings={openSettings}
-        />
-
-        <div className="min-w-0 w-full flex-1">
-          <Header
+        <a
+          href="#tresc"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[500] focus:rounded-xl focus:bg-bg-app focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-brand-ink focus:shadow-lg dark:focus:text-brand-gold-bright"
+        >
+          Przejdź do treści
+        </a>
+        {session ? (
+          <AppOnboardingGate
+            userId={session.user.id}
             myProfile={myProfile}
-            displayName={displayName}
-            menuOpen={menuOpen}
-            setMenuOpen={setMenuOpen}
-            activeView={navActiveView}
-            unreadCount={unreadCount}
-            bellRingTick={bellRingTick}
-            notificationsPanelOpen={notificationsPanelOpen}
-            notificationsAnchorRef={notificationsAnchorRef}
-            onToggleNotificationsPanel={toggleNotificationsPanel}
-            onCloseNotificationsPanel={closeNotificationsPanel}
-            onNavigateToFeed={() => navigateToMainView('feed')}
-            onNavigateToProfile={() => navigateToMainView('profile')}
-            onNavigateToEvents={(openEventId) => {
-              if (openEventId) {
-                navigate('/events', { state: { openEventId } })
-                return
-              }
-              navigateToMainView('events')
-            }}
-            onNavigateToSearch={(query) => {
-              const normalized = (query ?? '').trim()
-              if (!normalized) {
-                navigate('/search')
-                return
-              }
-              navigate(`/search?q=${encodeURIComponent(normalized)}`)
-            }}
-            onNavigateToUser={navigateToUser}
-            onNavigateToPost={navigateToPost}
-            onNavigateToAulaMessage={navigateToAulaMessage}
-            cohortId={myCohortId}
-            onOpenProfileModal={() => setProfileModalOpen(true)}
-            onNavigateToSettings={openSettings}
-            onRefreshPosts={() => feedMutations.invalidateFeed()}
-            onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
+            onProfilePatch={(patch) =>
+              setMyProfile((prev) => (prev ? { ...prev, ...patch } : prev))
+            }
           />
-
+        ) : null}
+        {session && profileModalOpen ? (
           <Suspense fallback={null}>
-            <UsosAlarmBanner
-              userId={session.user.id}
-              onNavigateToUsos={() => navigateToMainView('usos' as AppShellView)}
+            <ProfileModal
+              session={session}
+              profile={myProfile}
+              onClose={() => setProfileModalOpen(false)}
+              onSaved={(u) => {
+                setMyProfile(u)
+                feedMutations.invalidateFeed()
+              }}
+              onAvatarUpdate={(url) =>
+                setMyProfile((prev) =>
+                  prev ? { ...prev, avatar_url: url } : prev,
+                )
+              }
             />
           </Suspense>
+        ) : null}
 
-          <main className={`${contentShellClass} ${mainLayoutClass}`}>
-          <AnimatePresence mode="wait">
+        <AnimatePresence>
+          {session && isMobileComposeOpen && (
             <motion.div
-              key={`${effectiveActiveView}:${viewedHandle ?? ''}`}
+              key="mobile-compose-overlay"
+              className="fixed inset-0 z-320 md:hidden flex flex-col justify-end"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: 0.2 }}
             >
-              {mainViewContent}
+              <div
+                className="flex-1 bg-black/55 backdrop-blur-[2px]"
+                aria-hidden
+                onClick={resetCompose}
+              />
+              <motion.div
+                className="max-h-[92vh] overflow-y-auto rounded-t-3xl border-t border-zinc-200 bg-white px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-[0_-12px_40px_rgba(0,0,0,0.12)] dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_-16px_48px_rgba(0,0,0,0.5)]"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              >
+                <div className="mx-auto mb-2 h-1.5 w-12 shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+                <Suspense fallback={null}>
+                  <ComposeBox
+                    sheetMode
+                    myProfile={myProfile}
+                    displayName={displayName}
+                    isComposing={true}
+                    body={createBody}
+                    imageFile={createImageFile}
+                    imagePreview={createImagePreview}
+                    isLoading={createLoading}
+                    error={createError}
+                    onBodyChange={setCreateBody}
+                    onImageFileChange={setCreateImageFile}
+                    onOpen={() => {
+                      setCreateError(null)
+                    }}
+                    onReset={resetCompose}
+                    onSubmit={async () => {
+                      await handleCreatePost()
+                      setIsMobileComposeOpen(false)
+                    }}
+                  />
+                </Suspense>
+              </motion.div>
             </motion.div>
-          </AnimatePresence>
-        </main>
+          )}
+        </AnimatePresence>
 
-          <BottomNav
-            activeView={bottomNavActiveView}
-            setActiveView={(v) => navigateToMainView(v)}
-            unreadCount={unreadCount}
-            onOpenNotifications={openNotificationsPanel}
-            onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
-            onOpenCompose={() => {
-              setCreateError(null)
-              setCreateBody('')
-              setCreateImageFile(null)
-              setIsMobileComposeOpen(true)
-            }}
-          />
+        <div className="campus-app min-h-dvh w-full max-w-full bg-zinc-50 dark:bg-bg-app">
+          <div className={`relative min-h-dvh ${appShellClass}`}>
+            <SideNav
+              activeView={effectiveActiveView}
+              isAuthenticated={isAuthenticated}
+              unreadCount={unreadCount}
+              aulaHasUnread={aulaHasUnread}
+              onNavigate={navigateToTarget}
+              onSignOut={() => void handleSignOut()}
+              loginHref={loginHref}
+            />
+
+            <div className="min-w-0 w-full flex-1">
+              <Header
+                isAuthenticated={isAuthenticated}
+                myProfile={myProfile}
+                displayName={displayName}
+                menuOpen={menuOpen}
+                setMenuOpen={setMenuOpen}
+                activeView={effectiveActiveView}
+                unreadCount={unreadCount}
+                bellRingTick={bellRingTick}
+                notificationsPanelOpen={notificationsPanelOpen}
+                notificationsAnchorRef={notificationsAnchorRef}
+                onToggleNotificationsPanel={toggleNotificationsPanel}
+                onCloseNotificationsPanel={closeNotificationsPanel}
+                onNavigateHome={() => navigateToMainView('home')}
+                onNavigateToProfile={() => navigateToMainView('profile')}
+                onOpenProfileModal={() => setProfileModalOpen(true)}
+                onNavigateToSettings={openSettings}
+                onSignOut={() => void handleSignOut()}
+                loginHref={loginHref}
+                faculty={facultyPreference}
+                onOpenMobileDrawer={() => setMobileDrawerOpen(true)}
+              />
+
+              {session ? (
+                <Suspense fallback={null}>
+                  <UsosAlarmBanner
+                    userId={session.user.id}
+                    onNavigateToUsos={() => navigateToMainView('usos')}
+                  />
+                </Suspense>
+              ) : null}
+
+              <main
+                id="tresc"
+                tabIndex={-1}
+                className={`${contentShellClass} ${mainLayoutClass} ${['home', 'komunikaty', 'rejestracje', 'niezbednik', 'poradniki', 'szukaj', 'wydarzenia'].includes(effectiveActiveView) ? 'campus-page' : ''} outline-none`}
+              >
+                {EVENTS_CONTEXT_VIEWS.has(effectiveActiveView) && session ? (
+                  <EventsProvider>{animatedMain}</EventsProvider>
+                ) : (
+                  animatedMain
+                )}
+              </main>
+
+              <BottomNav
+                activeView={effectiveActiveView}
+                onNavigate={navigateToTarget}
+              />
+            </div>
+          </div>
         </div>
-        </div>
-      </div>
 
-      <MobileDrawer
-        open={mobileDrawerOpen}
-        onClose={() => setMobileDrawerOpen(false)}
-        myProfile={myProfile}
-        displayName={displayName}
-        activeView={navActiveView}
-        unreadCount={unreadCount}
-        aulaHasUnread={aulaHasUnread}
-        onNavigateToFeed={() => navigateToMainView('feed')}
-        onNavigateToEvents={() => navigateToMainView('events')}
-        onNavigateToAula={() => navigateToMainView('aula')}
-        onNavigateToNotifications={() => navigateToMainView('notifications')}
-        onNavigateToProfile={() => navigateToMainView('profile')}
-        onNavigateToMojPlan={() => navigateToMainView('mojPlan')}
-        onNavigateToZnizki={() => navigateToMainView('znizki')}
-        onNavigateToUsos={() => navigateToMainView('usos')}
-        onNavigateToMiejsca={() => navigateToMainView('miejsca')}
-        onNavigateToSettings={openSettings}
-        onNavigateToSearch={(query) => {
-          const normalized = (query ?? '').trim()
-          if (!normalized) {
-            navigate('/search')
-            return
-          }
-          navigate(`/search?q=${encodeURIComponent(normalized)}`)
-        }}
-      />
-
-      <NotificationPopup
-        open={notificationsPanelOpen}
-        onClose={closeNotificationsPanel}
-        notifications={notifications}
-        loading={notificationsLoading}
-        onMarkRead={markNotificationRead}
-        onClearAll={() => void clearAllNotifications()}
-        onNavigateToPost={navigateToPostFromNotificationsPanel}
-        onNavigateToUser={navigateToUserFromNotificationsPanel}
-        anchorRef={notificationsAnchorRef}
-      />
-
-      <Suspense fallback={null}>
-        <ChatAssistantFab
-          hidden={
-            isMobileComposeOpen ||
-            profileModalOpen ||
-            notificationsPanelOpen ||
-            menuOpen ||
-            effectiveActiveView === 'chat' ||
-            effectiveActiveView === 'aula'
-          }
+        <MobileDrawer
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+          isAuthenticated={isAuthenticated}
           myProfile={myProfile}
           displayName={displayName}
+          activeView={effectiveActiveView}
+          unreadCount={unreadCount}
+          aulaHasUnread={aulaHasUnread}
+          onNavigate={navigateToTarget}
+          onSignOut={() => void handleSignOut()}
+          loginHref={loginHref}
         />
-      </Suspense>
-    </>
+
+        {session ? (
+          <Suspense fallback={null}>
+            <NotificationPopup
+              open={notificationsPanelOpen}
+              onClose={closeNotificationsPanel}
+              notifications={notifications}
+              loading={notificationsLoading}
+              onMarkRead={markNotificationRead}
+              onClearAll={() => void clearAllNotifications()}
+              onNavigateToPost={navigateToPostFromNotificationsPanel}
+              onNavigateToUser={navigateToUserFromNotificationsPanel}
+              anchorRef={notificationsAnchorRef}
+            />
+          </Suspense>
+        ) : null}
+
+        <Suspense fallback={null}>
+          <ChatAssistantFab
+            hidden={
+              isMobileComposeOpen ||
+              profileModalOpen ||
+              notificationsPanelOpen ||
+              mobileDrawerOpen ||
+              menuOpen ||
+              effectiveActiveView === 'chat' ||
+              effectiveActiveView === 'home' ||
+              effectiveActiveView === 'aula'
+            }
+            myProfile={myProfile}
+            displayName={displayName}
+            isAuthenticated={isAuthenticated}
+          />
+        </Suspense>
+      </>
     </LecturerSubscriptionsProvider>
-    </EventsProvider>
   )
 }
 
@@ -1884,7 +2351,11 @@ function AppOnboardingGate({
 }: {
   userId: string
   myProfile: Profile | null
-  onProfilePatch: (patch: Partial<Pick<Profile, 'onboarding_completed_at' | 'onboarding_skipped_at'>>) => void
+  onProfilePatch: (
+    patch: Partial<
+      Pick<Profile, 'onboarding_completed_at' | 'onboarding_skipped_at'>
+    >,
+  ) => void
 }) {
   const onboarding = useOnboarding({ userId, myProfile, onProfilePatch })
 

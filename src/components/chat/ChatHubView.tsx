@@ -23,79 +23,95 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
-import { motion } from 'framer-motion'
-import { Plus, Send, Square } from 'lucide-react'
+import {
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
+  Megaphone,
+  MessageCircle,
+  Plus,
+  Send,
+  Square,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import type { Profile } from '../../types'
-import { CHAT_ASSISTANT_NAME, CHAT_MODEL_LABEL, CHAT_PROVIDER_LABEL } from '../../lib/chatModel'
-import { buildWelcomeOpener } from '../../lib/welcomeOpener'
+import {
+  CHAT_ASSISTANT_NAME,
+  CHAT_MODEL_LABEL,
+  CHAT_PROVIDER_LABEL,
+} from '../../lib/chatModel'
+import { useLocation, useNavigate } from 'react-router-dom'
+import type { VersusEntryState } from '../../lib/versusEntry'
 import { useChatStore } from '../../store/useChatStore'
 import { useChatSend } from '../../hooks/useChatSend'
-import {
-  filterSlashCommands,
-  isSlashMode,
-  type SlashCommand,
-} from '../../lib/chatSlashCommands'
-import VersuHeroCluster from './VersuHeroCluster'
+import { useVersuActivity } from '../../hooks/useVersuActivity'
 import VersuMark from './VersuMark'
 import MessageList from './MessageList'
-import SlashCommandMenu from './SlashCommandMenu'
 import ChatVoiceButton from './ChatVoiceButton'
 
-import { CHAT_QUICK_PROMPTS } from '../../lib/chatQuickPrompts'
+import {
+  CHAT_QUICK_PROMPTS,
+  PUBLIC_CHAT_QUICK_PROMPTS,
+} from '../../lib/chatQuickPrompts'
+
+const PROMPT_PRESENTATION: Record<string, { label: string; icon: LucideIcon }> =
+  {
+    'Najnowsze ogłoszenia': { label: 'Komunikaty', icon: Megaphone },
+    'Jakie są nadchodzące rejestracje USOS?': {
+      label: 'Rejestracje',
+      icon: ClipboardList,
+    },
+    'Wydarzenia oficjalne': { label: 'Wydarzenia', icon: CalendarDays },
+    'Co potrafisz?': { label: 'Co umiesz?', icon: MessageCircle },
+    'Co nowego na feedzie?': { label: 'Społeczność', icon: Users },
+    'Co mam dziś w planie?': { label: 'Plan na dziś', icon: CalendarDays },
+    'Co mam jutro?': { label: 'Plan na jutro', icon: CalendarDays },
+    'Pokaż zniżki studenckie': { label: 'Zniżki', icon: GraduationCap },
+    'Co w Auli?': { label: 'Moja Aula', icon: Users },
+  }
 
 type Props = {
   displayName: string
+  isAuthenticated?: boolean
   /** Profil zalogowanego użytkownika — awatar w wierszach jego wiadomości. */
   myProfile?: Profile | null
 }
 
-export default function ChatHubView({ displayName, myProfile }: Props) {
+export default function ChatHubView({
+  displayName,
+  myProfile,
+  isAuthenticated = false,
+}: Props) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const consumedEntry = useRef<string | null>(null)
+  const error = useChatStore((s) => s.error)
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
   const actionLabel = useChatStore((s) => s.actionLabel)
   const { sendMessage, cancel } = useChatSend()
 
   const [draft, setDraft] = useState('')
-  const [slashActiveIndex, setSlashActiveIndex] = useState(0)
+  const [isFocused, setFocused] = useState(false)
+  const activity = useVersuActivity(isFocused && draft.trim().length > 0)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
-
-  const slashMode = useMemo(() => isSlashMode(draft), [draft])
-  const slashCommands = useMemo(
-    () => (slashMode ? filterSlashCommands(draft) : []),
-    [slashMode, draft],
-  )
-  const slashOpen = slashMode
-
-  // Reset active index gdy lista się skraca lub user kasuje slash.
-  useEffect(() => {
-    if (slashActiveIndex >= slashCommands.length) {
-      setSlashActiveIndex(0)
-    }
-  }, [slashCommands.length, slashActiveIndex])
 
   const hasMessages = useMemo(
     () => messages.some((m) => m.role !== 'system'),
     [messages],
   )
-  // Welcome opener — dynamiczne powitanie zależne od pory dnia / dnia tygodnia.
-  // `useMemo` z deps na `displayName` daje JEDEN losowy wybór per render-cykl
-  // (nowe wejście = nowa para headline/subline, ale stabilne podczas używania).
-  const welcome = useMemo(
-    () => buildWelcomeOpener(displayName),
-    [displayName],
-  )
 
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [messages, isTyping])
-
-  useEffect(() => {
+    if (
+      !window.matchMedia('(min-width: 768px)').matches ||
+      (location.state as Partial<VersusEntryState> | null)?.versusPrompt
+    )
+      return
     const t = window.setTimeout(() => inputRef.current?.focus(), 80)
     return () => window.clearTimeout(t)
-  }, [])
+  }, [location.state])
 
   const handleSend = useCallback(
     async (content: string) => {
@@ -106,6 +122,39 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
     },
     [isTyping, sendMessage],
   )
+
+  const entry = location.state as Partial<VersusEntryState> | null
+  const entryId = entry?.versusRequestId
+  const entryPrompt = entry?.versusPrompt
+  useEffect(() => {
+    if (
+      typeof entryId !== 'string' ||
+      typeof entryPrompt !== 'string' ||
+      !entryPrompt.trim() ||
+      isTyping ||
+      consumedEntry.current === entryId
+    )
+      return
+    // Wait until mount effects settle: StrictMode replays their setup/cleanup,
+    // and useChatSend correctly cancels a stream during that cleanup.
+    const timer = window.setTimeout(() => {
+      consumedEntry.current = entryId
+      void handleSend(entryPrompt.slice(0, 4000))
+      navigate(`${location.pathname}${location.search}`, {
+        replace: true,
+        state: null,
+      })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [
+    entryId,
+    entryPrompt,
+    isTyping,
+    handleSend,
+    navigate,
+    location.pathname,
+    location.search,
+  ])
 
   const handleEditLastUser = useCallback(
     (text: string) => {
@@ -152,120 +201,74 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
     [draft, handleSend],
   )
 
-  const handleSelectSlashCommand = useCallback(
-    (cmd: SlashCommand) => {
-      // Słownie wysyłamy zapytanie odpowiadające komendzie. Cache (`responseCache`
-      // po stronie serwera) trafia te same prompty co `QUICK_PROMPTS` w wyspie.
-      setDraft('')
-      setSlashActiveIndex(0)
-      void handleSend(cmd.query)
-    },
-    [handleSend],
-  )
-
   const onKeyDownTextarea = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      // Slash mode: ArrowUp/Down nawigują listę, Enter wybiera, Escape zamyka.
-      if (slashOpen && slashCommands.length > 0) {
-        if (e.key === 'ArrowDown') {
-          e.preventDefault()
-          setSlashActiveIndex((i) => (i + 1) % slashCommands.length)
-          return
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault()
-          setSlashActiveIndex(
-            (i) => (i - 1 + slashCommands.length) % slashCommands.length,
-          )
-          return
-        }
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault()
-          const cmd = slashCommands[slashActiveIndex] ?? slashCommands[0]
-          if (cmd) handleSelectSlashCommand(cmd)
-          return
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          setDraft('')
-          return
-        }
-        if (e.key === 'Tab') {
-          // Tab uzupełnia slug aktywnej komendy w drafcie (jak shell).
-          e.preventDefault()
-          const cmd = slashCommands[slashActiveIndex] ?? slashCommands[0]
-          if (cmd) setDraft(`/${cmd.slug} `)
-          return
-        }
-      }
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         void handleSend(draft)
       }
     },
-    [
-      draft,
-      handleSend,
-      slashOpen,
-      slashCommands,
-      slashActiveIndex,
-      handleSelectSlashCommand,
-    ],
+    [draft, handleSend],
   )
+
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+    input.style.height = 'auto'
+    input.style.height = `${Math.min(input.scrollHeight, 160)}px`
+  }, [draft])
 
   const canClear = hasMessages || isTyping
 
   return (
     <div
-      className={[
-        'flex w-full flex-col',
-        // Mobile: full viewport minus sticky header (h-14) minus mobile BottomNav (~4.25rem).
-        // Desktop: full viewport minus sticky header (h-16). BottomNav is md:hidden.
-        'h-[calc(100dvh-3.5rem-4.25rem-env(safe-area-inset-bottom,0px))]',
-        'md:h-[calc(100dvh-4rem)]',
-      ].join(' ')}
+      className="versus-conversation flex w-full flex-col h-[calc(100dvh-3.5rem-5.5rem-4.25rem-env(safe-area-inset-bottom,0px))] md:h-[calc(100dvh-9.5rem)] lg:h-[calc(100dvh-9rem)]"
+      data-has-messages={hasMessages}
     >
-      {/*
-        Header zawsze widoczny — orientuje użytkownika (kto mówi, jaki model)
-        i daje niezawodne miejsce na akcję „nowa rozmowa". Stary pattern
-        ukrywał akcję razem z wiadomościami, więc po kliknięciu znikała razem
-        z efektem, co czytało się jak „nic się nie stało". Teraz przycisk
-        zostaje na ekranie, tylko przechodzi w stan `disabled` — wyraźny
-        feedback wizualny.
-      */}
-      <header className="shrink-0 border-b border-zinc-200/60 bg-zinc-50/90 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/90">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-2.5 md:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <VersuMark size={34} className="shrink-0" />
-            <div className="min-w-0 flex flex-col leading-tight">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-semibold tracking-tight text-fg-primary">
-                  {CHAT_ASSISTANT_NAME}
+      <header className="versus-conversation-header shrink-0">
+        <div className="versus-conversation-inner versus-conversation-header-content">
+          <div className="versus-conversation-identity">
+            {hasMessages ? (
+              <VersuMark
+                size={88}
+                activity={activity}
+                replayKey={messages.at(-1)?.id}
+                className="versus-conversation-header-mark"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <h1>
+                Versuś{' '}
+                <span>
+                  {CHAT_MODEL_LABEL} · {CHAT_PROVIDER_LABEL}
                 </span>
-                <span
-                  aria-hidden
-                  className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                    isTyping ? 'animate-pulse bg-emerald-400' : 'bg-emerald-400/60'
-                  }`}
-                />
-              </div>
-              <p className="truncate text-[11px] text-fg-secondary">
-                {CHAT_MODEL_LABEL}
-                <span className="text-fg-secondary/65"> · {CHAT_PROVIDER_LABEL}</span>
+              </h1>
+              <p className="versus-chat-caption">
+                {activity === 'answering'
+                  ? 'Odpowiadam…'
+                  : activity === 'thinking'
+                    ? (actionLabel ?? 'Przygotowuję odpowiedź…')
+                    : activity === 'error'
+                      ? 'Nie udało się odpowiedzieć'
+                      : activity === 'success'
+                        ? 'Możesz dopytać'
+                        : isAuthenticated
+                          ? 'Twój asystent na UJ'
+                          : 'Zapytaj bez logowania'}
               </p>
             </div>
           </div>
-
           <button
             type="button"
             onClick={handleNewConversation}
             disabled={!canClear}
             title="Nowa rozmowa"
             aria-label="Rozpocznij nową rozmowę z asystentem"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-logo-navy/25 bg-transparent px-3 py-2 text-xs font-semibold text-logo-navy transition-colors hover:border-logo-navy/45 hover:bg-logo-navy/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:border-brand-gold-bright/35 dark:text-brand-gold-bright dark:hover:border-brand-gold-bright/55 dark:hover:bg-brand-gold-bright/10 sm:px-3.5 sm:text-sm"
+            className="versus-conversation-new"
           >
-            <Plus size={16} strokeWidth={2.25} aria-hidden />
-            <span className="inline">Nowa rozmowa</span>
+            <Plus size={18} strokeWidth={2} aria-hidden />
+            <span className="hidden min-[380px]:inline">Nowa rozmowa</span>
           </button>
         </div>
       </header>
@@ -273,9 +276,9 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
       {hasMessages ? (
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-zinc-800"
+          className="versus-conversation-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
         >
-          <div className="mx-auto w-full max-w-3xl px-4 pt-6 pb-2 md:px-6 md:pt-8">
+          <div className="versus-conversation-inner versus-conversation-messages">
             <MessageList
               messages={messages}
               isTyping={isTyping}
@@ -284,6 +287,7 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
               myProfile={myProfile}
               displayName={displayName}
               scrollable={false}
+              scrollContainerRef={scrollRef}
               onEditLastUser={handleEditLastUser}
               onRetryLastAssistant={handleRetryLastAssistant}
               onChipClick={handleSend}
@@ -291,86 +295,39 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
           </div>
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 pt-[10vh] pb-4 text-center md:px-6 md:pt-[14vh]">
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-6"
-            >
-              <VersuHeroCluster
-                containerClass="size-40"
-                iconWrapClass="size-[4.5rem]"
-                iconSize={72}
-              />
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-linear-to-br from-logo-navy to-logo-navy/60 bg-clip-text pb-1 text-3xl leading-tight font-semibold tracking-tight text-transparent md:text-4xl dark:from-brand-gold-bright dark:to-brand-gold-bright/55"
-            >
-              {welcome.headline}
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-2 text-base text-fg-secondary md:text-lg"
-            >
-              {welcome.subline}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="mt-6 grid w-full max-w-md grid-cols-2 gap-1.5 md:gap-2"
-              role="list"
-              aria-label="Sugerowane pytania"
-            >
-              {CHAT_QUICK_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  role="listitem"
-                  onClick={() => void handleSend(prompt)}
-                  disabled={isTyping}
-                  className="w-full rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-center text-xs font-medium text-zinc-600 backdrop-blur-md transition-colors hover:border-logo-navy/30 hover:bg-zinc-50 hover:text-logo-navy disabled:cursor-not-allowed disabled:opacity-40 md:text-sm dark:border-white/10 dark:bg-zinc-950/50 dark:text-zinc-300 dark:hover:border-brand-gold-bright/30 dark:hover:bg-zinc-900/70 dark:hover:text-brand-gold-bright"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </motion.div>
+        <div className="versus-conversation-empty min-h-0 overflow-y-auto">
+          <div className="versus-conversation-inner versus-conversation-welcome">
+            <VersuMark
+              size={160}
+              activity={activity}
+              className="versus-conversation-hero-mark"
+            />
+            <div className="versus-conversation-welcome-copy">
+              <h2>Co dziś sprawdzamy?</h2>
+              <p>
+                {isAuthenticated
+                  ? 'Komunikaty z uczelni, terminy czy Twój plan — pytaj po swojemu.'
+                  : 'Komunikaty, rejestracje i wydarzenia na UJ. Zapytaj po swojemu.'}
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="shrink-0 border-t border-zinc-200/70 bg-zinc-50/85 backdrop-blur-md dark:border-white/10 dark:bg-bg-app/85">
-        <div className="mx-auto w-full max-w-3xl px-4 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4">
-          {/*
-            `relative` wrapper jest anchorem dla `SlashCommandMenu`, który
-            renderuje się `absolute bottom-full` (czyli NAD inputem). Bez tego
-            menu by uciekło do prawego krańca viewportu.
-          */}
-          <form onSubmit={onSubmitForm} className="relative flex items-end gap-2">
-            {slashOpen && (
-              <SlashCommandMenu
-                commands={slashCommands}
-                activeIndex={slashActiveIndex}
-                onActiveIndexChange={setSlashActiveIndex}
-                onSelect={handleSelectSlashCommand}
-                onClose={() => setDraft('')}
-              />
-            )}
+      <div className="versus-conversation-composer shrink-0">
+        <div className="versus-conversation-inner">
+          {error ? (
+            <p
+              className="mb-3 text-sm text-rose-700 dark:text-rose-300"
+              role="alert"
+            >
+              Nie udało się uzyskać odpowiedzi. Sprawdź połączenie i spróbuj
+              ponownie.
+            </p>
+          ) : null}
+          <form onSubmit={onSubmitForm} className="versus-conversation-form">
             <ChatVoiceButton
               onTranscript={(text) => {
-                // UX: nie auto-sendujemy — wkładamy tekst w composer żeby user
-                // mógł doszlifować przed wysłaniem. To istotne dla PL Whispera,
-                // który potrafi pomylić nazwy własne (WZIKS, MISH, etc.).
                 setDraft((prev) => (prev ? prev + ' ' + text : text))
                 window.setTimeout(() => inputRef.current?.focus(), 0)
               }}
@@ -380,12 +337,16 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
             <textarea
               ref={inputRef}
               value={draft}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDownTextarea}
-              placeholder="Napisz wiadomość lub wpisz / dla komend..."
+              aria-label="Wiadomość do Versusia"
+              name="message"
+              placeholder="Zapytaj Versusia…"
               rows={1}
               disabled={isTyping}
-              className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl border border-zinc-200 bg-white/90 p-3 text-sm text-fg-primary shadow-sm outline-none transition-colors focus:border-logo-navy focus:ring-2 focus:ring-logo-navy/15 disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900/80 dark:focus:border-brand-gold-bright dark:focus:ring-brand-gold-bright/20"
+              className="versus-conversation-input"
             />
             {isTyping ? (
               <button
@@ -393,26 +354,61 @@ export default function ChatHubView({ displayName, myProfile }: Props) {
                 onClick={cancel}
                 aria-label="Zatrzymaj odpowiedź"
                 title="Zatrzymaj odpowiedź"
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700"
+                className="versus-conversation-send versus-conversation-stop"
               >
-                <Square size={16} strokeWidth={2.5} fill="currentColor" />
+                <Square
+                  size={16}
+                  strokeWidth={2.5}
+                  fill="currentColor"
+                  aria-hidden
+                />
               </button>
             ) : (
               <button
                 type="submit"
                 aria-label="Wyślij wiadomość"
-                disabled={draft.trim().length === 0}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-logo-navy text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-gold-bright dark:text-zinc-950"
+                disabled={!draft.trim()}
+                className="versus-conversation-send"
               >
-                <Send size={18} strokeWidth={2} />
+                <Send size={20} strokeWidth={2} aria-hidden />
               </button>
             )}
           </form>
-          <p className="mt-2 text-center text-[11px] text-fg-secondary">
-            {CHAT_ASSISTANT_NAME} może się mylić — sprawdzaj ważne informacje.
+          <p className="versus-conversation-note">
+            {CHAT_ASSISTANT_NAME} może się mylić. Ważne informacje potwierdź w
+            źródle.
           </p>
         </div>
       </div>
+
+      {!hasMessages ? (
+        <div
+          className="versus-conversation-inner versus-conversation-suggestions"
+          role="group"
+          aria-label="Sugerowane pytania"
+        >
+          {(isAuthenticated
+            ? CHAT_QUICK_PROMPTS
+            : PUBLIC_CHAT_QUICK_PROMPTS
+          ).map((prompt) => {
+            const presentation = PROMPT_PRESENTATION[prompt]
+            const Icon = presentation?.icon ?? MessageCircle
+            return (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => void handleSend(prompt)}
+                disabled={isTyping}
+                aria-label={prompt}
+                title={prompt}
+              >
+                <Icon size={19} strokeWidth={1.75} aria-hidden />
+                <span>{presentation?.label ?? prompt}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 }

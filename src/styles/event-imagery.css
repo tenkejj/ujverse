@@ -1,0 +1,183 @@
+/* Real event photography is content; the event itself needs no enclosing card. */
+.event-preview {
+  min-width: 0;
+  position: relative;
+  color: var(--campus-text, var(--text-primary));
+}
+.event-preview-main {
+  display: block;
+  min-width: 0;
+  color: inherit;
+  border-radius: 10px;
+  text-decoration: none;
+}
+.event-preview-media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--campus-tint, var(--bg-card));
+  isolation: isolate;
+}
+.event-preview-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  outline: 1px solid oklch(0 0 0 / 0.1);
+  outline-offset: -1px;
+  border-radius: inherit;
+}
+.dark .event-preview-media img {
+  outline-color: oklch(1 0 0 / 0.1);
+}
+.event-preview-media-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--campus-accent, var(--brand-ink));
+}
+.event-preview-media-fallback > svg {
+  opacity: 0.42;
+}
+.event-preview-date {
+  position: absolute;
+  inset-block-end: 10px;
+  inset-inline-start: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.event-preview-date strong {
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.event-preview-copy {
+  min-width: 0;
+  padding-block-start: 11px;
+}
+.event-preview-meta,
+.event-preview-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+  color: var(--campus-muted, var(--text-secondary));
+  font-size: 12px;
+  line-height: 1.5;
+}
+.event-preview-meta svg,
+.event-preview-location svg {
+  flex: none;
+}
+.event-preview h3 {
+  margin: 5px 0 7px;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.event-preview h3 > svg {
+  display: inline;
+  margin-inline-start: 6px;
+  color: var(--campus-accent, var(--brand-ink));
+  vertical-align: -2px;
+}
+.event-preview-location > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-preview-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  color: var(--campus-muted, var(--text-secondary));
+  font-size: 11px;
+}
+.event-preview-controls > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-preview-controls > button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  color: var(--campus-muted, var(--text-secondary));
+}
+.event-preview-controls > button[aria-pressed='true'] {
+  color: var(--campus-accent, var(--brand-ink));
+  background: var(--campus-tint, var(--bg-card));
+}
+.event-preview-main[data-no-link='true'] h3 {
+  display: block;
+  overflow: visible;
+}
+.event-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.event-preview-grid > li {
+  min-width: 0;
+}
+.event-preview-compact .event-preview-main {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+.event-preview-compact .event-preview-copy {
+  padding-block-start: 0;
+}
+.event-preview-compact .event-preview-media {
+  aspect-ratio: 1;
+  border-radius: 9px;
+}
+.event-preview-compact .event-preview-date {
+  inset-block-end: 6px;
+  inset-inline-start: 6px;
+  padding: 3px 6px;
+}
+.event-preview-compact .event-preview-date strong {
+  font-size: 17px;
+}
+.event-preview-compact .event-preview-controls {
+  padding-inline-start: 120px;
+}
+.event-preview-compact .event-preview-location {
+  margin-block-start: 6px;
+}
+@media (hover: hover) {
+  a.event-preview-main:hover h3 {
+    color: var(--campus-accent, var(--brand-ink));
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+@media (forced-colors: active) {
+  .event-preview-media { border: 1px solid CanvasText; }
+}
+.event-preview-main:focus-visible {
+  outline: 2px solid var(--campus-accent, var(--brand-ink));
+  outline-offset: 4px;
+}

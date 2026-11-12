@@ -81,7 +81,10 @@ function supportsReasoningFormat(model: string): boolean {
  * osobnym polem; `include_reasoning: false` + `reasoning_effort: low` trzyma
  * krótki tool-decision bez zjadania `max_tokens` na chain-of-thought.
  */
-function applyReasoningControls(body: Record<string, unknown>, model: string): void {
+function applyReasoningControls(
+  body: Record<string, unknown>,
+  model: string,
+): void {
   if (model.toLowerCase().includes('gpt-oss')) {
     body.reasoning_effort = 'low'
     body.include_reasoning = false
@@ -108,12 +111,30 @@ export type GroqToolDescriptor = {
 
 export class GroqProviderError extends Error {
   readonly status: number | null
+  /** Provider backoff, retained for the UI; a 429 is never retried in a tight loop. */
+  readonly retryAfterMs: number | null
 
-  constructor(message: string, status: number | null = null) {
+  constructor(
+    message: string,
+    status: number | null = null,
+    retryAfterMs: number | null = null,
+  ) {
     super(message)
     this.name = 'GroqProviderError'
     this.status = status
+    this.retryAfterMs = retryAfterMs
   }
+}
+
+/** Retry-After allows fractional seconds or an HTTP date. Ignore malformed values. */
+function retryAfterMs(response: Response): number | null {
+  const value = response.headers.get('retry-after')?.trim()
+  if (!value) return null
+  const seconds = Number(value)
+  if (Number.isFinite(seconds))
+    return seconds >= 0 ? Math.ceil(seconds * 1000) : null
+  const date = Date.parse(value)
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : null
 }
 
 /** Kształt odpowiedzi Groq w trybie non-streaming (OpenAI-compat). */
@@ -179,6 +200,7 @@ export type GroqCompleteWithToolsOptions = {
    * potrzebuje więcej dla „cześć / dzięki".
    */
   maxTokens?: number
+  signal?: AbortSignal
 }
 
 /**
@@ -199,13 +221,19 @@ export type GroqStreamCompletionOptions = GroqCompleteWithToolsOptions
 export class GroqProvider implements LLMProvider {
   private readonly apiKey: string
   private readonly model: string
+  private readonly signal?: AbortSignal
 
-  constructor(apiKey: string, model: string = FALLBACK_MODEL) {
+  constructor(
+    apiKey: string,
+    model: string = FALLBACK_MODEL,
+    signal?: AbortSignal,
+  ) {
     if (!apiKey) {
       throw new Error('GroqProvider: apiKey is required')
     }
     this.apiKey = apiKey
     this.model = model
+    this.signal = signal
   }
 
   async sendMessage(
@@ -226,18 +254,25 @@ export class GroqProvider implements LLMProvider {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: this.signal,
     })
 
     if (!response.ok) {
       const text = await response.text().catch(() => '')
       throw new GroqProviderError(
-        text ? `Groq API ${response.status}: ${text.slice(0, 500)}` : `Groq API returned ${response.status}`,
+        text
+          ? `Groq API ${response.status}: ${text.slice(0, 500)}`
+          : `Groq API returned ${response.status}`,
         response.status,
+        retryAfterMs(response),
       )
     }
 
     if (!response.body) {
-      throw new GroqProviderError('Groq API returned empty body', response.status)
+      throw new GroqProviderError(
+        'Groq API returned empty body',
+        response.status,
+      )
     }
 
     return response.body
@@ -267,7 +302,9 @@ export class GroqProvider implements LLMProvider {
     applyReasoningControls(body, this.model)
     const response = await this.postJson(body)
 
-    const data = (await response.json().catch(() => null)) as GroqChatCompletionResponse | null
+    const data = (await response
+      .json()
+      .catch(() => null)) as GroqChatCompletionResponse | null
     const content = data?.choices?.[0]?.message?.content
     if (typeof content !== 'string' || content.length === 0) {
       throw new GroqProviderError('Groq API returned empty content', null)
@@ -310,8 +347,10 @@ export class GroqProvider implements LLMProvider {
     }
     applyReasoningControls(body, effectiveModel)
 
-    const response = await this.postJson(body)
-    const data = (await response.json().catch(() => null)) as GroqChatCompletionWithToolsResponse | null
+    const response = await this.postJson(body, opts.signal)
+    const data = (await response
+      .json()
+      .catch(() => null)) as GroqChatCompletionWithToolsResponse | null
 
     const message = data?.choices?.[0]?.message
     if (!message) {
@@ -378,6 +417,7 @@ export class GroqProvider implements LLMProvider {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: this.combineSignal(opts.signal),
     })
 
     if (!response.ok) {
@@ -387,11 +427,15 @@ export class GroqProvider implements LLMProvider {
           ? `Groq API ${response.status}: ${text.slice(0, 500)}`
           : `Groq API returned ${response.status}`,
         response.status,
+        retryAfterMs(response),
       )
     }
 
     if (!response.body) {
-      throw new GroqProviderError('Groq API returned empty body', response.status)
+      throw new GroqProviderError(
+        'Groq API returned empty body',
+        response.status,
+      )
     }
 
     const reader = response.body.getReader()
@@ -455,18 +499,20 @@ export class GroqProvider implements LLMProvider {
       // done z tym co mamy (caller dostaje sygnał że można zamknąć stream).
       yield { type: 'done', usage, model: modelEcho ?? effectiveModel }
     } finally {
-      // Defensive cleanup — anulujemy reader na wypadek wyjątku z caller'a
-      // (np. klient zamknął SSE w pół drogi). Bez tego stream-by-stream
-      // wisiałby w pamięci do GC.
-      try {
-        reader.cancel().catch(() => {})
-      } catch {
-        // ignore
-      }
+      await reader.cancel().catch(() => {})
+      reader.releaseLock()
     }
   }
 
-  private async postJson(body: Record<string, unknown>): Promise<Response> {
+  private combineSignal(signal?: AbortSignal): AbortSignal | undefined {
+    if (signal && this.signal) return AbortSignal.any([signal, this.signal])
+    return signal ?? this.signal
+  }
+
+  private async postJson(
+    body: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<Response> {
     const response = await fetch(GROQ_URL, {
       method: 'POST',
       headers: {
@@ -474,6 +520,7 @@ export class GroqProvider implements LLMProvider {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: this.combineSignal(signal),
     })
 
     if (!response.ok) {
@@ -483,6 +530,7 @@ export class GroqProvider implements LLMProvider {
           ? `Groq API ${response.status}: ${text.slice(0, 500)}`
           : `Groq API returned ${response.status}`,
         response.status,
+        retryAfterMs(response),
       )
     }
 

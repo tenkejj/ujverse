@@ -20,10 +20,13 @@
  *   - Cap MAX_VOICE_DURATION_S — gdy osiągnięty, hook stopuje auto, my
  *     emitujemy ten sam blob ale w UI pokazujemy "Limit osiągnięty".
  */
-import { useEffect } from 'react'
+import { useEffect, type ReactElement } from 'react'
 import { Mic, Send, X } from 'lucide-react'
 import { formatDuration, MAX_VOICE_DURATION_S } from '../../lib/aulaUpload'
-import type { RecordedVoice, VoiceRecorderStatus } from '../../hooks/useVoiceRecorder'
+import type {
+  RecordedVoice,
+  VoiceRecorderStatus,
+} from '../../hooks/useVoiceRecorder'
 
 type Props = {
   status: VoiceRecorderStatus
@@ -53,11 +56,14 @@ const BARS = 22
  */
 function VoiceBars({ volume, seconds }: { volume: number; seconds: number }) {
   const t = seconds * 4 // przyspieszamy żeby ruch był widoczny przy 250ms tick
-  const bars: JSX.Element[] = []
+  const bars: ReactElement[] = []
   for (let i = 0; i < BARS; i += 1) {
     const phase = (i / BARS) * Math.PI * 2
     const wave = 0.5 + 0.5 * Math.abs(Math.sin(phase + t))
-    const heightPct = Math.max(10, Math.round((0.15 + volume * 0.85) * wave * 100))
+    const heightPct = Math.max(
+      10,
+      Math.round((0.15 + volume * 0.85) * wave * 100),
+    )
     bars.push(
       <span
         key={i}
@@ -116,7 +122,10 @@ export default function VoiceRecorderInline({
       <div className="flex items-center gap-3 rounded-xl border border-rose-200/60 bg-rose-50 px-3 py-2 dark:border-rose-400/30 dark:bg-rose-500/10">
         <Mic size={16} className="shrink-0 text-rose-600 dark:text-rose-400" />
         <p className="min-w-0 flex-1 truncate text-sm text-rose-700 dark:text-rose-200">
-          {errorMsg ?? (status === 'denied' ? 'Mikrofon odrzucony' : 'Nie udało się nagrać')}
+          {errorMsg ??
+            (status === 'denied'
+              ? 'Mikrofon odrzucony'
+              : 'Nie udało się nagrać')}
         </p>
         <button
           type="button"
@@ -164,7 +173,13 @@ export default function VoiceRecorderInline({
         onClick={handleSend}
         disabled={!isRecording || tooShort}
         aria-label={atCap ? 'Wyślij (limit osiągnięty)' : 'Wyślij głosówkę'}
-        title={tooShort ? 'Nagranie za krótkie' : atCap ? 'Limit osiągnięty — wyślij' : 'Wyślij głosówkę'}
+        title={
+          tooShort
+            ? 'Nagranie za krótkie'
+            : atCap
+              ? 'Limit osiągnięty — wyślij'
+              : 'Wyślij głosówkę'
+        }
         className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-500 text-white shadow-md transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-rose-500 dark:hover:bg-rose-400"
       >
         <Send size={16} strokeWidth={2.25} />

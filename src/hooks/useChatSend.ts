@@ -18,17 +18,52 @@ import { LLMService, LLMServiceError } from '../services/ai/LLMService'
 import { useChatStore } from '../store/useChatStore'
 import { toast } from '../lib/appToast'
 import type { ChatMessage } from '../types/ai'
+import {
+  chatPresentationWindow,
+  CHAT_MAX_REVEAL_LAG_MS,
+} from '../lib/chatPresentation'
+import {
+  getUserPreferences,
+  subscribePreferences,
+} from '../lib/userPreferences'
 
-/**
- * System-prompt nie jest tu już budowany ręcznie — buduje go
- * `ContextInjectedBielikAdapter` (RAG-Lite) zaraz przed wysłaniem żądania,
- * wstrzykując aktualny kontekst (ogłoszenia + ostatnie posty) z `DataService`.
- * Dzięki temu hook nie wie, że pod spodem siedzi dekorator — kontrakt LLMProvider.
- */
+// Persona and tool context are owned by the server.
 
 export type UseChatSendResult = {
   sendMessage: (rawContent: string) => Promise<void>
   cancel: () => void
+}
+
+/** A bounded presentation settle, not model inference time or a token-rate metric. */
+function settleReceivedText(
+  delayMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  if (typeof window === 'undefined' || signal.aborted || delayMs <= 0)
+    return Promise.resolve()
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
+  if (motion.matches || getUserPreferences().reducedMotion)
+    return Promise.resolve()
+  return new Promise((resolve) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let unsubscribePreferences = () => {}
+    const finish = () => {
+      if (timer !== undefined) clearTimeout(timer)
+      signal.removeEventListener('abort', finish)
+      motion.removeEventListener('change', onMotion)
+      unsubscribePreferences()
+      resolve()
+    }
+    const onMotion = () => {
+      if (motion.matches) finish()
+    }
+    signal.addEventListener('abort', finish, { once: true })
+    motion.addEventListener('change', onMotion)
+    unsubscribePreferences = subscribePreferences((prefs) => {
+      if (prefs.reducedMotion) finish()
+    })
+    timer = setTimeout(finish, Math.min(CHAT_MAX_REVEAL_LAG_MS, delayMs))
+  })
 }
 
 export function useChatSend(): UseChatSendResult {
@@ -38,10 +73,20 @@ export function useChatSend(): UseChatSendResult {
     if (abortRef.current) {
       abortRef.current.abort()
       abortRef.current = null
+      useChatStore.getState().setTyping(false)
+      useChatStore.getState().setActionLabel(null)
+      useChatStore.getState().setResponsePhase('idle')
     }
   }, [])
 
   useEffect(() => () => cancel(), [cancel])
+  useEffect(
+    () =>
+      useChatStore.subscribe((next, prev) => {
+        if (next.generation !== prev.generation) cancel()
+      }),
+    [cancel],
+  )
 
   const sendMessage = useCallback(
     async (rawContent: string): Promise<void> => {
@@ -49,6 +94,7 @@ export function useChatSend(): UseChatSendResult {
       const store = useChatStore.getState()
       if (!content || store.isTyping) return
 
+      const generation = store.generation
       // Wymóg #4: AbortController musi uciąć poprzedni stream PRZED rozpoczęciem nowego.
       cancel()
       store.setError(null)
@@ -63,12 +109,22 @@ export function useChatSend(): UseChatSendResult {
       const controller = new AbortController()
       abortRef.current = controller
       useChatStore.getState().setTyping(true)
+      useChatStore.getState().setResponsePhase('thinking')
+      let lastDeltaAt = 0
+      let lastDeltaLength = 0
 
       try {
         const stream = await LLMService.sendMessage(historyForApi, {
           signal: controller.signal,
         })
         for await (const event of LLMService.parseSSEStream(stream)) {
+          if (
+            controller.signal.aborted ||
+            useChatStore.getState().generation !== generation
+          ) {
+            controller.abort()
+            return
+          }
           if (event.type === 'meta') {
             // Server zna tool name → pokaż konkretną etykietę („Sprawdzam
             // zniżki…") zamiast losowych thinking-phrases. Zostanie do
@@ -89,8 +145,33 @@ export function useChatSend(): UseChatSendResult {
             }
             continue
           }
+          if (
+            event.content &&
+            useChatStore.getState().responsePhase !== 'answering'
+          ) {
+            useChatStore.getState().setResponsePhase('answering')
+          }
+          if (event.content) {
+            lastDeltaAt = performance.now()
+            lastDeltaLength = event.content.length
+          }
           useChatStore.getState().appendAssistantMessage(event.content)
         }
+        // Ready/cached replies can put a delta and [DONE] in one browser task.
+        // Keep answering active just long enough for a short visual reveal,
+        // within the shared bounded reading window after the last received delta.
+        const settleMs = chatPresentationWindow(lastDeltaLength)
+        if (lastDeltaLength > 0) {
+          await settleReceivedText(
+            settleMs - (performance.now() - lastDeltaAt),
+            controller.signal,
+          )
+        }
+        if (
+          controller.signal.aborted ||
+          useChatStore.getState().generation !== generation
+        )
+          return
         const last = useChatStore.getState().messages.at(-1)
         if (
           !controller.signal.aborted &&
@@ -99,11 +180,22 @@ export function useChatSend(): UseChatSendResult {
         ) {
           useChatStore.getState().dropTrailingEmptyAssistant()
           useChatStore.getState().setError('Pusta odpowiedź asystenta.')
+          useChatStore.getState().setResponsePhase('error')
           toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
+        } else if (
+          !controller.signal.aborted &&
+          last?.role === 'assistant' &&
+          last.content.trim()
+        ) {
+          useChatStore.getState().setResponsePhase('success')
         }
       } catch (err) {
+        if (
+          controller.signal.aborted ||
+          useChatStore.getState().generation !== generation
+        )
+          return
         useChatStore.getState().dropTrailingEmptyAssistant()
-        if (controller.signal.aborted) return
         // DEBUG (Krok 3): pełen rzut błędu do F12 → Console.
         // `LLMServiceError` niesie też status HTTP — przydatne, gdy proxy
         // zwróciło 404 (np. brak `vercel dev`), 500 (brak klucza) lub 502
@@ -125,6 +217,7 @@ export function useChatSend(): UseChatSendResult {
               ? err.message
               : 'Nieznany błąd asystenta.'
         useChatStore.getState().setError(message)
+        useChatStore.getState().setResponsePhase('error')
         // 413 (za długa wiadomość) ma konkretny tekst z API — nie zasłaniaj
         // go ogólnym „Asystent nie odpowiada".
         if (err instanceof LLMServiceError && err.status === 413) {
@@ -133,11 +226,14 @@ export function useChatSend(): UseChatSendResult {
           toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
         }
       } finally {
-        if (abortRef.current === controller) abortRef.current = null
-        useChatStore.getState().setTyping(false)
-        // Etykieta ma sens tylko podczas „myślenia" — gdy stream kończy się,
-        // typewriter już animuje pełną odpowiedź; trzymanie label'u rozprasza.
-        useChatStore.getState().setActionLabel(null)
+        if (
+          abortRef.current === controller &&
+          useChatStore.getState().generation === generation
+        ) {
+          abortRef.current = null
+          useChatStore.getState().setTyping(false)
+          useChatStore.getState().setActionLabel(null)
+        }
       }
     },
     [cancel],

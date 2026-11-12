@@ -4,29 +4,14 @@
  * Wyszukaj użytkownika UJverse po fragmencie imienia, nazwiska lub username.
  * Zwraca top 5 trafień jako markdown links do profilu (deep-link `/u/<username>`).
  *
- * Implementacja: jeden SELECT na `profiles` z `or(ilike, ilike, ilike)`. Filtry:
- *   - `is_searchable IS NOT FALSE` — respektujemy user opt-out (settings)
- *   - `is_banned IS NOT TRUE` — wycinamy zbanowanych
- *   - dla każdego query: `full_name ilike %q%`, `username ilike %q%`,
- *     `study_program ilike %q%` (np. ktoś szuka "informatyka" → osoby z kierunku)
- *
- * Ranking: PostgREST nie wspiera RANK po prostym ilike, więc:
- *   1. SELECT 30 rekordów
- *   2. JS-side score: exact username > username-prefix > full_name-prefix >
- *      full_name-substring > program-substring
- *   3. Zwróć top 5
- *
- * Auth: opcjonalny — anon też może szukać (RLS `profiles_select_all` dla
- * `authenticated`, ale supabaseAdmin bypassuje RLS — więc właściwie public
- * search). Świadomie permissive: lookup po nazwisku to publicna feature
- * (jak Facebook search), tylko respektujemy `is_searchable=false` opt-out.
- *
- * Tool zwraca STRING (markdown) → 1:1 do usera.
- *
- * Cache TTL: 60s (profile się rzadko zmieniają; nazwy własne są stabilne).
+ * Wyszukiwanie wymaga zalogowania zweryfikowanego przez rejestr narzędzi.
+ * Filtry widoczności i moderacji działają przed limitem zapytania oraz przy
+ * mapowaniu odpowiedzi. Ukryty wydział nie trafia do tekstu przekazanego modelowi.
+ * Klient administracyjny pozostaje wyłącznie po stronie serwera.
  */
 
 import { registerTool, type ToolContext } from './registry.js'
+import { toIlikePattern } from '../../../src/lib/info/search.js'
 
 const MAX_RESULTS = 5
 const SCAN_LIMIT = 30
@@ -41,6 +26,7 @@ type ProfileSearchRow = {
   year_started: number | null
   is_banned: boolean | null
   is_searchable: boolean | null
+  show_department: boolean | null
 }
 
 type FindUserArgs = {
@@ -54,7 +40,7 @@ type FindUserArgs = {
  */
 function sanitizeForOrIlike(raw: string): string {
   return raw
-    .replace(/[,()*]/g, ' ')
+    .replace(/[,()"'*\\]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 64)
@@ -88,26 +74,24 @@ function renderRow(row: ProfileSearchRow): string {
   const meta: string[] = []
   if (row.study_program) meta.push(row.study_program)
   if (row.year_started) meta.push(`rocznik ${row.year_started}`)
-  if (row.department) meta.push(row.department)
+  if (row.show_department === true && row.department) meta.push(row.department)
 
   const metaStr = meta.length > 0 ? ` — ${meta.join(', ')}` : ''
   return `${link}${metaStr}`
 }
 
-async function execute(
+export async function executeFindUserSearch(
   args: FindUserArgs,
   ctx: ToolContext,
 ): Promise<string> {
+  if (!ctx.userId) return 'Wyszukiwanie osób wymaga zalogowania.'
   const queryRaw = typeof args?.query === 'string' ? args.query : ''
   const query = sanitizeForOrIlike(queryRaw)
-  if (query.length < MIN_QUERY_LENGTH) {
-    return `Podaj co najmniej ${MIN_QUERY_LENGTH} znaki do wyszukiwania (otrzymałem: "${queryRaw}").`
+  const pattern = toIlikePattern(query)
+  if (query.length < MIN_QUERY_LENGTH || !pattern) {
+    return `Podaj co najmniej ${MIN_QUERY_LENGTH} znaki do wyszukiwania (otrzymałem: "${query}").`
   }
 
-  // PostgREST `or` syntax: `or=(full_name.ilike.*foo*,username.ilike.*foo*,...)`.
-  // Patrn `*` jest aliasem dla `%` w PostgREST. Spacje w query odbierane jako
-  // literal — chcemy substring matching, więc trzymamy spację (np. "Jan Kowalski").
-  const pattern = `*${query}*`
   const orFilter = [
     `full_name.ilike.${pattern}`,
     `username.ilike.${pattern}`,
@@ -116,26 +100,28 @@ async function execute(
 
   const { data, error } = await ctx.supabaseAdmin
     .from('profiles')
-    .select('id, full_name, username, study_program, department, year_started, is_banned, is_searchable')
+    .select('id, full_name, username, study_program, department, year_started, is_banned, is_searchable, show_department')
+    .eq('is_searchable', true)
+    .not('is_banned', 'is', true)
     .or(orFilter)
     .limit(SCAN_LIMIT)
 
   if (error) {
     console.error('[find_user] db error:', error.message)
-    return `Nie wyszło — ${error.message}.`
+    return 'Nie udało się przeszukać profili. Spróbuj ponownie za chwilę.'
   }
   if (!Array.isArray(data) || data.length === 0) {
-    return `Nikogo dla „${queryRaw}" nie znalazłem. Spróbuj samego nazwiska albo username (np. @franek).`
+    return `Nikogo dla „${query}" nie znalazłem. Spróbuj samego nazwiska albo username (np. @franek).`
   }
 
   const rows = (data as ProfileSearchRow[]).filter(
     (r) =>
       r.is_banned !== true &&
-      r.is_searchable !== false &&
+      r.is_searchable === true &&
       r.id !== ctx.userId,
   )
   if (rows.length === 0) {
-    return `Nikogo dla „${queryRaw}" — pewnie konta prywatne. Spróbuj inaczej.`
+    return `Nikogo dla „${query}" — pewnie konta prywatne. Spróbuj inaczej.`
   }
 
   rows.sort((a, b) => scoreRow(a, query) - scoreRow(b, query))
@@ -144,7 +130,7 @@ async function execute(
   const header =
     top.length === 1
       ? `Mam jednego: `
-      : `${top.length} ${top.length === 1 ? 'osobę' : 'osób'} dla „${queryRaw}":`
+      : `${top.length} ${top.length === 1 ? 'osobę' : 'osób'} dla „${query}":`
 
   if (top.length === 1) {
     return `${header}${renderRow(top[0])}.`
@@ -168,5 +154,7 @@ registerTool<FindUserArgs, string>({
       additionalProperties: false,
     },
   },
-  execute,
+  execute: executeFindUserSearch,
+  // Re-evaluate visibility and bans whenever this tool executes.
+  ttlMs: 0,
 })

@@ -32,6 +32,7 @@ import {
   ttlForTool,
 } from '../cache.js'
 import { isPersonalTool } from '../personalTools.js'
+import { canUseChatTool, chatToolAccessScope } from '../chatAccess.js'
 import { kvGetWithin, kvSetSafe } from '../kvCache.js'
 import { incrCounter, pushLatency } from '../metrics.js'
 
@@ -111,7 +112,7 @@ const registry = new Map<string, ToolEntry>()
 export type RegisterToolArgs<TArgs, TResult> = {
   tool: Tool
   execute: ToolExecutor<TArgs, TResult>
-  /** Override TTL per rejestracja — przydatne w testach. Default: `ttlForTool(tool.name)`. */
+  /** Override TTL; explicit 0 skips cache. Default: `ttlForTool(tool.name)`. */
   ttlMs?: number
 }
 
@@ -122,10 +123,18 @@ export function registerTool<TArgs, TResult>(
     throw new Error(`Tool already registered: ${entry.tool.name}`)
   }
   const ttlMs = entry.ttlMs ?? ttlForTool(entry.tool.name)
-  const decorated = withCache(entry.tool.name, entry.execute, ttlMs)
+  const decorated = ttlMs === 0
+    ? entry.execute
+    : withCache(entry.tool.name, entry.execute, ttlMs)
   registry.set(entry.tool.name, {
     tool: entry.tool,
-    execute: decorated as ToolExecutor,
+    execute: async (args, ctx) => {
+      // Check before cache lookup: previously cached private results are not public.
+      if (!canUseChatTool(entry.tool.name, ctx.userId)) {
+        return { ok: false, requiresAuth: true, error: 'Do tych informacji potrzebne jest logowanie. Bez konta sprawdzę komunikaty, rejestracje i oficjalne wydarzenia UJ.' }
+      }
+      return decorated(args as TArgs, ctx)
+    },
   })
 }
 
@@ -165,7 +174,7 @@ function withCache<TArgs, TResult>(
 ): ToolExecutor<TArgs, TResult> {
   const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000))
   return async (args, ctx) => {
-    const argsRecord = args as unknown as Record<string, unknown>
+    const argsRecord = { ...(args as unknown as Record<string, unknown>), __access: chatToolAccessScope(ctx.userId) }
     const cacheKey = isPersonalTool(toolName)
       ? buildToolCacheKey(toolName, {
           ...argsRecord,
@@ -247,8 +256,8 @@ export function clearToolCache(): void {
  * Wywoływane przez orchestrator (`api/chat.ts`) tuż przed wysłaniem requestu
  * do Groqa.
  */
-export function toGroqToolsArray(): GroqToolDescriptor[] {
-  return Array.from(registry.values()).map(({ tool }) => ({
+export function toGroqToolsArray(userId: string | null = null): GroqToolDescriptor[] {
+  return Array.from(registry.values()).filter(({ tool }) => canUseChatTool(tool.name, userId)).map(({ tool }) => ({
     type: 'function',
     function: tool,
   }))

@@ -1,0 +1,66 @@
+.versus-about {
+  width: min(100%, 1120px);
+  min-width: 0;
+  margin-top: 8px;
+  text-align: center;
+}
+.versus-about > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.versus-about > summary::-webkit-details-marker {
+  display: none;
+}
+.versus-about[open] > summary > svg {
+  rotate: 180deg;
+}
+.versus-about-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 40px;
+  margin-top: 12px;
+  padding-block: 24px 8px;
+  border-top: 1px solid var(--campus-line, var(--border-app));
+  text-align: start;
+}
+.versus-about-content > div {
+  min-width: 0;
+}
+.versus-about dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--campus-text, var(--text-primary));
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.versus-about dt > svg {
+  flex: none;
+  color: var(--campus-accent, var(--brand-ink));
+}
+.versus-about dd {
+  margin-top: 8px;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) {
+  .versus-about > summary:hover {
+    color: var(--campus-text, var(--text-primary));
+  }
+}
+@media (max-width: 639px) {
+  .versus-about-content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding-block-start: 20px;
+  }
+}

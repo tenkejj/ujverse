@@ -78,10 +78,12 @@ async function execute(
       'id, title, description, study_program, year, audience_label, ' +
         'opens_at, closes_at, registration_url, info_url, kind, subscriber_count',
     )
-    .gte('opens_at', now.toISOString())
     .lte('opens_at', upper.toISOString())
     .order('opens_at', { ascending: true })
     .limit(MAX_ROWS)
+
+  if (!ctx.userId) q = q.not('source_usos_tura_id', 'is', null).or(`closes_at.gt.${now.toISOString()},opens_at.gte.${now.toISOString()}`)
+  else q = q.gte('opens_at', now.toISOString())
 
   if (typeof args?.study_program === 'string' && args.study_program.trim().length >= 2) {
     const pattern = escapeIlikePattern(args.study_program.trim())

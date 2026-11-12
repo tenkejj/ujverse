@@ -34,14 +34,15 @@ const EMPTY_RESULT_MESSAGE = 'Brak danych w bazie dla tego zapytania'
  * Zod schema dla wiersza `announcements` zwracanego przez Supabase. Pełni
  * rolę runtime "return type check" — jeśli schemat tabeli się rozjedzie albo
  * Postgres zwróci nieoczekiwane typy, `safeParse` to wyłapie i nie pozwoli
- * wpuścić śmieci do wyniku narzędzia. Status musi być jedną z trzech wartości
- * domeny (`cancelled` | `remote` | `duty`).
+ * wpuścić śmieci do wyniku narzędzia. Obejmuje komunikaty ogólne i wydarzenia
+ * dodane przy rozszerzeniu serwisu na wszystkie wydziały.
  */
 const AnnouncementRowSchema = z.object({
   id: z.string(),
   lecturer_name: z.string(),
+  title: z.string().nullable(),
   body: z.string(),
-  status: z.enum(['cancelled', 'remote', 'duty']),
+  status: z.enum(['cancelled', 'remote', 'duty', 'info', 'event']),
   department: z.string().nullable(),
   source: z.string().nullable(),
   source_url: z.string().nullable(),
@@ -63,6 +64,7 @@ export type GetLatestAnnouncementsResult = {
   items: Array<{
     id: string
     lecturer_name_nominative: string
+    title: string | null
     body: string
     status: AnnouncementRow['status']
     department: string | null
@@ -83,7 +85,7 @@ async function execute(
 ): Promise<GetLatestAnnouncementsResult | GetLatestAnnouncementsError | string> {
   const { data, error } = await ctx.supabaseAdmin
     .from('announcements')
-    .select('id, lecturer_name, body, status, department, source, source_url, created_at')
+    .select('id, lecturer_name, title, body, status, department, source, source_url, created_at')
     .order('created_at', { ascending: false })
     .limit(MAX_ROWS)
 
@@ -132,6 +134,7 @@ async function execute(
   const items = rows.map((r) => ({
     id: r.id,
     lecturer_name_nominative: cacheMap.get(r.lecturer_name) ?? r.lecturer_name,
+    title: r.title,
     body: r.body,
     status: r.status,
     department: r.department,
@@ -150,7 +153,7 @@ registerTool<
   tool: {
     name: 'get_latest_announcements',
     description:
-      '10 najnowszych komunikatów ISI UJ (odwołane zajęcia, dyżury, zdalne). Pytania o ogłoszenia/komunikaty/odwołane.',
+      '10 najnowszych komunikatów z wydziałów UJ: ogłoszenia ogólne, wydarzenia, odwołane zajęcia i dyżury. created_at oznacza dodanie do UJverse, nie datę publikacji w źródle.',
     parameters: {
       type: 'object',
       properties: {},

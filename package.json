@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "UJverse — nieoficjalna platforma społeczności Uniwersytetu Jagiellońskiego.",
+  "description": "UJverse — niezależny, nieoficjalny serwis informacyjny dla studentów Uniwersytetu Jagiellońskiego.",
   "author": {
     "name": "Franciszek Dranka",
     "email": "franciszek.dranka@student.uj.edu.pl"
@@ -21,6 +21,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "tsc -p tsconfig.test.json && node --import tsx --test --test-isolation=none \"tests/**/*.test.ts\"",
     "preview": "vite preview",
     "deploy:prod": "npx vercel build --prod && npx vercel deploy --prebuilt --prod --force --yes",
     "search:resync": "tsx scripts/force-resync.ts",

@@ -1,0 +1,117 @@
+.study-profile {
+  min-width: 0;
+  color: var(--campus-text, var(--text-primary));
+}
+.study-profile > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  width: fit-content;
+  max-width: 100%;
+  padding-block: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  list-style: none;
+  cursor: pointer;
+}
+.study-profile > summary::-webkit-details-marker {
+  display: none;
+}
+.study-profile > summary > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.study-profile > summary > svg {
+  flex: none;
+  color: var(--campus-accent, var(--brand-ink));
+}
+.study-profile[open] > summary > svg:last-child {
+  rotate: 180deg;
+}
+.study-profile-body {
+  container-type: inline-size;
+  margin-block: 8px 16px;
+  padding: 20px;
+  border: 1px solid var(--campus-line, var(--border-app));
+  border-radius: 12px;
+  background: var(--campus-bg, var(--bg-card));
+}
+.study-profile-body > p {
+  max-width: 80ch;
+  margin: 0;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 13px;
+  line-height: 1.65;
+}
+.study-profile-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-block: 20px 16px;
+}
+.study-profile-fields > label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.study-profile-fields select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding-block: 9px;
+  padding-inline: 10px 28px;
+  border: 1px solid var(--campus-line, var(--border-app));
+  border-radius: 8px;
+  background: var(--campus-bg, var(--bg-card));
+  color: var(--campus-text, var(--text-primary));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+}
+.study-profile-fields select:disabled {
+  opacity: 0.6;
+}
+.study-profile :where(summary, select, a):focus-visible {
+  outline: 2px solid var(--campus-accent, var(--brand-ink));
+  outline-offset: 3px;
+}
+.study-profile-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  color: var(--campus-muted, var(--text-label));
+  font-size: 12px;
+  line-height: 1.6;
+}
+.study-profile-context > p {
+  margin: 0;
+}
+.study-profile-context > p:last-child {
+  flex-basis: 100%;
+}
+.study-profile-context > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  color: var(--campus-accent, var(--brand-ink));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .study-profile-body {
+    padding: 16px;
+  }
+}
+@container (max-width: 700px) {
+  .study-profile-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,23 +1,4 @@
-/**
- * Synthesizer — naturalna odpowiedź dla użytkownika z surowych wyników toola.
- *
- * Filozofia: SERWER NIE PISZE odpowiedzi. Serwer wyciąga z wyników faktów
- * (compact bullet-string) i prosi tani model (Llama 8B) o ułożenie ich
- * w naturalne, krótkie zdanie odpowiadające konkretnie na pytanie usera.
- *
- * Po co: wcześniej mieliśmy hardcoded leady typu „Spoko, 2 rzeczy:" które
- * były podejrzane (nie pasują do pytania) i sztywne (zero wariancji).
- * LLM dostając pytanie + fakty potrafi po prostu napisać po ludzku.
- *
- * Tradeoff: dodajemy ~1 dodatkowy round-trip do Groqa per tool (Llama 8B,
- * tani i szybki — ~150ms TTFB, ~$0.0001 per request). Przy 60s response
- * cache to dla typowych zapytań ~5-10× rzadsze niż 1:1.
- *
- * Nieużywany dla:
- *  - empty results (gotowy fallback string)
- *  - błędów (gotowy fallback string)
- *  - passthrough toolów (briefing — już jest mardownem)
- */
+/** Format public tool facts directly where possible; use the small model for synthesis. */
 
 import {
   GroqProvider,
@@ -25,7 +6,10 @@ import {
   type GroqUsage,
 } from './GroqProvider.js'
 import { GROQ_SMALLTALK_MODEL, withGroqRetry } from './llmService.js'
-import { SYNTHESIS_SYSTEM_PROMPT, SYNTHESIS_USER_INSTRUCTION } from './persona.js'
+import {
+  SYNTHESIS_SYSTEM_PROMPT,
+  SYNTHESIS_USER_INSTRUCTION,
+} from './persona.js'
 import { softenTranslationese } from './polishNaturalize.js'
 import type { GroqMessage } from './types.js'
 
@@ -35,7 +19,7 @@ import type { GroqMessage } from './types.js'
 
 /**
  * Wynik `buildToolFacts`. Albo gotowa odpowiedź ('direct' — empty/error/
- * passthrough), albo fakty do syntezy ('synthesize' — Llama 8B robi resztę).
+ * passthrough), albo fakty do syntezy ('synthesize' — mniejszy model robi resztę).
  */
 export type ToolFactsResult =
   | { kind: 'direct'; text: string }
@@ -48,10 +32,10 @@ export type ToolFactsResult =
 
 /**
  * Kompaktowa synteza bez LLM — gdy jest dokładnie 1 krótki fakt.
- * Oszczędza call Llama 8B przy prostych wynikach (1 ogłoszenie, 1 wydarzenie).
+ * Oszczędza wywołanie mniejszego modelu przy pojedynczym krótkim wyniku.
  */
 export function tryCompactSynthesis(
-  userQuery: string,
+  _userQuery: string,
   facts: string,
   hint: string | null,
 ): string | null {
@@ -61,16 +45,11 @@ export function tryCompactSynthesis(
     .filter((l) => l.length > 0)
   if (lines.length !== 1) return null
   const line = lines[0]!
-  if (line.length < 12 || line.length > 140) return null
-  if (hint && hint.length > 55) return null
+  if (line.length < 12 || line.length > 600) return null
+  if (hint && hint.length > 240) return null
 
-  const q = userQuery.toLowerCase()
-  const openers = q.includes('?')
-    ? (['Krótko —', 'Patrz,', 'Masz tak:', 'W skrócie —'] as const)
-    : (['Krótko —', 'Słuchaj —', 'Tak jest:', 'W skrócie —'] as const)
-  const opener = openers[Math.floor(Math.random() * openers.length)]!
-  const tail = hint ? ` ${hint.endsWith('.') ? hint : `${hint}.`}` : ''
-  return `${opener} ${line}${tail}`
+  const tail = hint ? `\n\n${hint.trim()}` : ''
+  return `${line}${tail}`
 }
 
 /** Stosuj po złożeniu odpowiedzi z LLM lub kompaktowej syntezy. */
@@ -78,7 +57,7 @@ export function polishAssistantReply(text: string): string {
   return softenTranslationese(text)
 }
 
-/** 1 wynik → compact (bez LLM). 2–3 → synteza LLM. 4+ → lista markdown. */
+/** Remaining unstructured facts: 1 → compact, 2–3 → model, 4+ → list. Common catalogues bypass this as direct replies. */
 export const LLM_SYNTHESIS_MIN_LINES = 2
 export const LLM_SYNTHESIS_MAX_LINES = 3
 export const LIST_FORMAT_MIN_LINES = 4
@@ -99,48 +78,45 @@ export function shouldFormatAsBulletList(facts: string): boolean {
   return countFactLines(facts) >= LIST_FORMAT_MIN_LINES
 }
 
-function polishItemCount(n: number): string {
-  if (n === 1) return '1 pozycję'
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-    return `${n} pozycje`
-  }
-  return `${n} pozycji`
+function conversationalListLead(topicHint: string): string {
+  if (/rejestracje USOS/i.test(topicHint))
+    return 'W pobranych terminach znalazłem te rejestracje. Przy każdej podaję, kiedy można się zapisać:'
+  if (/oficjalne wydarzenia/i.test(topicHint))
+    return 'Znalazłem te wydarzenia w kalendarzu UJ. Zerknij, co pasuje Ci terminem:'
+  if (/plan zajęć/i.test(topicHint))
+    return 'Zajrzałem do Twojego zapisanego planu. W wybranym terminie widzę:'
+  if (/ogłoszenia wykładowcy /i.test(topicHint))
+    return `${topicHint.trim().replace(/\.$/, '')}. Znalazłem te wpisy:`
+  if (/ogłosze|komunikat/i.test(topicHint))
+    return 'Znalazłem te komunikaty. Przy każdym zostawiam link, żeby łatwo sprawdzić szczegóły:'
+  if (/kalendarz/i.test(topicHint))
+    return 'Zajrzałem do kalendarza — w tym zakresie znalazłem:'
+  if (/zniżki/i.test(topicHint))
+    return 'Mam kilka propozycji z bazy zniżek. Przed skorzystaniem sprawdź warunki oferty:'
+  if (/wykładowc/i.test(topicHint))
+    return 'Znalazłem te osoby w bazie wykładowców:'
+  if (/wydarzenia/i.test(topicHint))
+    return 'Znalazłem te wydarzenia pasujące do pytania:'
+  return 'Oto, co udało mi się znaleźć:'
 }
 
-function lowerFirst(s: string): string {
-  if (!s) return s
-  return s.charAt(0).toLowerCase() + s.slice(1)
-}
-
-function conversationalListLead(topicHint: string, lineCount: number): string {
-  const ctx = topicHint.trim().replace(/\.+$/, '')
-  const nPhrase = polishItemCount(lineCount)
-  const templates: readonly ((c: string, n: string) => string)[] = [
-    (c, n) => `${c} — poniżej ${n}:`,
-    (c, n) => `Patrz, ${lowerFirst(c)} — ${n}:`,
-    (c, n) => `Masz ${n} (${lowerFirst(c)}):`,
-  ]
-  const idx = lineCount % templates.length
-  return templates[idx]!(ctx, nPhrase)
-}
-
-function formatListClosingHint(
+/** Common catalogues need a helpful voice, not a second model call to paraphrase dates. */
+function catalogueReply(
+  facts: string,
   hint: string | null,
-  lineCount: number,
-): string {
-  if (hint) {
-    const h = hint.trim().replace(/\.+$/, '')
-    if (/^jeszcze/i.test(h) || /^w bazie/i.test(h)) {
-      return `\n${h.charAt(0).toUpperCase()}${h.slice(1)} — doprecyzuj pytanie albo zajrzyj w apce po resztę.`
-    }
-    return `\n${h}.`
+  topicHint: string,
+): ToolFactsResult {
+  const lines = facts.split('\n').filter((line) => line.trim().length > 0)
+  const body =
+    lines.length === 1 ? lines[0] : lines.map((line) => `- ${line}`).join('\n')
+  return {
+    kind: 'direct',
+    text: `${conversationalListLead(topicHint)}\n\n${body}${formatListClosingHint(hint)}`,
   }
-  if (lineCount >= 5) {
-    return '\nTo skrót — reszta siedzi w apce, jak chcesz zawęzić, dopisz np. dzielnicę albo datę.'
-  }
-  return ''
+}
+
+function formatListClosingHint(hint: string | null): string {
+  return hint ? `\n\n${hint.trim()}` : ''
 }
 
 /**
@@ -160,11 +136,11 @@ export function formatListedFacts(
   if (lines.length === 0) return null
   if (!shouldFormatAsBulletList(facts)) return null
 
-  const lead = conversationalListLead(topicHint, lines.length)
+  const lead = conversationalListLead(topicHint)
   const bullets = lines
     .map((line) => (line.startsWith('- ') ? line : `- ${line}`))
     .join('\n')
-  const tail = formatListClosingHint(hint, lines.length)
+  const tail = formatListClosingHint(hint)
   return `${lead}\n${bullets}${tail}`
 }
 
@@ -183,35 +159,15 @@ export function formatFactsFallback(
 }
 
 function buildSynthesisUserContent(opts: SynthesisOptions): string {
-  const { userQuery, facts, hint, topicHint, recentOpeners } = opts
-  const lineCount = countFactLines(facts)
-
-  const userParts: string[] = [
-    `Pytanie usera: ${userQuery}`,
-    `Kontekst: ${topicHint}`,
-    'Fakty (każda linia = jeden wynik):',
+  const { userQuery, facts, hint, topicHint } = opts
+  return [
+    `Pytanie: ${userQuery}`,
+    `Temat: ${topicHint}`,
+    'Fakty (jedna linia = jeden wynik):',
     facts,
-  ]
-  if (hint) {
-    userParts.push(`Wskazówka na koniec (opcjonalna): ${hint}`)
-  }
-  if (lineCount >= LLM_SYNTHESIS_MIN_LINES && lineCount <= LLM_SYNTHESIS_MAX_LINES) {
-    userParts.push(
-      `Masz ${lineCount} wyniki — ułóż je w 2–4 zdaniach prozą (bez bullet listy). ` +
-        'Echo temat pytania; możesz **pogrubiać** nazwy lokali/wydarzeń. Zachowaj linki markdown z faktów.',
-    )
-  }
-  if (recentOpeners && recentOpeners.length > 0) {
-    const quoted = recentOpeners
-      .slice(0, 3)
-      .map((o) => `"${o}"`)
-      .join(', ')
-    userParts.push(
-      `Nie zaczynaj odpowiedzi od: ${quoted} — wybierz inny lead, żeby brzmiało świeżo.`,
-    )
-  }
-  userParts.push(SYNTHESIS_USER_INSTRUCTION)
-  return userParts.join('\n')
+    ...(hint ? [`Dodatkowa informacja: ${hint}`] : []),
+    SYNTHESIS_USER_INSTRUCTION,
+  ].join('\n')
 }
 
 export type SynthesisOptions = {
@@ -220,16 +176,8 @@ export type SynthesisOptions = {
   hint: string | null
   topicHint: string
   provider: GroqProvider
-  /**
-   * Anti-repetition: lista 1-3 pierwszych słów ostatnich odpowiedzi
-   * Versusia w tej rozmowie. Jeśli przekazana, dorzucamy do prompta
-   * negatywną wskazówkę („NIE zaczynaj od ..."). Llama 8B respektuje takie
-   * constrainty i wybiera inny opener — eliminuje monotonny rytm typu
-   * „Spoko, sprawdziłem..." × 5 turę pod rząd.
-   *
-   * Format: surowe pierwsze słowa (`['Spoko, sprawdziłem', 'No więc']`).
-   * Empty / undefined → bez constraintu.
-   */
+  signal?: AbortSignal
+  /** Accepted for existing callers; the prompt no longer rotates forced openers. */
   recentOpeners?: readonly string[]
 }
 
@@ -239,17 +187,15 @@ export type SynthesisResult = {
 }
 
 /**
- * Wykonuje wywołanie Groq Llama 8B z faktami i pytaniem. Non-streaming
+ * Wywołuje mniejszy model Groq z faktami i pytaniem. Non-streaming
  * (`completeWithTools` z pustą tablicą tooli zachowuje się jak chat completion).
  *
- * Failure mode: gdy Groq odpowie pustym/blankowym contentem, fallback
- * do `facts.fallbackText` (caller musi przekazać). To rzadkie ale chroni
- * UX — lepiej zwrócić surowe fakty niż "" do klienta.
+ * Przy pustym wyniku caller może wyświetlić lokalnie sformatowane fakty.
  */
 export async function synthesizeAnswer(
   opts: SynthesisOptions,
 ): Promise<SynthesisResult> {
-  const { userQuery, facts, hint, topicHint, provider, recentOpeners } = opts
+  const { userQuery, facts, hint, topicHint, provider } = opts
 
   const compact = tryCompactSynthesis(userQuery, facts, hint)
   if (compact) {
@@ -269,10 +215,7 @@ export async function synthesizeAnswer(
     },
   ]
 
-  // `withGroqRetry`: 3 próby z exp. backoff dla 429/5xx. Llama 8B free tier
-  // = 30 RPM — szybki burst zapytań od jednego usera potrafi wpaść w 429,
-  // a tutaj jesteśmy już PO tool call, więc fallback na surowe fakty
-  // wyglądałby topornie. Cichy retry ratuje doświadczenie.
+  // Shared retry policy retries transient failures; quota errors are not retried.
   const result = await withGroqRetry(() =>
     provider.completeWithTools(messages, [], {
       model: GROQ_SMALLTALK_MODEL,
@@ -280,12 +223,10 @@ export async function synthesizeAnswer(
       // widoczne zdanie albo zwracało pusty `content`. 1024 zostawia
       // miejsce na krótki chain-of-thought i pełną odpowiedź po polsku.
       maxTokens: 1024,
-      // Wyższa temperatura → mniej powtarzalne formy, więcej naturalnych
-      // wariacji ("Pizzy taniej?" vs "Pod pizzę masz parę miejsc" vs „Tanio
-      // na pizzę: ..."). 0.75 to sweet spot dla Llama 8B w PL — niżej brzmi
-      // robotycznie, wyżej zaczyna kombinować ze słownictwem.
-      temperature: 0.75,
+      // Keep factual synthesis restrained; preserve the reasoning/output budget.
+      temperature: 0.4,
       toolChoice: 'none',
+      signal: opts.signal,
     }),
   )
 
@@ -301,18 +242,16 @@ export async function synthesizeAnswer(
 }
 
 /**
- * Streaming wariant `synthesizeAnswer` — emituje delty Llama 8B w locie,
- * zamiast czekać na cały tekst. Caller (orchestrator w `api/chat.ts`)
- * konsumuje delty SSE i przepisuje je w swoim formacie do klienta —
- * **pierwsze tokeny widoczne u usera ~200-400ms zamiast ~1500ms TTFB**.
+ * Streaming wariant `synthesizeAnswer` — emituje delty mniejszego modelu w locie.
+ * Caller (`api/chat.ts`) przekazuje je klientowi w formacie SSE.
  *
  * Zwraca AsyncGenerator `GroqStreamChunk` (delta / done / error). Caller
  * powinien buforować całość do KV cache + markdown guard po `done`.
  *
  * NIE używamy `withGroqRetry` w streamie — retry SSE jest skomplikowany
  * (już mogliśmy wysłać delty do klienta). Caller decyduje o fallbacku:
- * przy wyjątku z `streamAnswer` wraca do non-streaming `synthesizeAnswer`
- * i robi normalny chunked fallback.
+ * przy błędzie przed pierwszą deltą caller formatuje dostępne fakty lokalnie.
+ * Nie ponawia syntezy kolejnym wywołaniem modelu po wyczerpaniu limitu.
  */
 export async function* streamAnswer(
   opts: SynthesisOptions,
@@ -327,8 +266,9 @@ export async function* streamAnswer(
   yield* provider.streamCompletion(messages, [], {
     model: GROQ_SMALLTALK_MODEL,
     maxTokens: 1024,
-    temperature: 0.75,
+    temperature: 0.4,
     toolChoice: 'none',
+    signal: opts.signal,
   })
 }
 
@@ -375,6 +315,12 @@ export function buildToolFacts(
 ): ToolFactsResult {
   // Surowy string z toola (np. weekly briefing) — passthrough.
   if (typeof result === 'string') {
+    if (
+      toolName === 'get_my_classes_in_range' &&
+      result.trim() === 'Brak zajęć w tym zakresie'
+    ) {
+      return buildMyClassesFacts({ items: [] })
+    }
     return { kind: 'direct', text: result }
   }
   if (isToolErrorObject(result)) {
@@ -445,9 +391,13 @@ function buildDiscountsFacts(result: unknown): ToolFactsResult {
       const address = pickStringOrNull(item, 'address')
       const category = pickStringOrNull(item, 'category')
       const websiteUrl = pickStringOrNull(item, 'website_url')
-      const catLabel = category ? DISCOUNT_CATEGORY_PL[category] ?? category : null
+      const catLabel = category
+        ? (DISCOUNT_CATEGORY_PL[category] ?? category)
+        : null
       const where = address ? address.replace(', Kraków', '') : null
-      const businessLabel = websiteUrl ? `[${business}](${websiteUrl})` : business
+      const businessLabel = websiteUrl
+        ? `[${business}](${websiteUrl})`
+        : business
       const parts: string[] = [businessLabel]
       if (where) parts.push(`— ${where}`)
       if (catLabel) parts.push(`[${catLabel}]`)
@@ -488,7 +438,9 @@ function buildTrendingDiscountsFacts(result: unknown): ToolFactsResult {
       const recentUses = pickNumber(item, 'recent_uses') ?? 0
       const websiteUrl = pickStringOrNull(item, 'website_url')
       const usesPart = recentUses > 0 ? ` (${recentUses}× w tym tygodniu)` : ''
-      const businessLabel = websiteUrl ? `[${business}](${websiteUrl})` : business
+      const businessLabel = websiteUrl
+        ? `[${business}](${websiteUrl})`
+        : business
       return `${businessLabel} — ${headline}${usesPart}`
     })
     .join('\n')
@@ -538,16 +490,13 @@ function buildSearchEventsFacts(result: unknown): ToolFactsResult {
     })
     .join('\n')
 
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint:
-      remaining > 0
-        ? `jeszcze ${remaining} w bazie, zerknij na zakładkę Wydarzenia`
-        : null,
-    topicHint:
-      'Wydarzenia w Krakowie (UJ + studenckie) — data, miejsce, link w faktach.',
-  }
+    remaining > 0
+      ? `To część wyników. Pozostałe ${remaining} znajdziesz w zakładce Wydarzenia.`
+      : null,
+    'Wydarzenia w Krakowie (UJ + studenckie).',
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -559,7 +508,7 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Cisza, ostatnio nic nowego z ISI UJ nie wpadło.',
+      text: 'Nie znalazłem komunikatów pasujących do tego pytania w pobranych danych. Możesz podać wydział lub krótsze hasło — spróbujemy zawęzić szukanie.',
     }
   }
   const items = rawItems.slice(0, MAX_ANNOUNCEMENTS)
@@ -569,7 +518,7 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
     .map((item) => {
       const lecturer =
         pickString(item, 'lecturer_name_nominative') || 'ktoś z kadry'
-      const annId = pickString(item, 'id')
+      const title = pickString(item, 'title') || lecturer
       const sourceUrl = pickStringOrNull(item, 'source_url')
       const statusKey = pickString(item, 'status')
       const statusPl = ANNOUNCEMENT_STATUS_PL[statusKey] ?? statusKey
@@ -577,26 +526,27 @@ function buildAnnouncementsFacts(result: unknown): ToolFactsResult {
       const dept = pickStringOrNull(item, 'department')
       const createdAt = pickStringOrNull(item, 'created_at')
 
-      const when = createdAt ? ` (${formatRelativeDate(createdAt)})` : ''
+      const when = createdAt
+        ? ` (dodano do UJverse ${formatRelativeDate(createdAt)})`
+        : ''
       const deptTag = dept ? ` [${dept}]` : ''
       const tail = body ? ` — ${clip(body, 160)}` : ''
-      const lecturerLabel = annId
-        ? `[${lecturer}](/moj-plan?announcement=${encodeURIComponent(annId)})`
-        : lecturer
+      const titleLabel = sourceUrl
+        ? `[${title}](${sourceUrl})`
+        : `[${title}](/komunikaty)`
       const sourceTail =
-        sourceUrl && !tail.includes(sourceUrl)
-          ? ` [źródło](${sourceUrl})`
-          : ''
-      return `${lecturerLabel} ${statusPl}${when}${deptTag}${tail}${sourceTail}`
+        sourceUrl && !tail.includes(sourceUrl) ? ` [źródło](${sourceUrl})` : ''
+      return `${titleLabel} ${statusPl}${when}${deptTag}${tail}${sourceTail}`
     })
     .join('\n')
 
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
-    topicHint: 'Komunikaty wykładowców UJ (nieobecności, zmiany sal itd.).',
-  }
+    remaining > 0
+      ? `To część wyników — pozostałe ${remaining} znajdziesz w [komunikatach](/komunikaty). Daty oznaczają dodanie do UJverse.`
+      : 'Daty oznaczają dodanie do UJverse; ważne terminy potwierdź w źródle.',
+    'Publiczne komunikaty wydziałów UJ.',
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -612,7 +562,7 @@ function buildAnnouncementDetailsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Nic mi się nie pasuje do tego zapytania w bazie ogłoszeń.',
+      text: 'Nie ma komunikatów pasujących do tego pytania.',
     }
   }
   // Top 3 - synthesizer ma material zeby zlozyc zwiezla odpowiedz na konkret.
@@ -678,9 +628,11 @@ function buildPostsFacts(result: unknown): ToolFactsResult {
 
   const facts = items
     .map((item) => {
-      const author = (typeof item === 'object' && item !== null
-        ? (item as Record<string, unknown>).author
-        : null) as Record<string, unknown> | null
+      const author = (
+        typeof item === 'object' && item !== null
+          ? (item as Record<string, unknown>).author
+          : null
+      ) as Record<string, unknown> | null
       const username =
         (author && typeof author.username === 'string' && author.username) ||
         'anon'
@@ -700,8 +652,7 @@ function buildPostsFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint: remaining > 0 ? `jeszcze parę wpisów na feedzie` : null,
-    topicHint:
-      'Feed społeczności UJverse — krótkie cytaty wpisów, ton luźny.',
+    topicHint: 'Feed społeczności UJverse — krótkie cytaty wpisów, ton luźny.',
   }
 }
 
@@ -745,9 +696,7 @@ function buildCalendarFacts(result: unknown): ToolFactsResult {
     kind: 'synthesize',
     facts,
     hint:
-      remaining > 0
-        ? `jeszcze ${remaining} dalej, zerknij na Kalendarz`
-        : null,
+      remaining > 0 ? `jeszcze ${remaining} dalej, zerknij na Kalendarz` : null,
     topicHint: 'Kalendarz UJverse (nieobecności, odwołania, deadliny, eventy).',
   }
 }
@@ -756,47 +705,117 @@ function buildCalendarFacts(result: unknown): ToolFactsResult {
 // get_my_classes_in_range
 // -----------------------------------------------------------------------------
 
+const timetableDayFormat = new Intl.DateTimeFormat('pl-PL', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'Europe/Warsaw',
+})
+const timetableTimeFormat = new Intl.DateTimeFormat('pl-PL', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Europe/Warsaw',
+})
+const timetableDateKey = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: 'Europe/Warsaw',
+})
+
+function timetableWhen(startIso: string | null, endIso: string | null): string {
+  const start = startIso ? new Date(startIso) : null
+  if (!start || !Number.isFinite(start.getTime()))
+    return 'brak potwierdzonej godziny'
+  const end = endIso ? new Date(endIso) : null
+  const endValid =
+    end && Number.isFinite(end.getTime()) && end.getTime() >= start.getTime()
+  const starts = `${timetableDayFormat.format(start)}, ${timetableTimeFormat.format(start)}`
+  if (!endValid) return starts
+  const ends =
+    timetableDateKey.format(start) === timetableDateKey.format(end)
+      ? timetableTimeFormat.format(end)
+      : `${timetableDayFormat.format(end)}, ${timetableTimeFormat.format(end)}`
+  return `${starts}–${ends}`
+}
+
 function buildMyClassesFacts(result: unknown): ToolFactsResult {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Wolne, nic nie masz w planie. Jeśli to błąd — wpadnij na „Mój Plan" i odśwież import z USOSweb.',
+      text: 'W zapisanym planie nie widzę zajęć w tym terminie. To nie musi oznaczać wolnego dnia — jeśli coś się nie zgadza, sprawdź import w [Moim planie](/moj-plan).',
     }
   }
   const items = rawItems.slice(0, MAX_CLASSES)
   const remaining = rawItems.length - items.length
-
-  const facts = items
-    .map((item) => {
-      const summary = pickString(item, 'summary') || 'zajęcia'
-      const start = pickStringOrNull(item, 'start_time')
-      const lecturer = pickStringOrNull(item, 'lecturer_name')
-      const location = pickStringOrNull(item, 'location')
-      const cancelledBody = pickStringOrNull(
-        item,
-        'cancelled_announcement_body',
-      )
-
-      const ctx = eventDateContext(start)
-      const datePart = start
-        ? ctx
-          ? `${ctx} (${formatDateShort(start)})`
-          : formatDateShort(start)
-        : 'bez daty'
-      const lec = lecturer ? `, ${lecturer}` : ''
-      const sala = location ? ` — sala ${location}` : ''
-      const cancelTag = cancelledBody ? ' [ODWOŁANE]' : ''
-      return `${summary}${cancelTag} ${datePart}${lec}${sala}`
-    })
-    .join('\n')
-
-  return {
-    kind: 'synthesize',
-    facts,
-    hint: remaining > 0 ? `jeszcze ${remaining} dalej` : null,
-    topicHint: 'Plan zajęć usera (z USOSweb, z naszymi powiadomieniami o odwołaniach).',
+  const hasCancellation = items.some((item) =>
+    Boolean(pickStringOrNull(item, 'cancelled_announcement_body')),
+  )
+  const times = items.map((item) => ({
+    start: new Date(pickString(item, 'start_time')),
+    end: new Date(pickString(item, 'end_time')),
+  }))
+  const completeSameDay =
+    remaining === 0 &&
+    pickNumber(result, 'count') === rawItems.length &&
+    !hasCancellation &&
+    times.every(
+      ({ start, end }) =>
+        Number.isFinite(start.getTime()) &&
+        Number.isFinite(end.getTime()) &&
+        end.getTime() >= start.getTime() &&
+        timetableDateKey.format(start) ===
+          timetableDateKey.format(times[0]!.start) &&
+        timetableDateKey.format(end) ===
+          timetableDateKey.format(times[0]!.start),
+    )
+  let daySummary: string | null = null
+  if (completeSameDay) {
+    const first = new Date(
+      Math.min(...times.map(({ start }) => start.getTime())),
+    )
+    const last = new Date(Math.max(...times.map(({ end }) => end.getTime())))
+    const start = timetableTimeFormat.format(first)
+    const end = timetableTimeFormat.format(last)
+    daySummary =
+      items.length === 1
+        ? `Według zapisanego planu masz jedne zajęcia, od **${start}** do **${end}**.`
+        : `Według zapisanego planu masz ${items.length} ${items.length < 5 ? 'zajęcia' : 'zajęć'}. Zaczynasz o **${start}**, a ostatnie kończą się o **${end}**.`
   }
+  const lines = items.map((item) => {
+    const summary = factLink(pickString(item, 'summary') || 'zajęcia', null)
+    const lecturer = pickStringOrNull(item, 'lecturer_name')
+    const location = pickStringOrNull(item, 'location')
+    const cancelledBody = pickStringOrNull(item, 'cancelled_announcement_body')
+    const when = timetableWhen(
+      pickStringOrNull(item, 'start_time'),
+      pickStringOrNull(item, 'end_time'),
+    )
+    const details = [when]
+    if (location) details.push(`miejsce: ${factLink(location, null)}`)
+    if (lecturer) details.push(`prowadzący: ${factLink(lecturer, null)}`)
+    const warning = cancelledBody ? ' · **komunikat o odwołaniu**' : ''
+    return `**${summary}** — ${details.join(' · ')}${warning}`
+  })
+  const lead =
+    daySummary ??
+    (hasCancellation
+      ? 'Zajrzałem do Twojego zapisanego planu. Uwaga: przy części zajęć jest komunikat o odwołaniu — potwierdź, czy dotyczy tego terminu.'
+      : lines.length === 1
+        ? 'Zajrzałem do Twojego zapisanego planu — w tym terminie widzę jedne zajęcia:'
+        : 'Zajrzałem do Twojego zapisanego planu. Tak układają się zajęcia w wybranym terminie:')
+  const body =
+    lines.length <= 3
+      ? lines.join('\n\n')
+      : lines.map((line) => `- ${line}`).join('\n')
+  const tail =
+    remaining > 0
+      ? `\n\nPokazuję pierwsze ${items.length} z ${rawItems.length} wpisów. Pozostałe znajdziesz w [Moim planie](/moj-plan).`
+      : ''
+  return { kind: 'direct', text: `${lead}\n\n${body}${tail}` }
 }
 
 // -----------------------------------------------------------------------------
@@ -824,36 +843,61 @@ function buildWeeklyBriefingFacts(result: unknown): ToolFactsResult {
 // get_upcoming_usos_registrations
 // -----------------------------------------------------------------------------
 
+/** Escape catalog text and allow only web links in tool facts. */
+function factLink(label: string, url: string | null): string {
+  const title = label.replace(/([\\`*_[\]<>])/g, '\\$1')
+  if (!url || !/^https?:\/\//i.test(url)) return title
+  return `[${title}](${url.replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\s/g, '%20')})`
+}
+
+const registrationDateFormat = new Intl.DateTimeFormat('pl-PL', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Warsaw',
+})
+function formatRegistrationDate(iso: string | null): string {
+  const date = iso ? new Date(iso) : null
+  return date && Number.isFinite(date.getTime())
+    ? registrationDateFormat.format(date)
+    : 'brak potwierdzonej daty'
+}
+
 function buildUpcomingUsosFacts(result: unknown): ToolFactsResult {
   const rawItems = getItemsArray(result)
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'Nic w najbliższych tygodniach — najbliższe rejestracje USOS jeszcze nie są ogłoszone.',
+      text: 'W aktualnie pobranych danych nie ma nadchodzących rejestracji. Sprawdź też terminy w USOSweb.',
     }
   }
   const items = rawItems.slice(0, 5)
   const facts = items
     .map((item) => {
-      const name = pickString(item, 'name') || 'rejestracja'
-      const startsAt = pickStringOrNull(item, 'starts_at')
-      const endsAt = pickStringOrNull(item, 'ends_at')
-      const ctx = eventDateContext(startsAt)
-      const start = startsAt
-        ? ctx
-          ? `${ctx} (${formatDateShort(startsAt)})`
-          : formatDateShort(startsAt)
-        : 'bez daty'
-      const end = endsAt ? ` do ${formatDateShort(endsAt)}` : ''
-      return `${name} — start ${start}${end}`
+      const name = pickString(item, 'title') || 'rejestracja'
+      const startsAt = pickStringOrNull(item, 'opens_at')
+      const endsAt = pickStringOrNull(item, 'closes_at')
+      const opened = startsAt ? Date.parse(startsAt) <= Date.now() : false
+      const start = formatRegistrationDate(startsAt)
+      const end = endsAt ? formatRegistrationDate(endsAt) : null
+      const timing = opened
+        ? end
+          ? `zapisy trwają do ${end}`
+          : `zapisy od ${start}; brak podanego terminu końca`
+        : `zapisy od ${start}${end ? ` do ${end}` : ''}`
+      const url = pickStringOrNull(item, 'registration_url')
+      const title = factLink(name, url)
+      const program = pickStringOrNull(item, 'study_program')
+      return `${title}${program ? ` (${program})` : ''} — ${timing}`
     })
     .join('\n')
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint: 'więcej szczegółów w USOSweb',
-    topicHint: 'Najbliższe rejestracje USOS (na zajęcia, egzaminy itd.).',
-  }
+    'Godziny podaję w czasie polskim. Przed zapisami potwierdź termin i zasady w USOSweb.',
+    'Trwające i nadchodzące rejestracje USOS.',
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -865,7 +909,7 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
   if (!rawItems || rawItems.length === 0) {
     return {
       kind: 'direct',
-      text: 'W oficjalnym kalendarzu UJ na razie cisza.',
+      text: 'W pobranym kalendarzu nie znalazłem nadchodzących wydarzeń. Możesz jeszcze zerknąć do pełnego kalendarza na stronie UJ — źródło mogło się już zmienić.',
     }
   }
   const items = rawItems.slice(0, 5)
@@ -873,7 +917,7 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
   const facts = items
     .map((item) => {
       const title = pickString(item, 'title') || 'wydarzenie'
-      const startsAt = pickStringOrNull(item, 'starts_at')
+      const startsAt = pickStringOrNull(item, 'date')
       const location = pickStringOrNull(item, 'location')
       const ctx = eventDateContext(startsAt)
       const datePart = startsAt
@@ -882,18 +926,16 @@ function buildUpcomingOfficialEventsFacts(result: unknown): ToolFactsResult {
           : formatDateShort(startsAt)
         : 'bez daty'
       const where = location ? ` w ${location}` : ''
-      return `${title} — ${datePart}${where}`
+      return `${factLink(title, pickStringOrNull(item, 'event_url'))} — ${datePart}${where}`
     })
     .join('\n')
-  return {
-    kind: 'synthesize',
+  return catalogueReply(
     facts,
-    hint:
-      remaining > 0
-        ? `jeszcze ${remaining} dalej, zerknij na Kalendarz UJ`
-        : null,
-    topicHint: 'Oficjalne wydarzenia z kalendarza UJ.',
-  }
+    remaining > 0
+      ? `To część wyników — pozostałe ${remaining} znajdziesz w [wydarzeniach](/wydarzenia).`
+      : null,
+    'Oficjalne wydarzenia z kalendarza UJ.',
+  )
 }
 
 // -----------------------------------------------------------------------------
@@ -950,7 +992,7 @@ function buildLecturerAnnouncementsFacts(result: unknown): ToolFactsResult {
     return {
       kind: 'direct',
       text: lecturer
-        ? `${lecturer} — w bazie znaleziony, ale brak ogłoszeń. Spokojny wykładowca.`
+        ? `${lecturer} — nie ma komunikatów w pobranych danych.`
         : 'Brak ogłoszeń.',
     }
   }
@@ -997,7 +1039,7 @@ function buildMyFollowedLecturersFacts(result: unknown): ToolFactsResult {
       const latest = pickStringOrNull(it, 'latest_announcement_at')
       const status = pickStringOrNull(it, 'latest_status')
       const statusPl = status
-        ? ANNOUNCEMENT_STATUS_PL[status] ?? status
+        ? (ANNOUNCEMENT_STATUS_PL[status] ?? status)
         : null
       const recentPart =
         recent > 0

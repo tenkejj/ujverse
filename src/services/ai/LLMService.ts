@@ -28,7 +28,9 @@ import { supabase } from '../../supabaseClient'
 // w trakcie odpowiedzi modelu, więc statyczny RAG-Lite jest zbędny.
 // Plik dekoratora zostaje na wypadek powrotu do statycznego kontekstu.
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3000' : ''
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, '') ??
+  (import.meta.env.DEV ? 'http://localhost:3000' : '')
 const DEFAULT_ENDPOINT = `${API_BASE}/api/chat`
 
 export class LLMServiceError extends Error {
@@ -92,13 +94,20 @@ export class BielikAdapter implements LLMProvider {
     config?: Partial<ChatConfig>,
   ): Promise<ReadableStream<Uint8Array>> {
     const payload: { messages: ChatRequestMessage[] } = {
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      // Match the server's eight-message context window. Keep full local history
+      // for reading, but never resend the whole conversation or client system text.
+      messages: messages
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .slice(-8)
+        .map((m) => ({ role: m.role, content: m.content })),
     }
 
     // Function Calling po stronie serwera respektuje user_id (logowanie + scope
     // narzędzi). Forwardujemy dostępny access_token jako Bearer; jeśli sesji
     // brak — proxy potraktuje request anonimowo (tools dostają `userId: null`).
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
     try {
       const { data } = await supabase.auth.getSession()
       const accessToken = data.session?.access_token
@@ -121,7 +130,12 @@ export class BielikAdapter implements LLMProvider {
       // Sieć padła PRZED dostarczeniem odpowiedzi (DNS, CORS preflight,
       // abort, brak `vercel dev` na :3000). Logujemy do konsoli przeglądarki,
       // żeby F12 → Console pokazywała pełen obiekt błędu, a nie tylko message.
-      console.error('[BielikAdapter] fetch error:', err, 'endpoint:', this.endpoint)
+      console.error(
+        '[BielikAdapter] fetch error:',
+        err,
+        'endpoint:',
+        this.endpoint,
+      )
       const msg = err instanceof Error ? err.message : 'Network error'
       throw new LLMServiceError(msg)
     }
@@ -194,6 +208,8 @@ export class BielikAdapter implements LLMProvider {
         if (parsed && parsed !== '__DONE__') yield parsed
       }
     } finally {
+      // Also closes the HTTP body when the consumer stops before [DONE].
+      await reader.cancel().catch(() => {})
       reader.releaseLock()
     }
   }

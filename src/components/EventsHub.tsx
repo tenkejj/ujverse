@@ -22,6 +22,8 @@ const CalendarView = lazy(() => import('./calendar/CalendarView'))
 
 type Props = {
   currentUserId: string
+  /** Gość (anon) — bez „Moje” / „Dodaj”; oficjalne + społecznościowe tylko do odczytu. */
+  guestMode?: boolean
   onNavigateToProfileHandle?: (handle: string) => void
 }
 
@@ -46,6 +48,7 @@ type LocationState = {
 
 export default function EventsHub({
   currentUserId,
+  guestMode = false,
   onNavigateToProfileHandle,
 }: Props) {
   const location = useLocation()
@@ -137,6 +140,7 @@ export default function EventsHub({
           >
             <EventsView
               currentUserId={currentUserId}
+              guestMode={guestMode}
               onNavigateToProfileHandle={onNavigateToProfileHandle}
             />
           </motion.div>

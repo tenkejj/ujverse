@@ -21,19 +21,37 @@ import {
   forwardRef,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
+  type RefObject,
 } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Copy, Pencil, RefreshCcw, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+  Check,
+  Copy,
+  Pencil,
+  RefreshCcw,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react'
 import type { ChatMessage } from '../../types/ai'
 import type { Profile } from '../../types'
+import { useChatStore } from '../../store/useChatStore'
 import { toast } from '../../lib/appToast'
+import {
+  readSystemChatReducedMotion,
+  subscribeSystemChatReducedMotion,
+} from '../../lib/chatPresentation'
 import { useChatFeedback } from '../../hooks/useChatFeedback'
+import {
+  getUserPreferences,
+  subscribePreferences,
+} from '../../lib/userPreferences'
 import UserAvatar from '../UserAvatar'
 import AnimatedBot from './AnimatedBot'
+import type { VersuActivity } from './VersuMark'
 import TypewriterMarkdown from './TypewriterMarkdown'
 
 const STICK_TO_BOTTOM_TOLERANCE_PX = 48
@@ -53,7 +71,7 @@ type Props = {
   /**
    * Konkretna etykieta akcji asystenta z meta-eventu SSE (np. „Sprawdzam
    * zniżki…"). Gdy ustawione, `TypingIndicator` pokaże ją zamiast losowych
-   * thinking-phrases. `null` lub `undefined` = fallback do rotujących fraz.
+   * thinking-phrases. `null` lub `undefined` = spokojny, stały status.
    */
   actionLabel?: string | null
   /**
@@ -88,6 +106,8 @@ type Props = {
    * odpowiedź bota").
    */
   scrollable?: boolean
+  /** Optional outer scroller; retains the same user-controlled bottom anchoring. */
+  scrollContainerRef?: RefObject<HTMLDivElement | null>
 }
 
 type VariantTokens = {
@@ -96,7 +116,7 @@ type VariantTokens = {
   userMax: string
   /** Średnica okrągłego awatara/badge w klasach Tailwind (`h-N w-N`). */
   avatar: string
-  /** Rozmiar ikony bota wewnątrz badge (px). */
+  /** Rozmiar portretu Versusia (px), bez dodatkowej ramki. */
   botIcon: number
   /** Rozmiar fontu inicjału w awatarze użytkownika. */
   avatarText: string
@@ -110,7 +130,7 @@ const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
     userPad: 'px-3.5 py-2',
     userMax: 'max-w-[78%]',
     avatar: 'h-7 w-7',
-    botIcon: 15,
+    botIcon: 44,
     avatarText: 'text-[11px]',
     rowGap: 'gap-2',
   },
@@ -119,50 +139,34 @@ const VARIANT_TOKENS: Record<MessageListVariant, VariantTokens> = {
     userPad: 'px-4 py-2.5',
     userMax: 'max-w-[72%]',
     avatar: 'h-8 w-8',
-    botIcon: 17,
+    botIcon: 48,
     avatarText: 'text-xs',
     rowGap: 'gap-2.5',
   },
 }
 
-/**
- * Filozofia wizualna (Claude / ChatGPT 2026 + UJverse brand):
- *
- * - **Assistant**: brak dymka. Tekst odpowiedzi rozlewa się jak akapit
- *   dokumentu (lepiej dla markdown-u: nagłówków, list, code-blocków).
- *   Rolę identyfikuje okrągły brand-glass badge z `AnimatedBot` po lewej.
- *
- * - **User**: solidny brand-kafelek po prawej, jedna systemowa para:
- *   - Light: `bg-logo-navy text-white` (slate-800 na kremowym tle = mocny kontrast).
- *   - Dark:  `bg-brand-gold-bright text-zinc-950` — ten sam systemowy gold
- *     co Send button w `ChatHubView` (`dark:bg-brand-gold-bright dark:text-zinc-950`).
- *     Daje wizualne sprzężenie „naciskasz → kafelek się pojawia w tym samym kolorze",
- *     a `bg-logo-navy` w dark schodziło na `#0f172a` i zlewało się z czarnym `--bg-app`.
- *   Avatar z `UserAvatar` po prawej.
- *
- * - **Avatar badges**: ta sama średnica (compact 28px, roomy 32px), żeby
- *   wiersze user/assistant trzymały spójną siatkę pionową.
- *
- * Wszystkie kolory pochodzą z systemowych tokenów (`logo-navy`,
- * `brand-gold-bright`, `fg-primary`, `bg-card`) zdefiniowanych w `index.css`
- * przez `@theme` — auto-adaptacja light/dark bez `dark:` overridów.
+/** Assistant replies read as open text beside a prominent unframed portrait.
+ * User messages retain the existing navy/gold theme and account avatar.
  */
 const USER_BUBBLE_CLS =
-  'rounded-2xl bg-logo-navy text-white shadow-md ' +
-  'dark:bg-brand-gold-bright dark:text-zinc-950 dark:shadow-lg'
+  'rounded-2xl bg-logo-navy text-white ' +
+  'dark:bg-brand-gold-bright dark:text-zinc-950'
 
 const ASSISTANT_TEXT_CLS = 'text-fg-primary'
 
-const BOT_BADGE_CLS =
-  'inline-flex items-center justify-center rounded-full shrink-0 ' +
-  'border border-logo-navy/30 bg-bg-card text-logo-navy ' +
-  'dark:border-brand-gold-bright/30 dark:bg-bg-card dark:text-brand-gold-bright'
-
-function BotBadge({ size, sizeClass }: { size: number; sizeClass: string }) {
-  const iconSize = Math.round(size * 0.78)
+/** The portrait is the identity, without a second circular container. */
+function BotBadge({
+  size,
+  activity = 'idle',
+  replayKey,
+}: {
+  size: number
+  activity?: VersuActivity
+  replayKey?: string
+}) {
   return (
-    <span className={`${BOT_BADGE_CLS} ${sizeClass}`} aria-hidden>
-      <AnimatedBot size={iconSize} intensity="idle" />
+    <span className="versus-message-avatar" aria-hidden>
+      <AnimatedBot size={size} activity={activity} replayKey={replayKey} />
     </span>
   )
 }
@@ -179,13 +183,13 @@ function BotBadge({ size, sizeClass }: { size: number; sizeClass: string }) {
 const BUBBLE_MOTION_USER = {
   initial: { opacity: 0, x: 12, y: 4 },
   animate: { opacity: 1, x: 0, y: 0 },
-  transition: { duration: 0.28, ease: 'easeOut' as const },
+  transition: { duration: 0.15, ease: 'easeOut' as const },
 }
 
 const BUBBLE_MOTION_ASSISTANT = {
   initial: { opacity: 0, x: -8, y: 4 },
   animate: { opacity: 1, x: 0, y: 0 },
-  transition: { duration: 0.32, ease: 'easeOut' as const },
+  transition: { duration: 0.15, ease: 'easeOut' as const },
 }
 
 function MessageBubble({
@@ -194,6 +198,7 @@ function MessageBubble({
   isStreaming,
   isLastUser,
   isLastAssistant,
+  activity,
   myProfile,
   displayName,
   onEditUser,
@@ -207,6 +212,8 @@ function MessageBubble({
   isLastUser: boolean
   /** Czy to OSTATNIA assistant message — tylko wtedy „Spróbuj ponownie". */
   isLastAssistant: boolean
+  /** Actual latest-turn phase overrides decorative resting expressions. */
+  activity: VersuActivity
   myProfile?: Profile | null
   displayName?: string
   /** Callback do edycji ostatniej user message (parent wkłada tekst do composera). */
@@ -241,7 +248,9 @@ function MessageBubble({
         <div
           className={`${tokens.userMax} ${USER_BUBBLE_CLS} ${tokens.userPad} ${tokens.text}`}
         >
-          <p className="whitespace-pre-wrap wrap-break-word">{message.content}</p>
+          <p className="whitespace-pre-wrap wrap-break-word">
+            {message.content}
+          </p>
         </div>
         <UserAvatar
           profile={myProfile}
@@ -255,11 +264,15 @@ function MessageBubble({
 
   return (
     <motion.div
-      className={`group/bubble flex items-start ${tokens.rowGap}`}
+      className={`versus-message-row group/bubble flex items-start ${tokens.rowGap}`}
       {...BUBBLE_MOTION_ASSISTANT}
     >
-      <span className="mt-0.5">
-        <BotBadge size={tokens.botIcon} sizeClass={tokens.avatar} />
+      <span className="versus-message-identity">
+        <BotBadge
+          size={tokens.botIcon}
+          activity={activity}
+          replayKey={message.id}
+        />
       </span>
       <div
         className={`min-w-0 flex-1 ${ASSISTANT_TEXT_CLS} ${tokens.text} leading-relaxed`}
@@ -275,6 +288,7 @@ function MessageBubble({
           {!isStreaming ? (
             <AssistantMessageActions
               message={message}
+              canVote={Boolean(myProfile)}
               showRetry={isLastAssistant}
               onRetry={onRetryAssistant}
             />
@@ -334,10 +348,12 @@ function MessageActionButton({
  */
 function AssistantMessageActions({
   message,
+  canVote,
   showRetry,
   onRetry,
 }: {
   message: ChatMessage
+  canVote: boolean
   showRetry: boolean
   onRetry?: () => void
 }) {
@@ -383,26 +399,34 @@ function AssistantMessageActions({
           subtle highlight (border + bg gold tint). Klik wysyła POST do
           `/api/chat-feedback` przez `useChatFeedback` hook; drugi klik
           tego samego cofa głos (DELETE). Toast tylko przy bledzie. */}
-      <button
-        type="button"
-        onClick={() => void vote(message, 'up')}
-        title={feedback === 'up' ? 'Cofnij ocenę' : 'Dobra odpowiedź'}
-        aria-label={feedback === 'up' ? 'Cofnij pozytywną ocenę' : 'Oceń pozytywnie'}
-        aria-pressed={feedback === 'up'}
-        className={`${baseBtn} ${feedback === 'up' ? activeBtn : ''}`}
-      >
-        <ThumbsUp size={12} />
-      </button>
-      <button
-        type="button"
-        onClick={() => void vote(message, 'down')}
-        title={feedback === 'down' ? 'Cofnij ocenę' : 'Słaba odpowiedź'}
-        aria-label={feedback === 'down' ? 'Cofnij negatywną ocenę' : 'Oceń negatywnie'}
-        aria-pressed={feedback === 'down'}
-        className={`${baseBtn} ${feedback === 'down' ? activeBtn : ''}`}
-      >
-        <ThumbsDown size={12} />
-      </button>
+      {canVote ? (
+        <>
+          <button
+            type="button"
+            onClick={() => void vote(message, 'up')}
+            title={feedback === 'up' ? 'Cofnij ocenę' : 'Dobra odpowiedź'}
+            aria-label={
+              feedback === 'up' ? 'Cofnij pozytywną ocenę' : 'Oceń pozytywnie'
+            }
+            aria-pressed={feedback === 'up'}
+            className={`${baseBtn} ${feedback === 'up' ? activeBtn : ''}`}
+          >
+            <ThumbsUp size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void vote(message, 'down')}
+            title={feedback === 'down' ? 'Cofnij ocenę' : 'Słaba odpowiedź'}
+            aria-label={
+              feedback === 'down' ? 'Cofnij negatywną ocenę' : 'Oceń negatywnie'
+            }
+            aria-pressed={feedback === 'down'}
+            className={`${baseBtn} ${feedback === 'down' ? activeBtn : ''}`}
+          >
+            <ThumbsDown size={12} />
+          </button>
+        </>
+      ) : null}
       {showRetry && onRetry ? (
         <button
           type="button"
@@ -442,7 +466,7 @@ function FollowUpChips({
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       className="mt-2.5 flex flex-wrap gap-1.5"
       role="group"
       aria-label="Sugerowane pytania"
@@ -452,7 +476,7 @@ function FollowUpChips({
           key={chip}
           type="button"
           onClick={() => onClick(chip)}
-          className="rounded-full border border-zinc-200 bg-white/80 px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:border-logo-navy/40 hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
+          className="min-h-11 rounded-full border border-zinc-200 bg-white/80 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:border-logo-navy/40 hover:bg-zinc-50 hover:text-logo-navy dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:border-brand-gold-bright/40 dark:hover:bg-zinc-800 dark:hover:text-brand-gold-bright"
         >
           {chip}
         </button>
@@ -461,119 +485,71 @@ function FollowUpChips({
   )
 }
 
-/**
- * Typing indicator — ikonka Bota animowana w framer-motion + trzy mini-kropki
- * pulsujące sekwencyjnie. Bez tekstu — sama animacja niesie informację, że
- * asystent myśli (language-agnostic, kompaktowe).
- *
- * Animacja Bota: breathing scale (1 → 1.12 → 1) + delikatny wobble rotation
- * (-4° → 4° → -4°) w 1.6s loop. Subtelny "thinking" gest — głowa robota
- * lekko się kiwa, jakby rozważała odpowiedź.
- *
- * Trzy kropki: opacity 0.25 → 1 → 0.25 z delay 0/200/400ms — płynniej niż
- * stary `animate-pulse` (framer-motion easing zamiast CSS keyframe ramp).
- *
- * `prefers-reduced-motion` — framer-motion automatycznie respektuje
- * `MotionConfig`-ową heurystykę; dodatkowo dla pewności dajemy
- * `aria-label="Asystent myśli"` żeby screen reader miał kontekst nawet
- * gdy nie widzi animacji.
- */
-const TYPING_DOT_DELAYS = [0, 0.2, 0.4] as const
-
-/**
- * Frazy „myślenia" — rotują co ~1.4s podczas streamingu, dając wrażenie
- * że asystent faktycznie wykonuje konkretną pracę zamiast „stoi i myśli".
- * Świadomie LUŹNE i konwersacyjne (zgodnie z tonem UJverse), nie
- * korporacyjne („Performing query...").
- *
- * Krótkie (bez kropek na końcu — kropki dorzucamy jako oddzielną animację
- * kropek). Każda fraza ma 2-4 słowa, max ~24 znaki, żeby zmieściła się
- * w obu wariantach (compact 14px, roomy 16px).
- */
-const THINKING_PHRASES: readonly string[] = [
-  'Versuś myśli',
-  'Sekundka',
-  'Już lecę',
-  'Patrzę co tam',
-  'Daj chwilę',
-  'Łapię to',
-  'Zaraz coś rzucę',
-  'Już prawie',
-  'Robi się',
-  'Moment',
+const THINKING_PHRASES = [
+  'Przygotowuję odpowiedź…',
+  'Pracuję nad Twoim pytaniem…',
+  'Zastanawiam się nad odpowiedzią…',
+  'Układam odpowiedź…',
+  'Jeszcze chwilę nad tym myślę…',
+  'Opracowuję odpowiedź…',
+  'Dobieram wyjaśnienie…',
+  'Skupiam się na Twoim pytaniu…',
 ] as const
+const readReducedMotion = () => getUserPreferences().reducedMotion
+const serverReducedMotion = () => true
 
+/** Generic wording describes the reply stage, never a made-up tool operation. */
 function TypingIndicator({
   variant,
   actionLabel,
+  replayKey,
 }: {
   variant: MessageListVariant
   actionLabel: string | null
+  replayKey?: string
 }) {
   const tokens = VARIANT_TOKENS[variant]
-
-  // Rotacja fraz co ~1.6s. Pierwszą frazę losujemy raz na mount, żeby
-  // dwa kolejne loading-state'y nie zaczynały od „Już patrzę" (wrażenie
-  // świeżości).
-  const initialIdx = useMemo(
-    () => Math.floor(Math.random() * THINKING_PHRASES.length),
-    [],
+  const reducedMotion = useSyncExternalStore(
+    subscribePreferences,
+    readReducedMotion,
+    serverReducedMotion,
   )
-  const [phraseIdx, setPhraseIdx] = useState(initialIdx)
+  const systemReducedMotion = useSyncExternalStore(
+    subscribeSystemChatReducedMotion,
+    readSystemChatReducedMotion,
+    serverReducedMotion,
+  )
+  const [phraseIndex, setPhraseIndex] = useState(
+    () =>
+      [...(replayKey ?? '')].reduce(
+        (sum, char) => sum + char.charCodeAt(0),
+        0,
+      ) % THINKING_PHRASES.length,
+  )
   useEffect(() => {
-    // Jeśli serwer dał konkretną etykietę („Sprawdzam zniżki…"), nie
-    // rotujemy — pokazujemy ją 1:1, bo niesie informację, a nie tylko
-    // wypełnia ciszę.
-    if (actionLabel) return
-    const id = window.setInterval(() => {
-      setPhraseIdx((prev) => (prev + 1) % THINKING_PHRASES.length)
-    }, 1600)
-    return () => window.clearInterval(id)
-  }, [actionLabel])
-  // `actionLabel` ma priorytet — gdy serwer wie którego narzędzia używa,
-  // user dostaje konkret, a nie generyczne „Już patrzę".
-  const phrase = actionLabel ?? THINKING_PHRASES[phraseIdx]
-
-  const phraseSizeCls = variant === 'compact' ? 'text-xs' : 'text-sm'
-
+    if (actionLabel || reducedMotion || systemReducedMotion) return
+    const timer = window.setInterval(
+      () => setPhraseIndex((index) => (index + 1) % THINKING_PHRASES.length),
+      2800,
+    )
+    return () => window.clearInterval(timer)
+  }, [actionLabel, reducedMotion, systemReducedMotion])
+  const phrase =
+    reducedMotion || systemReducedMotion
+      ? THINKING_PHRASES[0]
+      : THINKING_PHRASES[phraseIndex]
   return (
-    <div
-      className={`flex items-center ${tokens.rowGap}`}
-      aria-live="polite"
-      aria-label="Asystent myśli"
-    >
-      <BotBadge size={tokens.botIcon} sizeClass={tokens.avatar} />
-      <span
-        aria-hidden
-        className={`flex items-center gap-1.5 ${phraseSizeCls} text-fg-secondary`}
-      >
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={phrase}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="italic"
-          >
-            {phrase}
-          </motion.span>
-        </AnimatePresence>
-        <span className="flex items-center gap-1 text-logo-navy dark:text-brand-gold-bright">
-          {TYPING_DOT_DELAYS.map((delay) => (
-            <motion.span
-              key={delay}
-              className="h-1 w-1 rounded-full bg-current"
-              animate={{ opacity: [0.25, 1, 0.25], scale: [0.85, 1.05, 0.85] }}
-              transition={{
-                duration: 1.2,
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay,
-              }}
-            />
-          ))}
-        </span>
+    <div className={`flex items-center ${tokens.rowGap}`} role="status">
+      <BotBadge
+        size={tokens.botIcon}
+        activity="thinking"
+        replayKey={replayKey}
+      />
+      <span className="sr-only">
+        {actionLabel || 'Versuś przygotowuje odpowiedź.'}
+      </span>
+      <span className="text-sm text-fg-secondary" aria-hidden="true">
+        {actionLabel || phrase}
       </span>
     </div>
   )
@@ -592,17 +568,13 @@ function DefaultEmptyState({ variant }: { variant: MessageListVariant }) {
   const isCompact = variant === 'compact'
   const title = isCompact ? 'text-base' : 'text-xl'
   const subtitle = isCompact ? 'text-xs' : 'text-sm'
-  const iconSize = isCompact ? 36 : 48
-  const badgeSize = isCompact ? 'h-16 w-16' : 'h-24 w-24'
+  const iconSize = isCompact ? 112 : 144
   const minH = isCompact ? 'min-h-56' : 'min-h-80'
   return (
     <div
       className={`flex ${minH} h-full flex-col items-center justify-center gap-4 px-4 py-6 text-center`}
     >
-      <span
-        aria-hidden
-        className={`inline-flex ${badgeSize} items-center justify-center rounded-full border border-logo-navy/25 bg-logo-navy/4 text-logo-navy shadow-sm dark:border-brand-gold-bright/30 dark:bg-brand-gold-bright/6 dark:text-brand-gold-bright`}
-      >
+      <span aria-hidden className="versus-message-empty-mark">
         <AnimatedBot size={iconSize} strokeWidth={1.6} intensity="wave" />
       </span>
       <div className="flex flex-col gap-1.5">
@@ -612,7 +584,7 @@ function DefaultEmptyState({ variant }: { variant: MessageListVariant }) {
         <p
           className={`${subtitle} mx-auto max-w-xs leading-snug text-fg-secondary`}
         >
-          Wiem co dziś dzieje się na UJ — pytaj śmiało.
+          Zapytaj o komunikaty, terminy lub wydarzenia.
         </p>
       </div>
     </div>
@@ -629,6 +601,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     myProfile,
     displayName,
     scrollable = true,
+    scrollContainerRef,
     actionLabel = null,
     onEditLastUser,
     onRetryLastAssistant,
@@ -636,6 +609,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
   },
   forwardedRef,
 ) {
+  const responsePhase = useChatStore((state) => state.responsePhase)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
   const stickToBottomRef = useRef(true)
@@ -656,8 +630,8 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
   )
 
   useEffect(() => {
-    if (!scrollable) return
-    const el = containerRef.current
+    if (!scrollable && !scrollContainerRef) return
+    const el = scrollContainerRef?.current ?? containerRef.current
     if (!el) return
     const onScroll = () => {
       const distance = el.scrollHeight - el.clientHeight - el.scrollTop
@@ -665,11 +639,11 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [scrollable])
+  }, [scrollable, scrollContainerRef])
 
   useEffect(() => {
-    if (!scrollable) return
-    const container = containerRef.current
+    if (!scrollable && !scrollContainerRef) return
+    const container = scrollContainerRef?.current ?? containerRef.current
     const content = contentRef.current
     if (!container || !content) return
     if (typeof ResizeObserver === 'undefined') return
@@ -680,7 +654,7 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
     })
     observer.observe(content)
     return () => observer.disconnect()
-  }, [scrollable])
+  }, [scrollable, scrollContainerRef])
 
   const visible = messages.filter((m) => m.role !== 'system')
   const containerCls = scrollable
@@ -692,8 +666,8 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
         ref={contentRef}
         className={
           scrollable
-            ? 'flex min-h-full flex-col space-y-3'
-            : 'flex flex-col space-y-3'
+            ? 'versus-message-flow flex min-h-full flex-col gap-5'
+            : 'versus-message-flow flex flex-col gap-5'
         }
       >
         {visible.length === 0 ? (
@@ -725,6 +699,18 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
                   isStreaming={isLastAssistant && isTyping}
                   isLastUser={isLastUser}
                   isLastAssistant={isLastAssistant}
+                  activity={
+                    !isLastAssistant
+                      ? 'idle'
+                      : isTyping
+                        ? m.content
+                          ? 'answering'
+                          : 'thinking'
+                        : responsePhase === 'success' ||
+                            responsePhase === 'error'
+                          ? responsePhase
+                          : 'idle'
+                  }
                   myProfile={myProfile}
                   displayName={displayName}
                   onEditUser={onEditLastUser}
@@ -735,7 +721,16 @@ const MessageList = forwardRef<HTMLDivElement, Props>(function MessageList(
             })
           })()
         )}
-        {isTyping && <TypingIndicator variant={variant} actionLabel={actionLabel} />}
+        {isTyping &&
+          !(
+            visible.at(-1)?.role === 'assistant' && visible.at(-1)?.content
+          ) && (
+            <TypingIndicator
+              variant={variant}
+              actionLabel={actionLabel}
+              replayKey={visible.at(-1)?.id}
+            />
+          )}
       </div>
     </div>
   )

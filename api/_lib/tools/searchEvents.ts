@@ -147,7 +147,7 @@ async function execute(
     `location.ilike.%${pattern}%`
 
   const [userResult, officialResult] = await Promise.all([
-    queryTable(ctx, 'events', orFilter),
+    ctx.userId ? queryTable(ctx, 'events', orFilter) : Promise.resolve({ rows: [] as EventRow[] }),
     queryTable(ctx, 'official_events', orFilter),
   ])
 

@@ -1,15 +1,15 @@
 import type { Profile } from '../types'
 import type { ChannelKind } from '../types/database'
 import type { AulaSearchHit, SearchHit, SearchUserHit } from '../types/search'
-import { normalizeAulaHit, normalizeContentHit, normalizeUserHit } from '../lib/normalizeSearchHits'
 import { parseTagSearchQuery } from '../lib/postTags'
+import { supabase } from '../supabaseClient'
+import { normalizeSearchQuery, toIlikePattern } from '../lib/info/search'
+import { boundedSearchLimit } from '../lib/searchPolicy'
 import {
-  AULA_INDEX,
-  meiliSearchInstance,
-  readContentIndexName,
-  USERS_INDEX,
-} from '../lib/meilisearchClient'
-import { searchAulaFallback, searchUnifiedFallback } from './searchFallback'
+  searchAnnouncementsFallback,
+  searchAulaFallback,
+  searchUnifiedFallback,
+} from './searchFallback'
 
 type SearchOpts = {
   signal?: AbortSignal
@@ -30,12 +30,8 @@ export type UnifiedSearchResults = {
 }
 
 /**
- * UWAGA — IZOLACJA ROCZNIKA:
- *   Meilisearch public search-key NIE ma RLS jak Supabase Postgres. Pole
- *   `cohortId` w `AulaSearchOpts` jest **MANDATORY** — bez niego user mógłby
- *   przeszukać cudze roczniki (front sprawdza, że wiadomości należą tylko
- *   do jego cohortu). Pobieraj `cohortId` z zaufanej ścieżki (`useMyCohort`),
- *   nigdy z URL / params od usera.
+ * cohortId narrows the search, but never authorizes it. Supabase verifies the
+ * request JWT and cohort membership through RLS before returning messages.
  */
 export type AulaSearchOpts = SearchOpts & {
   cohortId: string
@@ -44,7 +40,7 @@ export type AulaSearchOpts = SearchOpts & {
   /**
    * Sub-channel filter. Konwencja:
    *   - `undefined` = bez filtru po kanale (cała Aula danego cohortu)
-   *   - `null` = tylko #general (`channelId NOT EXISTS` w Meili)
+   *   - `null` = tylko #general (`channel_id IS NULL` w bazie)
    *   - `number` = konkretny sub-kanał
    *
    * Use case: `AulaSearchModal` z toggle "Tylko ten kanał" przekazuje
@@ -58,7 +54,7 @@ export type AulaSearchOpts = SearchOpts & {
    *   - Gdy `channelId` jest konkretnym number → kind filter ignorujemy
    *     (jeden konkretny kanał i tak ma jednoznaczny `kind`).
    *   - Gdy `channelId === null` (#general / Sala główna) → też ignorujemy,
-   *     bo Sala główna nie ma `channelKind` w Meili.
+   *     bo Sala główna nie ma `channelKind` w danych.
    *   - Gdy `channelId === undefined` → kind filter działa cohort-wide.
    */
   channelKinds?: ChannelKind[]
@@ -92,7 +88,35 @@ class SearchServiceImpl {
     return content
   }
 
-  async searchUsers(query: string, opts?: SearchOpts & { department?: string }): Promise<SearchUserHit[]> {
+  /** Public announcements only, read through the normal anon/session RLS client. */
+  async searchAnnouncementIds(
+    query: string,
+    opts?: SearchOpts & { departments?: readonly string[] },
+  ): Promise<string[]> {
+    const pattern = toIlikePattern(query)
+    if (!pattern) return []
+    let request = supabase
+      .from('announcements')
+      .select('id')
+      .or(
+        `title.ilike.${pattern},body.ilike.${pattern},lecturer_name.ilike.${pattern}`,
+      )
+      .order('created_at', { ascending: false })
+      .limit(boundedSearchLimit(opts?.limit, 20))
+    if (opts?.departments?.length)
+      request = request.in('department', [...opts.departments])
+    if (opts?.signal) request = request.abortSignal(opts.signal)
+    const { data, error } = await request
+    if (error) throw error
+    return (data ?? []).flatMap((row) =>
+      typeof row.id === 'string' ? [row.id] : [],
+    )
+  }
+
+  async searchUsers(
+    query: string,
+    opts?: SearchOpts & { department?: string },
+  ): Promise<SearchUserHit[]> {
     const { users } = await this.searchUnified(query, {
       ...opts,
       includeUsers: true,
@@ -102,173 +126,66 @@ class SearchServiceImpl {
     return users
   }
 
-  async searchProfiles(query: string, opts?: SearchOpts & { department?: string }): Promise<Profile[]> {
+  async searchProfiles(
+    query: string,
+    opts?: SearchOpts & { department?: string },
+  ): Promise<Profile[]> {
     const users = await this.searchUsers(query, opts)
     return users.map(mapUserHitToProfile)
   }
 
-  async searchUnified(query: string, opts?: UnifiedSearchOpts): Promise<UnifiedSearchResults> {
-    const normalized = query.trim()
+  async searchUnified(
+    query: string,
+    opts?: UnifiedSearchOpts,
+  ): Promise<UnifiedSearchResults> {
+    const normalized = normalizeSearchQuery(query)
     const parsed = parseTagSearchQuery(normalized)
     const tagFilter = opts?.tag?.trim().toLowerCase() || parsed.tag
     const textQuery = parsed.textQuery
-
-    if (!tagFilter && normalized.length < 2) {
+    if (!tagFilter && !toIlikePattern(normalized))
       return { content: [], users: [] }
+    const safeOpts = { ...opts, limit: boundedSearchLimit(opts?.limit, 24) }
+
+    // This guard avoids requesting account data for guests; PostgREST RLS is
+    // the independent authorization boundary and verifies the actual JWT.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      return {
+        content:
+          opts?.includeContent === false || tagFilter
+            ? []
+            : await searchAnnouncementsFallback(
+                supabase,
+                normalized,
+                safeOpts.limit,
+                opts?.signal,
+              ),
+        users: [],
+      }
     }
-
-    const limit = opts?.limit ?? 24
-    const includeContent = opts?.includeContent !== false
-    const includeUsers = tagFilter ? false : opts?.includeUsers !== false
-    const indexName = readContentIndexName()
-    const contentQuery = tagFilter && !textQuery ? '' : textQuery || normalized
-
-    const queries: Parameters<typeof meiliSearchInstance.multiSearch>[0]['queries'] = []
-
-    if (includeContent) {
-      const escapedTag = tagFilter?.replaceAll('"', '\\"')
-      queries.push({
-        indexUid: indexName,
-        q: contentQuery,
-        limit,
-        filter: escapedTag ? `tags = "${escapedTag}"` : undefined,
-        attributesToHighlight: ['content', 'author', 'title'],
-        highlightPreTag: '<mark>',
-        highlightPostTag: '</mark>',
-      })
-    }
-
-    if (includeUsers) {
-      queries.push({
-        indexUid: USERS_INDEX,
-        q: normalized,
-        limit,
-        filter: opts?.userDepartmentFilter
-          ? `department = "${opts.userDepartmentFilter.replaceAll('"', '\\"')}"`
-          : undefined,
-        attributesToHighlight: ['fullName', 'username', 'department'],
-        highlightPreTag: '<mark>',
-        highlightPostTag: '</mark>',
-      })
-    }
-
-    if (queries.length === 0) {
-      return { content: [], users: [] }
-    }
-
-    let response: Awaited<ReturnType<typeof meiliSearchInstance.multiSearch>>
-    try {
-      response = await meiliSearchInstance.multiSearch(
-        { queries },
-        opts?.signal ? { signal: opts.signal } : undefined,
-      )
-    } catch (err) {
-      if (opts?.signal?.aborted) throw err
-      console.warn('[SearchService] Meilisearch niedostępny, szukam w Supabase', err)
-      return searchUnifiedFallback(normalized, opts, tagFilter, textQuery)
-    }
-
-    let content: SearchHit[] = []
-    let users: SearchUserHit[] = []
-
-    let resultOffset = 0
-    if (includeContent) {
-      const rawHits = response.results[resultOffset]?.hits ?? []
-      content = rawHits
-        .map((hit) => normalizeContentHit(hit as Record<string, unknown>))
-        .filter((hit: SearchHit | null): hit is SearchHit => hit != null)
-      resultOffset += 1
-    }
-
-    if (includeUsers) {
-      const rawHits = response.results[resultOffset]?.hits ?? []
-      users = rawHits
-        .map((hit) => normalizeUserHit(hit as Record<string, unknown>))
-        .filter((hit: SearchUserHit | null): hit is SearchUserHit => hit != null)
-    }
-
-    return { content, users }
+    return searchUnifiedFallback(supabase, normalized, safeOpts, tagFilter, textQuery)
   }
 
-  /**
-   * Wyszukiwanie w indeksie `ujverse_aula`. **Wymaga `cohortId`** — to jedyna
-   * gwarancja izolacji rocznika (Meili public key nie ma RLS).
-   *
-   * Pusta `query` zwraca pusty wynik (nie wala do Meili), bo `?q=&filter=...`
-   * w Meili oznacza "wszystko w tym cohortcie" — UX-owo niepożądane dla
-   * "search-as-you-type". Filtrowanie listingiem to inny use-case (Faza 2).
-   */
-  async searchAula(query: string, opts: AulaSearchOpts): Promise<AulaSearchResults> {
+  /** Search member-only Aula rows using the session JWT and database RLS. */
+  async searchAula(
+    query: string,
+    opts: AulaSearchOpts,
+  ): Promise<AulaSearchResults> {
     const cohortId = opts.cohortId?.trim()
-    const trimmed = query.trim()
-    if (!cohortId || trimmed.length === 0) {
+    const normalized = normalizeSearchQuery(query)
+    if (!cohortId || !toIlikePattern(normalized))
       return { hits: [], estimatedTotalHits: 0 }
-    }
-
-    const escape = (v: string) => v.replaceAll('\\', '\\\\').replaceAll('"', '\\"')
-    const filters: string[] = [`cohortId = "${escape(cohortId)}"`]
-    if (opts.authorId) filters.push(`authorId = "${escape(opts.authorId)}"`)
-    if (opts.hasAttachments === true) filters.push('hasAttachments = true')
-    if (opts.channelId === null) {
-      // #general — wiadomości bez channel_id. Meili "NOT EXISTS" odpowiada
-      // dokumentom gdzie pola nie ma; dla istniejących dokumentów z
-      // `channelId: null` używamy `channelId IS NULL` (`= null` nie działa).
-      // Aby objąć oba przypadki: NOT EXISTS lub `IS NULL`.
-      filters.push('(channelId IS NULL OR channelId NOT EXISTS)')
-    } else if (typeof opts.channelId === 'number' && Number.isFinite(opts.channelId)) {
-      filters.push(`channelId = ${opts.channelId}`)
-    } else if (Array.isArray(opts.channelKinds) && opts.channelKinds.length > 0) {
-      // Kind filter aktywny tylko gdy `channelId === undefined` (cohort-wide).
-      const sanitized = Array.from(new Set(opts.channelKinds)).map(
-        (k) => `"${escape(k)}"`,
-      )
-      filters.push(`channelKind IN [${sanitized.join(',')}]`)
-    }
-    if (typeof opts.since === 'number' && Number.isFinite(opts.since)) {
-      filters.push(`createdAtTs >= ${Math.floor(opts.since)}`)
-    }
-
-    let response: Awaited<ReturnType<typeof meiliSearchInstance.multiSearch>>
-    try {
-      response = await meiliSearchInstance.multiSearch(
-        {
-          queries: [
-            {
-              indexUid: AULA_INDEX,
-              q: trimmed,
-              limit: opts.limit ?? 20,
-              offset: opts.offset ?? 0,
-              filter: filters.join(' AND '),
-              sort: ['createdAtTs:desc'],
-              attributesToHighlight: ['content', 'fileNames'],
-              attributesToCrop: ['content'],
-              cropLength: 30,
-              highlightPreTag: '<mark>',
-              highlightPostTag: '</mark>',
-            },
-          ],
-        },
-        opts.signal ? { signal: opts.signal } : undefined,
-      )
-    } catch (err) {
-      if (opts.signal?.aborted) throw err
-      console.warn('[SearchService] Meilisearch (Aula) niedostępny, szukam w Supabase', err)
-      return searchAulaFallback(trimmed, opts)
-    }
-
-    const result = response.results[0]
-    const rawHits = result?.hits ?? []
-    const hits = rawHits
-      .map((hit) => normalizeAulaHit(hit as Record<string, unknown>))
-      .filter((hit): hit is AulaSearchHit => hit != null)
-
-    const estimatedTotalHits =
-      (result as { estimatedTotalHits?: number; totalHits?: number } | undefined)
-        ?.estimatedTotalHits ??
-      (result as { totalHits?: number } | undefined)?.totalHits ??
-      hits.length
-
-    return { hits, estimatedTotalHits }
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) return { hits: [], estimatedTotalHits: 0 }
+    return searchAulaFallback(supabase, normalized, {
+      ...opts,
+      cohortId,
+      limit: boundedSearchLimit(opts.limit, 20),
+    })
   }
 }
 

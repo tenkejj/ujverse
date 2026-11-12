@@ -4,7 +4,8 @@
 
 import { buildToolCacheKey } from './cache.js'
 import { tryFastPath } from './fastPath.js'
-import { isPersonalTool } from './personalTools.js'
+import { chatResponseScope } from './chatAccess.js'
+import { warsawCivilDate } from './warsawDay.js'
 import {
   buildToolFacts,
   formatListedFacts,
@@ -14,7 +15,7 @@ import {
 /** Organiczne odpowiedzi Groq / small-talk — krótki TTL. */
 export const RESPONSE_CACHE_TTL_SECONDS = 30
 
-/** Fast-path + prewarm — stabilne zapytania (chipy, slashy). */
+/** Fast-path + prewarm — stabilne zapytania (sugerowane pytania). */
 export const RESPONSE_CACHE_FAST_PATH_TTL_SECONDS = 300
 
 export function responseCacheTtlSeconds(
@@ -30,17 +31,26 @@ export function buildResponseCacheKey(
   lastUserText: string,
   useTools: boolean,
   userId?: string | null,
+  conversation?: readonly { role: string; content?: string | null }[],
+  now: Date = new Date(),
 ): string {
   const normalized = lastUserText.trim().toLowerCase().replace(/\s+/g, ' ')
-  const match = tryFastPath(lastUserText)
-  const scope =
-    match && isPersonalTool(match.toolName) ? (userId ?? 'anon') : 'shared'
-  return buildToolCacheKey('chat_response', { text: normalized, useTools, scope })
+  return buildToolCacheKey('chat_response_v5', {
+    text: normalized,
+    useTools,
+    scope: chatResponseScope(userId),
+    // Relative questions and prewarmed replies expire together at Warsaw midnight.
+    day: warsawCivilDate(now),
+    // The same follow-up can refer to different information in each conversation.
+    ...(conversation && conversation.length > 1
+      ? { context: conversation.slice(0, -1) }
+      : {}),
+  })
 }
 
 /**
  * Formatuje wynik narzędzia do zapisu w KV (prewarm / offline cache).
- * Bez wywołania Llama 8B — direct, kompakt lub surowe fakty.
+ * Bez wywołania modelu — direct, kompakt lub surowe fakty.
  */
 export function formatToolResultForCache(
   toolName: string,

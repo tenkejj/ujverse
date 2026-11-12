@@ -44,11 +44,18 @@ function safeRead(): UserPreferences {
     const parsed = JSON.parse(raw) as Partial<UserPreferences> | null
     if (!parsed || typeof parsed !== 'object') return { ...DEFAULTS }
     return {
-      reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULTS.reducedMotion,
+      reducedMotion:
+        typeof parsed.reducedMotion === 'boolean'
+          ? parsed.reducedMotion
+          : DEFAULTS.reducedMotion,
       notificationSound:
-        typeof parsed.notificationSound === 'boolean' ? parsed.notificationSound : DEFAULTS.notificationSound,
+        typeof parsed.notificationSound === 'boolean'
+          ? parsed.notificationSound
+          : DEFAULTS.notificationSound,
       showProfileInSearch:
-        typeof parsed.showProfileInSearch === 'boolean' ? parsed.showProfileInSearch : DEFAULTS.showProfileInSearch,
+        typeof parsed.showProfileInSearch === 'boolean'
+          ? parsed.showProfileInSearch
+          : DEFAULTS.showProfileInSearch,
       showDepartmentOnPosts:
         typeof parsed.showDepartmentOnPosts === 'boolean'
           ? parsed.showDepartmentOnPosts
@@ -106,7 +113,9 @@ export function subscribePreferences(listener: Listener): () => void {
  * (selektor `html[data-reduced-motion="true"]`) mógł wymusić odpowiednie
  * reguły bez konieczności przepuszczania prefs przez setki komponentów.
  */
-export function applyVisualPreferences(prefs: UserPreferences = getUserPreferences()) {
+export function applyVisualPreferences(
+  prefs: UserPreferences = getUserPreferences(),
+) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   if (prefs.reducedMotion) {

@@ -29,7 +29,10 @@ const RETIRED_GROQ_MODELS = new Set([
   'llama-3.3-70b-versatile',
 ])
 
-function resolveGroqModel(envValue: string | undefined, fallback: string): string {
+function resolveGroqModel(
+  envValue: string | undefined,
+  fallback: string,
+): string {
   const trimmed = envValue?.trim()
   if (!trimmed || RETIRED_GROQ_MODELS.has(trimmed)) return fallback
   return trimmed
@@ -64,24 +67,21 @@ export const GROQ_SMALLTALK_MODEL: string = resolveGroqModel(
  * Polityka retry dla wywołań Groq API.
  *
  * - `GROQ_RETRY_ATTEMPTS` = 3: łącznie do trzech prób (1 oryginalna + 2 retry).
- * - `GROQ_RETRY_DELAY_MS` = 500: bazowy delay, mnożony wykładniczo dla 429
- *   i 5xx (`delay = baseDelay * 2^attempt`). Stały delay nie wystarczał przy
- *   limicie zapytań NA MINUTĘ — Groq potrafi zwracać kolejne 429 w odstępach
- *   <500ms, a nasze retry tylko zwiększało nacisk. Exponential + jitter
- *   rozprasza próbki w czasie i daje kwocie szansę się odbudować.
+ * - `GROQ_RETRY_DELAY_MS` = 500: bazowy delay, mnożony wykładniczo
+ *   dla 5xx (`delay = baseDelay * 2^attempt`). Dla 429 nie ponawiamy
+ *   automatycznie: limit minutowy/dzienny nie znika po 500 ms, a kolejne
+ *   próby dokładają ruch. Provider zachowuje Retry-After dla komunikatu UI.
  * - `GROQ_RETRY_MAX_DELAY_MS` = 8000: hard-cap pojedynczego sleep-u. Edge
  *   functions na Vercelu mają limit ~10–25s na request — wyjście poza ten
  *   budżet pojedynczym backoff-em zabija UX bardziej niż samo 429.
  *
  * Retry obejmuje:
- * - 429 (rate limit / quota — Groq czasem zwraca po krótkiej chwili),
  * - 5xx (przejściowe błędy infry Groqa),
  * - błędy transportu z `fetch` (DNS, ECONNRESET, abort), tj. wszystko co
- *   NIE jest `GroqProviderError` z 4xx innym niż 429.
+ *   NIE jest `GroqProviderError` z 4xx ani świadomym abortem.
  *
  * Retry NIE obejmuje:
- * - 4xx innych niż 429 — to błędy żądania (bad auth, bad model, bad body),
- *   ponawianie ich tylko marnuje czas i kwotę.
+ * - 4xx, w tym 429 — ponawianie w tej samej turze marnuje czas i kwotę.
  */
 const GROQ_RETRY_ATTEMPTS = 3
 const GROQ_RETRY_DELAY_MS = 500
@@ -110,10 +110,15 @@ function sleep(ms: number): Promise<void> {
 }
 
 function isRetryableGroqError(err: unknown): boolean {
+  if (
+    err instanceof Error &&
+    (err.name === 'AbortError' || err.name === 'TimeoutError')
+  )
+    return false
   if (err instanceof GroqProviderError) {
     const status = err.status
     if (status === null) return true
-    if (status === 429) return true
+    if (status === 429) return false
     if (status >= 500 && status < 600) return true
     return false
   }
@@ -151,15 +156,14 @@ export function computeBackoffDelay(
  *
  * Wzorzec: try-catch wokół `groq.chat.completions.create` (tu reprezentowane
  * przez `GroqProvider.sendMessage` / `completeWithTools`). Po wyczerpaniu prób
- * lub przy 4xx-nie-429 rzucamy `LlmServiceError`, który caller mapuje na HTTP 500.
+ * lub przy 4xx rzucamy `LlmServiceError`; caller odczytuje zachowany `cause`.
  *
- * Strategia backoff: exponential (`delayMs * 2^attempt`) z jitterem
+ * Strategia backoff dla transportu i 5xx: exponential (`delayMs * 2^attempt`) z jitterem
  * (`× (0.5 + Math.random())`) — patrz `computeBackoffDelay`. Stosujemy to
- * dla WSZYSTKICH retryowalnych błędów (nie tylko 429), bo 5xx również często
+ * dla WSZYSTKICH retryowalnych błędów, bo 5xx również często
  * pojawiają się w seriach i ten sam mechanizm działa jako rozpraszacz.
  *
- * Zachowanie zgodne z OpenAI SDK retry semantics: nie retry'ujemy 4xx (poza
- * 429), retry'ujemy 5xx + transport errors + 429.
+ * Nie ponawiamy 4xx, zwłaszcza 429 z limitem planu; ponawiamy 5xx i transport.
  */
 export async function withGroqRetry<T>(
   fn: () => Promise<T>,
@@ -167,7 +171,9 @@ export async function withGroqRetry<T>(
   delayMs: number = GROQ_RETRY_DELAY_MS,
 ): Promise<T> {
   let lastError: unknown
+  let attempted = 0
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    attempted = attempt
     try {
       return await fn()
     } catch (err) {
@@ -194,15 +200,14 @@ export async function withGroqRetry<T>(
         backoffMs,
         'ms before retry',
         attempt + 1,
-        status === 429 ? '(429 rate-limit recovery)' : '',
       )
       await sleep(backoffMs)
     }
   }
   throw new LlmServiceError(
     lastError instanceof Error
-      ? `Groq API call failed after ${attempts} attempts: ${lastError.message}`
-      : `Groq API call failed after ${attempts} attempts`,
+      ? `Groq API call failed after ${attempted} attempts: ${lastError.message}`
+      : `Groq API call failed after ${attempted} attempts`,
     lastError,
   )
 }
