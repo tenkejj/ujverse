@@ -9,7 +9,7 @@ import {
 } from '../src/lib/info/guides.ts'
 
 test('each procedural step points to a declared official source', () => {
-  assert.equal(STUDENT_GUIDES.length, 3)
+  assert.equal(new Set(STUDENT_GUIDES.map((guide) => guide.slug)).size, STUDENT_GUIDES.length)
   for (const guide of STUDENT_GUIDES) {
     const sourceIds = new Set(guide.sources.map((source) => source.id))
     assert.equal(sourceIds.size, guide.sources.length)

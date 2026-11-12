@@ -18,6 +18,12 @@ describe('source-backed assistant procedures', () => {
     assert.ok(reply.includes('poza Collegium Medicum'))
     assert.ok(reply.includes('w miarę wolnych miejsc'))
   })
+  it('recognises a mobile document procedure before the broader USOS topic', () => {
+    const reply = tryGuideReply('Jak uruchomić mLegitymację w USOSweb?', now) ?? ''
+    assert.ok(reply.includes('/poradniki/mlegitymacja'))
+    assert.equal(reply.includes('/poradniki/rejestracje-usos'), false)
+    assert.equal(tryGuideReply('Czy dostanę stypendium socjalne?', now), null)
+  })
   it('does not turn eligibility, personal timetable or arbitrary text into a procedure', () => {
     assert.equal(tryGuideReply('Czy dostanę stypendium rektora?', now), null)
     assert.equal(tryGuideReply('Co mam jutro w planie?', now), null)

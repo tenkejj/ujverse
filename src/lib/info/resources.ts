@@ -3,6 +3,8 @@
  * Adresy uczelniane są tu jedynym źródłem prawdy (używa ich też `Niezbednik.tsx`).
  */
 
+import { STUDENT_GUIDES } from './guides.js'
+
 export const UJ_LINKS = {
   usosweb: 'https://usosweb.uj.edu.pl',
   pegaz: 'https://pegaz.uj.edu.pl',
@@ -36,61 +38,34 @@ export type InfoResource = {
   keywords: readonly string[]
 }
 
+const GUIDE_RESOURCE_IDS: Record<string, string> = {
+  'stypendium-rektora': 'guide-scholarship',
+  akademik: 'guide-housing',
+  'rejestracje-usos': 'guide-registrations',
+}
+const GUIDE_SEARCH_TERMS: Record<string, readonly string[]> = {
+  'stypendium-rektora': ['stypendium', 'stypendia', 'rektor', 'wniosek', 'pierwszy rok'],
+  akademik: ['akademik', 'akademiki', 'mieszkanie', 'zakwaterowanie', 'wniosek'],
+  'rejestracje-usos': ['usos', 'rejestracja', 'rejestracje', 'zapisy', 'grupy', 'przedmioty'],
+  'stypendium-socjalne': ['stypendium', 'socjalne', 'dochód', 'rodzina', 'świadczenia'],
+  zapomoga: ['zapomoga', 'pomoc finansowa', 'trudna sytuacja', 'świadczenia'],
+  mlegitymacja: ['legitymacja', 'mlegitymacja', 'mobywatel', 'telefon', 'ELS'],
+  'wsparcie-psychologiczne': ['psycholog', 'pomoc', 'wsparcie', 'sowa', 'konsultacja'],
+  'dostosowanie-studiowania': ['dostosowania', 'adaptacje', 'niepełnosprawność', 'racjonalne usprawnienia', 'centrum dostępności'],
+  'biblioteka-jagiellonska': ['biblioteka', 'biblioteczne', 'wypożyczanie', 'książki', 'BJ'],
+}
+
 export const INFO_RESOURCES: readonly InfoResource[] = [
-  {
-    id: 'guide-scholarship',
-    label: 'Stypendium rektora — krok po kroku',
-    description: 'Kryteria, dokumenty, złożenie wniosku i sprawdzenie statusu',
+  ...STUDENT_GUIDES.map((guide): InfoResource => ({
+    id: GUIDE_RESOURCE_IDS[guide.slug] ?? `guide-${guide.slug}`,
+    label: `${guide.shortTitle} — krok po kroku`,
+    description: guide.description,
     icon: 'plan',
-    href: '/poradniki/stypendium-rektora',
+    href: `/poradniki/${guide.slug}`,
     external: false,
     requiresAccount: false,
-    keywords: [
-      'stypendium',
-      'stypendia',
-      'rektor',
-      'wniosek',
-      'poradnik',
-      'formalności',
-      'formalnosci',
-      'pierwszy rok',
-    ],
-  },
-  {
-    id: 'guide-housing',
-    label: 'Akademik — krok po kroku',
-    description: 'Nabór, dokumenty i czynności po otrzymaniu miejsca',
-    icon: 'plan',
-    href: '/poradniki/akademik',
-    external: false,
-    requiresAccount: false,
-    keywords: [
-      'akademik',
-      'akademiki',
-      'mieszkanie',
-      'zakwaterowanie',
-      'wniosek',
-      'poradnik',
-    ],
-  },
-  {
-    id: 'guide-registrations',
-    label: 'Rejestracje USOS — krok po kroku',
-    description: 'Właściwa tura, wybór grup i potwierdzenie zapisów',
-    icon: 'plan',
-    href: '/poradniki/rejestracje-usos',
-    external: false,
-    requiresAccount: false,
-    keywords: [
-      'usos',
-      'rejestracja',
-      'rejestracje',
-      'zapisy',
-      'grupy',
-      'przedmioty',
-      'poradnik',
-    ],
-  },
+    keywords: ['poradnik', 'formalności', 'formalnosci', ...(GUIDE_SEARCH_TERMS[guide.slug] ?? [])],
+  })),
   {
     id: 'usosweb',
     label: 'USOSweb',

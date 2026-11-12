@@ -36,6 +36,8 @@ const ICONS: Record<InfoResourceIcon, LucideIcon> = {
   assistant: Sparkles,
 }
 
+const TOOL_RESOURCES = INFO_RESOURCES.filter((resource) => !resource.id.startsWith('guide-'))
+
 type Scope = 'all' | 'uj' | 'ujverse'
 
 export default function ToolsPage({
@@ -46,18 +48,18 @@ export default function ToolsPage({
   const [scope, setScope] = useState<Scope>('all')
   const [text, setText] = useState('')
 
-  const ujCount = INFO_RESOURCES.filter((r) => r.external).length
-  const appCount = INFO_RESOURCES.filter((r) => !r.external).length
+  const ujCount = TOOL_RESOURCES.filter((r) => r.external).length
+  const appCount = TOOL_RESOURCES.filter((r) => !r.external).length
 
   const filters = [
-    { key: 'all', label: 'Wszystkie', count: INFO_RESOURCES.length },
+    { key: 'all', label: 'Wszystkie', count: TOOL_RESOURCES.length },
     { key: 'uj', label: 'Serwisy UJ', count: ujCount },
     { key: 'ujverse', label: 'UJverse', count: appCount },
   ]
 
   const visible = useMemo(() => {
     const q = text.trim().toLowerCase()
-    return INFO_RESOURCES.filter((r) => {
+    return TOOL_RESOURCES.filter((r) => {
       if (scope === 'uj' && !r.external) return false
       if (scope === 'ujverse' && r.external) return false
       if (!q) return true
@@ -81,7 +83,7 @@ export default function ToolsPage({
       <p className="campus-guide-intro">
         Potrzebujesz instrukcji?{' '}
         <Link to="/poradniki">
-          Zobacz, jak załatwić stypendium, akademik i rejestracje
+          Zobacz poradniki do spraw studenckich
         </Link>
         .
       </p>

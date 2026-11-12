@@ -30,7 +30,7 @@ The project is not affiliated with or endorsed by UJ. Confirm important deadline
 | Registrations | Current and upcoming rounds from the public USOSweb catalogue | `/rejestracje` |
 | Events | Calendar, day selection and university events | `/wydarzenia` |
 | Search | Search across information, guides and tools | `/szukaj` |
-| Guides | Rector's scholarship, student housing and USOS registration procedures | `/poradniki` |
+| Guides | Step-by-step help with student finances, studies, everyday essentials and support | `/poradniki` |
 | Toolkit | USOSweb, PEGAZ, student email and useful links | `/niezbednik` |
 | Find a room | Room and building search | `/sale` |
 

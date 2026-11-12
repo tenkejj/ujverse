@@ -13,6 +13,28 @@ html
   border: 0;
   box-shadow: none;
   backdrop-filter: none;
+  flex: 0 1 auto;
+  max-block-size: 100%;
+}
+.app-sidebar .sidebar-scroll-area {
+  --sidebar-row-gap: clamp(6px, 1dvh, 10px);
+  flex: 0 1 auto;
+  gap: clamp(24px, 2.5dvh, 36px);
+  padding-block: 16px 12px;
+}
+.app-sidebar .sidebar-scroll-area > * {
+  flex-shrink: 0;
+}
+.sidebar-nav-group {
+  gap: 0;
+}
+.sidebar-nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sidebar-row-gap);
+}
+.sidebar-nav-items > .sidebar-nav-item {
+  min-block-size: 48px;
 }
 .app-sidebar .sidebar-versus {
   padding: 0;
@@ -21,7 +43,7 @@ html
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 72px;
+  min-height: 80px;
   padding: 8px;
   border-radius: 10px;
   color: var(--campus-accent);
@@ -59,6 +81,7 @@ html
   text-transform: none;
   letter-spacing: 0;
   line-height: 1.5;
+  padding-block-end: 14px;
 }
 .sidebar-nav-item[aria-current='page']::before {
   content: '';
@@ -73,7 +96,7 @@ html
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 10px 12px;
   color: var(--campus-muted);
   cursor: pointer;
@@ -95,7 +118,8 @@ html
   rotate: 180deg;
 }
 .sidebar-services > div {
-  margin-top: 4px;
+  margin-top: 8px;
+  gap: 6px;
 }
 .sidebar-services .sidebar-nav-item {
   font-size: 13px;
@@ -103,31 +127,59 @@ html
 .sidebar-controls {
   flex: none;
   margin: 0 8px;
-  padding-block: 10px 4px;
+  padding-block: 12px 8px;
   border-top: 1px solid var(--campus-line);
 }
 .sidebar-controls > div {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px;
 }
 .sidebar-controls .sidebar-nav-item {
-  min-width: 44px;
-  width: 44px;
-  min-height: 44px;
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  min-height: 64px;
+  flex-direction: column;
+  gap: 7px;
   justify-content: center;
-  padding: 8px;
+  padding: 8px 2px;
 }
 .sidebar-controls .nav-item-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: center;
+}
+/* Long desktop viewports gain breathing room without shifting the services trigger. */
+@media (min-height: 960px) {
+  .app-sidebar[data-authenticated='false']
+    .sidebar-scroll-area {
+    --sidebar-row-gap: clamp(10px, calc((100dvh - 700px) / 28), 20px);
+    gap: 32px;
+    padding-block-start: 20px;
+  }
+  .app-sidebar[data-authenticated='false']
+    .sidebar-nav-items > .sidebar-nav-item {
+    min-block-size: 56px;
+  }
+}
+@media (max-height: 759px) {
+  .app-sidebar .sidebar-scroll-area {
+    --sidebar-row-gap: 4px;
+    gap: 20px;
+    padding-block-start: 8px;
+  }
+  .app-sidebar .sidebar-versus-link {
+    min-block-size: 64px;
+  }
+  .sidebar-controls {
+    padding-block: 8px 4px;
+  }
+  .sidebar-controls .sidebar-nav-item {
+    min-block-size: 56px;
+  }
 }
 .app-sidebar :where(a, button, summary):focus-visible {
   outline: 2px solid var(--campus-accent);

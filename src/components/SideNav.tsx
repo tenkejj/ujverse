@@ -57,6 +57,7 @@ export default function SideNav({
     <aside
       aria-label="Nawigacja główna"
       className={`app-sidebar ${SIDE_NAV_DESKTOP.containerClass}`}
+      data-authenticated={isAuthenticated}
     >
       <div className={SIDE_NAV_DESKTOP.stickyClass}>
         <div className={`sidebar-surface ${SIDE_NAV_DESKTOP.innerClass}`}>
@@ -84,19 +85,21 @@ export default function SideNav({
             </div>
             <div className={`sidebar-nav-group ${SIDE_NAV_DESKTOP.groupClass}`}>
               <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>Na uczelni</p>
-              {PRIMARY_NAV.filter((entry) => entry.target !== 'chat').map(
-                (entry) => (
-                  <NavItem
-                    key={entry.target}
-                    icon={entry.icon}
-                    label={entry.label}
-                    title={entry.title}
-                    active={active === entry.target}
-                    onClick={() => onNavigate(entry.target)}
-                    variant="sidebar"
-                  />
-                ),
-              )}
+              <div className="sidebar-nav-items">
+                {PRIMARY_NAV.filter((entry) => entry.target !== 'chat').map(
+                  (entry) => (
+                    <NavItem
+                      key={entry.target}
+                      icon={entry.icon}
+                      label={entry.label}
+                      title={entry.title}
+                      active={active === entry.target}
+                      onClick={() => onNavigate(entry.target)}
+                      variant="sidebar"
+                    />
+                  ),
+                )}
+              </div>
             </div>
 
             {isAuthenticated ? (
@@ -107,25 +110,27 @@ export default function SideNav({
                   <p className={SIDE_NAV_DESKTOP.sectionLabelClass}>
                     Dla Ciebie
                   </p>
-                  {ACCOUNT_NAV.map((entry) => (
-                    <NavItem
-                      key={entry.target}
-                      icon={entry.icon}
-                      label={entry.label}
-                      title={entry.title}
-                      active={active === entry.target}
-                      onClick={() => onNavigate(entry.target)}
-                      variant="sidebar"
-                      hasUnread={
-                        entry.target === 'aula' ? aulaHasUnread : undefined
-                      }
-                      badgeCount={
-                        entry.target === 'notifications'
-                          ? unreadCount
-                          : undefined
-                      }
-                    />
-                  ))}
+                  <div className="sidebar-nav-items">
+                    {ACCOUNT_NAV.map((entry) => (
+                      <NavItem
+                        key={entry.target}
+                        icon={entry.icon}
+                        label={entry.label}
+                        title={entry.title}
+                        active={active === entry.target}
+                        onClick={() => onNavigate(entry.target)}
+                        variant="sidebar"
+                        hasUnread={
+                          entry.target === 'aula' ? aulaHasUnread : undefined
+                        }
+                        badgeCount={
+                          entry.target === 'notifications'
+                            ? unreadCount
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </div>
                 </div>
               </>
             ) : null}

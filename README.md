@@ -30,13 +30,13 @@ Projekt nie jest powiązany z UJ ani zatwierdzony przez uczelnię. Ważne termin
 | Rejestracje | Trwające i nadchodzące tury z publicznego katalogu USOSweb | `/rejestracje` |
 | Wydarzenia | Kalendarz, wybór dnia i wydarzenia ogólnouczelniane | `/wydarzenia` |
 | Wyszukiwanie | Wspólne wyszukiwanie informacji, poradników i narzędzi | `/szukaj` |
-| Poradniki | Stypendium rektora, akademik i rejestracje USOS krok po kroku | `/poradniki` |
+| Poradniki | Sprawy studenckie krok po kroku: finanse, studia, codzienność i wsparcie | `/poradniki` |
 | Niezbędnik | USOSweb, PEGAZ, poczta i pozostałe przydatne odnośniki | `/niezbednik` |
 | Znajdź salę | Wyszukiwanie sal i budynków | `/sale` |
 
 Wydział wybierzesz w widocznym selektorze w nagłówku. Wybór i zapisane informacje zostają w przeglądarce; nie zmieniają danych konta. Dostępne są motywy jasny, ciemny i UJ oraz ustawienia pod `/settings`.
 
-Poradniki zawierają zakres zastosowania, przygotowanie, kolejne kroki, terminy, kontakty i oficjalne źródła. Ich lokalne listy kontrolne nie zastępują złożenia wniosku ani zapisu w USOSweb.
+Poradniki są podzielone na finanse, studia, codzienność i wsparcie. Wybierz kategorię lub wyszukaj temat, sprawdź krótkie podsumowanie i otwieraj kolejne kroki. Każda procedura wskazuje termin, przygotowanie, kontakt oraz oficjalne źródło. Lokalne oznaczenia postępu nie zastępują wykonania czynności w serwisie uczelni.
 
 ### Funkcje po zalogowaniu
 

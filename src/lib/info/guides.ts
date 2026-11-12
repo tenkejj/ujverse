@@ -1,5 +1,15 @@
 /** Editorial procedures from official UJ sources; never inferred obligations. */
-export type GuideSlug = 'stypendium-rektora' | 'akademik' | 'rejestracje-usos'
+export type GuideSlug =
+  | 'stypendium-rektora'
+  | 'akademik'
+  | 'rejestracje-usos'
+  | 'stypendium-socjalne'
+  | 'zapomoga'
+  | 'mlegitymacja'
+  | 'wsparcie-psychologiczne'
+  | 'dostosowanie-studiowania'
+  | 'biblioteka-jagiellonska'
+export type GuideCategory = 'finanse' | 'studia' | 'codziennosc' | 'wsparcie'
 export type GuideSource = { id: string; title: string; url: string }
 export type GuideStep = {
   id: string
@@ -12,6 +22,9 @@ export type StudentGuide = {
   title: string
   shortTitle: string
   description: string
+  category?: GuideCategory
+  quickFacts?: readonly string[]
+  primaryAction?: { label: string; url: string }
   academicYear: string
   checkedAt: string
   scope: string
@@ -31,6 +44,12 @@ export const STUDENT_GUIDES: readonly StudentGuide[] = [
     title: 'Jak złożyć wniosek o stypendium rektora?',
     shortTitle: 'Stypendium rektora',
     description: 'Od sprawdzenia zasad do potwierdzenia złożenia wniosku.',
+    category: 'finanse',
+    quickFacts: ['Podstawowy termin już upłynął', 'Sprawdź wyjątki dla I roku', 'Wniosek w USOSweb'],
+    primaryAction: {
+      label: 'Sprawdź zasady stypendium',
+      url: 'https://stypendia.uj.edu.pl/pomoc-materialna/stypendium-rektora',
+    },
     academicYear: '2026/2027',
     checkedAt: '2026-11-11',
     scope: 'Studenci UJ · zasady i kontakt zależne od sytuacji studenta',
@@ -114,6 +133,12 @@ export const STUDENT_GUIDES: readonly StudentGuide[] = [
     title: 'Jak ubiegać się o miejsce w akademiku?',
     shortTitle: 'Akademik',
     description: 'Właściwy nabór, wniosek i czynności po otrzymaniu miejsca.',
+    category: 'codziennosc',
+    quickFacts: ['Wybierz właściwy nabór', 'Ustaw preferencje pokoi', 'Osobne zasady CM'],
+    primaryAction: {
+      label: 'Sprawdź aktualny nabór',
+      url: 'https://akademiki.uj.edu.pl/studenci/harmonogram',
+    },
     academicYear: '2026/2027',
     checkedAt: '2026-11-11',
     scope: 'Akademiki UJ poza Collegium Medicum',
@@ -207,6 +232,12 @@ export const STUDENT_GUIDES: readonly StudentGuide[] = [
     title: 'Jak zapisać się na przedmioty w USOSweb?',
     shortTitle: 'Rejestracje USOS',
     description: 'Znajdź swoją turę, sprawdź wynik zapisu i podpięcia.',
+    category: 'studia',
+    quickFacts: ['Terminy zależą od tury', 'Sprawdź przydział grupy', 'Potwierdź podpięcie'],
+    primaryAction: {
+      label: 'Przejdź do USOSweb',
+      url: 'https://www.usosweb.uj.edu.pl/',
+    },
     academicYear: '2026/2027',
     checkedAt: '2026-11-11',
     scope: 'Studenci UJ · właściwe tury i zasady ustala jednostka',
@@ -273,6 +304,285 @@ export const STUDENT_GUIDES: readonly StudentGuide[] = [
         title: 'USOSownia UJ: podpięcia',
         url: 'https://usosownia.uj.edu.pl/podpiecia',
       },
+    ],
+  },
+  {
+    slug: 'stypendium-socjalne',
+    title: 'Jak ubiegać się o stypendium socjalne?',
+    shortTitle: 'Stypendium socjalne',
+    description: 'Sprawdź warunki, przygotuj dokumenty dochodowe i złóż wniosek.',
+    category: 'finanse',
+    quickFacts: ['Dochód rodziny', 'Wniosek na semestr', 'Termin zimowy już upłynął'],
+    primaryAction: {
+      label: 'Sprawdź warunki i dokumenty',
+      url: 'https://stypendia.uj.edu.pl/pomoc-materialna/stypendium-socjalne',
+    },
+    academicYear: '2026/2027',
+    checkedAt: '2026-11-12',
+    scope: 'Studenci UJ · indywidualna ocena sytuacji materialnej',
+    audience:
+      'Osoby studiujące w trudnej sytuacji materialnej. Sprawdź aktualny próg dochodu, zasady ustalania rodziny i pozostałe warunki. Sam niski dochód nie rozstrzyga wszystkich uprawnień.',
+    deadline:
+      'UJ podaje 30 września dla semestru zimowego i 31 stycznia dla letniego. Podstawowy termin zimowy 2026/2027 już upłynął. Jeśli składasz później, ustal z koordynatorem, co to oznacza w Twojej sytuacji.',
+    prepare: [
+      'Dostęp do USOSweb i poczty studenckiej.',
+      'Dokumenty dochodów i sytuacji rodziny wymagane w Twoim przypadku.',
+      'Oryginały dokumentów elektronicznych lub czytelne skany dokumentów papierowych.',
+    ],
+    steps: [
+      {
+        id: 'conditions',
+        title: 'Sprawdź warunki i termin',
+        description: 'Porównaj swoją sytuację z aktualnymi zasadami UJ. Nietypowy dochód lub skład rodziny wyjaśnij z koordynatorem.',
+        sourceIds: ['social'],
+      },
+      {
+        id: 'documents',
+        title: 'Zbierz dokumenty dochodowe',
+        description: 'Skorzystaj z listy dokumentów UJ. Wielostronicowy dokument dołącz jako jeden plik.',
+        sourceIds: ['social', 'applications'],
+      },
+      {
+        id: 'submit',
+        title: 'Wypełnij i złóż wniosek',
+        description: 'W USOSweb wybierz właściwy semestr, uzupełnij wymagane dane i użyj funkcji „Podpisz i złóż elektronicznie”. Sam zapis wersji roboczej nie wystarczy.',
+        sourceIds: ['social', 'applications'],
+      },
+      {
+        id: 'follow-up',
+        title: 'Sprawdzaj status i wezwania',
+        description: 'Zaglądaj do wniosku oraz poczty studenckiej. Uzupełnienia przekazuj zgodnie z otrzymaną instrukcją.',
+        sourceIds: ['applications'],
+      },
+    ],
+    status: 'Wniosek i decyzję sprawdzaj w USOSweb. Lista UJverse nie ocenia dochodu ani prawa do świadczenia.',
+    contact: {
+      text: 'Koordynator ds. stypendialnych: USOSweb → Dla studentów → Obsługa. Pomoże ustalić dokumenty dla Twojej sytuacji.',
+      url: 'https://dydaktyka.uj.edu.pl/centrum/dssp',
+    },
+    sources: [
+      { id: 'social', title: 'UJ: stypendium socjalne — warunki, terminy i dokumenty', url: 'https://stypendia.uj.edu.pl/pomoc-materialna/stypendium-socjalne' },
+      { id: 'applications', title: 'UJ: składanie wniosków o świadczenia', url: 'https://stypendia.uj.edu.pl/pomoc-materialna/wnioski' },
+    ],
+  },
+  {
+    slug: 'zapomoga',
+    title: 'Jak złożyć wniosek o zapomogę?',
+    shortTitle: 'Zapomoga',
+    description: 'Jednorazowe wsparcie po zdarzeniu, które utrudniło studiowanie.',
+    category: 'finanse',
+    quickFacts: ['Jednorazowe wsparcie', 'Do 3 miesięcy od zdarzenia', 'Wniosek online'],
+    primaryAction: {
+      label: 'Sprawdź zasady zapomogi',
+      url: 'https://stypendia.uj.edu.pl/pomoc-materialna/zapomoga',
+    },
+    academicYear: '2026/2027',
+    checkedAt: '2026-11-12',
+    scope: 'Studenci UJ · przejściowa trudna sytuacja życiowa',
+    audience: 'Osoby, których studiowanie utrudniło zdarzenie życiowe, np. choroba lub utrata stałego dochodu. Decyzja zależy od indywidualnej sytuacji i dokumentów.',
+    deadline: 'Nie zwlekaj: UJ wskazuje termin do 3 miesięcy od zdarzenia. Dokładne zasady i sposób liczenia terminu potwierdź w źródle lub z koordynatorem.',
+    prepare: [
+      'Krótki opis zdarzenia i datę, kiedy nastąpiło.',
+      'Dokumenty potwierdzające zdarzenie oraz jego wpływ na Twoją sytuację.',
+      'Dostęp do USOSweb i poczty studenckiej.',
+    ],
+    steps: [
+      {
+        id: 'check',
+        title: 'Sprawdź, czy to właściwa pomoc',
+        description: 'Przeczytaj zasady zapomogi i porównaj je ze swoją sytuacją. Wątpliwości dotyczące terminu wyjaśnij od razu.',
+        sourceIds: ['aid'],
+      },
+      {
+        id: 'document',
+        title: 'Opisz i udokumentuj zdarzenie',
+        description: 'Przygotuj wymagane załączniki. Nie przesyłaj dokumentów do UJverse — dołącz je wyłącznie w uczelnianej procedurze.',
+        sourceIds: ['aid'],
+      },
+      {
+        id: 'submit',
+        title: 'Złóż wniosek w USOSweb',
+        description: 'Wypełnij formularz zapomogi i użyj funkcji elektronicznego podpisania i złożenia. UJ nie wymaga wydruku tak złożonego wniosku.',
+        sourceIds: ['aid', 'applications'],
+      },
+      {
+        id: 'decision',
+        title: 'Sprawdzaj wniosek i decyzję',
+        description: 'Odczytuj wiadomości na poczcie studenckiej oraz ewentualne prośby o uzupełnienie dokumentów.',
+        sourceIds: ['applications'],
+      },
+    ],
+    status: 'Złożenie i rozstrzygnięcie potwierdzaj w USOSweb. Zaznaczenie punktu tutaj nie składa wniosku.',
+    contact: { text: 'Koordynator ds. stypendialnych wskazany w USOSweb → Dla studentów → Obsługa.', url: 'https://dydaktyka.uj.edu.pl/centrum/dssp' },
+    sources: [
+      { id: 'aid', title: 'UJ: zapomoga — sytuacje, termin i dokumenty', url: 'https://stypendia.uj.edu.pl/pomoc-materialna/zapomoga' },
+      { id: 'applications', title: 'UJ: składanie wniosków o świadczenia', url: 'https://stypendia.uj.edu.pl/pomoc-materialna/wnioski' },
+    ],
+  },
+  {
+    slug: 'mlegitymacja',
+    title: 'Jak uruchomić mLegitymację studencką?',
+    shortTitle: 'mLegitymacja',
+    description: 'Dokument w telefonie: zamówienie, dodanie i sprawdzenie ważności.',
+    category: 'codziennosc',
+    quickFacts: ['PESEL i aktywny status', 'Aplikacja mObywatel', 'Przedłużenie nie jest automatyczne'],
+    primaryAction: { label: 'Otwórz instrukcję UJ', url: 'https://usosownia.uj.edu.pl/usosweb/ogolne/mlegitymacja' },
+    academicYear: '2026/2027',
+    checkedAt: '2026-11-12',
+    scope: 'Studenci UJ z numerem PESEL',
+    audience: 'Osoby z aktywnym statusem studenta i numerem PESEL. UJ wymienia także potwierdzony Profil Zaufany oraz aplikację mObywatel.',
+    deadline: 'Możesz rozpocząć po spełnieniu warunków UJ. Przed korzystaniem z dokumentu sprawdź jego ważność — przedłużenie na kolejny semestr nie jest automatyczne.',
+    prepare: ['Dostęp do USOSweb lub mobilnego USOS.', 'Potwierdzony Profil Zaufany i aplikację mObywatel.'],
+    steps: [
+      {
+        id: 'requirements',
+        title: 'Sprawdź dane i wymagania',
+        description: 'Upewnij się, że masz aktywny status i numer PESEL oraz spełniasz wymagania opisane w USOSowni.',
+        sourceIds: ['mobile-id'],
+      },
+      {
+        id: 'order',
+        title: 'Zamów dokument przez USOS',
+        description: 'Skorzystaj z USOSweb lub mobilnego USOS. Otwórz uczelnianą instrukcję i wykonaj wskazane czynności.',
+        sourceIds: ['mobile-id'],
+      },
+      {
+        id: 'activate',
+        title: 'Dodaj dokument i sprawdź ważność',
+        description: 'Dokończ dodawanie w mObywatelu według instrukcji. Przy zmianie telefonu potrzebne jest anulowanie starego dokumentu i zamówienie nowego.',
+        sourceIds: ['mobile-id'],
+      },
+    ],
+    status: 'Sprawdź dokument i jego aktualną ważność w mObywatelu. Ta lista nie zamawia ani nie przedłuża mLegitymacji.',
+    contact: { text: 'Sprawy mLegitymacji: mlegitymacja@uj.edu.pl. Błędne dane w USOS zgłoś w sekretariacie swoich studiów.', url: 'https://usosownia.uj.edu.pl/kontakt' },
+    sources: [{ id: 'mobile-id', title: 'USOSownia UJ: mLegitymacja — zamawianie i ważność', url: 'https://usosownia.uj.edu.pl/usosweb/ogolne/mlegitymacja' }],
+  },
+  {
+    slug: 'wsparcie-psychologiczne',
+    title: 'Jak umówić konsultację w SOWA?',
+    shortTitle: 'Wsparcie psychologiczne',
+    description: 'Pierwszy kontakt z uczelnianym ośrodkiem wsparcia, krok po kroku.',
+    category: 'wsparcie',
+    quickFacts: ['Formularz zgłoszeniowy', 'Logowanie kontem UJ', 'Termin ustala SOWA'],
+    primaryAction: { label: 'Przejdź do zapisów SOWA', url: 'https://sowa.uj.edu.pl/skontaktujsieznami' },
+    academicYear: '2026/2027',
+    checkedAt: '2026-11-12',
+    scope: 'Osoby studiujące na UJ · konsultacje SOWA',
+    audience: 'Osoby studiujące, które potrzebują wsparcia psychologicznego. Do formularza potrzebne jest uczelniane konto; zasady SOWA rozróżniają studentów oraz pracowników i osoby ze szkół doktorskich.',
+    deadline: 'Zgłoś się, gdy potrzebujesz wsparcia. Czas oczekiwania zależy od dostępności ośrodka — wysłanie formularza nie oznacza zarezerwowanego terminu. SOWA nie jest pogotowiem; w bezpośrednim zagrożeniu życia dzwoń pod 112.',
+    prepare: ['Dostęp do konta i poczty w domenie UJ.', 'Krótki opis tego, z czym potrzebujesz pomocy, w oficjalnym formularzu.'],
+    steps: [
+      {
+        id: 'open',
+        title: 'Otwórz stronę zapisów SOWA',
+        description: 'Wybierz formularz dla osób studiujących. Link i instrukcje znajdziesz na oficjalnej stronie ośrodka.',
+        sourceIds: ['contact'],
+      },
+      {
+        id: 'send',
+        title: 'Zaloguj się i wyślij formularz',
+        description: 'Użyj konta UJ, zapoznaj się z wymaganymi zgodami i przekaż zgłoszenie bezpośrednio do SOWA. Nie wpisuj danych zdrowotnych w UJverse.',
+        sourceIds: ['contact', 'faq'],
+      },
+      {
+        id: 'reply',
+        title: 'Sprawdzaj pocztę studencką',
+        description: 'Poczekaj na kontakt specjalisty. Jeśli formularz nie działa albo potrzebujesz przełożyć spotkanie, skorzystaj z instrukcji kontaktu SOWA.',
+        sourceIds: ['contact', 'faq'],
+      },
+    ],
+    status: 'Termin konsultacji potwierdza zespół SOWA. UJverse nie otrzymuje zgłoszenia ani informacji o zdrowiu.',
+    contact: { text: 'Sekretariat SOWA: biuro.sowa@uj.edu.pl, tel. 12 663 36 83. Aktualne godziny i zasady kontaktu są na stronie ośrodka.', url: 'https://sowa.uj.edu.pl/skontaktujsieznami' },
+    sources: [
+      { id: 'contact', title: 'SOWA UJ: formularz i kontakt', url: 'https://sowa.uj.edu.pl/skontaktujsieznami' },
+      { id: 'faq', title: 'SOWA UJ: zasady konsultacji i odpowiedzi na pytania', url: 'https://sowa.uj.edu.pl/faq' },
+    ],
+  },
+  {
+    slug: 'dostosowanie-studiowania',
+    title: 'Jak uzyskać dostosowanie studiowania?',
+    shortTitle: 'Dostosowanie studiowania',
+    description: 'Gdy zdrowie lub szczególne potrzeby utrudniają zajęcia i egzaminy.',
+    category: 'wsparcie',
+    quickFacts: ['Najpierw konsultacja', 'Wniosek miesiąc wcześniej', 'Indywidualne rozwiązania'],
+    primaryAction: { label: 'Zacznij od konsultacji w CD', url: 'https://cd.uj.edu.pl/pl_PL/dla-studentow/konsultacje-studenckie' },
+    academicYear: '2026/2027',
+    checkedAt: '2026-11-12',
+    scope: 'Centrum Dostępności UJ · racjonalne usprawnienia procesu studiowania',
+    audience: 'Osoby, których sytuacja zdrowotna lub psychofizyczna wpływa na studiowanie. Rozwiązania dobiera się indywidualnie, bez obniżania wymagań merytorycznych.',
+    deadline: 'Wniosek z załącznikami składa się zasadniczo co najmniej miesiąc przed planowanym skorzystaniem z usprawnień. Wyjątki rozpatruje się indywidualnie. Najpierw umów konsultację w Centrum Dostępności.',
+    prepare: ['Opis trudności na zajęciach lub egzaminach.', 'Dokumentację specjalistyczną wskazaną przez Centrum Dostępności.', 'Informację, od kiedy potrzebujesz wsparcia.'],
+    steps: [
+      {
+        id: 'consultation',
+        title: 'Umów konsultację w Centrum Dostępności',
+        description: 'Wypełnij formularz wskazany przez CD i poczekaj na kontakt. Każdy wniosek poprzedza konsultacja.',
+        sourceIds: ['consultation'],
+      },
+      {
+        id: 'needs',
+        title: 'Omów potrzeby i dokumentację',
+        description: 'Ze specjalistą ustalisz możliwe rozwiązania i wymagane dokumenty. Dokumentacji medycznej nie przesyłaj do UJverse.',
+        sourceIds: ['consultation'],
+      },
+      {
+        id: 'application',
+        title: 'Przejdź procedurę wniosku',
+        description: 'Postępuj według wskazówek CD. Po opinii specjalisty decyzję podejmuje właściwy dziekan.',
+        sourceIds: ['adjustments'],
+      },
+      {
+        id: 'arrangements',
+        title: 'Ustal szczegóły z prowadzącymi',
+        description: 'Po uzyskaniu zgody uzgodnij realizację przyznanych rozwiązań na zajęciach i egzaminach.',
+        sourceIds: ['adjustments'],
+      },
+    ],
+    status: 'Przebieg sprawy ustalaj z CD i swoją jednostką. Samo zgłoszenie nie oznacza przyznania usprawnień.',
+    contact: { text: 'Centrum Dostępności UJ — konsultacje i aktualne sposoby kontaktu na stronie jednostki.', url: 'https://cd.uj.edu.pl/pl_PL/kontakt/sposoby-kontaktu' },
+    sources: [
+      { id: 'consultation', title: 'CD UJ: konsultacje studenckie', url: 'https://cd.uj.edu.pl/pl_PL/dla-studentow/konsultacje-studenckie' },
+      { id: 'adjustments', title: 'CD UJ: racjonalne usprawnienia i termin wniosku', url: 'https://cd.uj.edu.pl/pl_PL/dla-studentow/racjonalne-usprawnienia-procesu-studiowania' },
+    ],
+  },
+  {
+    slug: 'biblioteka-jagiellonska',
+    title: 'Jak zapisać się do Biblioteki Jagiellońskiej?',
+    shortTitle: 'Biblioteka Jagiellońska',
+    description: 'Dokumenty, aktywacja karty i pierwsze korzystanie ze zbiorów.',
+    category: 'studia',
+    quickFacts: ['Sprawdź dokumenty', 'Zapis w Wypożyczalni BJ', 'Osobne zasady innych bibliotek'],
+    primaryAction: { label: 'Sprawdź zasady zapisu do BJ', url: 'https://bj.uj.edu.pl/korzystanie-z-bj/jak-zostac-uzytkownikiem' },
+    academicYear: '2026/2027',
+    checkedAt: '2026-11-12',
+    scope: 'Biblioteka Jagiellońska · zakres dokumentów zależy od kategorii czytelnika',
+    audience: 'Osoby studiujące na UJ, które chcą korzystać z BJ. Dla studentów zagranicznych i innych kategorii czytelników obowiązują odrębne listy dokumentów.',
+    deadline: 'Przed wizytą sprawdź aktualne godziny Wypożyczalni i dokumenty na bieżący semestr. Karta wymaga ważności lub prolongaty zgodnie z zasadami BJ.',
+    prepare: ['Dokument tożsamości.', 'Ważną ELS zgodnie z listą dokumentów dla Twojej kategorii; jeśli masz tylko mLegitymację, najpierw zapytaj BJ o właściwą ścieżkę.'],
+    steps: [
+      {
+        id: 'documents',
+        title: 'Wybierz swoją kategorię czytelnika',
+        description: 'Otwórz zasady zapisu i sprawdź listę dokumentów. Nie zakładaj, że procedura innej grupy dotyczy również Ciebie.',
+        sourceIds: ['registration'],
+      },
+      {
+        id: 'visit',
+        title: 'Zapisz się w Wypożyczalni BJ',
+        description: 'Okaż wymagane dokumenty. Dla uprawnionych studentów ELS jest aktywowana jako karta biblioteczna.',
+        sourceIds: ['registration'],
+      },
+      {
+        id: 'rules',
+        title: 'Sprawdź swoje uprawnienia',
+        description: 'Potwierdź możliwość wypożyczania i zasady korzystania z konta. Do innych bibliotek UJ trzeba zapisać się oddzielnie.',
+        sourceIds: ['registration'],
+      },
+    ],
+    status: 'Aktywację i ważność karty potwierdza Biblioteka. Lista UJverse nie zakłada konta czytelnika.',
+    contact: { text: 'Wątpliwości dotyczące dokumentów lub karty wyjaśnij przez oficjalny formularz „Zapytaj bibliotekarza”.', url: 'https://bj.uj.edu.pl/uslugi/zapytaj-bibliotekarza-formularz' },
+    sources: [
+      { id: 'registration', title: 'BJ: jak zostać użytkownikiem — dokumenty i uprawnienia', url: 'https://bj.uj.edu.pl/korzystanie-z-bj/jak-zostac-uzytkownikiem' },
     ],
   },
 ]

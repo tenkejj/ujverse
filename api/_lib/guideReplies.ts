@@ -1,4 +1,4 @@
-import { STUDENT_GUIDES, needsGuideReview } from '../../src/lib/info/guides.js'
+import { STUDENT_GUIDES, needsGuideReview, type GuideSlug } from '../../src/lib/info/guides.js'
 
 /** Explain a verified procedure without another inference or a guessed obligation. */
 export function tryGuideReply(
@@ -16,13 +16,18 @@ export function tryGuideReply(
     !/\b(jak|gdzie|poradnik|instrukcj|krok|procedur)/.test(text)
   )
     return null
-  const slug = /stypendium rektora/.test(text)
-    ? 'stypendium-rektora'
-    : /akademik/.test(text)
-      ? 'akademik'
-      : /rejestrac|zapis.*(?:zajec|przedmiot|grup)|usos/.test(text)
-        ? 'rejestracje-usos'
-        : null
+  const topics: readonly [RegExp, GuideSlug][] = [
+    [/stypendium rektora/, 'stypendium-rektora'],
+    [/stypendium socjaln/, 'stypendium-socjalne'],
+    [/zapomog/, 'zapomoga'],
+    [/mlegitymacj|mobywatel|legitymacj.*telefon/, 'mlegitymacja'],
+    [/sowa|psycholog|(?:pomoc|wsparc).*psych/, 'wsparcie-psychologiczne'],
+    [/(?:dostosowan|adaptacj).*(?:studi|zajec|egzamin)|racjonaln.*usprawn|niepelnosprawn/, 'dostosowanie-studiowania'],
+    [/bibliotek|wypozycz.*ksiazk/, 'biblioteka-jagiellonska'],
+    [/akademik/, 'akademik'],
+    [/rejestrac|zapis.*(?:zajec|przedmiot|grup)|usos/, 'rejestracje-usos'],
+  ]
+  const slug = topics.find(([pattern]) => pattern.test(text))?.[1]
   const guide = STUDENT_GUIDES.find((entry) => entry.slug === slug)
   if (!guide) return null
   const introduction = needsGuideReview(guide, now)
@@ -31,5 +36,5 @@ export function tryGuideReply(
         .slice(0, 3)
         .map((step, index) => `${index + 1}. ${step.title}`)
         .join('\n')}`
-  return `${introduction}\n\n${guide.deadline}\n\n[Cały poradnik: ${guide.shortTitle}](/poradniki/${guide.slug}) · [Oficjalne zasady UJ](${guide.sources[0].url})\n\nPoradnik dotyczy: ${guide.scope}. Nie składa wniosku ani nie wykonuje czynności w USOS.`
+  return `${introduction}\n\n${guide.deadline}\n\n[Cały poradnik: ${guide.shortTitle}](/poradniki/${guide.slug}) · [Oficjalne zasady UJ](${guide.sources[0].url})\n\nPoradnik dotyczy: ${guide.scope}. Czynności wykonujesz w odpowiednim serwisie UJ.`
 }
