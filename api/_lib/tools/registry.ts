@@ -112,7 +112,7 @@ const registry = new Map<string, ToolEntry>()
 export type RegisterToolArgs<TArgs, TResult> = {
   tool: Tool
   execute: ToolExecutor<TArgs, TResult>
-  /** Override TTL per rejestracja — przydatne w testach. Default: `ttlForTool(tool.name)`. */
+  /** Override TTL; explicit 0 skips cache. Default: `ttlForTool(tool.name)`. */
   ttlMs?: number
 }
 
@@ -123,7 +123,9 @@ export function registerTool<TArgs, TResult>(
     throw new Error(`Tool already registered: ${entry.tool.name}`)
   }
   const ttlMs = entry.ttlMs ?? ttlForTool(entry.tool.name)
-  const decorated = withCache(entry.tool.name, entry.execute, ttlMs)
+  const decorated = ttlMs === 0
+    ? entry.execute
+    : withCache(entry.tool.name, entry.execute, ttlMs)
   registry.set(entry.tool.name, {
     tool: entry.tool,
     execute: async (args, ctx) => {

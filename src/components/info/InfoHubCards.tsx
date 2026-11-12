@@ -21,6 +21,7 @@ import {
   SaveToggle,
 } from './infoUi'
 import { EventPreviewTile } from './InfoItems'
+import { recordUsefulSourceOpen } from '../../lib/info/productMetrics'
 
 type Icon = ComponentType<
   SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }
@@ -60,7 +61,12 @@ export function AnnouncementHubCard({
         </div>
         <h3>
           {item.sourceUrl ? (
-            <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
+            <a
+              href={item.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => recordUsefulSourceOpen('announcement')}
+            >
               {item.title}
               <span className="sr-only"> (nowa karta)</span>
             </a>
@@ -72,6 +78,7 @@ export function AnnouncementHubCard({
           <p className="info-entry-excerpt">{item.excerpt}</p>
         ) : null}
         <ExternalSourceLink
+          kind="announcement"
           href={item.sourceUrl}
           title={
             item.sourceIsListing
@@ -152,7 +159,7 @@ export function RegistrationHubCard({
             {deadline}
           </time>
         </p>
-        <ExternalSourceLink href={item.url}>
+        <ExternalSourceLink href={item.url} kind="registration">
           Otwórz w USOSweb
         </ExternalSourceLink>
       </div>
@@ -195,6 +202,7 @@ export function ResourceHubCard({
   return resource.external ? (
     <a
       className="resource-entry"
+      onClick={() => recordUsefulSourceOpen('tool')}
       href={resource.href}
       target="_blank"
       rel="noopener noreferrer"

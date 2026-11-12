@@ -1,0 +1,112 @@
+.pilot-participation {
+  width: 100%;
+  color: var(--campus-muted, var(--text-label));
+}
+.pilot-participation > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+}
+.pilot-participation > summary::-webkit-details-marker {
+  display: none;
+}
+.pilot-participation[open] > summary > svg:last-child {
+  rotate: 180deg;
+}
+.pilot-participation-content {
+  max-width: 760px;
+  padding-block: 12px 20px;
+  border-top: 1px solid var(--campus-line, var(--border-app));
+  font-size: 13px;
+  line-height: 1.65;
+}
+.pilot-participation-content > p + p {
+  margin-block-start: 12px;
+}
+.pilot-participation-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-block: 20px;
+  color: var(--campus-text, var(--text-primary));
+}
+.pilot-participation-consent > input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-block-start: 2px;
+  accent-color: var(--campus-accent, var(--brand-ink));
+}
+.pilot-participation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  margin-block: 20px;
+}
+.pilot-participation-summary dt {
+  font-size: 12px;
+}
+.pilot-participation-summary dd {
+  margin-block-start: 4px;
+  color: var(--campus-text, var(--text-primary));
+  font-size: 18px;
+  font-weight: 600;
+}
+.pilot-participation-task {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin-block: 20px;
+}
+.pilot-participation-task > label {
+  flex-basis: 100%;
+  color: var(--campus-text, var(--text-primary));
+}
+.pilot-participation-task select {
+  width: min(100%, 450px);
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--campus-line, var(--border-app));
+  border-radius: 10px;
+  background: var(--campus-bg, var(--bg-card));
+  color: var(--campus-text, var(--text-primary));
+  font: inherit;
+}
+.pilot-participation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--campus-line, var(--border-app));
+  border-radius: 10px;
+  background: transparent;
+  color: var(--campus-text, var(--text-primary));
+  font: inherit;
+}
+.pilot-participation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block-start: 20px;
+}
+.pilot-participation-status {
+  min-height: 1.65em;
+  margin-block-start: 12px;
+}
+.pilot-participation :where(button, input, select, summary):focus-visible {
+  outline: 2px solid var(--campus-accent, var(--brand-ink));
+  outline-offset: 3px;
+}
+@media (hover: hover) {
+  .pilot-participation button:hover {
+    background: var(--campus-hover, var(--bg-app));
+  }
+}

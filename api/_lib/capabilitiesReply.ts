@@ -1,5 +1,6 @@
 /** Ready answers about Versuś; no model invocation needed. */
 import { DEFAULT_GROQ_MODEL, GROQ_SMALLTALK_MODEL } from './llmService.js'
+import { tryGuideReply } from './guideReplies.js'
 
 const MODEL_PATTERNS: readonly RegExp[] = [
   /^na jakim modelu (działasz|dzialasz|pracujesz)(?: ai)?\??$/i,
@@ -76,6 +77,8 @@ export function tryCapabilitiesReply(
   userMessage: string,
   isAuthenticated = true,
 ): string | null {
+  const guide = tryGuideReply(userMessage)
+  if (guide) return guide
   const text = userMessage.trim().replace(/\s+/g, ' ')
   if (text.length === 0 || text.length > 80) return null
   for (const pattern of MODEL_PATTERNS) {

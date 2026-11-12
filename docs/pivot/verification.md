@@ -1,8 +1,12 @@
 # UJverse pivot — verification
 
-Verified on branch `cursor/info-hub-pivot-0474` against a local Vite preview with the live Supabase project (anon key). Times below are Europe/Warsaw.
+**Historical report — 4 November 2026.** These checks describe the original pivot, not the latest UI or the remediation requested in the 11 November audit. Current scope, live checks and release status are recorded in [`../audit/2026-11-11-status.md`](../audit/2026-11-11-status.md). Do not carry the counts below forward as current results.
 
-**Do not treat this as production-ready until** migration `20261104120000_public_information_read_access.sql` is applied on the remote DB (manual, reviewed). Until then anonymous visitors see real announcements, but registrations and official events correctly show the „niedostępne” / error states (J2).
+As of 12 November, the remediation branch includes Supabase/RLS search, “Nie przegap”, three public procedural guides, local context for two verified programmes and explicit opt-in device-only pilot measurement. Its current full regression and release are tracked in the audit report, separately from the November 4 counts. Read-only production evidence confirms public reads and selected anonymous private-table exclusions, but does not prove signed-in cross-cohort isolation. Research has no participants yet.
+
+The original verification used branch `cursor/info-hub-pivot-0474`, a local Vite preview and the live Supabase project with its anon key. Times below are Europe/Warsaw.
+
+At that checkpoint, migration `20261104120000_public_information_read_access.sql` had not been applied to the remote database. The subsequent production policy state must be checked separately; neither the presence of this migration nor a successful assistant API reply establishes anonymous browser access. The following results are retained as historical evidence.
 
 ---
 

@@ -51,6 +51,7 @@ import AnnouncementsPage from './components/info/AnnouncementsPage'
 import RegistrationsPage from './components/info/RegistrationsPage'
 import ToolsPage from './components/info/ToolsPage'
 import InfoSearchPage from './components/info/InfoSearchPage'
+import { recordPilotVisit } from './lib/info/productMetrics'
 import { useChatStore } from './store/useChatStore'
 import AuthRequired from './components/info/AuthRequired'
 import { PROTECTED_FEATURES } from './components/info/protectedFeatures'
@@ -82,6 +83,7 @@ const AdminReportsView = lazy(
 const OfficialEventsPage = lazy(
   () => import('./components/info/OfficialEventsPage'),
 )
+const StudentGuides = lazy(() => import('./components/info/StudentGuides'))
 const ChatAssistantFab = lazy(
   () => import('./components/chat/ChatAssistantFab'),
 )
@@ -109,6 +111,7 @@ type AppShellView =
   | 'wydarzenia'
   | 'szukaj'
   | 'niezbednik'
+  | 'poradniki'
   | 'login'
   | 'feed'
   | 'profile'
@@ -137,6 +140,7 @@ const PUBLIC_VIEWS: ReadonlySet<AppShellView> = new Set<AppShellView>([
   'wydarzenia',
   'szukaj',
   'niezbednik',
+  'poradniki',
   'sale',
   'chat',
   'settings',
@@ -169,6 +173,7 @@ const VIEW_PATHS: Partial<Record<AppShellView, string>> = {
   wydarzenia: '/wydarzenia',
   szukaj: '/szukaj',
   niezbednik: '/niezbednik',
+  poradniki: '/poradniki',
   login: '/logowanie',
   feed: '/spolecznosc',
   profile: '/profile',
@@ -223,6 +228,7 @@ function getAppContentShellClass(view: AppShellView): string {
     view === 'komunikaty' ||
     view === 'rejestracje' ||
     view === 'niezbednik' ||
+    view === 'poradniki' ||
     view === 'miejsca' ||
     view === 'notifications'
   ) {
@@ -263,6 +269,7 @@ function getMainLayoutClass(view: AppShellView): string {
     'rejestracje',
     'szukaj',
     'niezbednik',
+    'poradniki',
     'feed',
     'search',
     'group',
@@ -307,6 +314,11 @@ function parseAppRoute(
   if (normalizedPath === '/wydarzenia') return simple('wydarzenia')
   if (normalizedPath === '/szukaj') return simple('szukaj')
   if (normalizedPath === '/niezbednik') return simple('niezbednik')
+  if (
+    normalizedPath === '/poradniki' ||
+    /^\/poradniki\/[a-z0-9-]+$/.test(normalizedPath)
+  )
+    return simple('poradniki')
   if (normalizedPath === '/logowanie') return simple('login')
   // Feed społeczności — dawniej pod `/`.
   if (normalizedPath === '/spolecznosc') return simple('feed')
@@ -436,6 +448,9 @@ function App() {
     () => normalizePathname(location.pathname),
     [location.pathname],
   )
+  useEffect(() => {
+    recordPilotVisit()
+  }, [normalizedPath])
   const routeSnapshot = useMemo(
     () => parseAppRoute(normalizedPath),
     [normalizedPath],
@@ -1847,6 +1862,12 @@ function App() {
         )
       case 'niezbednik':
         return <ToolsPage isAuthenticated={isAuthenticated} />
+      case 'poradniki':
+        return (
+          <Suspense fallback={viewFallback}>
+            <StudentGuides slug={normalizedPath.split('/')[2] ?? null} />
+          </Suspense>
+        )
       case 'sale':
         return (
           <ViewErrorBoundary onRecover={recoverHome}>
@@ -2105,7 +2126,17 @@ function App() {
   return (
     <LecturerSubscriptionsProvider userId={sessionUserId}>
       <>
-        <Analytics />
+        <Analytics
+          beforeSend={(event) => {
+            // Search text and account handles are not useful pageview dimensions.
+            const url = new URL(event.url)
+            url.search = ''
+            url.hash = ''
+            if (url.pathname.startsWith('/profile/')) url.pathname = '/profile'
+            if (url.pathname.startsWith('/thread/')) url.pathname = '/thread'
+            return { ...event, url: url.toString() }
+          }}
+        />
         <a
           href="#tresc"
           className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[500] focus:rounded-xl focus:bg-bg-app focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-brand-ink focus:shadow-lg dark:focus:text-brand-gold-bright"
@@ -2239,7 +2270,7 @@ function App() {
               <main
                 id="tresc"
                 tabIndex={-1}
-                className={`${contentShellClass} ${mainLayoutClass} ${['home', 'komunikaty', 'rejestracje', 'niezbednik', 'szukaj', 'wydarzenia'].includes(effectiveActiveView) ? 'campus-page' : ''} outline-none`}
+                className={`${contentShellClass} ${mainLayoutClass} ${['home', 'komunikaty', 'rejestracje', 'niezbednik', 'poradniki', 'szukaj', 'wydarzenia'].includes(effectiveActiveView) ? 'campus-page' : ''} outline-none`}
               >
                 {EVENTS_CONTEXT_VIEWS.has(effectiveActiveView) && session ? (
                   <EventsProvider>{animatedMain}</EventsProvider>

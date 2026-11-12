@@ -17,6 +17,10 @@ import {
   RotateCcw,
 } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
+import {
+  recordUsefulSourceOpen,
+  type PilotSourceKind,
+} from '../../lib/info/productMetrics'
 import { Skeleton } from '../ui/Skeleton'
 import {
   sectionTitleCls,
@@ -256,11 +260,13 @@ export function ExternalSourceLink({
   children,
   className = '',
   title,
+  kind = 'tool',
 }: {
   href: string | null
   children: ReactNode
   className?: string
   title?: string
+  kind?: PilotSourceKind
 }) {
   if (!href) return null
   return (
@@ -269,6 +275,7 @@ export function ExternalSourceLink({
       target="_blank"
       rel="noopener noreferrer"
       title={title}
+      onClick={() => recordUsefulSourceOpen(kind)}
       className={`${INFO_LINK_CLS} ${className}`.trim()}
     >
       {children}

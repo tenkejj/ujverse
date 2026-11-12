@@ -13,7 +13,7 @@ Inspect the rendered desktop and phone page. Identify the first useful action, t
 
 ## Spatial direction
 
-- Lead with a welcoming, labelled AI question field. Keep it visible on the first phone screen.
+- Lead Start with source-backed “Nie przegap” tasks, initially at most three, and nearby procedural guides. Keep the labelled AI question compact and supporting; it follows the concrete tasks in DOM and focus order.
 - Use broad open sections and variable emphasis. Do not make all information fit above the fold.
 - Give sections 56–80 px of desktop separation and 40–48 px on phones; use 16–24 px inside related groups. Use the 4 px spacing scale.
 - Replace equal overview panels with an open announcement feature, a quieter registration area, typographic event dates and a small utility footer.

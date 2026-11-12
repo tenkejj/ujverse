@@ -7,7 +7,8 @@ export const UJ_LINKS = {
   usosweb: 'https://usosweb.uj.edu.pl',
   pegaz: 'https://pegaz.uj.edu.pl',
   studentMail: 'https://outlook.office.com/mail/',
-  usosRegistrations: 'https://www.usosweb.uj.edu.pl/kontroler.php?_action=news/rejestracje/index',
+  usosRegistrations:
+    'https://www.usosweb.uj.edu.pl/kontroler.php?_action=news/rejestracje/index',
   ujCalendar: 'https://www.uj.edu.pl/kalendarz',
 } as const
 
@@ -37,6 +38,60 @@ export type InfoResource = {
 
 export const INFO_RESOURCES: readonly InfoResource[] = [
   {
+    id: 'guide-scholarship',
+    label: 'Stypendium rektora — krok po kroku',
+    description: 'Kryteria, dokumenty, złożenie wniosku i sprawdzenie statusu',
+    icon: 'plan',
+    href: '/poradniki/stypendium-rektora',
+    external: false,
+    requiresAccount: false,
+    keywords: [
+      'stypendium',
+      'stypendia',
+      'rektor',
+      'wniosek',
+      'poradnik',
+      'formalności',
+      'formalnosci',
+      'pierwszy rok',
+    ],
+  },
+  {
+    id: 'guide-housing',
+    label: 'Akademik — krok po kroku',
+    description: 'Nabór, dokumenty i czynności po otrzymaniu miejsca',
+    icon: 'plan',
+    href: '/poradniki/akademik',
+    external: false,
+    requiresAccount: false,
+    keywords: [
+      'akademik',
+      'akademiki',
+      'mieszkanie',
+      'zakwaterowanie',
+      'wniosek',
+      'poradnik',
+    ],
+  },
+  {
+    id: 'guide-registrations',
+    label: 'Rejestracje USOS — krok po kroku',
+    description: 'Właściwa tura, wybór grup i potwierdzenie zapisów',
+    icon: 'plan',
+    href: '/poradniki/rejestracje-usos',
+    external: false,
+    requiresAccount: false,
+    keywords: [
+      'usos',
+      'rejestracja',
+      'rejestracje',
+      'zapisy',
+      'grupy',
+      'przedmioty',
+      'poradnik',
+    ],
+  },
+  {
     id: 'usosweb',
     label: 'USOSweb',
     description: 'Oceny, plan, rejestracje i legitymacja',
@@ -44,7 +99,14 @@ export const INFO_RESOURCES: readonly InfoResource[] = [
     href: UJ_LINKS.usosweb,
     external: true,
     requiresAccount: false,
-    keywords: ['usos', 'oceny', 'indeks', 'legitymacja', 'wnioski', 'stypendium'],
+    keywords: [
+      'usos',
+      'oceny',
+      'indeks',
+      'legitymacja',
+      'wnioski',
+      'stypendium',
+    ],
   },
   {
     id: 'pegaz',
@@ -129,7 +191,8 @@ export const INFO_RESOURCES: readonly InfoResource[] = [
   {
     id: 'asystent',
     label: 'Asystent Versuś',
-    description: 'AI do pytań o komunikaty, rejestracje i wydarzenia. Bez logowania.',
+    description:
+      'AI do pytań o komunikaty, rejestracje i wydarzenia. Bez logowania.',
     icon: 'assistant',
     href: '/chat',
     external: false,
@@ -149,8 +212,13 @@ export function foldForSearch(text: string): string {
 }
 
 /** Wszystkie słowa zapytania muszą wystąpić w nazwie, opisie lub słowach kluczowych. */
-export function searchResources(query: string, resources: readonly InfoResource[] = INFO_RESOURCES): InfoResource[] {
-  const tokens = foldForSearch(query).split(' ').filter((t) => t.length > 0)
+export function searchResources(
+  query: string,
+  resources: readonly InfoResource[] = INFO_RESOURCES,
+): InfoResource[] {
+  const tokens = foldForSearch(query)
+    .split(' ')
+    .filter((t) => t.length > 0)
   if (tokens.length === 0) return []
   return resources.filter((resource) => {
     const haystack = foldForSearch(

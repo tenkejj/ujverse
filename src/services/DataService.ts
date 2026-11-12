@@ -36,8 +36,6 @@ import type { Unsubscribe } from './adapters/BaseAdapter'
 import type { CalendarEntry, CalendarSearchParams } from '../types/calendar'
 import { departmentGroup } from '../lib/departments'
 import { PublicInfoAdapter } from './adapters/PublicInfoAdapter'
-import { SearchService } from './SearchService'
-import { facultyDbValues } from '../lib/info/faculty'
 import { searchResources, type InfoResource } from '../lib/info/resources'
 import { MIN_QUERY_LENGTH, normalizeSearchQuery } from '../lib/info/search'
 import type {
@@ -47,18 +45,11 @@ import type {
   InfoRegistration,
 } from '../lib/info/types'
 
-/** Ile czekamy na Meilisearch, zanim przejdziemy na zapytanie do bazy. */
-const MEILI_TIMEOUT_MS = 3500
-
 export type SearchDomainOutcome<T> =
   | { status: 'ok'; items: T[] }
   | { status: 'error'; items: T[]; message: string }
 
-/**
- * `meili` — ranking Meilisearch; `database` — Meili działa, ale nic nie
- * znalazło (dopytujemy bazę, bo indeks może być niepełny); `fallback` —
- * Meili niedostępne, wyniki z prostego dopasowania tekstu w bazie.
- */
+/** Public information search is database-primary; old values remain type-compatible. */
 export type AnnouncementSearchEngine = 'meili' | 'database' | 'fallback'
 
 export type PublicSearchResults = {
@@ -74,23 +65,6 @@ function settle<T>(result: PromiseSettledResult<T[]>, label: string): SearchDoma
   if (result.status === 'fulfilled') return { status: 'ok', items: result.value }
   console.warn(`[DataService.searchPublicInfo] ${label}`, result.reason)
   return { status: 'error', items: [], message: 'Nie udało się przeszukać tego źródła.' }
-}
-
-async function withTimeout<T>(
-  outer: AbortSignal | undefined,
-  ms: number,
-  run: (signal: AbortSignal) => Promise<T>,
-): Promise<T> {
-  const controller = new AbortController()
-  const onAbort = () => controller.abort()
-  outer?.addEventListener('abort', onAbort, { once: true })
-  const timer = setTimeout(() => controller.abort(), ms)
-  try {
-    return await run(controller.signal)
-  } finally {
-    clearTimeout(timer)
-    outer?.removeEventListener('abort', onAbort)
-  }
 }
 
 /**
@@ -357,7 +331,7 @@ class DataServiceImpl {
   }
 
   /**
-   * Wyszukiwarka informacji: komunikaty (Meili → baza), rejestracje i
+   * Wyszukiwarka informacji: komunikaty, rejestracje i
    * wydarzenia (ograniczone zapytania do bazy) oraz narzędzia (lista lokalna).
    * Każde źródło ma własny status — awaria jednego nie ukrywa pozostałych.
    */
@@ -378,29 +352,10 @@ class DataServiceImpl {
       }
     }
 
-    let engine: AnnouncementSearchEngine = 'database'
-    const announcementsTask = (async (): Promise<InfoAnnouncement[]> => {
-      try {
-        const ids = await withTimeout(signal, MEILI_TIMEOUT_MS, (s) =>
-          SearchService.searchAnnouncementIds(query, {
-            departments: facultyDbValues(opts?.faculty),
-            limit: 20,
-            signal: s,
-          }),
-        )
-        if (ids.length > 0) {
-          const hydrated = await PublicInfoAdapter.announcementsByIds(ids, { signal })
-          if (hydrated.length > 0) {
-            engine = 'meili'
-            return hydrated
-          }
-        }
-      } catch (err) {
-        if (signal?.aborted) throw err
-        engine = 'fallback'
-      }
-      return PublicInfoAdapter.searchAnnouncements(query, { faculty: opts?.faculty, signal })
-    })()
+    const announcementsTask = PublicInfoAdapter.searchAnnouncements(query, {
+      faculty: opts?.faculty,
+      signal,
+    })
 
     const [announcements, registrations, events] = await Promise.allSettled([
       announcementsTask,
@@ -412,7 +367,7 @@ class DataServiceImpl {
     return {
       query,
       announcements: settle(announcements, 'announcements'),
-      announcementsEngine: engine,
+      announcementsEngine: 'database',
       registrations: settle(registrations, 'registrations'),
       events: settle(events, 'events'),
       resources: searchResources(query),

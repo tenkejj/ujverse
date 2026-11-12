@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   AlarmClock,
   BookOpen,
@@ -37,7 +38,11 @@ const ICONS: Record<InfoResourceIcon, LucideIcon> = {
 
 type Scope = 'all' | 'uj' | 'ujverse'
 
-export default function ToolsPage({ isAuthenticated }: { isAuthenticated: boolean }) {
+export default function ToolsPage({
+  isAuthenticated,
+}: {
+  isAuthenticated: boolean
+}) {
   const [scope, setScope] = useState<Scope>('all')
   const [text, setText] = useState('')
 
@@ -73,6 +78,13 @@ export default function ToolsPage({ isAuthenticated }: { isAuthenticated: boolea
         title="Niezbędnik studenta"
         description="Najważniejsze serwisy UJ i narzędzia UJverse w jednym miejscu."
       />
+      <p className="campus-guide-intro">
+        Potrzebujesz instrukcji?{' '}
+        <Link to="/poradniki">
+          Zobacz, jak załatwić stypendium, akademik i rejestracje
+        </Link>
+        .
+      </p>
 
       <InfoHubToolbar
         filters={filters}
@@ -85,7 +97,9 @@ export default function ToolsPage({ isAuthenticated }: { isAuthenticated: boolea
       />
 
       {visible.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Brak narzędzi pasujących do wyszukiwania.</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Brak narzędzi pasujących do wyszukiwania.
+        </p>
       ) : (
         <>
           {ujVisible.length > 0 ? (
@@ -123,7 +137,8 @@ export default function ToolsPage({ isAuthenticated }: { isAuthenticated: boolea
       )}
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        UJverse to niezależny projekt studencki — nie jest oficjalnym serwisem Uniwersytetu Jagiellońskiego.
+        UJverse to niezależny projekt studencki — nie jest oficjalnym serwisem
+        Uniwersytetu Jagiellońskiego.
       </p>
     </InfoHubShell>
   )

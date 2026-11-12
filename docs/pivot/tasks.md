@@ -1,6 +1,10 @@
 # UJverse pivot — tasks
 
-Status legend: `todo` · `doing` · `done` · `deferred` · `blocked`
+This is the historical task list for the original November 4 pivot. `done` records work performed for that revision, not a fresh regression or production policy check. Remediation requested by the November 11 audit is tracked in [`../audit/2026-11-11-status.md`](../audit/2026-11-11-status.md).
+
+Current remediation code and research materials are implemented on `codex/audit-2026-11-11`: source-backed “Nie przegap”, `/poradniki` and its three guide routes, the two-programme local pilot, explicit opt-in local measurement and Supabase/RLS search. Current build/unit/browser/RLS results, PR and release remain separate checklist items in the audit report. No participants have been recruited; interviews and observed return windows remain outstanding.
+
+Status legend for the historical table: `todo` · `doing` · `done` · `deferred` · `blocked`
 
 | # | Task | Req | Status |
 | --- | --- | --- | --- |
@@ -30,4 +34,4 @@ Status legend: `todo` · `doing` · `done` · `deferred` · `blocked`
 | T24 | `verification.md` with actual results | 015 | done |
 | T25 | Commit / push / PR (no prod migration without auth) | 016 | done |
 
-Ops follow-ups (not code tasks): apply `20261104120000` on remote Supabase; redeploy scrapers after merge — see `verification.md` §4.
+Historical ops follow-ups: verify/apply `20261104120000` on remote Supabase and release the scraper changes — see `verification.md` §4 for the original checkpoint. Current remote state and release evidence belong in the audit report; do not infer them from this older list.

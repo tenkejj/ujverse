@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { recordUsefulSourceOpen } from '../../lib/info/productMetrics'
 import { ArrowUpRight, CalendarDays, MapPin, Trash2 } from 'lucide-react'
 import BaseCard from '../ui/BaseCard'
 import AnnouncementTldr from '../announcements/AnnouncementTldr'
@@ -138,7 +139,11 @@ export function AnnouncementItem({
               {item.title}
             </Heading>
             <div className="mt-1.5">
-              <ExternalSourceLink href={item.sourceUrl} title={sourceTitle}>
+              <ExternalSourceLink
+                href={item.sourceUrl}
+                title={sourceTitle}
+                kind="announcement"
+              >
                 {sourceLabel}
               </ExternalSourceLink>
             </div>
@@ -198,7 +203,11 @@ export function AnnouncementItem({
                 now={now}
               />
             </span>
-            <ExternalSourceLink href={item.sourceUrl} title={sourceTitle}>
+            <ExternalSourceLink
+              href={item.sourceUrl}
+              title={sourceTitle}
+              kind="announcement"
+            >
               {sourceLabel}
             </ExternalSourceLink>
             {canExpand ? (
@@ -346,7 +355,7 @@ export function RegistrationItem({
               ) : null}
             </p>
             <div className="mt-1.5">
-              <ExternalSourceLink href={item.url}>
+              <ExternalSourceLink href={item.url} kind="registration">
                 Otwórz w USOSweb
               </ExternalSourceLink>
             </div>
@@ -414,7 +423,7 @@ export function RegistrationItem({
             </p>
           ) : null}
           <div className="mt-2">
-            <ExternalSourceLink href={item.url}>
+            <ExternalSourceLink href={item.url} kind="registration">
               Otwórz w USOSweb
             </ExternalSourceLink>
           </div>
@@ -492,6 +501,7 @@ export function EventPreviewTile({
         <a
           className="event-preview-main"
           href={item.url}
+          onClick={() => recordUsefulSourceOpen('event')}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -543,7 +553,10 @@ export function EventItem({
 
   if (variant === 'feed') {
     return (
-      <article className={`${INFO_FEED_ROW_CLS} semantic-item`} data-tone="event">
+      <article
+        className={`${INFO_FEED_ROW_CLS} semantic-item`}
+        data-tone="event"
+      >
         <div className="flex items-start gap-3">
           {dateBlock}
           <div className="min-w-0 flex-1">
@@ -558,7 +571,7 @@ export function EventItem({
               {item.title}
             </Heading>
             <div className="mt-1.5">
-              <ExternalSourceLink href={item.url}>
+              <ExternalSourceLink href={item.url} kind="event">
                 Szczegóły{host ? ` na ${host}` : ''}
               </ExternalSourceLink>
             </div>
@@ -570,7 +583,12 @@ export function EventItem({
   }
 
   return (
-    <BaseCard as="article" variant="inner" className="m-0 p-3 semantic-item" data-tone="event">
+    <BaseCard
+      as="article"
+      variant="inner"
+      className="m-0 p-3 semantic-item"
+      data-tone="event"
+    >
       <div className="flex items-start gap-3">
         {dateBlock}
         <div className="min-w-0 flex-1">
@@ -595,7 +613,7 @@ export function EventItem({
             </p>
           ) : null}
           <div className="mt-2">
-            <ExternalSourceLink href={item.url}>
+            <ExternalSourceLink href={item.url} kind="event">
               Szczegóły{host ? ` na ${host}` : ' w źródle'}
             </ExternalSourceLink>
           </div>

@@ -11,8 +11,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 HERE="$ROOT/scripts/pivot-rls-check"
-PG_BIN="${PG_BIN:-$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1)}"
+PG_BIN="${PG_BIN:-$(find /usr/lib/postgresql -path '*/bin/initdb' -type f -printf '%h\n' 2>/dev/null | sort -V | tail -1 || true)}"
 export PATH="$PG_BIN:$PATH"
+for tool in initdb pg_ctl psql; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "Missing PostgreSQL tool: $tool. Install PostgreSQL or set PG_BIN to its bin directory." >&2
+    exit 1
+  fi
+done
 WORK="$(mktemp -d)"
 PORT="${PORT:-55432}"
 
@@ -43,4 +49,4 @@ sed -n '1,21p' "$M/20260512120000_admin_moderation_rls.sql" | "${PSQL[@]}"
 "${PSQL[@]}" -f "$M/20261104120000_public_information_read_access.sql" 2>/dev/null
 echo "migration applied twice (idempotent)"
 
-psql -h "$WORK" -p "$PORT" -U postgres -d rls -f "$HERE/checks.sql"
+"${PSQL[@]}" -f "$HERE/checks.sql"

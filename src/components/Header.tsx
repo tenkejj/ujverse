@@ -121,6 +121,7 @@ export default function Header({
     'rejestracje',
     'wydarzenia',
     'niezbednik',
+    'poradniki',
     'szukaj',
     'chat',
   ].includes(activeView)

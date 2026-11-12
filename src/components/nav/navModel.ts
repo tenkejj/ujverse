@@ -4,6 +4,7 @@
  */
 import {
   AlarmClock,
+  BookOpen,
   Bell,
   CalendarDays,
   ClipboardList,
@@ -18,10 +19,21 @@ import {
 } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 
-export type NavIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }>
+export type NavIcon = ComponentType<
+  SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }
+>
 
-export type PrimaryNavTarget = 'home' | 'komunikaty' | 'rejestracje' | 'wydarzenia' | 'szukaj' | 'niezbednik' | 'chat'
-export type AccountNavTarget = 'mojPlan' | 'aula' | 'feed' | 'notifications' | 'profile'
+export type PrimaryNavTarget =
+  | 'home'
+  | 'komunikaty'
+  | 'rejestracje'
+  | 'wydarzenia'
+  | 'szukaj'
+  | 'niezbednik'
+  | 'poradniki'
+  | 'chat'
+export type AccountNavTarget =
+  'mojPlan' | 'aula' | 'feed' | 'notifications' | 'profile'
 export type NavTarget = PrimaryNavTarget | AccountNavTarget | 'settings'
 
 export type NavEntry<T extends NavTarget = NavTarget> = {
@@ -32,19 +44,75 @@ export type NavEntry<T extends NavTarget = NavTarget> = {
 }
 
 export const PRIMARY_NAV: ReadonlyArray<NavEntry<PrimaryNavTarget>> = [
-  { target: 'chat', label: 'Versuś AI', icon: MessageCircle, title: 'Zapytaj Versusia — także bez logowania' },
-  { target: 'home', label: 'Start', icon: Home, title: 'Strona startowa — najważniejsze informacje' },
-  { target: 'komunikaty', label: 'Komunikaty', icon: Megaphone, title: 'Komunikaty wydziałów UJ' },
-  { target: 'rejestracje', label: 'Rejestracje', icon: AlarmClock, title: 'Rejestracje z USOSweb' },
-  { target: 'wydarzenia', label: 'Wydarzenia', icon: CalendarDays, title: 'Wydarzenia na UJ' },
-  { target: 'szukaj', label: 'Szukaj', icon: Search, title: 'Szukaj informacji' },
-  { target: 'niezbednik', label: 'Niezbędnik', icon: Link2, title: 'USOSweb, PEGAZ, poczta i narzędzia' },
+  {
+    target: 'chat',
+    label: 'Versuś AI',
+    icon: MessageCircle,
+    title: 'Zapytaj Versusia — także bez logowania',
+  },
+  {
+    target: 'home',
+    label: 'Start',
+    icon: Home,
+    title: 'Strona startowa — najważniejsze informacje',
+  },
+  {
+    target: 'komunikaty',
+    label: 'Komunikaty',
+    icon: Megaphone,
+    title: 'Komunikaty wydziałów UJ',
+  },
+  {
+    target: 'rejestracje',
+    label: 'Rejestracje',
+    icon: AlarmClock,
+    title: 'Rejestracje z USOSweb',
+  },
+  {
+    target: 'wydarzenia',
+    label: 'Wydarzenia',
+    icon: CalendarDays,
+    title: 'Wydarzenia na UJ',
+  },
+  {
+    target: 'szukaj',
+    label: 'Szukaj',
+    icon: Search,
+    title: 'Szukaj informacji',
+  },
+  {
+    target: 'poradniki',
+    label: 'Jak załatwić sprawę',
+    icon: BookOpen,
+    title: 'Stypendium, akademik i rejestracje krok po kroku',
+  },
+  {
+    target: 'niezbednik',
+    label: 'Niezbędnik',
+    icon: Link2,
+    title: 'USOSweb, PEGAZ, poczta i narzędzia',
+  },
 ]
 
 export const ACCOUNT_NAV: ReadonlyArray<NavEntry<AccountNavTarget>> = [
-  { target: 'mojPlan', label: 'Mój plan', icon: ClipboardList, title: 'Twój plan zajęć' },
-  { target: 'aula', label: 'Aula', icon: GraduationCap, title: 'Aula — czat rocznika' },
-  { target: 'feed', label: 'Społeczność', icon: Users, title: 'Wpisy studentów' },
+  {
+    target: 'mojPlan',
+    label: 'Mój plan',
+    icon: ClipboardList,
+    title: 'Twój plan zajęć',
+  },
+  {
+    target: 'aula',
+    label: 'Aula',
+    icon: GraduationCap,
+    title: 'Aula — czat rocznika',
+  },
+  {
+    target: 'feed',
+    label: 'Społeczność',
+    icon: Users,
+    title: 'Wpisy studentów',
+  },
   { target: 'notifications', label: 'Powiadomienia', icon: Bell },
   { target: 'profile', label: 'Profil', icon: User },
 ]
@@ -59,6 +127,7 @@ export function navTargetForView(view: string): NavTarget | null {
     case 'wydarzenia':
     case 'szukaj':
     case 'niezbednik':
+    case 'poradniki':
     case 'mojPlan':
     case 'aula':
     case 'feed':

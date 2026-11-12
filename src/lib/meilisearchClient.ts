@@ -1,30 +1,10 @@
-import { instantMeiliSearch } from '@meilisearch/instant-meilisearch'
-
-const DEFAULT_HOST = 'http://localhost:7700'
-const DEFAULT_INDEX = 'ujverse_content'
-const DEFAULT_API_KEY = 'admin'
+/**
+ * Legacy index names retained for migrations/tooling only.
+ * Browser search uses Supabase's session/anon client and server-enforced RLS.
+ * Never construct a browser Meilisearch client or expose an index-wide key here.
+ */
 export const USERS_INDEX = 'ujverse_users'
 export const AULA_INDEX = 'ujverse_aula'
-
-function readHost(): string {
-  return import.meta.env.VITE_MEILISEARCH_HOST?.trim() || DEFAULT_HOST
-}
-
-function readApiKey(): string {
-  // Front MOŻE używać wyłącznie search-only key — master/admin key wpadłby do bundla JS.
-  return (
-    import.meta.env.VITE_MEILISEARCH_SEARCH_KEY?.trim() ||
-    DEFAULT_API_KEY
-  )
-}
-
 export function readContentIndexName(): string {
-  return import.meta.env.VITE_MEILISEARCH_INDEX?.trim() || DEFAULT_INDEX
+  return 'ujverse_content'
 }
-
-const instant = instantMeiliSearch(readHost(), readApiKey(), {
-  placeholderSearch: false,
-  finitePagination: true,
-})
-
-export const { searchClient, meiliSearchInstance } = instant

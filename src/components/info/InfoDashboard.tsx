@@ -2,7 +2,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowUpRight,
-  BellRing,
+  BookOpen,
   CalendarDays,
   ClipboardList,
   Megaphone,
@@ -21,12 +21,15 @@ import { useNow } from '../../hooks/useNow'
 import { facultyShortLabel, matchesFaculty } from '../../lib/info/faculty'
 import {
   activeRegistrationsSorted,
-  buildPriorityItems,
   isRegistrationDataStale,
   sortAnnouncementsNewestFirst,
 } from '../../lib/info/relevance'
 import { upcomingEventsSorted } from '../../lib/info/relevance'
-import { formatDurationShort } from '../../lib/info/time'
+import ActionRadar from './ActionRadar'
+import StudyProfilePicker from './StudyProfilePicker'
+import PilotParticipation from './PilotParticipation'
+import { recordUsefulSourceOpen } from '../../lib/info/productMetrics'
+import '../../styles/audit-start.css'
 import VersusEntry from '../chat/VersusEntry'
 import { AnnouncementHubCard, RegistrationHubCard } from './InfoHubCards'
 import { CustomizeButton, SavedSection } from './InfoBlocks'
@@ -34,12 +37,7 @@ import InfoFooter from './InfoFooter'
 import InfoEventCalendar from './InfoEventCalendar'
 import { EventPreviewTile } from './InfoItems'
 import DataFreshness, { type DataFreshnessKind } from './DataFreshness'
-import {
-  DomainEmpty,
-  DomainError,
-  ExternalSourceLink,
-  RowSkeletons,
-} from './infoUi'
+import { DomainEmpty, DomainError, RowSkeletons } from './infoUi'
 
 type Props = {
   faculty: FacultyPreference
@@ -78,13 +76,6 @@ export default function InfoDashboard({
   const showEventPreview = !hidden.has('events')
   const stale =
     registrationsQ.isSuccess && isRegistrationDataStale(latestRun, now)
-  const priority = buildPriorityItems({
-    faculty: selected,
-    announcements,
-    registrations: registrationsQ.data?.items ?? [],
-    now,
-    latestRegistrationVerifiedAt: latestRun,
-  })[0]
   const sections = [
     {
       id: 'announcements',
@@ -125,15 +116,6 @@ export default function InfoDashboard({
       },
       { replace: true },
     )
-  const priorityLabel = !priority
-    ? ''
-    : priority.kind === 'announcement'
-      ? priority.reason === 'cancelled'
-        ? 'Odwołane zajęcia'
-        : 'Zajęcia zdalne'
-      : priority.reason === 'registration-closing'
-        ? `Rejestracja zamyka się za ${formatDurationShort(Date.parse(priority.item.closesAt ?? priority.item.opensAt) - now.getTime())}`
-        : `Rejestracja otwiera się za ${formatDurationShort(Date.parse(priority.item.opensAt) - now.getTime())}`
   const freshnessKind: DataFreshnessKind =
     currentSection === 'registrations'
       ? 'registrations'
@@ -157,16 +139,12 @@ export default function InfoDashboard({
 
   return (
     <div className="campus-home student-dashboard">
-      <div className="dashboard-opening">
-        <VersusEntry />
-      </div>
-
       <header className="dashboard-heading">
         <div>
           {firstName ? (
             <p className="dashboard-greeting">Cześć, {firstName}</p>
           ) : null}
-          <h1 className="sr-only">Informacje z UJ</h1>
+          <h1>Co warto dziś sprawdzić?</h1>
           <p className="dashboard-context">
             <CalendarDays size={14} aria-hidden /> {dateLabel}
             <span aria-hidden> · </span>
@@ -175,30 +153,40 @@ export default function InfoDashboard({
         </div>
         <CustomizeButton hidden={prefs.hiddenSections} />
       </header>
-
-      {priority ? (
-        <section
-          className="dashboard-priority"
-          aria-labelledby="priority-heading"
-        >
-          <div>
-            <h2 id="priority-heading">
-              <BellRing size={16} aria-hidden /> Ważne teraz
-            </h2>
-            <p>{priorityLabel}</p>
-            <h3>{priority.item.title}</h3>
-          </div>
-          <ExternalSourceLink
-            href={
-              priority.kind === 'announcement'
-                ? priority.item.sourceUrl
-                : priority.item.url
-            }
-          >
-            Sprawdź w źródle
-          </ExternalSourceLink>
-        </section>
-      ) : null}
+      <StudyProfilePicker
+        faculty={selected}
+        onFacultyChange={faculty.setFaculty}
+      />
+      <ActionRadar
+        faculty={selected}
+        announcements={announcementsQ.isPlaceholderData ? [] : announcements}
+        registrations={registrationsQ.data?.items ?? []}
+        latestRegistrationVerifiedAt={latestRun}
+        now={now}
+        announcementsLoading={
+          announcementsQ.isPending || announcementsQ.isPlaceholderData
+        }
+        registrationsLoading={registrationsQ.isPending}
+        announcementsError={announcementsQ.isError}
+        registrationsError={registrationsQ.isError}
+        onActionOpen={(action) =>
+          recordUsefulSourceOpen(
+            action.kind === 'registration' ? 'registration' : 'announcement',
+          )
+        }
+      />
+      <div className="dashboard-guide-links" aria-label="Jak załatwić sprawę">
+        <BookOpen size={18} aria-hidden />
+        <Link to="/poradniki/stypendium-rektora">Stypendium rektora</Link>
+        <Link to="/poradniki/akademik">Akademik</Link>
+        <Link to="/poradniki/rejestracje-usos">Rejestracje USOS</Link>
+        <Link to="/poradniki" className="dashboard-panel-link">
+          Wszystkie poradniki <ArrowUpRight size={14} aria-hidden />
+        </Link>
+      </div>
+      <div className="dashboard-opening dashboard-assistant-support">
+        <VersusEntry />
+      </div>
 
       <div
         className={`dashboard-content${showEventPreview ? ' dashboard-content-with-events' : ''}`}
@@ -461,6 +449,7 @@ export default function InfoDashboard({
         ) : null}
       </div>
 
+      <PilotParticipation />
       {saved.length ? (
         <section className="dashboard-saved" aria-label="Zapisane informacje">
           <SavedSection items={saved} now={now} />

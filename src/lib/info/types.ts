@@ -4,8 +4,8 @@
  * Każde pole czasowe ma jedno znaczenie — nie mieszamy daty publikacji,
  * pobrania przez UJverse i potwierdzenia w źródle.
  */
-import type { AnnouncementStatus } from '../../types/content'
-import type { RegistrationKind } from '../../types/usosRegistrations'
+import type { AnnouncementStatus } from '../../types/content.js'
+import type { RegistrationKind } from '../../types/usosRegistrations.js'
 
 export type InfoKind = 'announcement' | 'registration' | 'event'
 

@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { recordUsefulSourceOpen } from '../../lib/info/productMetrics'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -161,6 +162,7 @@ function ResourceLink({
   return resource.external ? (
     <a
       className="info-footer-resource"
+      onClick={() => recordUsefulSourceOpen('tool')}
       href={resource.href}
       target="_blank"
       rel="noopener noreferrer"

@@ -818,7 +818,7 @@ export default function SettingsView({
             <RowLabel
               icon={MagnifyingGlassIcon}
               title="Pokaż mój profil w wyszukiwarce"
-              hint="Po wyłączeniu znikasz z indeksu Meilisearch — inni nie znajdą Cię po loginie ani imieniu."
+              hint="Po wyłączeniu inni nie znajdą Twojego profilu po loginie ani imieniu w wyszukiwarce."
             />
             <SettingsToggle
               id="privacy-search"

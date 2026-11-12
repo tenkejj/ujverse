@@ -1,5 +1,7 @@
 # Campus workspace refinement — 8 November 2026
 
+Historical design record. Current Start places source-backed actions and procedural guides before compact AI assistance; see [the November 12 release summary](../audit/2026-11-12-release-summary.md) and [DESIGN.md](../../DESIGN.md). The test restriction and observations below describe this November 8 iteration only.
+
 This iteration uses the **actual UI Skills MCP connection**, now available in the conversation. The following skills were fetched through `ui_skills.get_skill` after registry discovery:
 
 - [interface-design](https://www.ui-skills.com/skills/dammyjay93/interface-design): one primary AI task, a distinct calendar interaction, existing tokens and purposeful proportions.

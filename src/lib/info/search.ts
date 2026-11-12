@@ -1,8 +1,8 @@
 /**
  * Pomocnicze funkcje wyszukiwarki informacji (czyste, testowane).
  */
-import type { InfoEvent } from './types'
-import { warsawDayKey } from './time'
+import type { InfoEvent } from './types.js'
+import { warsawDayKey } from './time.js'
 
 export const MIN_QUERY_LENGTH = 2
 export const MAX_QUERY_LENGTH = 80

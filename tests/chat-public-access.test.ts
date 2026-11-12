@@ -28,7 +28,7 @@ function clientMock(rows: Record<string, unknown[]> = {}) {
 describe('anonymous Versuś access', () => {
   it('explains which questions work without an account', () => {
     const help = tryCapabilitiesReply('Co potrafisz?', false)
-    assert.ok(help?.includes('Bez logowania'))
+    assert.match(help ?? '', /bez logowania/i)
     assert.ok(help?.includes('po zalogowaniu'))
     assert.equal(tryCapabilitiesReply('Kiedy są rejestracje?', false), null)
   })
@@ -99,12 +99,12 @@ describe('anonymous Versuś access', () => {
     const result = await getToolEntry('get_latest_announcements')!.execute({}, { userId: null, supabaseAdmin: client })
     assert.equal((result as { ok: boolean }).ok, true)
     const facts = buildToolFacts('get_latest_announcements', result)
-    assert.equal(facts.kind, 'synthesize')
-    if (facts.kind !== 'synthesize') return
-    assert.ok(facts.facts.includes('Tytuł info'))
-    assert.ok(facts.facts.includes('https://polonistyka.uj.edu.pl/komunikaty'))
-    assert.ok(facts.facts.includes('dodano do UJverse'))
-    assert.equal(facts.facts.includes('/moj-plan'), false)
+    assert.equal(facts.kind, 'direct')
+    if (facts.kind !== 'direct') return
+    assert.ok(facts.text.includes('Tytuł info'))
+    assert.ok(facts.text.includes('https://polonistyka.uj.edu.pl/komunikaty'))
+    assert.ok(facts.text.includes('dodano do UJverse'))
+    assert.equal(facts.text.includes('/moj-plan'), false)
   })
 
   it('invalidates the previous conversation and transient states at an account boundary', () => {
