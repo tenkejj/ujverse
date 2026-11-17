@@ -78,7 +78,7 @@ function HeaderLogoArt() {
           height={591}
           style={{ maskType: 'alpha' }}
         >
-          <image href="/logo.png" x={0} y={0} width={728} height={1372} />
+          <image href="/logo-mask.webp" crossOrigin="anonymous" x={0} y={0} width={728} height={1372} />
         </mask>
       </defs>
       <rect
@@ -231,7 +231,7 @@ export default function Header({
     </motion.button>
   )
 
-  const desktopLogo = (
+  const viewportLogo = (
     <div ref={logoAxisRef} className={HEADER_MOBILE.logoAnchorClass}>
       {logoButton}
     </div>
@@ -293,14 +293,10 @@ export default function Header({
           </div>
         </div>
 
-        <div className={HEADER_MOBILE.logoLaneClass}>
-          <div className="flex h-full w-full items-center justify-center lg:hidden">
-            {logoButton}
-          </div>
-        </div>
+        <div aria-hidden="true" className={HEADER_MOBILE.logoLaneClass} />
 
         <div className={HEADER_MOBILE.rightSectionClass}>
-          <div className="hidden md:flex min-w-0 flex-1 items-center justify-end">
+          <div className="hidden min-[900px]:flex min-w-0 flex-1 items-center justify-end">
             <HeaderSearch />
           </div>
           {themeButton('max-[359px]:hidden')}
@@ -554,7 +550,7 @@ export default function Header({
           </div>
         </>
       ) : null}
-      {createPortal(desktopLogo, document.body)}
+      {createPortal(viewportLogo, document.body)}
     </>
   )
 }

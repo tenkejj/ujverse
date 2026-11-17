@@ -14,7 +14,7 @@ function isEditableTarget(target: Element | null): boolean {
 }
 
 /**
- * Pole wyszukiwania informacji w nagłówku (od `md`). Enter → `/szukaj?q=`.
+ * Pole wyszukiwania informacji, gdy mieści się w nagłówku. Enter → `/szukaj?q=`.
  * Ctrl/Cmd+K ustawia fokus w polu, a gdy pole jest niewidoczne (mobile) —
  * otwiera stronę wyszukiwarki.
  */

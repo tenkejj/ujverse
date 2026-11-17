@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { Bell } from 'lucide-react'
+import { foldForSearch } from '../../lib/info/resources'
 import { usePublicRegistrations } from '../../hooks/usePublicInfo'
 import type { FacultyPreference } from '../../hooks/useInfoPreferences'
 import { useNow } from '../../hooks/useNow'
@@ -20,6 +21,7 @@ import {
   InfoHubSection,
   InfoHubShell,
   InfoHubToolbar,
+  InfoHubTitle,
 } from './InfoHubShell'
 import { DomainEmpty, DomainError, RowSkeletons } from './infoUi'
 
@@ -34,22 +36,25 @@ export default function RegistrationsPage({
   const [params, setParams] = useSearchParams()
   const rawPhase = params.get('phase')
   const phase =
-    rawPhase === 'open' || rawPhase === 'upcoming' ? rawPhase : 'all'
+    rawPhase === 'open' || rawPhase === 'upcoming' || rawPhase === 'closed' ? rawPhase : 'all'
+  const text = params.get('q') ?? ''
+  const folded = foldForSearch(text)
   const query = usePublicRegistrations()
   const latestRun = query.data?.freshness.latest ?? null
   const stale = query.isSuccess && isRegistrationDataStale(latestRun, now)
   const active = activeRegistrationsSorted(query.data?.items ?? [], now)
-  const scoped = active.filter((item) =>
+  const closed = (query.data?.items ?? []).filter((item) => registrationTiming(item, now).phase === 'closed').sort((a,b) => Date.parse(b.closesAt!) - Date.parse(a.closesAt!))
+  const scoped = [...active, ...closed].filter((item) =>
     matchesFaculty(item.faculty, faculty.faculty),
   )
   const filtered = scoped.filter(
-    (item) => phase === 'all' || registrationTiming(item, now).phase === phase,
+    (item) => (phase === 'all' ? registrationTiming(item, now).phase !== 'closed' : registrationTiming(item, now).phase === phase) && (!folded || foldForSearch(`${item.title} ${item.unitName ?? ''} ${item.code ?? ''}`).includes(folded)),
   )
   const short = faculty.faculty
     ? (facultyShortLabel(faculty.faculty) ?? faculty.faculty)
     : null
   const filters = [
-    { key: 'all', label: 'Wszystkie', count: scoped.length },
+    { key: 'all', label: 'Aktywne', count: scoped.filter((i) => registrationTiming(i, now).phase !== 'closed').length },
     {
       key: 'open',
       label: 'Trwają teraz',
@@ -63,10 +68,13 @@ export default function RegistrationsPage({
         (i) => registrationTiming(i, now).phase === 'upcoming',
       ).length,
     },
+    ...(closed.length ? [{ key: 'closed', label: 'Zakończone', count: scoped.filter((i) => registrationTiming(i, now).phase === 'closed').length }] : []),
   ]
+  const requested = Number(params.get('limit') ?? 30)
+  const limit = Number.isSafeInteger(requested) ? Math.max(30, requested) : 30
   return (
-    <InfoHubShell>
-      <h1 className="sr-only">Rejestracje</h1>
+    <InfoHubShell variant="registrations">
+      <InfoHubTitle title="Rejestracje" description="Sprawdź terminy zapisów i przejdź do rejestracji w USOSweb." />
       <DataFreshness
         iso={latestRun}
         kind="registrations"
@@ -76,11 +84,15 @@ export default function RegistrationsPage({
         stale={stale}
       />
       <InfoHubToolbar
+        search={text}
+        onSearchChange={(value) => setParams((previous) => { const next = new URLSearchParams(previous); next.delete('limit'); if (value) next.set('q', value); else next.delete('q'); return next }, { replace: true })}
+        searchAriaLabel="Szukaj rejestracji" searchPlaceholder="Nazwa przedmiotu, jednostka, kod…"
         filters={filters}
         activeKey={phase}
         onFilterChange={(value) =>
           setParams((previous) => {
             const next = new URLSearchParams(previous)
+            next.delete('limit')
             if (value === 'all') next.delete('phase')
             else next.set('phase', value)
             return next
@@ -137,8 +149,8 @@ export default function RegistrationsPage({
             Brak rejestracji spełniających wybrane kryteria.
           </DomainEmpty>
         ) : (
-          <InfoHubCardGrid layout="open">
-            {filtered.map((item) => (
+          <InfoHubCardGrid>
+            {filtered.slice(0, limit).map((item) => (
               <li key={item.id}>
                 <RegistrationHubCard
                   item={item}
@@ -150,6 +162,7 @@ export default function RegistrationsPage({
           </InfoHubCardGrid>
         )}
       </InfoHubSection>
+      {filtered.length > limit ? <div className="catalogue-more"><button type="button" className="campus-text-link" onClick={() => setParams((previous) => { const next = new URLSearchParams(previous); next.set('limit', String(limit + 30)); return next }, { replace: true })}>Załaduj więcej rejestracji</button><span>{Math.min(limit, filtered.length)} z {filtered.length}</span></div> : null}
       <div className="campus-page-note">
         <p>
           <Bell size={15} aria-hidden />

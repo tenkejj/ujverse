@@ -18,14 +18,9 @@ import { LLMService, LLMServiceError } from '../services/ai/LLMService'
 import { useChatStore } from '../store/useChatStore'
 import { toast } from '../lib/appToast'
 import type { ChatMessage } from '../types/ai'
-import {
-  chatPresentationWindow,
-  CHAT_MAX_REVEAL_LAG_MS,
-} from '../lib/chatPresentation'
-import {
-  getUserPreferences,
-  subscribePreferences,
-} from '../lib/userPreferences'
+import { createStreamPresenter } from '../lib/chatStream'
+import { getUserPreferences } from '../lib/userPreferences'
+import { readSystemChatReducedMotion } from '../lib/chatPresentation'
 
 // Persona and tool context are owned by the server.
 
@@ -34,43 +29,15 @@ export type UseChatSendResult = {
   cancel: () => void
 }
 
-/** A bounded presentation settle, not model inference time or a token-rate metric. */
-function settleReceivedText(
-  delayMs: number,
-  signal: AbortSignal,
-): Promise<void> {
-  if (typeof window === 'undefined' || signal.aborted || delayMs <= 0)
-    return Promise.resolve()
-  const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
-  if (motion.matches || getUserPreferences().reducedMotion)
-    return Promise.resolve()
-  return new Promise((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    let unsubscribePreferences = () => {}
-    const finish = () => {
-      if (timer !== undefined) clearTimeout(timer)
-      signal.removeEventListener('abort', finish)
-      motion.removeEventListener('change', onMotion)
-      unsubscribePreferences()
-      resolve()
-    }
-    const onMotion = () => {
-      if (motion.matches) finish()
-    }
-    signal.addEventListener('abort', finish, { once: true })
-    motion.addEventListener('change', onMotion)
-    unsubscribePreferences = subscribePreferences((prefs) => {
-      if (prefs.reducedMotion) finish()
-    })
-    timer = setTimeout(finish, Math.min(CHAT_MAX_REVEAL_LAG_MS, delayMs))
-  })
-}
-
 export function useChatSend(): UseChatSendResult {
   const abortRef = useRef<AbortController | null>(null)
+  const presentationRef = useRef<ReturnType<typeof createStreamPresenter> | null>(null)
 
   const cancel = useCallback(() => {
     if (abortRef.current) {
+      presentationRef.current?.flush()
+      presentationRef.current?.dispose()
+      presentationRef.current = null
       abortRef.current.abort()
       abortRef.current = null
       useChatStore.getState().setTyping(false)
@@ -110,8 +77,16 @@ export function useChatSend(): UseChatSendResult {
       abortRef.current = controller
       useChatStore.getState().setTyping(true)
       useChatStore.getState().setResponsePhase('thinking')
-      let lastDeltaAt = 0
-      let lastDeltaLength = 0
+      const presentation = createStreamPresenter({
+        immediate: () => getUserPreferences().reducedMotion || readSystemChatReducedMotion(),
+        publish: (text) => {
+          const current = useChatStore.getState()
+          if (controller.signal.aborted || current.generation !== generation) return
+          if (current.responsePhase !== 'answering') current.setResponsePhase('answering')
+          current.appendAssistantMessage(text)
+        },
+      })
+      presentationRef.current = presentation
 
       try {
         const stream = await LLMService.sendMessage(historyForApi, {
@@ -145,28 +120,10 @@ export function useChatSend(): UseChatSendResult {
             }
             continue
           }
-          if (
-            event.content &&
-            useChatStore.getState().responsePhase !== 'answering'
-          ) {
-            useChatStore.getState().setResponsePhase('answering')
-          }
-          if (event.content) {
-            lastDeltaAt = performance.now()
-            lastDeltaLength = event.content.length
-          }
-          useChatStore.getState().appendAssistantMessage(event.content)
+          presentation.push(event.content)
         }
-        // Ready/cached replies can put a delta and [DONE] in one browser task.
-        // Keep answering active just long enough for a short visual reveal,
-        // within the shared bounded reading window after the last received delta.
-        const settleMs = chatPresentationWindow(lastDeltaLength)
-        if (lastDeltaLength > 0) {
-          await settleReceivedText(
-            settleMs - (performance.now() - lastDeltaAt),
-            controller.signal,
-          )
-        }
+        // Drain only text already queued, within the same 96ms budget as live deltas.
+        await presentation.finish()
         if (
           controller.signal.aborted ||
           useChatStore.getState().generation !== generation
@@ -195,6 +152,7 @@ export function useChatSend(): UseChatSendResult {
           useChatStore.getState().generation !== generation
         )
           return
+        presentation.flush()
         useChatStore.getState().dropTrailingEmptyAssistant()
         // DEBUG (Krok 3): pełen rzut błędu do F12 → Console.
         // `LLMServiceError` niesie też status HTTP — przydatne, gdy proxy
@@ -226,6 +184,8 @@ export function useChatSend(): UseChatSendResult {
           toast.error('Asystent nie odpowiada. Spróbuj ponownie.')
         }
       } finally {
+        presentation.dispose()
+        if (presentationRef.current === presentation) presentationRef.current = null
         if (
           abortRef.current === controller &&
           useChatStore.getState().generation === generation

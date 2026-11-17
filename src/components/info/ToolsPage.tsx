@@ -75,7 +75,7 @@ export default function ToolsPage({
   const appVisible = visible.filter((r) => !r.external)
 
   return (
-    <InfoHubShell>
+    <InfoHubShell variant="tools">
       <InfoHubTitle
         title="Niezbędnik studenta"
         description="Najważniejsze serwisy UJ i narzędzia UJverse w jednym miejscu."
@@ -106,7 +106,7 @@ export default function ToolsPage({
         <>
           {ujVisible.length > 0 ? (
             <InfoHubSection title="Serwisy UJ" count={ujVisible.length}>
-              <InfoHubCardGrid>
+              <InfoHubCardGrid layout="resources">
                 {ujVisible.map((resource) => (
                   <li key={resource.id} className="min-w-0">
                     <ResourceHubCard
@@ -122,7 +122,7 @@ export default function ToolsPage({
 
           {appVisible.length > 0 ? (
             <InfoHubSection title="Narzędzia UJverse" count={appVisible.length}>
-              <InfoHubCardGrid>
+              <InfoHubCardGrid layout="resources">
                 {appVisible.map((resource) => (
                   <li key={resource.id} className="min-w-0">
                     <ResourceHubCard

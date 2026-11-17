@@ -34,7 +34,7 @@ import ChatVoiceButton from './ChatVoiceButton'
 import MessageList from './MessageList'
 import { useDialogA11y } from '../info/useDialogA11y'
 
-type Props = {
+export type ChatAssistantFabProps = {
   /** Gdy `true` — komponent nic nie renderuje (kolizja z innym sheetem). */
   hidden?: boolean
   isAuthenticated?: boolean
@@ -66,7 +66,7 @@ export default function ChatAssistantFab({
   isAuthenticated = false,
   myProfile,
   displayName,
-}: Props) {
+}: ChatAssistantFabProps) {
   const messages = useChatStore((s) => s.messages)
   const isTyping = useChatStore((s) => s.isTyping)
   const actionLabel = useChatStore((s) => s.actionLabel)

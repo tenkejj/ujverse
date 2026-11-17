@@ -392,8 +392,8 @@ function StepHero({ step, reduceMotion }: { step: Step; reduceMotion: boolean })
           transition={transition}
           className="h-40 w-56 bg-logo-navy transition-colors duration-150 sm:h-48 sm:w-64 lg:h-52 lg:w-72 dark:bg-brand-gold-bright"
           style={{
-            maskImage: 'url(/logo.png)',
-            WebkitMaskImage: 'url(/logo.png)',
+            maskImage: 'url(/logo-mask.webp)',
+            WebkitMaskImage: 'url(/logo-mask.webp)',
             maskSize: 'contain',
             WebkitMaskSize: 'contain',
             maskRepeat: 'no-repeat',

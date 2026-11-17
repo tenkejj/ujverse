@@ -139,6 +139,7 @@ export default function InfoSearchPage({
         <h1>Szukaj na UJ</h1>
       </header>
 
+      <p className="info-search-intro">Komunikaty, rejestracje, wydarzenia i narzędzia UJ — w jednym wyszukiwaniu.</p>
       <form role="search" onSubmit={onSubmit} className="info-search-form">
         <label htmlFor="info-search-input" className="sr-only">
           Szukaj informacji na UJ

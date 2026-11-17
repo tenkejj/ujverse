@@ -21,6 +21,7 @@ import {
 import './index.css'
 import './styles/campus.css'
 import './styles/student-start.css'
+import './styles/workspace.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

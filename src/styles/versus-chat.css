@@ -333,3 +333,10 @@
 html.theme-uj .versu-mark > picture > img {
   filter: var(--versu-uj-filter);
 }
+
+/* One stable footer slot and explicit scroll ownership during growth. */
+.chat-stream-footer { min-height: 28px; }
+.chat-stream-status { margin-block: 4px; }
+.versus-conversation-scroll, .versus-message-flow { overflow-anchor: none; }
+.chat-stream :where(pre, table) { max-width: 100%; }
+.chat-stream { overflow-wrap: anywhere; }

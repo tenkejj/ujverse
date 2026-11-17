@@ -5,23 +5,43 @@
   border-bottom: 1px solid var(--campus-line);
 }
 .dashboard-assistant-support .versus-scene {
-  padding-block: 12px 8px;
+  padding-block: 20px 8px;
 }
 .dashboard-assistant-support .versus-scene-main {
+  width: min(100%, 760px, var(--versus-header-axis-width, 100%));
+  transform: translateX(var(--versus-header-axis-offset, 0px));
   min-height: 0;
 }
 .dashboard-assistant-support .versus-scene-persona > .versu-mark {
   --versu-mark-size: 128px;
 }
 .dashboard-assistant-support .versus-scene-greeting h1 {
-  font-size: 28px;
+  font-size: 32px;
+  text-wrap: balance;
+}
+.dashboard-assistant-support .versus-scene-greeting p {
+  margin: 10px 0 0;
+  text-wrap: balance;
 }
 .dashboard-assistant-support .versus-scene-form {
-  margin-top: 20px;
+  margin-top: 24px;
 }
 .dashboard-assistant-support .versus-scene-composer {
   min-height: 76px;
   padding-block: 12px;
+}
+.dashboard-assistant-support .versus-scene-suggestions {
+  gap: 8px;
+  margin-top: 12px;
+}
+.dashboard-assistant-support .versus-scene-suggestions button {
+  font-size: 13px;
+}
+.dashboard-assistant-support .versus-about {
+  margin-top: 12px;
+}
+.dashboard-assistant-support .versus-about > summary {
+  font-size: 13px;
 }
 .dashboard-guide-links {
   display: flex;
@@ -74,6 +94,9 @@
   font-size: 12px;
 }
 @media (max-width: 639px) {
+  .dashboard-assistant-support .versus-scene {
+    padding-block-start: 12px;
+  }
   .dashboard-guide-links {
     gap: 4px 14px;
   }
@@ -84,6 +107,18 @@
     --versu-mark-size: 112px;
   }
   .dashboard-assistant-support .versus-scene-greeting h1 {
-    font-size: 26px;
+    font-size: 28px;
+  }
+  .dashboard-assistant-support .versus-scene-greeting p {
+    max-width: 32ch;
+    margin-inline: auto;
+  }
+  .dashboard-assistant-support .versus-scene-suggestions button {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+  .dashboard-assistant-support .versus-scene-suggestions svg {
+    width: 14px;
+    height: 14px;
   }
 }

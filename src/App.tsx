@@ -27,7 +27,7 @@ import Header from './components/Header'
 import SideNav from './components/SideNav'
 import MobileDrawer from './components/MobileDrawer'
 import { EventsProvider } from './hooks/useEvents'
-import ResetPassword from './pages/ResetPassword'
+import DeferredChatAssistantFab from './components/chat/DeferredChatAssistantFab'
 import BottomNav from './components/BottomNav'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
 import { canonicalDepartment } from './lib/departments'
@@ -47,10 +47,6 @@ import { consumePostAuthPath, loginPathFor } from './lib/info/postAuth'
 import { sanitizeNextPath } from './lib/info/links'
 import type { NavTarget } from './components/nav/navModel'
 import InfoDashboard from './components/info/InfoDashboard'
-import AnnouncementsPage from './components/info/AnnouncementsPage'
-import RegistrationsPage from './components/info/RegistrationsPage'
-import ToolsPage from './components/info/ToolsPage'
-import InfoSearchPage from './components/info/InfoSearchPage'
 import { recordPilotVisit } from './lib/info/productMetrics'
 import { useChatStore } from './store/useChatStore'
 import AuthRequired from './components/info/AuthRequired'
@@ -61,6 +57,11 @@ import { isGroupIndexPath, slugFromGroupPath } from './lib/groupPaths'
 // Widoki konta i społeczności ładowane dopiero przy wejściu — strona startowa
 // nie pobiera kodu feedu, profili ani powiadomień.
 const Auth = lazy(() => import('./Auth'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const AnnouncementsPage = lazy(() => import('./components/info/AnnouncementsPage'))
+const RegistrationsPage = lazy(() => import('./components/info/RegistrationsPage'))
+const ToolsPage = lazy(() => import('./components/info/ToolsPage'))
+const InfoSearchPage = lazy(() => import('./components/info/InfoSearchPage'))
 const FeedView = lazy(() => import('./components/FeedView'))
 const EventsHub = lazy(() => import('./components/EventsHub'))
 const ProfilePage = lazy(() => import('./pages/Profile'))
@@ -84,9 +85,6 @@ const OfficialEventsPage = lazy(
   () => import('./components/info/OfficialEventsPage'),
 )
 const StudentGuides = lazy(() => import('./components/info/StudentGuides'))
-const ChatAssistantFab = lazy(
-  () => import('./components/chat/ChatAssistantFab'),
-)
 const ChatHubView = lazy(() => import('./components/chat/ChatHubView'))
 const AulaView = lazy(() => import('./components/aula/AulaView'))
 const SaleFinderView = lazy(
@@ -1720,7 +1718,11 @@ function App() {
   // ── Widoki: publiczne vs wymagające konta ─────────────────────────────────
 
   if (isResetPasswordPath(location.pathname)) {
-    return <ResetPassword />
+    return (
+      <Suspense fallback={null}>
+        <ResetPassword />
+      </Suspense>
+    )
   }
 
   if (effectiveActiveView === 'login') {
@@ -2090,7 +2092,9 @@ function App() {
   }
 
   const mainViewContent: ReactNode = (() => {
-    if (PUBLIC_VIEWS.has(effectiveActiveView)) return renderPublicView()
+    if (PUBLIC_VIEWS.has(effectiveActiveView)) {
+      return <Suspense fallback={viewFallback}>{renderPublicView()}</Suspense>
+    }
     // Sesja jeszcze nieznana — szkielet zamiast mignięcia ekranu logowania.
     if (!authReady) return viewFallback
     if (!session) {
@@ -2316,7 +2320,7 @@ function App() {
         ) : null}
 
         <Suspense fallback={null}>
-          <ChatAssistantFab
+          <DeferredChatAssistantFab
             hidden={
               isMobileComposeOpen ||
               profileModalOpen ||

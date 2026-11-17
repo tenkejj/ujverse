@@ -4,8 +4,8 @@ import { Search } from 'lucide-react'
 
 export type HubFilter = { key: string; label: string; count?: number }
 
-export function InfoHubShell({ children }: { children: ReactNode }) {
-  return <div className="campus-hub">{children}</div>
+export function InfoHubShell({ children, variant }: { children: ReactNode; variant?: 'announcements' | 'registrations' | 'events' | 'tools' }) {
+  return <div className={`campus-hub${variant ? ` campus-hub--${variant}` : ''}`}>{children}</div>
 }
 
 export function InfoHubTitle({
@@ -117,12 +117,12 @@ export function InfoHubCardGrid({
   layout = 'rows',
 }: {
   children: ReactNode
-  layout?: 'rows' | 'open'
+  layout?: 'rows' | 'open' | 'resources'
 }) {
   return (
     <ul
       className={
-        layout === 'open' ? 'campus-open-entries' : 'campus-entry-list'
+        layout === 'resources' ? 'campus-resource-grid' : layout === 'open' ? 'campus-open-entries' : 'campus-entry-list'
       }
     >
       {children}

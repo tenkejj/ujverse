@@ -38,22 +38,17 @@ export const HEADER_MOBILE = {
   headerSpacerClass:
     'pointer-events-none h-[calc(3.5rem+env(safe-area-inset-top,0px))] md:h-[calc(4rem+env(safe-area-inset-top,0px))] lg:hidden',
   sideSectionClass: 'min-w-0 justify-self-start',
-  /**
-   * Desktop: pusty pas pod portalowane logo.
-   * Mobile: logo w flow w tej komórce (wewnątrz fixed belki).
-   */
-  /** Logo mieści się w 44 px celu; środkowy pas pozostaje niezależny od akcji. */
+  /** Empty grid lane reserves space; the logo itself uses the viewport portal. */
   logoLaneClass:
     'relative z-10 flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden ' +
     'md:h-16 md:w-16 lg:h-auto lg:overflow-visible',
   rightSectionClass:
-    'flex w-full min-w-0 items-center justify-end gap-0 min-[360px]:gap-1 sm:gap-2 relative z-10 justify-self-end',
-  /**
-   * Tylko desktop (portal). Mobile logo jest w `logoLaneClass`.
-   * Oś = środek okna, niezależnie od szerokości nawigacji.
-   */
+    'app-header-actions flex w-full min-w-0 items-center justify-end gap-0 min-[360px]:gap-1 sm:gap-2 relative z-10 justify-self-end',
+  /** Viewport axis at every breakpoint, outside sidebar/content containing blocks. */
   logoAnchorClass:
-    'app-logo-axis pointer-events-none fixed top-0 left-0 z-[60] hidden h-16 w-screen items-center justify-center lg:flex',
+    'app-logo-axis pointer-events-none fixed top-0 left-0 z-[60] flex w-screen items-center justify-center ' +
+    'h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] ' +
+    'md:h-[calc(4rem+env(safe-area-inset-top,0px))] lg:h-16 lg:pt-0',
   logoClass: 'block h-11 w-10 flex-none lg:h-12 lg:w-11',
   actionButtonClass:
     'inline-flex h-11 min-h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-xl text-brand-ink dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink/40 dark:focus-visible:ring-brand-gold-bright/40',

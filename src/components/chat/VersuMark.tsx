@@ -37,6 +37,8 @@ type Props = {
   portrait?: boolean
   /** Stable request id replays a one-shot animation for each new conversation turn. */
   replayKey?: string
+  /** Only the above-the-fold home mascot should compete for early bandwidth. */
+  priority?: boolean
 }
 
 export default function VersuMark({
@@ -46,6 +48,7 @@ export default function VersuMark({
   activity = 'idle',
   portrait,
   replayKey,
+  priority = false,
 }: Props) {
   const paletteId = `versu-palette-${useId().replace(/:/g, '')}`
   const reducedMotion = useSyncExternalStore(
@@ -121,6 +124,8 @@ export default function VersuMark({
           height={size}
           draggable={false}
           decoding="async"
+          fetchPriority={priority ? 'high' : undefined}
+          loading={priority ? 'eager' : undefined}
           className="h-full w-full object-contain object-center"
           style={{ imageRendering: 'pixelated' }}
         />

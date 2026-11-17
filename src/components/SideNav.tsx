@@ -1,6 +1,8 @@
 import {
   ArrowUpRight,
   ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
   GraduationCap,
   LogIn,
   LogOut,
@@ -8,6 +10,7 @@ import {
   Settings,
   Sun,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { THEME_META, useTheme } from '../ThemeContext'
 import { SIDE_NAV_DESKTOP } from '../styles/mobile-theme'
@@ -52,16 +55,31 @@ export default function SideNav({
   const ThemeIcon =
     colorMode === 'dark' ? Moon : colorMode === 'uj' ? GraduationCap : Sun
   const active = navTargetForView(activeView)
+  const [collapsed, setCollapsed] = useState(false)
 
   return (
     <aside
       aria-label="Nawigacja główna"
       className={`app-sidebar ${SIDE_NAV_DESKTOP.containerClass}`}
       data-authenticated={isAuthenticated}
+      data-collapsed={collapsed}
     >
       <div className={SIDE_NAV_DESKTOP.stickyClass}>
         <div className={`sidebar-surface ${SIDE_NAV_DESKTOP.innerClass}`}>
+          <button
+            type="button"
+            className="sidebar-collapse"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-expanded={!collapsed}
+            aria-controls="desktop-navigation"
+            aria-label={collapsed ? 'Rozwiń nawigację' : 'Zwiń nawigację'}
+            title={collapsed ? 'Rozwiń nawigację' : 'Zwiń nawigację'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
+            <span>Menu</span>
+          </button>
           <nav
+            id="desktop-navigation"
             className={`versus-sidebar sidebar-scroll-area ${SIDE_NAV_DESKTOP.scrollAreaClass}`}
             aria-label="Sekcje UJverse"
           >
@@ -69,6 +87,7 @@ export default function SideNav({
               <Link
                 to="/chat"
                 className="sidebar-versus-link"
+                aria-label="Versuś — zapytaj o UJ"
                 aria-current={active === 'chat' ? 'page' : undefined}
               >
                 <VersuMark size={56} />
@@ -136,7 +155,7 @@ export default function SideNav({
             ) : null}
 
             <details className="sidebar-services">
-              <summary>
+              <summary aria-label="Serwisy UJ" title="Serwisy UJ">
                 <GraduationCap size={18} aria-hidden />
                 <span>Serwisy UJ</span>
                 <ChevronDown size={15} aria-hidden />

@@ -1,12 +1,9 @@
-import { useMemo } from 'react'
+import { useDeferredValue, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { usePublicAnnouncements } from '../../hooks/usePublicInfo'
 import type { FacultyPreference } from '../../hooks/useInfoPreferences'
 import { useNow } from '../../hooks/useNow'
-import {
-  ANNOUNCEMENT_SOURCE_COUNT,
-  facultyShortLabel,
-} from '../../lib/info/faculty'
+import { facultyShortLabel } from '../../lib/info/faculty'
 import { sortAnnouncementsNewestFirst } from '../../lib/info/relevance'
 import { foldForSearch } from '../../lib/info/resources'
 import type { AnnouncementStatus } from '../../types/content'
@@ -17,6 +14,7 @@ import {
   InfoHubSection,
   InfoHubShell,
   InfoHubToolbar,
+  InfoHubTitle,
 } from './InfoHubShell'
 import { DomainEmpty, DomainError, RowSkeletons } from './infoUi'
 
@@ -42,6 +40,9 @@ export default function AnnouncementsPage({
     ? (rawStatus as StatusFilter)
     : 'all'
   const text = params.get('q') ?? ''
+  const deferredText = useDeferredValue(text)
+  const detailed = params.get('widok') === 'szczegoly'
+  const oldest = params.get('sort') === 'oldest'
   const setFilter = (key: string, value: string) =>
     setParams(
       (previous) => {
@@ -58,7 +59,7 @@ export default function AnnouncementsPage({
     () => sortAnnouncementsNewestFirst(query.data?.items ?? []),
     [query.data],
   )
-  const folded = foldForSearch(text)
+  const folded = foldForSearch(deferredText)
   const filtered = all.filter(
     (item) =>
       (status === 'all' || item.status === status) &&
@@ -67,12 +68,13 @@ export default function AnnouncementsPage({
           `${item.title} ${item.body} ${item.sourceLabel}`,
         ).includes(folded)),
   )
-  const pages = Math.max(1, Math.ceil(filtered.length / 12))
+  if (oldest) filtered.reverse()
+  const pages = Math.max(1, Math.ceil(filtered.length / 20))
   const requestedPage = Number(params.get('strona') ?? 1)
   const page = Number.isSafeInteger(requestedPage)
     ? Math.min(pages, Math.max(1, requestedPage))
     : 1
-  const visible = filtered.slice((page - 1) * 12, page * 12)
+  const visible = filtered.slice(0, page * 20)
   const pageHref = (nextPage: number) => {
     const next = new URLSearchParams(params)
     if (nextPage === 1) next.delete('strona')
@@ -91,8 +93,8 @@ export default function AnnouncementsPage({
     : null
 
   return (
-    <InfoHubShell>
-      <h1 className="sr-only">Komunikaty</h1>
+    <InfoHubShell variant="announcements">
+      <InfoHubTitle title="Komunikaty" description="Ogłoszenia wydziałów, zmiany zajęć i sprawy studenckie." />
       <DataFreshness
         iso={
           query.isPlaceholderData
@@ -119,6 +121,20 @@ export default function AnnouncementsPage({
         searchPlaceholder="Szukaj w komunikatach…"
         searchAriaLabel="Szukaj w komunikatach"
       />
+      <div className="catalogue-options">
+        <p role="status">{visible.length} z {filtered.length} komunikatów</p>
+        <label>
+          Sortowanie
+          <select value={oldest ? 'oldest' : 'newest'} onChange={(e) => setFilter('sort', e.target.value)}>
+            <option value="newest">Najnowsze najpierw</option>
+            <option value="oldest">Najstarsze najpierw</option>
+          </select>
+        </label>
+        <div className="catalogue-view" role="group" aria-label="Gęstość komunikatów">
+          <button type="button" aria-pressed={!detailed} onClick={() => setFilter('widok', '')}>Kompaktowo</button>
+          <button type="button" aria-pressed={detailed} onClick={() => setFilter('widok', 'szczegoly')}>Szczegółowo</button>
+        </div>
+      </div>
       <InfoHubSection
         title={short ? `Twój wydział: ${short}` : 'Wszystkie wydziały'}
         count={filtered.length}
@@ -154,46 +170,21 @@ export default function AnnouncementsPage({
               : 'Brak nowych komunikatów w ostatnich 30 dniach.'}
           </DomainEmpty>
         ) : (
-          <InfoHubCardGrid layout="open">
+          <InfoHubCardGrid>
             {visible.map((item) => (
               <li key={item.id}>
-                <AnnouncementHubCard item={item} now={now} />
+                <AnnouncementHubCard item={item} now={now} detailed={detailed} />
               </li>
             ))}
           </InfoHubCardGrid>
         )}
       </InfoHubSection>
-      {pages > 1 ? (
-        <nav className="campus-pagination" aria-label="Strony komunikatów">
-          {page > 1 ? (
-            <Link
-              to={pageHref(page - 1)}
-              onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}
-            >
-              Poprzednia strona
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span aria-live="polite">
-            Strona {page} z {pages}
-          </span>
-          {page < pages ? (
-            <Link
-              to={pageHref(page + 1)}
-              onClick={() => window.scrollTo({ top: 0, behavior: 'instant' })}
-            >
-              Następna strona
-            </Link>
-          ) : (
-            <span />
-          )}
-        </nav>
+      {page < pages ? (
+        <div className="catalogue-more">
+          <Link className="campus-text-link" to={pageHref(page + 1)} replace preventScrollReset>Załaduj więcej komunikatów</Link>
+          <span>Wyświetlono {visible.length} z {filtered.length}</span>
+        </div>
       ) : null}
-      <p className="campus-page-note">
-        Źródła: {ANNOUNCEMENT_SOURCE_COUNT} stron wydziałów UJ. „Dodano” oznacza
-        datę pobrania do UJverse, nie datę publikacji ogłoszenia.
-      </p>
     </InfoHubShell>
   )
 }

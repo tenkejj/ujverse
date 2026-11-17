@@ -2,10 +2,10 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" type="image/png" sizes="any" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
-    <link rel="preload" as="image" href="/logo.png" />
+    <link rel="preload" as="image" href="/logo-mask.webp" type="image/webp" crossorigin="anonymous" />
     <meta name="theme-color" content="#F9F7F2" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -81,6 +81,25 @@
       })()
     </script>
 
+    <!-- Discover the home mascot before the application bundle, using the
+         same static/animated choice as VersuMark. Other routes do not need it. -->
+    <script>
+      if (window.location.pathname === '/') {
+        var mascotReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        try {
+          var mascotPreferences = JSON.parse(localStorage.getItem('uj_user_prefs_v1') || 'null')
+          mascotReducedMotion = mascotReducedMotion || mascotPreferences?.reducedMotion === true
+        } catch (e) {}
+        var mascotPreload = document.createElement('link')
+        mascotPreload.rel = 'preload'
+        mascotPreload.as = 'image'
+        mascotPreload.type = mascotReducedMotion ? 'image/png' : 'image/webp'
+        mascotPreload.href = mascotReducedMotion ? '/versus/idle.png' : '/versus/idle.webp?v=glasses1'
+        mascotPreload.fetchPriority = 'high'
+        document.head.appendChild(mascotPreload)
+      }
+    </script>
+
     <!--
       Inline reset + splash style — pokazany od pierwszego paint, żeby na
       mobile/produkcji nie było białej dziury między HTML a załadowaniem React.
@@ -127,8 +146,8 @@
         height: 9rem;
         width: 12.5rem;
         background-color: #1e293b;
-        -webkit-mask: url(/logo.png) center / contain no-repeat;
-        mask: url(/logo.png) center / contain no-repeat;
+        -webkit-mask: url(/logo-mask.webp) center / contain no-repeat;
+        mask: url(/logo-mask.webp) center / contain no-repeat;
         transition: background-color 150ms ease-out;
       }
       html.dark #ujverse-splash .logo {

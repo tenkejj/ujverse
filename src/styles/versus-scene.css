@@ -8,11 +8,11 @@
   padding-block: 24px 32px;
 }
 .versus-scene-main {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-content: center;
+  width: min(100%, 1120px);
   min-width: 0;
   min-height: calc(clamp(560px, 62svh, 760px) - 108px);
 }
@@ -33,8 +33,13 @@
   /* Changing the animated picture on focus must not replace the click target. */
   pointer-events: none;
 }
+.versus-scene-persona > .versu-mark > picture {
+  /* Idle artwork spans x=27..84 on a 96px canvas: centre its visible bounds
+     (55.5px), keeping the button and gesture animation on a stable axis. */
+  transform: translateX(-7.8125%);
+}
 .versus-scene-greeting {
-  max-width: 100%;
+  width: 100%;
   text-align: center;
 }
 .versus-scene-greeting h1 {
@@ -51,7 +56,7 @@
   line-height: 1.5;
 }
 .versus-scene-form {
-  width: min(100%, 1120px);
+  width: 100%;
   min-width: 0;
   margin-top: 28px;
 }
@@ -62,7 +67,7 @@
   min-height: 88px;
   padding-block: 18px;
   padding-inline: 24px 16px;
-  border: 1px solid color-mix(in srgb, var(--campus-muted) 60%, transparent);
+  border: 1px solid var(--campus-muted);
   border-radius: 20px;
   background: var(--campus-bg);
 }

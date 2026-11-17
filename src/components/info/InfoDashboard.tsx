@@ -178,9 +178,12 @@ export default function InfoDashboard({
                   >
                     <Icon size={17} strokeWidth={1.75} aria-hidden />
                     <span>{label}</span>
-                    {count !== null ? (
-                      <span className="dashboard-switcher-count">{count}</span>
-                    ) : null}
+                    <span
+                      className="dashboard-switcher-count"
+                      aria-hidden={count === null || undefined}
+                    >
+                      {count ?? ''}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -246,7 +249,7 @@ export default function InfoDashboard({
                       </DomainEmpty>
                     ) : (
                       <ul className="dashboard-stories">
-                        {announcements.slice(0, 3).map((item) => (
+                        {announcements.slice(0, 4).map((item) => (
                           <li key={item.id}>
                             <AnnouncementHubCard item={item} now={now} compact />
                           </li>

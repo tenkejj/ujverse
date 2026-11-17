@@ -95,8 +95,8 @@ export default function NavItem({
         onClick={onClick}
         whileTap={{ scale: 0.98 }}
         className={itemClass}
-        aria-label={ariaLabel}
-        title={title}
+        aria-label={ariaLabel ?? label}
+        title={title ?? label}
       >
         {inner}
       </motion.a>
@@ -110,8 +110,8 @@ export default function NavItem({
       whileTap={{ scale: 0.98 }}
       className={itemClass}
       aria-current={active ? 'page' : undefined}
-      aria-label={ariaLabel}
-      title={title}
+      aria-label={ariaLabel ?? label}
+      title={title ?? label}
     >
       {inner}
     </motion.button>

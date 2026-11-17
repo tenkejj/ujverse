@@ -8,7 +8,7 @@ import { foldForSearch, UJ_LINKS } from '../../lib/info/resources'
 import { dayKeyToDate, WARSAW_TZ } from '../../lib/info/time'
 import type { InfoEvent } from '../../lib/info/types'
 import { EventPreviewTile } from './InfoItems'
-import { InfoHubSection, InfoHubShell } from './InfoHubShell'
+import { InfoHubSection, InfoHubShell, InfoHubTitle } from './InfoHubShell'
 import {
   DomainEmpty,
   DomainError,
@@ -62,8 +62,8 @@ export default function OfficialEventsPage({
       return p
     })
   return (
-    <InfoHubShell>
-      <h1 className="sr-only">Wydarzenia na UJ</h1>
+    <InfoHubShell variant="events">
+      <InfoHubTitle title="Wydarzenia na UJ" description="Wykłady, spotkania i konferencje. Wybierz dzień i sprawdź, co dzieje się na uczelni." />
       <DataFreshness
         kind="events"
         iso={query.data?.freshness.latest ?? null}

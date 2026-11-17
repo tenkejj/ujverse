@@ -19,6 +19,7 @@
 
 import {
   forwardRef,
+  memo,
   useCallback,
   useEffect,
   useRef,
@@ -192,7 +193,7 @@ const BUBBLE_MOTION_ASSISTANT = {
   transition: { duration: 0.15, ease: 'easeOut' as const },
 }
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   message,
   variant,
   isStreaming,
@@ -308,7 +309,7 @@ function MessageBubble({
       </div>
     </motion.div>
   )
-}
+})
 
 /**
  * Pojedynczy mały button akcji obok bubble'a — używany przez user-message edit.

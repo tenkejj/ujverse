@@ -1,0 +1,302 @@
+/* UJverse workspace: shared rhythm, task-specific information layouts. */
+.campus-app {
+  --workspace-radius: 12px;
+  --workspace-section-gap: 32px;
+}
+.campus-app .campus-page {
+  max-width: 1840px;
+  padding: 28px 40px 56px;
+}
+.campus-app .campus-page:has(.student-dashboard) {
+  max-width: 1760px;
+  padding: 20px 40px 48px;
+}
+.student-dashboard { max-width: none; }
+.campus-page .campus-hub { max-width: none; }
+.campus-page:has(.student-guides) { max-width: 1560px; }
+.campus-page:has(.info-search-workspace) { max-width: 1560px; }
+.campus-page-heading { margin-bottom: 20px; }
+.campus-page-heading h1 { font-size: clamp(28px, 2.2vw, 36px); letter-spacing: -0.03em; }
+.campus-hub > .data-freshness { margin-block: 0 20px; }
+.campus-page :where(h1,h2,h3,p,a,button,dd) { overflow-wrap: anywhere; }
+.campus-page :where(button,summary,select) { touch-action: manipulation; }
+.campus-page :where(button,summary,select):focus-visible { outline: 2px solid var(--campus-accent); outline-offset: 3px; }
+.campus-page ::selection { background: var(--campus-accent); color: var(--campus-bg); }
+.campus-page :where(input,textarea) { caret-color: var(--campus-accent); }
+
+/* Two columns keep the companion and the question on the same visual baseline. */
+.student-dashboard .dashboard-assistant-support { margin: 0; padding: 0 0 12px; }
+.dashboard-assistant-support .versus-scene { padding: 0; }
+.dashboard-assistant-support .versus-scene-main {
+  grid-template-columns: 280px minmax(0, 720px);
+  justify-content: center;
+  justify-items: stretch;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  transform: none;
+  min-height: 280px;
+}
+.dashboard-assistant-support .versus-scene-persona { margin: 0; justify-self: center; }
+.dashboard-assistant-support .versus-scene-persona > .versu-mark { --versu-mark-size: 280px; }
+.versus-scene-workspace { min-width: 0; width: 100%; }
+.dashboard-assistant-support .versus-scene-greeting { text-align: start; }
+.dashboard-assistant-support .versus-scene-greeting h1 { font-size: clamp(30px, 2.6vw, 42px); font-weight: 650; }
+.dashboard-assistant-support .versus-scene-greeting p { margin: 10px 0 0; font-size: 16px; }
+.dashboard-assistant-support .versus-scene-form { margin-top: 16px; }
+.dashboard-assistant-support .versus-scene-composer {
+  min-height: 64px;
+  padding: 8px 12px 8px 16px;
+  border-radius: var(--workspace-radius);
+  border-color: color-mix(in srgb, var(--campus-muted) 65%, var(--campus-line));
+}
+.dashboard-assistant-support .versus-scene-suggestions { justify-content: flex-start; gap: 8px; }
+.dashboard-assistant-support .versus-scene-suggestions button { min-height: 44px; padding-inline: 12px; }
+.dashboard-assistant-support .versus-about { margin-top: 4px; }
+.dashboard-guide-links { margin-block: 4px 20px; gap: 4px 24px; }
+.dashboard-content-with-events { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 32px; }
+.dashboard-overview-heading h2, .dashboard-discover-heading h2 { font-size: 22px; }
+.dashboard-stories, .dashboard-deadlines { gap: 0; }
+.dashboard-stories > li + li, .dashboard-deadlines > li + li { border-top: 1px solid var(--campus-line); }
+html .campus-page .student-dashboard article.semantic-item { border: 0; border-radius: 0; padding: 16px 0; }
+.student-dashboard .info-entry h3, .student-dashboard .deadline-entry h3 { font-size: 16px; }
+.student-dashboard .info-entry-meta, .student-dashboard .info-entry-content > a { font-size: 12px; }
+.dashboard-switcher { gap: 4px; }
+.dashboard-switcher-count { display: inline-block; min-width: 3ch; text-align: center; }
+.dashboard-switcher button { background: transparent; border-radius: 8px; }
+.dashboard-switcher button[aria-pressed='true'] { background: var(--campus-tint); color: var(--campus-accent); border-color: var(--campus-line); }
+.dashboard-photo-events { gap: 20px; }
+.campus-page .event-preview h3 { display: block; overflow: visible; font-size: 16px; }
+.campus-page .event-preview-location > span { white-space: normal; }
+
+/* Sidebar: bounded scroller, stable footer, compact labelled destinations. */
+html aside.app-sidebar[aria-label='Nawigacja główna'] > div > div.sidebar-surface { flex: 1 1 0%; height: 100%; }
+.app-sidebar .sidebar-scroll-area {
+  flex: 1 1 0%;
+  min-height: 0;
+  --sidebar-row-gap: 4px;
+  gap: 24px;
+  padding-block: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--campus-line) transparent;
+}
+.app-sidebar[data-authenticated='false'] .sidebar-scroll-area { --sidebar-row-gap: 4px; gap: 24px; padding-block-start: 12px; }
+.app-sidebar .sidebar-nav-items > .sidebar-nav-item,
+.app-sidebar[data-authenticated='false'] .sidebar-nav-items > .sidebar-nav-item { min-block-size: 46px; }
+.app-sidebar .sidebar-nav-item { padding-inline: 10px; gap: 10px; font-size: 13px; }
+.app-sidebar .nav-item-label { white-space: normal; line-height: 1.4; }
+.sidebar-nav-group > p { padding-bottom: 10px; font-size: 12px; }
+.app-sidebar .sidebar-versus-link { min-height: 76px; background: var(--campus-tint); }
+.sidebar-controls { margin: 0 6px; padding-block: 12px 8px; }
+.sidebar-controls > div { flex-direction: column; gap: 2px; }
+.sidebar-controls .sidebar-nav-item { flex-direction: row; justify-content: flex-start; min-height: 44px; padding: 10px; gap: 12px; }
+.sidebar-controls .nav-item-label { font-size: 13px; text-align: start; }
+
+/* A toolbar groups filters, then search; the result options stay lightweight. */
+.campus-page .campus-toolbar { align-items: center; gap: 12px 24px; padding-block: 16px; margin-bottom: 20px; border-block: 1px solid var(--campus-line); }
+.campus-page .campus-filters { gap: 4px; flex-wrap: wrap; }
+.campus-page .campus-filters button { min-height: 44px; border-radius: 8px; padding: 10px 12px; }
+.campus-page .campus-list-search { min-height: 46px; flex: 1 1 280px; max-width: 440px; border-radius: 8px; }
+.campus-page .campus-list-search input { width: 100%; min-width: 0; min-height: 44px; font-size: 14px; }
+.catalogue-options { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 24px; font-size: 13px; color: var(--campus-muted); }
+.catalogue-options > p { margin-inline-end: auto; font-variant-numeric: tabular-nums; }
+.catalogue-options label { display: flex; gap: 10px; align-items: center; }
+.catalogue-options select { min-width: 0; min-height: 44px; padding: 8px; border: 1px solid var(--campus-line); border-radius: 8px; background: var(--campus-bg); color: var(--campus-text); }
+.catalogue-view { display: flex; gap: 4px; }
+.catalogue-view button { min-height: 44px; padding: 8px 12px; border-radius: 8px; }
+.catalogue-view button[aria-pressed='true'] { background: var(--campus-tint); color: var(--campus-accent); }
+.catalogue-more { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 24px; margin-top: 24px; }
+.catalogue-more > a, .catalogue-more > button { padding: 8px 20px; border: 1px solid var(--campus-line); border-radius: 8px; }
+.catalogue-more > span { color: var(--campus-muted); font-size: 13px; }
+
+/* A bounded feed keeps source actions near the reading column. */
+.campus-page .campus-hub--announcements { max-width: 1240px; margin-inline: auto; }
+.campus-hub--announcements .campus-entry-list { border-top: 1px solid var(--campus-line); }
+html .campus-page .campus-hub--announcements article.semantic-item,
+html .campus-page .info-search-result-list article.info-entry { padding: 20px 0; border: 0; border-radius: 0; }
+.campus-hub--announcements .info-entry { gap: 20px; }
+.campus-hub--announcements .info-entry-content { display: grid; grid-template-columns: minmax(0, 72ch) minmax(0, 1fr); column-gap: 32px; }
+.campus-hub--announcements .info-entry-meta { grid-column: 1; }
+.campus-hub--announcements .info-entry h3 { grid-column: 1; font-size: 17px; line-height: 1.5; margin: 8px 0 4px; max-width: 72ch; }
+.campus-hub--announcements .info-entry-excerpt { grid-column: 1; max-width: 72ch; }
+.campus-page .info-entry-excerpt { display: block; overflow: visible; line-height: 1.6; }
+.campus-hub--announcements .info-entry-content > a { grid-column: 2; grid-row: 2; align-self: start; }
+.campus-page :is(.info-entry,.deadline-entry) > button { flex: none; width: 44px; height: 44px; }
+.campus-page .info-entry-content > a { min-height: 44px; display: inline-flex; align-items: center; }
+.announcement-disclosure { grid-column: 1 / -1; grid-row: 4; color: var(--campus-muted); font-size: 13px; }
+.announcement-disclosure button { min-height: 44px; color: var(--campus-accent); text-decoration: underline; text-underline-offset: 4px; }
+.announcement-body { max-width: 75ch; padding-block: 8px 16px; white-space: pre-line; font-size: 15px; line-height: 1.75; color: var(--campus-text); }
+
+/* Compact course cards: title, unit and dates share one reading column. */
+.campus-hub--registrations .campus-entry-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.campus-hub--registrations .campus-entry-list > li { min-width: 0; border: 0; }
+html .campus-page .campus-hub--registrations article.semantic-item { height: 100%; padding: 16px; border: 1px solid var(--campus-line); border-radius: var(--workspace-radius); background: var(--campus-bg); align-items: start; gap: 12px; }
+.campus-hub--registrations .deadline-entry h3 { font-size: 17px; line-height: 1.45; margin-block: 8px 4px; }
+.campus-hub--registrations .deadline-entry > .info-entry-content { display: flex; flex-direction: column; height: 100%; }
+.campus-hub--registrations .deadline-time { margin-top: auto; padding-top: 8px; }
+.campus-hub--registrations .info-entry-content > a { align-self: start; }
+.campus-page .deadline-entry[data-tone='upcoming'] { --item-accent: var(--campus-accent); }
+.campus-page .deadline-entry[data-tone='closed'] { --item-accent: var(--campus-muted); }
+.campus-phase { display: inline-flex; align-items: center; gap: 7px; }
+.campus-phase::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.registration-dates { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 14px; font-variant-numeric: tabular-nums; }
+.registration-dates dt { font-size: 12px; color: var(--campus-muted); margin-bottom: 4px; }
+.registration-dates dd { font-size: 14px; color: var(--campus-text); font-weight: 500; }
+.deadline-entry .info-entry-excerpt { margin-block: 4px; }
+.deadline-entry .deadline-time { font-size: 13px; }
+
+/* Tools are a catalogue of destinations with room for descriptions. */
+.campus-resource-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; list-style: none; margin: 16px 0 32px; padding: 0; }
+.campus-resource-grid > li { min-width: 0; }
+.campus-resource-grid .resource-entry { height: 100%; min-height: 112px; padding: 16px; border-radius: var(--workspace-radius); border: 1px solid var(--campus-line); background: var(--campus-bg); align-items: flex-start; gap: 16px; }
+.campus-resource-grid .resource-entry > svg:first-child { margin-top: 2px; color: var(--campus-accent); }
+.campus-resource-grid .campus-resource-title { font-size: 16px; line-height: 1.4; margin-bottom: 4px; }
+.campus-resource-grid .campus-resource-description { font-size: 14px; line-height: 1.6; }
+.campus-hub--tools .campus-hub-section + .campus-hub-section { margin-top: 40px; }
+
+/* Month and agenda have comparable weight; day cells keep a bounded height. */
+.campus-page .campus-hub--events .info-calendar { grid-template-columns: minmax(0,0.9fr) minmax(0,1fr); gap: 32px; align-items: start; }
+.campus-hub--events .info-calendar-month { padding: 20px; max-width: 760px; }
+.campus-hub--events .info-calendar-days button { min-height: clamp(54px,3.2vw,64px); align-items: flex-start; justify-content: flex-start; padding: 8px; font-size: 15px; }
+.campus-hub--events .info-calendar-day-count { margin-top: auto; min-width: 20px; height: 20px; font-size: 11px; }
+.campus-hub--events .info-calendar-toolbar h3 { font-size: 24px; }
+.campus-hub--events .info-calendar-weekdays { font-size: 12px; text-align: start; padding-inline: 12px; }
+.campus-hub--events .info-calendar-agenda { position: static; }
+.campus-hub--events .info-calendar .event-entry,
+html .campus-page .info-calendar-agenda article.event-preview { border-radius: 0; border: 0; padding: 16px 0; }
+.campus-page .event-preview-grid { grid-template-columns: repeat(auto-fill,minmax(min(100%,300px),1fr)); gap: 32px; }
+
+/* Guides keep their illustration grammar, with one coherent neutral/gold palette. */
+.student-guides { max-width: none; }
+.student-guides [class*='guide-topic-'], .dark .student-guides [class*='guide-topic-'] { --guide-topic-ink: var(--campus-accent); --guide-topic-wash: var(--campus-tint); }
+.student-guides .student-guide-card { border-radius: var(--workspace-radius); }
+.info-search-workspace .info-search-intro { margin-top: -12px; color: var(--campus-muted); font-size: 15px; line-height: 1.6; }
+.campus-search-page.info-search-workspace { max-width: 1320px; gap: 24px; }
+.info-search-workspace .info-search-field { min-height: 72px; border-radius: var(--workspace-radius); }
+.info-search-workspace .info-search-topic-grid button { min-height: 64px; border: 0; border-radius: 8px; background: var(--campus-tint); }
+.info-search-workspace .info-search-start { gap: 48px; }
+.info-search-workspace .info-search-shortcuts { border-inline-start: 1px solid var(--campus-line); padding-inline-start: 32px; }
+
+@media (hover:hover) {
+  .campus-resource-grid .resource-entry:hover { background: var(--campus-tint); text-decoration: none; border-color: var(--campus-muted); }
+  .catalogue-view button:hover { background: var(--campus-tint); }
+}
+@media (max-width: 1399px) {
+  .dashboard-content-with-events { gap: 28px; }
+  .dashboard-photo-events { grid-template-columns: minmax(0,1fr); }
+  .dashboard-photo-events .event-preview-main { display: grid; grid-template-columns: 140px minmax(0,1fr); gap: 16px; align-items: start; }
+  .dashboard-photo-events .event-preview-copy { padding-top: 0; }
+  .dashboard-photo-events .event-preview-media { aspect-ratio: 4/3; }
+}
+@media (max-width: 1199px) {
+  .campus-app .campus-page, .campus-app .campus-page:has(.student-dashboard) { padding-inline: 28px; }
+  .dashboard-assistant-support .versus-scene-main { grid-template-columns: 220px minmax(0,1fr); gap: 20px; }
+  .dashboard-assistant-support .versus-scene-persona > .versu-mark { --versu-mark-size: 220px; }
+  .dashboard-content-with-events { grid-template-columns: minmax(0,1fr); }
+  .dashboard-photo-events { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .dashboard-photo-events .event-preview-main { display: block; }
+  .dashboard-photo-events .event-preview-copy { padding-top: 12px; }
+  .campus-resource-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .campus-page .campus-hub--events .info-calendar { grid-template-columns: minmax(0,0.9fr) minmax(0,1fr); gap: 24px; }
+  .campus-hub--events .info-calendar-days button { min-height: 64px; padding: 8px; }
+}
+@media (max-width: 899px) {
+  .campus-page .campus-hub--events .info-calendar { grid-template-columns: minmax(0,1fr); }
+  .campus-hub--events .info-calendar-agenda { position: static; }
+  .campus-hub--announcements .info-entry-content { display: block; }
+  .campus-hub--registrations .campus-entry-list { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 767px) {
+  .campus-app .campus-page, .campus-app .campus-page:has(.student-dashboard) { padding: 20px 20px calc(100px + env(safe-area-inset-bottom,0px)); }
+  .dashboard-assistant-support .versus-scene-main { grid-template-columns: 112px minmax(0,1fr); gap: 8px 12px; min-height: 0; align-items: center; }
+  .dashboard-assistant-support .versus-scene-workspace { display: contents; }
+  .dashboard-assistant-support .versus-scene-persona { grid-column: 1; grid-row: 1; }
+  .dashboard-assistant-support .versus-scene-greeting { grid-column: 2; grid-row: 1; }
+  .dashboard-assistant-support .versus-scene-form { grid-column: 1 / -1; grid-row: 2; margin-top: 12px; }
+  .dashboard-assistant-support .versus-about { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; }
+  .dashboard-assistant-support .versus-scene-persona > .versu-mark { --versu-mark-size: 128px; }
+  .dashboard-assistant-support .versus-scene-greeting h1 { font-size: 28px; }
+  .dashboard-assistant-support .versus-scene-greeting p { max-width: none; margin: 8px 0 0; font-size: 14px; }
+  .dashboard-assistant-support .versus-about { justify-self: start; }
+  .dashboard-assistant-support .versus-scene-suggestions { gap: 4px; }
+  .dashboard-assistant-support .versus-scene-suggestions button { font-size: 12px; padding-inline: 8px; }
+  .dashboard-guide-links { gap: 0 16px; margin-bottom: 20px; }
+  .dashboard-guide-links > svg { display: none; }
+  .dashboard-guide-links > .dashboard-panel-link { margin-inline-start: 0; }
+  .dashboard-content { gap: 32px; }
+  .dashboard-overview-heading h2, .dashboard-discover-heading h2 { font-size: 20px; }
+  .dashboard-switcher button { font-size: 12px; padding-inline: 8px; }
+  .dashboard-photo-events { grid-template-columns: minmax(0,1fr); gap: 20px; }
+  .dashboard-photo-events .event-preview-main { display: grid; grid-template-columns: 112px minmax(0,1fr); gap: 14px; }
+  .dashboard-photo-events .event-preview-copy { padding-top: 0; }
+  .dashboard-photo-events .event-preview-media { aspect-ratio: 1; }
+  .campus-page .campus-toolbar { align-items: stretch; }
+  .campus-page .campus-list-search { max-width: none; flex-basis: 100%; }
+  .catalogue-options { gap: 8px 16px; }
+  .catalogue-options > p { flex-basis: 100%; }
+  .catalogue-options label { flex-wrap: wrap; }
+  .campus-resource-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .campus-resource-grid .resource-entry { min-height: 104px; padding: 16px; }
+  .campus-hub--events .info-calendar-month { padding: 16px 10px; }
+  .campus-hub--events .info-calendar-toolbar h3 { font-size: 20px; }
+  .campus-hub--events .info-calendar-days button { min-height: 52px; padding: 6px; font-size: 14px; }
+  .campus-hub--events .info-calendar-weekdays { font-size: 11px; padding-inline: 6px; }
+  .campus-hub--events .info-calendar-day-count { min-width: 14px; height: 14px; font-size: 9px; }
+  .info-search-workspace .info-search-start { gap: 32px; }
+  .info-search-workspace .info-search-shortcuts { border-inline-start: 0; padding-inline-start: 0; border-top: 1px solid var(--campus-line); padding-block-start: 24px; }
+  .info-search-workspace .info-search-field { min-height: 60px; }
+}
+@media (max-width: 379px) {
+  .campus-app .campus-page, .campus-app .campus-page:has(.student-dashboard) { padding-inline: 16px; }
+  .dashboard-assistant-support .versus-scene-main { grid-template-columns: 92px minmax(0,1fr); }
+  .dashboard-assistant-support .versus-scene-persona > .versu-mark { --versu-mark-size: 108px; }
+  .dashboard-assistant-support .versus-scene-greeting h1 { font-size: 25px; }
+  .dashboard-switcher button { gap: 4px; padding-inline: 5px; font-size: 11px; }
+  .dashboard-overview-tools { gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .campus-page *, .app-sidebar * { scroll-behavior: auto; transition-duration: 0s; animation-duration: 0s; animation-iteration-count: 1; }
+}
+.sidebar-collapse { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 16px; color: var(--campus-muted); font-size: 12px; flex: none; }
+@media (min-width: 1024px) {
+  .campus-app:has(.app-sidebar[data-collapsed='true']) > .relative { margin-left: 72px; width: calc(100% - 72px); }
+  .app-sidebar[data-collapsed='true'] { width: 72px; min-width: 72px; max-width: 72px; }
+  .app-sidebar[data-collapsed='true'] .sidebar-nav-item { justify-content: center; padding-inline: 8px; }
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link { padding: 0; min-height: 56px; justify-content: center; }
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link .versu-mark { width: 40px; height: 40px; }
+  .app-sidebar[data-collapsed='true'] .sidebar-collapse { justify-content: center; padding-inline: 0; }
+  .app-sidebar[data-collapsed='true'] .sidebar-collapse > span,
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link > span:nth-child(2),
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link > svg,
+  .app-sidebar[data-collapsed='true'] .nav-item-label,
+  .app-sidebar[data-collapsed='true'] .sidebar-nav-group > p,
+  .app-sidebar[data-collapsed='true'] .sidebar-services > summary > span,
+  .app-sidebar[data-collapsed='true'] .sidebar-services > summary > svg:last-child { display: none; }
+  .app-sidebar[data-collapsed='true'] .sidebar-services > summary { justify-content: center; padding-inline: 0; }
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link { padding: 0; justify-content: center; min-height: 56px; }
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link > .versu-mark { width: 40px; height: 40px; }
+  .app-sidebar[data-collapsed='true'] .nav-item-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .app-sidebar[data-collapsed='true'] .sidebar-scroll-area { padding-inline: 0; }
+  .app-sidebar[data-collapsed='true'] .sidebar-nav-item { justify-content: center; padding-inline: 0; min-width: 44px; }
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link { padding: 0; background: transparent; }
+  .app-sidebar[data-collapsed='true'] .sidebar-versus-link .versu-mark { --versu-mark-size: 44px; }
+  .app-sidebar[data-collapsed='true'] .sidebar-controls { margin-inline: 0; }
+}
+
+.dashboard-assistant-support .versus-about { text-align: start; }
+
+/* Questions disclose in a bounded panel, preserving both the hero and page shortcuts. */
+.versus-questions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; position: relative; margin-top: 8px; }
+.versus-questions > button, .versus-questions summary { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 10px; color: var(--campus-accent); font-size: 13px; border-radius: 8px; cursor: pointer; }
+.versus-questions > button { background: var(--campus-tint); }
+.versus-questions summary { list-style: none; }
+.versus-questions summary::-webkit-details-marker { display: none; }
+.versus-questions summary:focus-visible { outline: 2px solid var(--campus-accent); outline-offset: 3px; }
+.versus-questions-panel { position: absolute; inset-inline: 0; top: 100%; z-index: 20; max-height: 264px; overflow-y: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid var(--campus-line); border-radius: 12px; background: var(--campus-bg); box-shadow: 0 8px 24px rgb(0 0 0 / .12); scrollbar-width: thin; }
+.versus-questions-panel p { padding: 4px 8px 8px; color: var(--campus-muted); font-size: 12px; }
+.versus-questions-panel button { display: block; width: 100%; min-height: 44px; padding: 10px 8px; text-align: start; font-size: 14px; line-height: 1.5; border-radius: 6px; }
+.versus-questions-panel button:hover, .versus-questions summary:hover { background: var(--campus-tint); }
+@media (max-width: 767px) {
+  .versus-questions { gap: 0 4px; }
+  .versus-questions > button, .versus-questions summary { padding-inline: 8px; font-size: 12px; }
+}

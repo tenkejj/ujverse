@@ -4,6 +4,11 @@
   transform: translateX(var(--logo-viewport-offset, 0px));
 }
 
+/* Reserve the viewport-centred logo target plus a gap; search may shrink. */
+.uj-header-bar .app-header-actions {
+  max-width: calc(50vw - 48px);
+}
+
 /* The sidebar is a few readable groups, not one enclosing panel. */
 html
   aside.app-sidebar[aria-label='Nawigacja główna']

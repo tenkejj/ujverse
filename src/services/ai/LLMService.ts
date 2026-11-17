@@ -23,6 +23,7 @@ import type {
   ParsedSSEEvent,
 } from '../../types/ai'
 import { supabase } from '../../supabaseClient'
+import { readSSEFrames } from '../../lib/chatStream'
 // Function Calling po stronie serwera (`api/chat.ts`) zastępuje dekorator
 // `ContextInjectedBielikAdapter` — narzędzia pobierają świeże dane z DB
 // w trakcie odpowiedzi modelu, więc statyczny RAG-Lite jest zbędny.
@@ -179,38 +180,10 @@ export class BielikAdapter implements LLMProvider {
   async *parseSSEStream(
     stream: ReadableStream<Uint8Array>,
   ): AsyncGenerator<ParsedSSEEvent, void, void> {
-    const reader = stream.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    try {
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-
-        let sepIndex = buffer.indexOf('\n\n')
-        while (sepIndex !== -1) {
-          const event = buffer.slice(0, sepIndex)
-          buffer = buffer.slice(sepIndex + 2)
-
-          const parsed = this.consumeEvent(event)
-          if (parsed === '__DONE__') return
-          if (parsed) yield parsed
-
-          sepIndex = buffer.indexOf('\n\n')
-        }
-      }
-
-      const tail = buffer.trim()
-      if (tail) {
-        const parsed = this.consumeEvent(tail)
-        if (parsed && parsed !== '__DONE__') yield parsed
-      }
-    } finally {
-      // Also closes the HTTP body when the consumer stops before [DONE].
-      await reader.cancel().catch(() => {})
-      reader.releaseLock()
+    for await (const event of readSSEFrames(stream)) {
+      const parsed = this.consumeEvent(event)
+      if (parsed === '__DONE__') return
+      if (parsed) yield parsed
     }
   }
 
